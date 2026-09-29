@@ -74,6 +74,8 @@ async function main(): Promise<void> {
     // Suppression par id, depuis la sélection déjà filtrée : aucune requête
     // large ne part vers la base.
     const ids = rows.map((r) => r.id)
+    // Un parent ne se supprime pas tant qu'il a des enfants (ON DELETE RESTRICT, C7).
+    await client.query(`UPDATE articles SET parent_id = NULL WHERE parent_id = ANY($1::int[])`, [ids])
     const res = await client.query(`DELETE FROM articles WHERE id = ANY($1::int[])`, [ids])
     console.log(`\n✓ ${res.rowCount} article(s) supprimé(s).`)
   } finally {

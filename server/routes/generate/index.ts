@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import type { Router as ExpressRouter } from 'express'
 import outlineRouter from './outline.routes.js'
-import articleRouter from './article.routes.js'
+import articleDraftRouter from './article-draft.routes.js'
 import reduceSectionRouter from './reduce-section.routes.js'
 import humanizeSectionRouter from './humanize-section.routes.js'
 import metaRouter from './meta.routes.js'
@@ -10,6 +10,7 @@ import microContextSuggestRouter from './micro-context-suggest.routes.js'
 import briefExplainRouter from './brief-explain.routes.js'
 import autoIntakeRouter from './auto-intake.routes.js'
 import placementSuggestRouter from './placement-suggest.routes.js'
+import enrichRouter from './enrich.routes.js'
 
 const router = Router()
 
@@ -29,7 +30,7 @@ function mergeRouter(parent: ExpressRouter, child: ExpressRouter): void {
 }
 
 mergeRouter(router, outlineRouter)
-mergeRouter(router, articleRouter)
+mergeRouter(router, articleDraftRouter)
 mergeRouter(router, reduceSectionRouter)
 mergeRouter(router, humanizeSectionRouter)
 mergeRouter(router, metaRouter)
@@ -38,5 +39,6 @@ mergeRouter(router, microContextSuggestRouter)
 mergeRouter(router, briefExplainRouter)
 mergeRouter(router, autoIntakeRouter)
 mergeRouter(router, placementSuggestRouter)
+mergeRouter(router, enrichRouter)
 
 export default router

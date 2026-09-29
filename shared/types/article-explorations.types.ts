@@ -22,7 +22,6 @@ export interface ArticleExplorations {
   radar: RadarExploration | null
   captain: CaptainScanEntry[]
   lieutenants: RichLieutenant[]
-  intent: ExplorationGroup
   local: ExplorationGroup<LocalExplorationSnapshot>
   contentGap: ExplorationGroup
   lexique: LexiqueExploration[]

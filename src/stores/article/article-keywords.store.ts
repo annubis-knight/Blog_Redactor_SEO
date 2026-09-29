@@ -4,15 +4,18 @@
  *            richCaptain JSONB, richLieutenants JSONB, richRootKeywords JSONB).
  *            Source de verite des mots-cles verrouilles utilisateur par article.
  * READS FROM: GET /articles/:id/keywords (fetchKeywords, fetchKeywordsMerge).
- * WRITES TO: PUT /articles/:id/keywords (saveDecisions / saveKeywords).
+ * WRITES TO: PUT /articles/:id/keywords (saveDecisions / saveKeywords : sans la structure ;
+ *            saveStructure : la structure H1/H2/H3, onglet Structure).
  *            POST /articles/:id/captain-explorations (saveCaptainExplorationEntry).
  *            POST /articles/:id/lieutenant-explorations (saveLieutenantExplorationEntries).
  * CONSUMERS: CaptainPanel, LieutenantsPanel, LexiquePanel, FinalisationPanel,
+ *            StructureHnPanel + useStructureHn (hnStructure : copie de travail,
+ *            « modifiée » tant qu'elle diffère de la structure enregistrée),
  *            useFinalisationGating, MoteurContextRecap, tab-cache-entries.ts
  *            (validatedLexiqueCount = lexique.length, lockedLieutenantsCount =
  *            richLieutenants.filter(status='locked').length, isCaptaineLocked =
  *            richCaptain?.status === 'locked').
- * RELATED FR: FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-PERSIST, FR-LEX-SELECT,
+ * RELATED FR: FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-PERSIST, FR-LEX-SELECT, FR-HN-TAB,
  *             FR-MOT-CACHE-PANEL-COUNT (lexique.length / lieutenants.length pilotent
  *             le compteur DB du TabCachePanel pour Capitaine/Lieutenants/Lexique).
  */
@@ -21,7 +24,7 @@ import { defineStore } from 'pinia'
 import { apiGet, apiPut, apiPost, apiPatch } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import type { ArticleKeywords, CaptainScanEntry, RichRootKeyword, RichLieutenant } from '@shared/types/index.js'
-import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
+import type { ProposedLieutenant, ProposeLieutenantsHnNode } from '@shared/types/serp-analysis.types.js'
 import type { PaaJudgmentBlock } from '@shared/types/captain-paa-judgment.types.js'
 import type { RelevanceScoreResult, RelevanceUnavailableReason } from '@shared/types/scoring.types.js'
 import { articleKeywordsContract } from '@shared/contracts/article-keywords.contract.js'
@@ -140,6 +143,11 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
           }
         }
       }
+      // Structure : adopte celle de la base si la mémoire n'en a pas (elle n'était
+      // jamais fusionnée : l'onglet Structure l'aurait crue vide).
+      if (!local.hnStructure?.length && remote.hnStructure?.length) {
+        local.hnStructure = remote.hnStructure
+      }
       log.debug(`[article-keywords] merged for article ${id}`)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur inconnue'
@@ -201,31 +209,72 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   // ---- Decision-only save (article_keywords table) ----
 
-  async function saveDecisions(id: number) {
+  /**
+   * Enregistre les décisions. Renvoie `false` si l'enregistrement a échoué :
+   * l'appelant qui enchaîne sur une étape gardée (check du Moteur) ne doit pas
+   * la déclencher, le serveur évaluerait des données périmées.
+   */
+  async function saveDecisions(id: number): Promise<boolean> {
     if (!keywords.value) ensureKeywords(id)
     const kw = keywords.value!
     isSaving.value = true
     error.value = null
     try {
       // Response contains only flat fields, not rich objects — preserve in-memory state
+      // La structure n'est pas envoyée : elle appartient à l'onglet Structure
+      // (`saveStructure`). L'envoyer d'ici l'effaçait dès que le store était
+      // vide en mémoire (C6).
       await apiPut<ArticleKeywords>(`/articles/${id}/keywords`, {
         capitaine: kw.capitaine,
         lieutenants: kw.lieutenants,
         lexique: kw.lexique,
         rootKeywords: kw.rootKeywords ?? [],
-        hnStructure: kw.hnStructure ?? [],
       })
       log.debug(`[article-keywords] decisions saved for article ${id}`)
+      return true
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur de sauvegarde'
       log.error(`[article-keywords] saveDecisions failed`, { articleId: id, error: error.value })
+      return false
+    } finally {
+      isSaving.value = false
+    }
+  }
+
+  /**
+   * Enregistre la structure H1/H2/H3 de l'article (onglet Structure, FR-HN-TAB).
+   * Renvoie `false` en cas d'échec : l'étape Structure ne doit pas être demandée
+   * sur des données que le serveur n'a pas.
+   */
+  async function saveStructure(id: number, structure: ProposeLieutenantsHnNode[]): Promise<boolean> {
+    if (!keywords.value) ensureKeywords(id)
+    const kw = keywords.value!
+    isSaving.value = true
+    error.value = null
+    try {
+      await apiPut<ArticleKeywords>(`/articles/${id}/keywords`, {
+        capitaine: kw.capitaine,
+        lieutenants: kw.lieutenants,
+        lexique: kw.lexique,
+        rootKeywords: kw.rootKeywords ?? [],
+        hnStructure: structure,
+      })
+      // La mémoire suit la base, une fois la base à jour : l'écran ne doit pas
+      // se croire enregistré sur une structure que le serveur a refusée (M21).
+      kw.hnStructure = structure
+      log.debug(`[article-keywords] structure saved for article ${id}`, { nodes: structure.length })
+      return true
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Erreur de sauvegarde'
+      log.error(`[article-keywords] saveStructure failed`, { articleId: id, error: error.value })
+      return false
     } finally {
       isSaving.value = false
     }
   }
 
   /** @deprecated Use saveDecisions() — kept as alias during transition */
-  async function saveKeywords(id: number) {
+  async function saveKeywords(id: number): Promise<boolean> {
     return saveDecisions(id)
   }
 
@@ -260,14 +309,15 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   // ---- Misc ----
 
-  async function suggestLexique(articleId: number, articleTitle: string, cocoonName: string) {
-    if (!keywords.value?.capitaine) return
+  /** Remplace le lexique par la suggestion ; renvoie les termes génériques que le serveur a écartés (M15). */
+  async function suggestLexique(articleId: number, articleTitle: string, cocoonName: string): Promise<string[]> {
+    if (!keywords.value?.capitaine) return []
     log.info(`[article-keywords] suggesting lexique for article ${articleId}`)
     isSuggestingLexique.value = true
     error.value = null
     try {
       // S2 — articleId transmis pour que le backend récupère le painPoint et l'injecte dans le prompt.
-      const result = await apiPost<{ lexique: string[] }>('/keywords/lexique-suggest', {
+      const result = await apiPost<{ lexique: string[]; rejected?: string[] }>('/keywords/lexique-suggest', {
         capitaine: keywords.value.capitaine,
         articleTitle,
         cocoonName,
@@ -277,9 +327,11 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         keywords.value.lexique = result.lexique
         log.debug(`[article-keywords] lexique suggested: ${result.lexique.length} terms`)
       }
+      return result.rejected ?? []
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur de suggestion'
       log.error(`[article-keywords] suggestLexique failed`, { articleId, error: error.value })
+      return []
     } finally {
       isSuggestingLexique.value = false
     }
@@ -677,7 +729,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     keywords, isLoading, isSaving, isSuggestingLexique, error, hasKeywords,
     captainExploredKeywords, lockedLieutenants, eliminatedLieutenants,
     paaJudgmentsByArticle, paaJudgmentsLoadingByArticle,
-    fetchKeywords, fetchKeywordsMerge, saveKeywords, saveDecisions, suggestLexique,
+    fetchKeywords, fetchKeywordsMerge, saveKeywords, saveDecisions, saveStructure, suggestLexique,
     mergeCaptainExploredKeywords, mergeRichLieutenants,
     saveCaptainExplorationEntry, saveCaptainExplorationAiPanel, saveLieutenantExplorationEntries,
     setCapitaine, addCaptainPanel, lockCaptain, unlockCaptain, updateCaptainValidationAiPanel,

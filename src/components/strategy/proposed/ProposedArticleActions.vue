@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { IconCheck, IconClose, IconKebab, IconRefresh, IconLink } from '@/components/shared/icons'
+// Carte indicative (C7) : une proposition ne s'« accepte » plus, les articles
+// naissent de l'arbre du cocon. Restent l'édition, la régénération et le retrait.
+import { IconClose, IconKebab, IconRefresh, IconLink } from '@/components/shared/icons'
 
 withDefaults(defineProps<{
   position: 'header' | 'bottom'
-  accepted: boolean
   actionsMenuOpen: boolean
   hasParents?: boolean
 }>(), {
@@ -11,7 +12,6 @@ withDefaults(defineProps<{
 })
 
 defineEmits<{
-  (e: 'toggle-accept'): void
   (e: 'remove'): void
   (e: 'toggle-actions-menu'): void
   (e: 'toggle-parent-menu'): void
@@ -24,15 +24,6 @@ defineEmits<{
 <template>
   <!-- Header (collapsed only) -->
   <div v-if="position === 'header'" class="proposal-actions">
-    <button
-      class="proposal-action-btn proposal-action-accept"
-      :data-testid="`proposal-accept-${position}`"
-      :class="{ 'proposal-action-accept--active': accepted }"
-      :title="accepted ? 'Article validé' : 'Valider cet article'"
-      @click.stop="$emit('toggle-accept')"
-    >
-      <IconCheck :size="14" />
-    </button>
     <button
       class="proposal-action-btn proposal-action-kebab"
       title="Plus d'actions"
@@ -88,16 +79,6 @@ defineEmits<{
 
   <!-- Bottom (expanded only) -->
   <div v-if="position === 'bottom'" class="proposal-actions proposal-actions--bottom">
-    <button
-      class="proposal-action-btn proposal-action-accept"
-      :data-testid="`proposal-accept-${position}`"
-      :class="{ 'proposal-action-accept--active': accepted }"
-      :title="accepted ? 'Article validé' : 'Valider cet article'"
-      @click.stop="$emit('toggle-accept')"
-    >
-      <IconCheck />
-      <span class="action-label">Valider</span>
-    </button>
     <div class="regen-dropdown-wrapper">
       <button
         class="proposal-action-btn"
@@ -163,8 +144,10 @@ defineEmits<{
   opacity: 0;
 }
 
-/* Show on parent item hover (passes via deep selector below) */
-:deep(.proposal-item:hover) .proposal-action-btn {
+/* Discrets tant qu'on ne vise pas la carte. La carte (ProposedArticleRow), qui
+   porte l'état :hover et :focus-within, les révèle : une règle écrite ici ne
+   pourrait pas voir l'état d'un parent (NFR-UX-ACTIONS-VISIBLE). */
+.proposal-action-btn:focus-visible {
   opacity: 1;
 }
 
@@ -173,27 +156,9 @@ defineEmits<{
   color: var(--color-primary);
 }
 
-.proposal-action-accept--active {
-  color: var(--color-badge-green-text);
-  background: var(--color-badge-green-bg);
-}
-
-.proposal-action-accept:hover:not(.proposal-action-accept--active) {
-  background: var(--color-badge-green-bg);
-  color: var(--color-badge-green-text);
-}
-
 .proposal-action-delete:hover {
   background: var(--color-danger-soft, #fde8e8);
   color: var(--color-danger, #e53e3e);
-}
-
-.proposal-action-kebab {
-  opacity: 0;
-}
-
-:deep(.proposal-item:hover) .proposal-action-kebab {
-  opacity: 1;
 }
 
 .proposal-actions--bottom {

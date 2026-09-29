@@ -4,7 +4,7 @@
  * `relevanceScore` du backend étaient perdus lors de l'hydratation, forçant
  * l'UI Capitaine à fallback sur `combinedScore` (legacy hybride) et brisant
  * la séparation KPI / Pertinence documentée dans
- * docs/scoring-kpi-vs-relevance.md.
+ * design/14-radar-capitaine.md.
  */
 import { describe, it, expect } from 'vitest'
 import { hydrateCardFromValidation } from '../../../src/composables/keyword/useExploredKeywords'
@@ -75,8 +75,11 @@ describe('hydrateCardFromValidation — propagation des scores', () => {
 
   it('combinedScore reste calculé localement (legacy, conservé pour rétro-compat)', () => {
     const card = hydrateCardFromValidation('test keyword', makeResponse())
-    expect(typeof card.combinedScore).toBe('number')
-    expect(card.combinedScore).toBeGreaterThanOrEqual(0)
-    expect(card.combinedScore).toBeLessThanOrEqual(100)
+    // Recalculé depuis les KPI de la réponse (volume 500, KD 40, CPC 1,5,
+    // PAA 50, autocomplete 4), pas repris d'un champ du backend :
+    // PAA 100, résonance 30, opportunité 49,5, intent 50, CPC 38,2, douleur 50
+    // → 25 + 4,5 + 9,9 + 5 + 3,8 + 10 = 58,2 → 58.
+    expect(card.combinedScore).toBe(58)
+    expect(card.scoreBreakdown.total).toBe(card.combinedScore)
   })
 })

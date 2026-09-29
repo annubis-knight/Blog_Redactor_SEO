@@ -5,7 +5,6 @@ import { articleExplorationsContract } from '../../shared/contracts/article-expl
 import { getCached, slugify } from '../db/cache-helpers.js'
 import { getArticleKeywords, getCaptainExplorations, getLieutenantExplorations } from '../services/infra/data.service.js'
 import { getRadarExploration } from '../services/infra/radar-exploration.service.js'
-import { getKeywordIntentAnalysis } from '../services/intent/keyword-intent-analysis.service.js'
 import { getKeywordMetrics } from '../services/keyword/keyword-metrics.service.js'
 import { listLexiqueExplorations } from '../services/keyword/lexique-exploration.service.js'
 
@@ -19,10 +18,14 @@ function parseArticleId(raw: unknown): number | null {
 /**
  * GET /articles/:id/explorations
  *
- * Aggregated view of all article-scoped explorations living in dedicated tables
- * (radar_explorations, captain_explorations, lieutenant_explorations,
- * paa_explorations, intent_explorations, local_explorations,
- * content_gap_explorations).
+ * Aggregated view of all article-scoped explorations: radar_explorations,
+ * captain_explorations (+ paa_explorations), lieutenant_explorations,
+ * lexique_explorations, and the local / content gap analyses read from
+ * keyword_metrics.
+ *
+ * Plus de groupe `intent` (M3, épopée qualité SEO) : `keyword_intent_analyses`
+ * n'a plus de producteur depuis la suppression de `/api/intent/analyze`, ses
+ * lignes étaient figées et personne ne les affichait. La table reste en base.
  *
  * The response shape is stable: missing rows become null / empty arrays.
  * This endpoint NEVER calls external APIs — read-only DB scan.
@@ -38,29 +41,25 @@ router.get('/articles/:id/explorations', async (req, res) => {
     const { data: articleKeywords } = await getArticleKeywords(articleId)
     const capitaineKeyword = articleKeywords?.capitaine ?? null
 
-
-    // (capitaineKeyword) or keyword_intent_analyses (intent). Lists aggregate across
-    // the article's capitaine + lieutenants.
+    // Local / content gap come from keyword_metrics (capitaineKeyword). Lists
+    // aggregate across the article's capitaine + lieutenants.
     const [
       radar,
       captainExplorationsRes,
       lieutenantExplorationsRes,
       lexiqueList,
-      intentCapitaine,
       metricsCapitaine,
     ] = await Promise.all([
       getRadarExploration(articleId),
       getCaptainExplorations(articleId).catch(() => ({ data: [], dbOps: [] })),
       getLieutenantExplorations(articleId).catch(() => ({ data: [], dbOps: [] })),
       listLexiqueExplorations(articleId),
-      capitaineKeyword ? getKeywordIntentAnalysis(capitaineKeyword) : null,
       capitaineKeyword ? getKeywordMetrics(capitaineKeyword) : null,
     ])
     const captainExplorations = captainExplorationsRes.data
     const lieutenantExplorations = lieutenantExplorationsRes.data
 
     // Build "all" lists by fetching data for every keyword of the article.
-    const intentAll: unknown[] = []
     const localAll: unknown[] = []
     const contentGapAll: unknown[] = []
     if (articleKeywords) {
@@ -69,11 +68,7 @@ router.get('/articles/:id/explorations', async (req, res) => {
         ...(articleKeywords.lieutenants ?? []),
       ]
       for (const kw of allKeywords) {
-        const [intent, metrics] = await Promise.all([
-          getKeywordIntentAnalysis(kw).catch(() => null),
-          getKeywordMetrics(kw).catch(() => null),
-        ])
-        if (intent) intentAll.push(intent)
+        const metrics = await getKeywordMetrics(kw).catch(() => null)
         if (metrics?.localAnalysis) localAll.push(metrics.localAnalysis)
         if (metrics?.contentGapAnalysis) contentGapAll.push(metrics.contentGapAnalysis)
       }
@@ -87,7 +82,6 @@ router.get('/articles/:id/explorations', async (req, res) => {
         radar: radar ?? null,
         captain: captainExplorations ?? [],
         lieutenants: lieutenantExplorations ?? [],
-        intent: { capitaine: intentCapitaine ?? null, all: intentAll },
         local: { capitaine: metricsCapitaine?.localAnalysis ?? null, all: localAll },
         contentGap: { capitaine: metricsCapitaine?.contentGapAnalysis ?? null, all: contentGapAll },
         lexique: lexiqueList,
@@ -104,6 +98,9 @@ router.get('/articles/:id/explorations', async (req, res) => {
  *
  * Lightweight summary used by TabCachePanel to show real counts per exploration
  * type instead of binary "has data" flags.
+ *
+ * 7 sources : radar, captain, lieutenants, paa, lexique, local, contentGap.
+ * Plus de compteur `intent` (M3) : `keyword_intent_analyses` n'est plus lue.
  */
 router.get('/articles/:id/explorations/counts', async (req, res) => {
   const articleId = parseArticleId(req.params.id)
@@ -135,8 +132,6 @@ router.get('/articles/:id/explorations/counts', async (req, res) => {
        UNION ALL SELECT 'lieutenants', COUNT(*)::text FROM lieutenant_explorations WHERE article_id = $1
        UNION ALL SELECT 'paa', COUNT(*)::text FROM paa_explorations WHERE article_id = $1
        UNION ALL SELECT 'lexique', COUNT(*)::text FROM lexique_explorations WHERE article_id = $1
-       UNION ALL SELECT 'intent', COUNT(*)::text FROM keyword_intent_analyses kia
-         WHERE kia.keyword IN (SELECT keyword FROM article_kws)
        UNION ALL SELECT 'local', COUNT(*)::text FROM keyword_metrics km
          WHERE km.local_analysis IS NOT NULL AND km.keyword IN (SELECT keyword FROM article_kws)
        UNION ALL SELECT 'contentGap', COUNT(*)::text FROM keyword_metrics km

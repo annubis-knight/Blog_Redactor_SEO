@@ -6,6 +6,7 @@ import type { useCostLogStore } from '@/stores/ui/cost-log.store'
 import type { SerpAnalysisResult, SerpCompetitor, PaaQuestion } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
+import { computeHnRecurrence } from '@shared/utils/hn-structure.js'
 
 /**
  * Vague 3 — Composable extrait de LieutenantsPanel.
@@ -114,33 +115,9 @@ export function useLieutenantsSerp(deps: LieutenantsSerpDeps): LieutenantsSerpAp
     return serpResult.value.competitors.slice(0, sliderValue.value)
   })
 
-  /** Compute Hn recurrence from a list of competitors */
+  /** Compute Hn recurrence from a list of competitors (calcul partagé avec l'onglet Structure). */
   function computeHnRecurrenceFrom(comps: SerpCompetitor[]): HnRecurrenceItem[] {
-    const valid = comps.filter(c => !c.fetchError)
-    const total = valid.length
-    if (total === 0) return []
-
-    const freqMap = new Map<string, { level: number; text: string; count: number }>()
-
-    for (const comp of valid) {
-      const seen = new Set<string>()
-      for (const h of comp.headings) {
-        const key = `${h.level}:${h.text.toLowerCase().trim()}`
-        if (seen.has(key)) continue
-        seen.add(key)
-
-        const existing = freqMap.get(key)
-        if (existing) {
-          existing.count++
-        } else {
-          freqMap.set(key, { level: h.level, text: h.text, count: 1 })
-        }
-      }
-    }
-
-    return Array.from(freqMap.values())
-      .map(item => ({ ...item, total, percent: Math.round(item.count / total * 100) }))
-      .sort((a, b) => b.percent - a.percent || a.level - b.level)
+    return computeHnRecurrence(comps)
   }
 
   const hnRecurrence = computed<HnRecurrenceItem[]>(() => {

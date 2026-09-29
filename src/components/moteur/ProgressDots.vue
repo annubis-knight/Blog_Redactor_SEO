@@ -6,12 +6,13 @@ import {
   MOTEUR_RADAR_DONE,
   MOTEUR_CAPITAINE_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
   MOTEUR_LEXIQUE_VALIDATED,
 } from '@shared/constants/workflow-checks.constants.js'
 
 const PHASE_GROUPS = [
   { checks: [MOTEUR_DISCOVERY_DONE, MOTEUR_RADAR_DONE], label: 'Explorer' },
-  { checks: [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_LEXIQUE_VALIDATED], label: 'Valider' },
+  { checks: [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED], label: 'Valider' },
 ] as const
 
 const CHECK_TOOLTIPS: Record<string, string> = {
@@ -19,6 +20,7 @@ const CHECK_TOOLTIPS: Record<string, string> = {
   [MOTEUR_RADAR_DONE]: 'Radar',
   [MOTEUR_CAPITAINE_LOCKED]: 'Capitaine',
   [MOTEUR_LIEUTENANTS_LOCKED]: 'Lieutenants',
+  [MOTEUR_HN_LOCKED]: 'Structure',
   [MOTEUR_LEXIQUE_VALIDATED]: 'Lexique',
 }
 

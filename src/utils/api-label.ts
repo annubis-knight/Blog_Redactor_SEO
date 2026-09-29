@@ -10,9 +10,12 @@
 const URL_LABELS: [RegExp, string][] = [
   // Génération de contenu
   [/\/generate\/outline/, 'Génération sommaire'],
-  [/\/generate\/article/, 'Génération article'],
+  [/\/generate\/article-draft/, 'Premier jet'],
   [/\/generate\/reduce/, 'Réduction article'],
   [/\/generate\/humanize-section/, 'Humanisation section'],
+  [/\/generate\/enrich\/sources/, 'Passe sources (recherche web)'],
+  [/\/generate\/enrich\/[a-z]+/, 'Passe d’enrichissement'],
+  [/\/generate\/section-rewrite/, 'Réécriture d’un chapitre'],
   [/\/generate\/action/, 'Action IA'],
   [/\/generate\/micro-context-suggest/, 'Suggestion micro-contexte'],
   [/\/generate\/brief-explain/, 'Analyse brief IA'],
@@ -35,7 +38,6 @@ const URL_LABELS: [RegExp, string][] = [
   [/\/theme\/config\/parse/, 'Parsing thème'],
 
   // Keywords (JSON wrappé)
-  [/\/keywords\/translate-pain/, 'Traduction douleur → mots-clés'],
   [/\/keywords\/lexique-suggest/, 'Suggestion lexique'],
   [/\/keywords\/relevance-score/, 'Score pertinence'],
   [/\/keywords\/analyze-discovery/, 'Analyse discovery'],

@@ -234,4 +234,31 @@ describe('POST /api/serp/analyze', () => {
     await handler(req, res)
     expect(mockFetchAndPersist).toHaveBeenCalledTimes(1)
   })
+
+  // M18 (FR-MOT-NO-AUTO-ACTION) : ouvrir l'onglet Structure ne doit rien payer.
+  // Le mode « cache seulement » relit la base, même périmée, et n'appelle jamais
+  // DataForSEO.
+  describe('cacheOnly', () => {
+    it('analyse en base (même périmée) : relue, aucun appel externe', async () => {
+      mockGetSerpResultsFresh.mockResolvedValue(null)
+      mockReconstructSerp.mockResolvedValue({
+        keyword: 'seo',
+        competitors: [{ position: 1, title: 'P1', url: 'https://example.com/1', domain: 'example.com', headings: [], textContent: '', isBlog: null }],
+        paaQuestions: [], maxScraped: 1, cachedAt: '2026-05-08T00:00:00.000Z', fromCache: true,
+      })
+      const res = makeRes()
+      await getHandler()(makeReq({ keyword: 'seo', cacheOnly: true }), res)
+      expect(mockFetchAndPersist).not.toHaveBeenCalled()
+      expect(res.jsonData.data).toMatchObject({ keyword: 'seo', fromCache: true })
+    })
+
+    it('rien en base : { data: null }, aucun appel externe', async () => {
+      mockGetSerpResultsFresh.mockResolvedValue(null)
+      mockReconstructSerp.mockResolvedValue(null)
+      const res = makeRes()
+      await getHandler()(makeReq({ keyword: 'seo', cacheOnly: true }), res)
+      expect(mockFetchAndPersist).not.toHaveBeenCalled()
+      expect(res.jsonData).toEqual({ data: null })
+    })
+  })
 })

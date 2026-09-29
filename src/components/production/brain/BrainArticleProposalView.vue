@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import ProposedArticleRow from '@/components/strategy/ProposedArticleRow.vue'
 import AddArticleMenu from '@/components/production/AddArticleMenu.vue'
 import ArticleColumn from '@/components/production/ArticleColumn.vue'
 import GenerationStepper from '@/components/production/GenerationStepper.vue'
 import TopicSuggestions from '@/components/production/TopicSuggestions.vue'
+import GenerateCocoonMenu from '@/components/production/brain/GenerateCocoonMenu.vue'
 import type { ProposedArticle, SuggestedTopic, CompositionCheckResult } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { PainIntentExpected } from '@shared/types/scoring.types.js'
@@ -27,7 +28,7 @@ interface ArticleWarning {
   message: string
 }
 
-defineProps<{
+const props = defineProps<{
   articleColumns: ArticleColumnInfo[]
   groupedSpecArticles: SpecGroup[]
   compositionResults: Map<number, CompositionCheckResult>
@@ -40,14 +41,12 @@ defineProps<{
   addingArticleLevel: ArticleLevel | null
   topicsLoading: boolean
   topicsError: string | null
-  proposedArticlesCount: number
   suggestedTopics: SuggestedTopic[]
   topicsUserContext: string
 }>()
 
 const emit = defineEmits<{
   (e: 'generate-proposals'): void
-  (e: 'validate-articles'): void
   (e: 'toggle-topic', index: number): void
   (e: 'remove-topic', index: number): void
   (e: 'add-topic', topic: string): void
@@ -56,7 +55,6 @@ const emit = defineEmits<{
   (e: 'add-empty', type: ArticleLevel): void
   (e: 'add-smart', type: ArticleLevel, hint?: string): void
   (e: 'remove-proposed', index: number): void
-  (e: 'toggle-accept', index: number): void
   (e: 'regenerate-title', index: number): void
   (e: 'select-title', articleIndex: number, titleIndex: number): void
   (e: 'regenerate-keyword', index: number): void
@@ -69,6 +67,14 @@ const emit = defineEmits<{
   (e: 'edit-slug', index: number, value: string): void
   (e: 'update-pain-intent', index: number, value: PainIntentExpected | null): void
 }>()
+
+// Le menu « Générer avec Claude » n'ajoute un article que sous un parent déjà
+// sur la carte (U7 révisé). Même règle que `intermediateTitles` : une ligne
+// sans titre ne compte pas, Claude ne pourrait pas y rattacher d'enfant.
+const mapHasPillar = computed(() =>
+  props.articleColumns.some(col => col.articles.some(a => a.type === 'pilier' && a.title.trim() !== '')),
+)
+const mapHasIntermediate = computed(() => props.intermediateTitles.length > 0)
 
 const articleSlide = ref(0)
 const columnsTrackRef = ref<HTMLElement>()
@@ -138,19 +144,24 @@ function isProcessing(phase: GenerationPhase): boolean {
     <div class="brain-step-content article-proposal">
       <div class="step-header-row">
         <div class="step-header-text">
-          <h3 class="step-title">Proposition d'articles</h3>
+          <h3 class="step-title">Carte indicative du cocon</h3>
+          <p class="indicative-note" data-testid="proposal-indicative-note">
+            Carte indicative : elle guide les articles à créer, elle n'en crée aucun.
+            On crée le pilier, puis chaque article depuis une section de son parent rédigé.
+          </p>
           <p class="step-desc">
             En se basant sur vos réponses stratégiques, Claude peut proposer une liste
             d'articles pour ce cocon avec leur type (Pilier, Intermédiaire, Spécialisé).
           </p>
         </div>
         <div class="step-header-actions">
-          <button class="btn-generate"
-            data-testid="brain-generate-articles"
-            :disabled="isProcessing(generationPhase)"
-            @click="emit('generate-proposals')">
-            {{ isProcessing(generationPhase) ? 'Génération...' : 'Générer avec Claude' }}
-          </button>
+          <GenerateCocoonMenu
+            :is-generating="isProcessing(generationPhase) || addingArticleLevel !== null"
+            :has-pillar="mapHasPillar"
+            :has-intermediate="mapHasIntermediate"
+            @add="(level: ArticleLevel) => emit('add-smart', level)"
+            @map="emit('generate-proposals')"
+          />
           <div class="swiper-nav">
             <button class="swiper-arrow" :disabled="articleSlide === 0" @click="scrollToSlide(0)">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -234,7 +245,6 @@ function isProcessing(phase: GenerationPhase): boolean {
               @select-keyword="(i: number, kIdx: number) => emit('select-keyword', i, kIdx)"
               @select-title="(i: number, tIdx: number) => emit('select-title', i, tIdx)"
               @select-slug="(i: number, sIdx: number) => emit('select-slug', i, sIdx)"
-              @toggle-accept="(i: number) => emit('toggle-accept', i)"
               @remove="(i: number) => emit('remove-proposed', i)"
               @edit-title="(i: number, v: string) => emit('edit-title', i, v)"
               @edit-keyword="(i: number, v: string) => emit('edit-keyword', i, v)"
@@ -266,7 +276,6 @@ function isProcessing(phase: GenerationPhase): boolean {
               @select-keyword="(i: number, kIdx: number) => emit('select-keyword', i, kIdx)"
               @select-title="(i: number, tIdx: number) => emit('select-title', i, tIdx)"
               @select-slug="(i: number, sIdx: number) => emit('select-slug', i, sIdx)"
-              @toggle-accept="(i: number) => emit('toggle-accept', i)"
               @remove="(i: number) => emit('remove-proposed', i)"
               @edit-title="(i: number, v: string) => emit('edit-title', i, v)"
               @edit-keyword="(i: number, v: string) => emit('edit-keyword', i, v)"
@@ -307,7 +316,6 @@ function isProcessing(phase: GenerationPhase): boolean {
                 @select-keyword="(i: number, kIdx: number) => emit('select-keyword', i, kIdx)"
                 @select-title="(i: number, tIdx: number) => emit('select-title', i, tIdx)"
                 @select-slug="(i: number, sIdx: number) => emit('select-slug', i, sIdx)"
-                @toggle-accept="(i: number) => emit('toggle-accept', i)"
                 @remove="(i: number) => emit('remove-proposed', i)"
                 @change-parent="(i: number, p: string) => emit('change-parent', i, p)"
                 @edit-title="(i: number, v: string) => emit('edit-title', i, v)"
@@ -325,25 +333,6 @@ function isProcessing(phase: GenerationPhase): boolean {
             />
           </ArticleColumn>
         </div>
-      </div>
-
-      <div v-if="proposedArticlesCount > 0" class="article-actions">
-        <!--
-          FR-CER-VALIDATION-APRES-GENERATION — la génération se fait en trois
-          temps : le Pilier et les Intermédiaires arrivent d'abord, les
-          Spécialisés seulement à la fin. Le bouton restait cliquable entre
-          les deux : valider à ce moment-là ne créait que la première moitié
-          des articles, sans que rien ne le signale.
-        -->
-        <button
-          class="btn btn-primary"
-          data-testid="brain-validate-all"
-          :disabled="isProcessing(generationPhase)"
-          :title="isProcessing(generationPhase) ? 'Génération en cours — les Spécialisés ne sont pas encore proposés' : 'Créer tous les articles proposés'"
-          @click="emit('validate-articles')"
-        >
-          {{ isProcessing(generationPhase) ? 'Génération en cours...' : 'Tout valider' }}
-        </button>
       </div>
     </div>
   </div>
@@ -403,25 +392,15 @@ function isProcessing(phase: GenerationPhase): boolean {
   line-height: 1.5;
 }
 
-.btn-generate {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--color-primary);
-  border-radius: 6px;
+.indicative-note {
+  margin: 0 0 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--color-block-info-border);
+  border-radius: 4px;
   font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  background: transparent;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.btn-generate:hover:not(:disabled) {
-  background: var(--color-primary-soft);
-}
-
-.btn-generate:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  line-height: 1.5;
+  background: var(--color-block-info-bg);
+  color: var(--color-text);
 }
 
 .article-columns {
@@ -510,31 +489,6 @@ function isProcessing(phase: GenerationPhase): boolean {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.article-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.btn {
-  padding: 0.5rem 1.25rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.btn-primary {
-  background: var(--color-primary);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: var(--color-primary-hover);
 }
 
 .article-columns-track.is-dragging {

@@ -1,7 +1,7 @@
 /**
  * Sprint 7 (2026-05-05) — Tests propagation des clics dans RadarKeywordCard.
  *
- * FR-RAD-CARD-CHEVRON-TOGGLE — comportement figé (docs/radar-card-component.md) :
+ * FR-RAD-CARD-CHEVRON-TOGGLE — comportement figé (design/14-radar-capitaine.md) :
  *   • Chevron ▶ : toggle PAA + @click.stop (ne propage PAS au parent)
  *   • Reste du header (keyword, KPIs) : propage AU parent (ouvre la sidebar)
  *                                       + ne toggle PAS le PAA

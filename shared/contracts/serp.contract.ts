@@ -55,17 +55,25 @@ const paaQuestionSchema: z.ZodType<PaaQuestion, unknown> = z.looseObject({
 })
 
 /** Réponse de POST /serp/analyze. */
-export const serpAnalysisContract = defineContract<SerpAnalysisResult>(
+const serpAnalysisSchema = z.looseObject({
+  keyword: z.string().min(1),
+  articleLevel: z.enum(ARTICLE_LEVELS),
+  competitors: tolerantArray(serpCompetitorSchema, 'competitors'),
+  paaQuestions: tolerantArray(paaQuestionSchema, 'paaQuestions'),
+  maxScraped: count('maxScraped'),
+  cachedAt: text('cachedAt', ''),
+  fromCache: withFallback(z.boolean(), false, 'fromCache'),
+})
+
+export const serpAnalysisContract = defineContract<SerpAnalysisResult>('serp-analysis', serpAnalysisSchema)
+
+/**
+ * POST /serp/analyze en lecture seule (`cacheOnly`) : l'analyse en base, ou
+ * `null` quand le mot-clé n'a jamais été analysé (M18).
+ */
+export const serpAnalysisStoredContract = defineContract<SerpAnalysisResult | null>(
   'serp-analysis',
-  z.looseObject({
-    keyword: z.string().min(1),
-    articleLevel: z.enum(ARTICLE_LEVELS),
-    competitors: tolerantArray(serpCompetitorSchema, 'competitors'),
-    paaQuestions: tolerantArray(paaQuestionSchema, 'paaQuestions'),
-    maxScraped: count('maxScraped'),
-    cachedAt: text('cachedAt', ''),
-    fromCache: withFallback(z.boolean(), false, 'fromCache'),
-  }),
+  serpAnalysisSchema.nullable(),
 )
 
 const TFIDF_LEVELS = ['obligatoire', 'differenciateur', 'optionnel'] as const

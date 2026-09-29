@@ -10,7 +10,6 @@ const {
   mockSaveArticleContent,
   mockGetArticleContent,
   mockUpdateArticleStatus,
-  mockAddArticlesToCocoon,
   mockRemoveArticleFromCocoon,
   mockUpdateArticleInCocoon,
 } = vi.hoisted(() => ({
@@ -21,7 +20,6 @@ const {
   mockSaveArticleContent: vi.fn(),
   mockGetArticleContent: vi.fn(),
   mockUpdateArticleStatus: vi.fn(),
-  mockAddArticlesToCocoon: vi.fn(),
   mockRemoveArticleFromCocoon: vi.fn(),
   mockUpdateArticleInCocoon: vi.fn(),
 }))
@@ -30,7 +28,6 @@ vi.mock('../../../server/services/infra/data.service', () => ({
   getArticleById: mockGetArticleById,
   getArticleBySlug: mockGetArticleBySlug,
   updateArticleStatus: mockUpdateArticleStatus,
-  addArticlesToCocoon: mockAddArticlesToCocoon,
   removeArticleFromCocoon: mockRemoveArticleFromCocoon,
   updateArticleInCocoon: mockUpdateArticleInCocoon,
   loadArticleMicroContext: mockLoadArticleMicroContext,

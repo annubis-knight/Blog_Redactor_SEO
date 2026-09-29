@@ -8,6 +8,7 @@
  * rouvert sur le dernier visité, carte du Capitaine encore en cours de scan.
  */
 import { expect, type Page } from '@playwright/test'
+import { answerGateAlarm, passThroughGate } from './gate-alarm'
 
 /** Ouvre le Moteur d'un cocon (l'index, pas la clé primaire). */
 export async function openMoteur(page: Page, cocoonIndex: number): Promise<void> {
@@ -61,7 +62,9 @@ export async function scanAndLockCaptain(page: Page, keyword: string): Promise<v
 
   const lock = page.locator('[data-testid="radar-card-lock"]').first()
   await expect(lock, 'le cadenas de la carte doit être rendu').toBeVisible({ timeout: 30000 })
-  await lock.click()
+  // Le verrou passe par la porte (FR-CAP-LOCK-GATE) : sur données simulées,
+  // l'alarme peut s'ouvrir ; on y répond comme un utilisateur qui assume.
+  await passThroughGate(page, 'captain-lock', () => lock.click())
   await expect(lock).toHaveAttribute('aria-pressed', 'true', { timeout: 15000 })
 }
 
@@ -77,8 +80,8 @@ export async function dismissLoadPrompt(page: Page): Promise<void> {
   }
 }
 
-/** Les cinq onglets du Moteur, dans l'ordre de la navigation. */
-export const MOTEUR_TABS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique'] as const
+/** Les six onglets du Moteur, dans l'ordre de la navigation (Structure : FR-HN-TAB). */
+export const MOTEUR_TABS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'structure', 'lexique'] as const
 type MoteurTab = (typeof MOTEUR_TABS)[number]
 
 /** Repère de l'onglet dans la navigation (`WorkflowNav.vue`). */
@@ -95,9 +98,9 @@ export async function checksDeLArticle(page: Page, articleId: number): Promise<s
 }
 
 /**
- * Sous-phase Lieutenants complète : analyse SERP, une proposition retenue,
- * plan Hn généré et enregistré. C'est ce plan qui deviendra le sommaire de la
- * Rédaction — la sous-phase n'est close qu'une fois les deux posés.
+ * Sous-phase Lieutenants complète : analyse SERP, propositions retenues. La
+ * structure H1/H2/H3 a désormais son onglet (`validerStructure`, FR-HN-TAB) ;
+ * avant C6, l'étape exigeait un plan produit avant même le choix (M7).
  */
 export async function lockLieutenants(page: Page, articleId: number): Promise<void> {
   await tabLocator(page, 'lieutenants').click()
@@ -127,26 +130,75 @@ export async function lockLieutenants(page: Page, articleId: number): Promise<vo
     await expect(cartes, 'les propositions IA doivent arriver').toBeVisible({ timeout: 180000 })
   }
 
+  // Un pilier appelle au moins 3 lieutenants (FR-LIE-LOCK-GATE) : on en retient
+  // autant qu'un utilisateur le ferait, pas seulement le premier.
   const cases = page.locator('[data-testid="lt-card-checkbox"]')
   await expect(cases.first()).toBeVisible({ timeout: 60000 })
-  if (!(await cases.first().isChecked())) await cases.first().check()
-
-  if (await page.locator('[data-testid="hn-structure-empty"]').count() > 0) {
-    const generer = page.locator('[data-testid="hn-generate-btn"]')
-    await expect(generer).toBeEnabled({ timeout: 20000 })
-    await generer.click()
+  const retenus = Math.min(3, await cases.count())
+  for (let i = 0; i < retenus; i++) {
+    if (!(await cases.nth(i).isChecked())) await cases.nth(i).check()
   }
-  await expect(page.locator('.hn-structure-item').first(), 'un plan Hn doit s’afficher')
-    .toBeVisible({ timeout: 180000 })
 
-  const sauvegarder = page.locator('.btn-save-hn')
-  await expect(sauvegarder).toBeEnabled({ timeout: 20000 })
-  await sauvegarder.click()
-  await expect(page.locator('.hn-saved-badge'), 'le plan doit être marqué sauvegardé')
-    .toBeVisible({ timeout: 60000 })
+  // La porte peut encore retenir l'étape (cannibalisation, trop peu de
+  // propositions) : le bandeau le dit, l'alarme s'ouvre à la demande. Chaque
+  // case cochée relance la porte : le bandeau « trop peu de lieutenants » peut
+  // apparaître puis s'effacer à la dernière case. On attend un état stable
+  // (deux lectures identiques à une seconde d'écart) avant d'agir.
+  const bandeau = page.locator('[data-testid="lieutenants-gate-banner"]')
+  const etat = async () => {
+    if (await bandeau.isVisible()) return 'bandeau'
+    return (await checksDeLArticle(page, articleId)).includes('moteur:lieutenants_locked') ? 'validée' : 'en attente'
+  }
+  let precedent = ''
+  await expect.poll(async () => {
+    const courant = await etat()
+    const stable = courant !== 'en attente' && courant === precedent
+    precedent = courant
+    return stable
+  }, { timeout: 60000, intervals: [1000] }).toBe(true)
+  if (await bandeau.isVisible()) {
+    await page.locator('[data-testid="lieutenants-gate-review"]').click()
+    await answerGateAlarm(page)
+  }
 
   await expect.poll(() => checksDeLArticle(page, articleId), { timeout: 60000 })
     .toContain('moteur:lieutenants_locked')
+}
+
+/**
+ * Sous-phase Structure complète (FR-HN-TAB) : structure proposée à partir des
+ * lieutenants retenus, puis validée. La porte `hn-lock` peut retenir l'étape :
+ * l'alarme s'ouvre alors, et l'utilisateur corrige ou assume.
+ */
+export async function validerStructure(page: Page, articleId: number): Promise<void> {
+  await tabLocator(page, 'structure').click()
+  await dismissLoadPrompt(page)
+
+  if ((await checksDeLArticle(page, articleId)).includes('moteur:hn_locked')) return
+
+  const panneau = page.locator('[data-testid="structure-panel"]')
+  await expect(panneau, 'l’onglet Structure doit s’afficher').toBeVisible({ timeout: 30000 })
+  if (await panneau.locator('[data-testid="hn-structure-empty"]').count() > 0) {
+    const generer = panneau.locator('[data-testid="hn-generate-btn"]')
+    await expect(generer, 'la génération suppose des lieutenants retenus').toBeEnabled({ timeout: 20000 })
+    await generer.click()
+  }
+  await expect(panneau.locator('.hn-structure-item').first(), 'une structure doit s’afficher')
+    .toBeVisible({ timeout: 180000 })
+
+  const valider = panneau.locator('[data-testid="structure-validate"]')
+  await expect(valider).toBeEnabled({ timeout: 20000 })
+  await valider.click()
+
+  const alarme = page.locator('[data-testid="gate-alarm"]')
+  await expect.poll(async () => {
+    if (await alarme.isVisible()) return 'alarme'
+    return (await checksDeLArticle(page, articleId)).includes('moteur:hn_locked') ? 'validée' : 'en attente'
+  }, { timeout: 60000 }).not.toBe('en attente')
+  if (await alarme.isVisible()) await answerGateAlarm(page)
+
+  await expect.poll(() => checksDeLArticle(page, articleId), { timeout: 60000 })
+    .toContain('moteur:hn_locked')
 }
 
 /** Sous-phase Lexique complète : extraction puis au moins un terme retenu. */
@@ -169,6 +221,18 @@ export async function validerLexique(page: Page, articleId: number): Promise<voi
   if (await cases.count() > 0) {
     const premiere = cases.first()
     if (!(await premiere.isDisabled()) && !(await premiere.isChecked())) await premiere.check()
+  }
+
+  // La porte du lexique (FR-LEX-METIER-ONLY) peut retenir l'étape : le
+  // bandeau le dit, et l'utilisateur assume depuis l'alarme.
+  const bandeau = page.locator('[data-testid="lexique-gate-banner"]')
+  await expect.poll(async () => {
+    if (await bandeau.isVisible()) return 'bandeau'
+    return (await checksDeLArticle(page, articleId)).includes('moteur:lexique_validated') ? 'validée' : 'en attente'
+  }, { timeout: 60000 }).not.toBe('en attente')
+  if (await bandeau.isVisible()) {
+    await page.locator('[data-testid="lexique-gate-review"]').click()
+    await answerGateAlarm(page)
   }
 
   await expect.poll(() => checksDeLArticle(page, articleId), { timeout: 60000 })

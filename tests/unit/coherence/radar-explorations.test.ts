@@ -7,7 +7,7 @@
  * - FR-RAD-SEND-CAPTAIN : dédup cards + longues-traînes sans doublons
  * - FR-RAD-SCORING-BIMODAL : cohérence affichage vs tri (pas de fallback silencieux)
  *
- * Cf. docs/data-flows/radar-explorations.md § Tests de cohérence à écrire.
+ * Cf. design/data-flows/radar-explorations.md § Tests de cohérence à écrire.
  */
 
 import { describe, it, expect } from 'vitest'

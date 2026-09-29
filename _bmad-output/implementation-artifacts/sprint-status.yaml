@@ -895,6 +895,97 @@ development_status:
   # serveur requis), cliquet display-contracts-coverage à 0/0, code mort = main.
   contrats-affichage: done
 
+  # ----- Programme qualité SEO (analyse du pilier 1013, 2026-09-24) -----
+  # Épopée : epic-qualite-seo-garde-fous.md (v1.0.0). Décisions validées avec
+  # Arnaud : alarme graduée + responsabilité, cocon né du pilier, premier jet
+  # en un appel puis passes d'enrichissement, maillage manuel, onglet Structure.
+  # Exigences réservées dans l'épopée, versées au PRD dans la PR qui les livre.
+  # Une branche + une PR GitHub par chantier. Fil conducteur : la fixture du
+  # pilier 1013 doit être rejetée dès C2 ; un pilier réel passe sans dérogation en C8.
+  qualite-seo-c0-tracabilite: review
+  qualite-seo-c1-correctifs-rapides: review
+  # C2 (branche feat/verificateurs-alarme, 2026-09-25) : code livré, PR à ouvrir.
+  # Portes capitaine / lieutenants / publication, alarme graduée, dérogations
+  # (table gate_waivers), scores SEO/GEO enregistrés. 6 FR versées au PRD et au
+  # registre ; NFR-TEST-BEHAVIORAL versée (livrée en partie). CI : tests
+  # dépendants de DataForSEO ignorés sans secrets (CI3, action d'Arnaud).
+  qualite-seo-c2-verificateurs-alarme: review
+  # C3 (branche fix/lexique-metier, 2026-09-25) : code livré, PR à ouvrir.
+  # Source unique des mots génériques (shared/utils/generic-terms.ts), texte
+  # principal des pages concurrentes, plus aucun terme coché d'office, porte
+  # lexique-lock (🔴 vide, 🔴 terme générique) rejouée à la publication.
+  # FR-LEX-METIER-ONLY versée au PRD et au registre ; FR-LEX-PRECHECK-PERSISTE amendée.
+  qualite-seo-c3-lexique-metier: review
+  # C4 (branche refactor/prompts-architecture, 2026-09-25) : code livré, PR à ouvrir.
+  # Chargeur strict (variables exactes, rendu en une passe), date / zone / repères
+  # tirés du contexte, règles par type en une seule table ({{type_rules}}),
+  # référence des prompts générée ; restes M14, M15, T11 soldés, M17 requalifiée.
+  # FR-INFRA-PROMPT-LAYERS et FR-INFRA-TYPE-RULES-SSOT versées au PRD et au registre.
+  qualite-seo-c4-prompts-architecture: review
+  # C5 en deux branches. C5a (feat/redaction-premier-jet, 2026-09-25) : code
+  # livré, en revue, PR à ouvrir. Premier jet en un appel sans recherche web
+  # (POST /generate/article-draft), reprise au chapitre coupé, porte « accepter
+  # le premier jet » (alerte sans bloquer), chiffres sans source / langue /
+  # répétitions 🔴 à la publication ; l'ancienne rédaction section par section
+  # est retirée. FR-RED-DRAFT-SINGLE-PASS et FR-RED-DRAFT-TO-SOURCE versées au
+  # PRD et au registre, FR-RED-ARTICLE superseded. Restes : R14-R16, U1, U2.
+  # C5b (feat/redaction-enrichissement, 2026-09-25) : code livré, en revue, PR à
+  # ouvrir. Recherche web localisée, sources réelles gardées, sans repli silencieux
+  # (Claude seul) ; passes Sources, Exemples, Tableaux, Images, FAQ proposées
+  # chapitre par chapitre et vérifiées (POST /generate/enrich/:pass), réécriture
+  # d'un chapitre sur consigne (POST /generate/section-rewrite), relecture de la
+  # langue (humanisation enrichie) ; panneau « Enrichir » ; TipTap Table + Image ;
+  # ⛔ image « à fournir » à la publication ; R16 soldée à l'écran. FR-RED-ENRICH-
+  # PASSES, FR-RED-ENRICH-SOURCES, FR-RED-SECTION-REWRITE, FR-RED-LANG-REVIEW
+  # versées au PRD et au registre. Non livrée : FR-RED-LINKING-MANUAL (reste
+  # réservée). Restes : R13-R15, R17-R24, U1, T12.
+  qualite-seo-c5-redaction-deux-temps: review
+  # C6 (feat/onglet-structure-hn, 2026-09-25) : code livré, en revue, PR à ouvrir.
+  # Onglet Structure entre Lieutenants et Lexique, étape moteur:hn_locked
+  # (6 checks, Finalisation à 4 verrous) ; structure proposée à partir des
+  # lieutenants retenus, validée par la porte hn-lock (rejouée à la publication) ;
+  # M7 soldée (un lieutenant suffit à l'étape Lieutenants) ; plus d'écrasement
+  # de la structure ; « H2 de fond » ; mode automatique aligné ; réconciliation
+  # des articles existants (npm run db:reconcile-hn). FR-HN-TAB et
+  # FR-HN-LOCK-GATE versées au PRD et au registre, FR-LIE-HN-STRUCTURE
+  # superseded. Restes : M18-M21, P6, U3, D6, T13 ; T2 (describe.skip).
+  qualite-seo-c6-onglet-structure-hn: review
+  # C7 (feat/cocon-progressif, 2026-09-25) : en cours, PR à ouvrir. Tech-spec
+  # tech-spec-cocon-progressif.md. Livrés : L1 colonnes articles.parent_id /
+  # parent_section (npm run db:apply) ; L2 étape redaction:draft_accepted (porte
+  # draft, bandeau DraftAcceptance, mode automatique) ; L3 vérificateur
+  # cocoon-hierarchy + POST /cocoons/:id/articles + GET /cocoons/:id/tree,
+  # batch-create supprimé (K6) ; L4 {{cocoon_context}} + candidats mesurés
+  # (POST /cocoons/:id/child-candidates) ; L5 constructeur de l'arbre réel au
+  # Cerveau, carte indicative, retrait d'un parent refusé (409 HAS_CHILDREN) ;
+  # L6 résumés des enfants (publication, passe « Résumer »), maillage manuel ;
+  # L7 rattrapage npm run db:backfill-cocoon. Correctifs f16cab5 (bac à sable)
+  # et 1062072 (relevé des candidats hors keyword_serp_results) ; D5 soldé
+  # (3638d00). L8 : FR-CER-COCOON-PROGRESSIVE, FR-CER-PARENT-WRITTEN-GATE,
+  # FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-KEYWORD-REAL-DATA, FR-INFRA-COCOON-CONTEXT,
+  # FR-RED-LINKING-MANUAL versées au PRD et au registre ; FR-CER-BATCH-CREATE et
+  # FR-RED-INTERNAL-LINKING superseded. Parcours navigateur 2d39345 (T14 soldé).
+  # Découverts : K8, K9 (ouverts) ; D7, T14 (soldés).
+  qualite-seo-c7-cocon-progressif: review
+  # Restes de la checklist (fix/restes-qualite-seo, empilée sur feat/cocon-progressif,
+  # 2026-09-25, PR à ouvrir) : U1, R14, R15, M16, M2, K9, K8, R13, T9, M3, T10 soldés
+  # (un commit chacun, 7a98d68 → 9ac5281) ; T2, T3 en cours. Amendées au PRD et au
+  # registre : FR-CER-COCOON-PROGRESSIVE, FR-CER-KEYWORD-REAL-DATA, FR-PIE-AI-GENERATION,
+  # FR-CAP-RELEVANCE-INTENT-SIGNAL, FR-CAP-SCORING-BIMODAL, FR-RED-BRIEF,
+  # FR-RED-DRAFT-SINGLE-PASS, FR-LEX-METIER-ONLY, NFR-MAIN-TESTS-PLAYWRIGHT,
+  # NFR-CFG-PORT-PREFLIGHT. Pas de clé propre : suivi dans l'épopée (§5, §8, §9).
+  # Puis T2, T3 soldés (8bc3aa1 ; itSkip 1, alwaysTrueGte0 6, typeofBoolean 1),
+  # FR-LEX-MULTI-KEYWORD corrigée (20e4aa9), garde-fou de la base de test testé
+  # (c2449f2). Ouverts : P7, U4, T15, M22, M23.
+  # C8 (2026-09-25) : recette réelle PASSÉE — `auto:article --mode=real` sur un
+  # serveur dédié (3420), cocon bac à sable 27401 : pilier #1030, porte de
+  # publication sans alerte ni dérogation, verify:content sans erreur, 6 passages.
+  # Correctifs sur fix/restes-qualite-seo (92ca03b, 8d1bac2, 5928401, 37c5ce1,
+  # e67930e, 1388cbf, efb1e40), PR à ouvrir. FR-RED-DRAFT-TO-SOURCE et
+  # FR-RED-LINKING-MANUAL amendées. Reste : scores SEO/GEO non calculés en mode
+  # automatique (P7).
+  qualite-seo-c8-recette-reelle: review
+
 # ===== Backlog (non livré) =====
 #
 # - Story 3.3 bis : Indicateur d'alignement stratégique dans l'Explorateur

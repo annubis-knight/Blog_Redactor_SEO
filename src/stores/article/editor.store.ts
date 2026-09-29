@@ -1,3 +1,13 @@
+/**
+ * AUTHORITY: PostgreSQL `article_content.content` + `articles.meta_title`,
+ *            `meta_description`, `seo_score`, `geo_score`.
+ * READS FROM: GET /articles/:id/content (hydratation par les vues d'édition).
+ * WRITES TO: PUT /articles/:id (saveArticle : contenu, méta et scores du texte
+ *            enregistré ; recordScore : score calculé après coup, seul).
+ * CONSUMERS: ArticleEditorView, ArticleWorkflowView, useArticleGeneration,
+ *            useAutoSave, seo.store et geo.store (recordScore), SaveStatusIndicator.
+ * RELATED FR: FR-RED-SEO-SCORE-PERSIST, FR-RED-META-CAPTAIN, FR-RED-GEN-SAUVEGARDE-AU-FIL
+ */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
@@ -11,6 +21,10 @@ import {
 } from '@/utils/text-utils'
 import { useOutlineStore } from '@/stores/article/outline.store'
 import type { BriefData, Outline, ApiUsage } from '@shared/types/index.js'
+import { articleMainKeyword } from '@shared/utils/article-keyword.js'
+import { seoScoreKey } from '@/utils/score-key'
+
+export type ScoreKind = 'seo' | 'geo'
 
 /** Mutate `total` in place by summing tokens + cost from `partial`. */
 function aggregateUsage(total: ApiUsage, partial: ApiUsage | null): void {
@@ -70,6 +84,8 @@ export const useEditorStore = defineStore('editor', () => {
   const isSaving = ref(false)
   const lastSavedAt = ref<string | null>(null)
   const lastArticleUsage = ref<ApiUsage | null>(null)
+  /** Longueur réellement visée par le dernier premier jet (renvoyée par le serveur). */
+  const lastDraftTargetWordCount = ref<number | null>(null)
   const lastMetaUsage = ref<ApiUsage | null>(null)
   const sectionProgress = ref<{ current: number; total: number; title: string } | null>(null)
 
@@ -85,8 +101,6 @@ export const useEditorStore = defineStore('editor', () => {
   const reduceProgress = ref<{ current: number; total: number; title: string } | null>(null)
   let reduceAbortController: AbortController | null = null
 
-  // --- Web search toggle (session-level) ---
-  const webSearchEnabled = ref(true)
 
   // --- SSOT word count (finding G5) ---
   const wordCount = computed(() => countWordsFromHtml(content.value ?? ''))
@@ -114,29 +128,31 @@ export const useEditorStore = defineStore('editor', () => {
     lastMetaUsage.value = null
     sectionProgress.value = null
 
-    const pilierKeyword = briefData.keywords.find(kw => kw.type === 'Pilier')
-    log.debug('[editor] pilier keyword', { keyword: pilierKeyword?.keyword ?? briefData.article.title })
+    // Le capitaine de CET article, pas le mot-clé pilier du cocon (épopée qualité SEO, R3).
+    const mainKeyword = articleMainKeyword(briefData.article)
+    log.debug('[editor] mot-clé principal', { keyword: mainKeyword })
 
+    // Premier jet en un appel, sans recherche web (FR-RED-DRAFT-SINGLE-PASS) :
+    // les sources viennent à la passe d'enrichissement.
     const body = {
       articleId: briefData.article.id,
       outline,
-      keyword: pilierKeyword?.keyword ?? briefData.article.title,
+      keyword: mainKeyword,
       keywords: briefData.keywords.map(kw => kw.keyword),
-      paa: briefData.dataForSeo?.paa ?? [],
       articleType: briefData.article.type,
       articleTitle: briefData.article.title,
       cocoonName: briefData.article.cocoonName,
-      topic: briefData.article.topic,
       ...(targetWordCount ? { targetWordCount } : {}),
-      webSearchEnabled: webSearchEnabled.value,
     }
 
-    const streaming = useStreaming<{ content: string }>()
+    const streaming = useStreaming<{ content: string; targetWordCount?: number }>()
+    lastDraftTargetWordCount.value = null
 
-    await streaming.startStream('/api/generate/article', body, {
+    await streaming.startStream('/api/generate/article-draft', body, {
       onChunk: (accumulated) => { streamedText.value = accumulated },
       onDone: (data) => {
         content.value = data.content
+        lastDraftTargetWordCount.value = data.targetWordCount ?? null
         log.info('[editor] Article generation done', { contentLength: data.content.length, contentSnippet: data.content.substring(0, 100) })
       },
       onError: (message) => {
@@ -240,6 +256,41 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  // --- Scores enregistrés avec leur texte (FR-RED-SEO-SCORE-PERSIST) ---
+  // Pas d'état réactif : ces empreintes ne s'affichent pas, elles décident
+  // seulement de ce qui part en base.
+  const scoreSnapshots: Record<ScoreKind, { value: number; key: string } | null> = { seo: null, geo: null }
+  let lastSaved: { articleId: number; keys: Record<ScoreKind, string>; persisted: Record<ScoreKind, number | null> } | null = null
+
+  function currentScoreKeys(): Record<ScoreKind, string> {
+    const html = content.value ?? ''
+    return { seo: seoScoreKey(html, metaTitle.value, metaDescription.value), geo: html }
+  }
+
+  function freshScore(kind: ScoreKind, keys: Record<ScoreKind, string>): number | null {
+    const snapshot = scoreSnapshots[kind]
+    return snapshot && snapshot.key === keys[kind] ? snapshot.value : null
+  }
+
+  /**
+   * Note le score que l'éditeur vient de calculer, avec l'empreinte du texte
+   * noté. Si ce texte est exactement celui enregistré en base, le score y part
+   * aussitôt, seul : une sauvegarde faite avant la fin du calcul n'a pas à
+   * attendre la suivante.
+   */
+  function recordScore(kind: ScoreKind, value: number, key: string): void {
+    scoreSnapshots[kind] = { value, key }
+    const saved = lastSaved
+    if (!saved || saved.keys[kind] !== key || saved.persisted[kind] === value) return
+    const previous = saved.persisted[kind]
+    saved.persisted[kind] = value
+    const field = kind === 'seo' ? 'seoScore' : 'geoScore'
+    apiPut(`/articles/${saved.articleId}`, { [field]: value }).catch((err: unknown) => {
+      saved.persisted[kind] = previous
+      log.warn(`[editor] score ${kind} non enregistré — ${(err as Error).message}`, { articleId: saved.articleId })
+    })
+  }
+
   async function saveArticle(articleId: number) {
     log.info(`Saving article ${articleId}`)
     isSaving.value = true
@@ -248,12 +299,27 @@ export const useEditorStore = defineStore('editor', () => {
     const wasDirty = isDirty.value
     markClean()
 
+    // FR-RED-SEO-SCORE-PERSIST — un score n'accompagne que le texte sur lequel
+    // il a été calculé ; sinon la base porte « inconnu » (null), jamais un
+    // chiffre d'une autre version.
+    const keys = currentScoreKeys()
+    const seoScore = freshScore('seo', keys)
+    const geoScore = freshScore('geo', keys)
+
     try {
       await apiPut(`/articles/${articleId}`, {
         content: content.value,
         metaTitle: metaTitle.value,
         metaDescription: metaDescription.value,
+        seoScore,
+        geoScore,
       })
+      lastSaved = { articleId, keys, persisted: { seo: seoScore, geo: geoScore } }
+      // Un score calculé pendant l'envoi, sur ce même texte, part maintenant.
+      for (const kind of ['seo', 'geo'] as const) {
+        const fresh = freshScore(kind, keys)
+        if (fresh !== null && fresh !== lastSaved.persisted[kind]) recordScore(kind, fresh, keys[kind])
+      }
       lastSavedAt.value = new Date().toISOString()
       log.info(`Article ${articleId} saved`)
     } catch (err) {
@@ -586,7 +652,15 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   /** Hydrate store with previously saved article data */
-  function loadExistingContent(data: { content: string; metaTitle?: string | null; metaDescription?: string | null }) {
+  function loadExistingContent(data: {
+    content: string
+    metaTitle?: string | null
+    metaDescription?: string | null
+    /** Article chargé : un score calculé sur ce texte intact rejoint la base. */
+    articleId?: number
+    seoScore?: number | null
+    geoScore?: number | null
+  }) {
     log.info('[editor] Loading existing content', {
       contentLength: data.content.length,
       metaTitle: data.metaTitle ? `${data.metaTitle.length}ch` : 'null',
@@ -596,6 +670,9 @@ export const useEditorStore = defineStore('editor', () => {
     metaTitle.value = data.metaTitle ?? null
     metaDescription.value = data.metaDescription ?? null
     isDirty.value = false
+    lastSaved = data.articleId
+      ? { articleId: data.articleId, keys: currentScoreKeys(), persisted: { seo: data.seoScore ?? null, geo: data.geoScore ?? null } }
+      : null
   }
 
   function resetEditor() {
@@ -617,6 +694,9 @@ export const useEditorStore = defineStore('editor', () => {
     lastHumanizeUsage.value = null
     lastHumanizeError.value = null
     humanizeFallbackCount.value = 0
+    scoreSnapshots.seo = null
+    scoreSnapshots.geo = null
+    lastSaved = null
     if (humanizeAbortController) {
       humanizeAbortController.abort()
       humanizeAbortController = null
@@ -630,14 +710,14 @@ export const useEditorStore = defineStore('editor', () => {
   return {
     content, streamedText, isGenerating, isGeneratingMeta, error,
     metaTitle, metaDescription, isDirty, isSaving, lastSavedAt,
-    lastArticleUsage, lastMetaUsage, sectionProgress, webSearchEnabled,
+    lastArticleUsage, lastMetaUsage, sectionProgress, lastDraftTargetWordCount,
     // reduce / humanize
     isReducing, isHumanizing, humanizeProgress, reduceProgress,
     lastReduceUsage, lastHumanizeUsage, lastHumanizeError, humanizeFallbackCount,
     // computed
     wordCount, wordCountDelta,
     // actions
-    generateArticle, generateMeta, saveArticle, setContent,
+    generateArticle, generateMeta, saveArticle, setContent, recordScore,
     loadExistingContent, markClean, markDirty, resetEditor, saveContenuPartiel,
     reduceArticle, abortReduce, humanizeArticle, abortHumanize, callHumanizeSection,
   }

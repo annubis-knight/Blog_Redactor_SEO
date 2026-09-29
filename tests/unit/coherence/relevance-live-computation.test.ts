@@ -3,7 +3,7 @@
  * Tests anti-régression TDD pour la refonte Score Pertinence à la volée.
  *
  * Décision figée 2026-05-05 — voir :
- *   - docs/data-flows/relevance-score-live-computation.md
+ *   - design/data-flows/relevance-score-live-computation.md
  *   - _bmad-output/implementation-artifacts/tech-spec-relevance-live-computation.md
  *   - _bmad-output/implementation-artifacts/decision-log-relevance-live-computation.md
  *

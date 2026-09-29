@@ -1,39 +1,10 @@
 import { USAGE_SENTINEL } from '../../services/external/ai-provider.service.js'
 import type { ApiUsage } from '../../services/external/claude.service.js'
-import type { ArticleStrategy, ArticleKeywords, Outline, OutlineSection } from '../../../shared/types/index.js'
+import type { ArticleStrategy, ArticleKeywords, CocoonStrategy, Outline, OutlineSection } from '../../../shared/types/index.js'
+import { buildCocoonStrategyBlock } from '../../utils/prompt-loader.js'
 
-/** Detect if an error is a 429 rate-limit error from the Anthropic API */
-export function isRateLimitError(err: unknown): boolean {
-  if (err && typeof err === 'object' && 'status' in err) {
-    return (err as { status: number }).status === 429
-  }
-  return err instanceof Error && err.message.startsWith('429')
-}
-
-/** Extract retry-after seconds from an Anthropic SDK error, or return a default */
-export function getRetryAfterSeconds(err: unknown, defaultSeconds: number): number {
-  if (err && typeof err === 'object' && 'headers' in err) {
-    const headers = (err as { headers: Record<string, string> }).headers
-    const retryAfter = headers?.['retry-after']
-    if (retryAfter) {
-      const parsed = Number(retryAfter)
-      if (!isNaN(parsed) && parsed > 0) return Math.ceil(parsed)
-    }
-  }
-  return defaultSeconds
-}
-
-/** Sleep for a given number of milliseconds */
-export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-/** Max retry attempts specifically for rate limit errors */
-export const RATE_LIMIT_MAX_RETRIES = 4
-/** Default wait time on first 429 (seconds) */
-export const RATE_LIMIT_DEFAULT_WAIT = 60
-/** Delay between sections to proactively avoid rate limits (ms). Set INTER_SECTION_DELAY=0 in env to disable (tests). */
-export const INTER_SECTION_DELAY_MS = Number(process.env.INTER_SECTION_DELAY ?? 15_000)
+// Pas de réessai ici : ils vivent dans ai-provider (withRetry / withFallbackChain).
+// La boucle « 429 » des routes n'était jamais atteinte (R15, épopée qualité SEO).
 
 /** Consume the async generator, separating content chunks from the usage sentinel */
 export async function consumeStream(
@@ -56,6 +27,25 @@ export async function consumeStream(
 }
 
 /** Build a markdown strategy context block for prompt injection */
+/**
+ * Bloc stratégique d'une rédaction : la stratégie propre à l'article si elle
+ * existe, sinon celle validée pour le cocon au Cerveau. La rédaction ne lisait
+ * que `article_strategies`, vide pour tout article créé par le Cerveau : le
+ * pilier 1013 a été écrit sans cible ni douleur (épopée qualité SEO, R5).
+ */
+export function pickStrategyContext(articleStrategy: ArticleStrategy | null, cocoonStrategy: CocoonStrategy | null): string {
+  return buildStrategyContext(articleStrategy) || (cocoonStrategy ? buildCocoonStrategyBlock(cocoonStrategy) : '')
+}
+
+/**
+ * Modèles réellement utilisés, dans l'ordre d'apparition. Un repli de
+ * fournisseur peut changer de modèle d'une section à l'autre : n'enregistrer que
+ * le dernier cachait qui avait écrit quoi (épopée qualité SEO, R8).
+ */
+export function describeModelsUsed(models: Array<string | null | undefined>): string {
+  return [...new Set(models.filter((m): m is string => !!m))].join(' + ')
+}
+
 export function buildStrategyContext(strategy: ArticleStrategy | null): string {
   if (!strategy || strategy.completedSteps === 0) return ''
 
@@ -155,45 +145,6 @@ export function splitOutlineIntoGroups(outline: Outline): SectionGroup[] {
   return groups
 }
 
-/** Format a section group into a readable outline for the prompt */
-export function formatSectionOutline(group: SectionGroup): string {
-  return group.sections.map(s => {
-    const tag = s.level === 2 ? 'H2' : 'H3'
-    const ann = s.annotation ? ` [annotation: ${s.annotation}]` : ''
-    return `- ${tag}: ${s.title}${ann}`
-  }).join('\n')
-}
-
-/** Format the full outline for prompt context */
-export function formatFullOutline(outline: Outline): string {
-  return outline.sections.map(s => {
-    const tag = s.level === 1 ? 'H1' : s.level === 2 ? 'H2' : 'H3'
-    return `- ${tag}: ${s.title}`
-  }).join('\n')
-}
-
-/** Get position-specific directives for the prompt */
-export function getPositionDirectives(position: 'intro' | 'middle' | 'conclusion', keyword: string, articleTitle?: string): string {
-  if (position === 'intro') {
-    return `## Directives spécifiques (Introduction)
-
-- Commence OBLIGATOIREMENT par le titre H1 de l'article : \`<h1>${articleTitle}</h1>\`.
-- Ensuite, enchaîne avec des balises \`<p>\` (PAS de \`<h2>\` si le sommaire ne prévoit pas de H2 Intro).
-- Place le mot-clé pilier « ${keyword} » dans l'introduction.
-- Accroche le lecteur dès la première phrase — pose le problème ou le contexte sans détour.
-- Présente brièvement ce que l'article va couvrir.`
-  }
-  if (position === 'conclusion') {
-    return `## Directives spécifiques (Conclusion)
-
-- Réintègre le mot-clé pilier « ${keyword} ».
-- Récapitule les points clés de l'article en 3-5 bullet points.
-- Propose des étapes concrètes et actionnables.
-- Termine par un CTA clair si le contexte stratégique en définit un.`
-  }
-  return ''
-}
-
 /** Strip markdown code fences (```html ... ```) that Claude wraps around HTML output */
 export function stripCodeFences(text: string): string {
   return text.replace(/^```\w*\n?/gm, '').replace(/\n?```$/gm, '').trim()
@@ -248,78 +199,6 @@ export function aggregateUsage(total: ApiUsage, section: ApiUsage | null): void 
   total.cacheReadTokens += section.cacheReadTokens
   total.cacheCreationTokens += section.cacheCreationTokens
   total.estimatedCost += section.estimatedCost
-}
-
-/** Default target word counts per article type (used as fallback when client/microCtx don't provide one) */
-export const DEFAULT_TARGET_WORDS_BY_TYPE: Record<'pilier' | 'intermediaire' | 'specifique', number> = {
-  'pilier': 2500,
-  'intermediaire': 1800,
-  'specifique': 1200,
-}
-export const DEFAULT_TARGET_WORDS_FALLBACK = 2000
-
-/**
- * Compute the word budget + max_tokens for a given section group.
- * Repartition is 15/75/10 for intro/corps/conclusion, with F6 guards for
- * articles with 1 or 2 groups only.
- */
-export function computeSectionBudget(
-  group: SectionGroup,
-  groupIndex: number,
-  totalGroups: number,
-  targetWordCount: number,
-): { role: 'introduction' | 'corps' | 'conclusion'; budget: number; hint: string; maxTokens: number } {
-  let role: 'introduction' | 'corps' | 'conclusion'
-  let budget: number
-
-  if (totalGroups === 1) {
-    // Single group handles the whole article
-    role = 'corps'
-    budget = targetWordCount
-  } else if (totalGroups === 2) {
-    // No middle, split 40/60 between intro and conclusion
-    if (groupIndex === 0) {
-      role = 'introduction'
-      budget = Math.ceil(targetWordCount * 0.4)
-    } else {
-      role = 'conclusion'
-      budget = Math.ceil(targetWordCount * 0.6)
-    }
-  } else {
-    // Standard 15/75/10 with nbMiddleGroups = totalGroups - 2
-    const nbMiddleGroups = totalGroups - 2
-    if (groupIndex === 0) {
-      role = 'introduction'
-      budget = Math.ceil(targetWordCount * 0.15)
-    } else if (groupIndex === totalGroups - 1) {
-      role = 'conclusion'
-      budget = Math.ceil(targetWordCount * 0.10)
-    } else {
-      role = 'corps'
-      budget = Math.ceil((targetWordCount * 0.75) / nbMiddleGroups)
-    }
-  }
-
-  const ratio = Math.round((budget / targetWordCount) * 100)
-  const hint = `~${budget} mots, soit ~${ratio}% du budget total`
-
-  return { role, budget, hint, maxTokens: sectionMaxTokens(budget) }
-}
-
-/**
- * Plafond de jetons d'un groupe de sections.
- *
- * Le budget de mots est une consigne MOLLE : le modèle écrit couramment deux à
- * trois fois plus (audit de juillet), et la recherche web ajoute ses propres
- * phrases de sortie. Avec l'ancien plafond (budget × 4, plancher 2 048), il
- * était coupé en plein mot — 31 blocs tronqués sur les six piliers de juillet,
- * encore 4 sur le pilier du 2026-09-21.
- *
- * Un plafond plus haut ne coûte rien de plus : on ne paie que les jetons
- * réellement écrits. Il laisse simplement au modèle le droit de finir sa phrase.
- */
-export function sectionMaxTokens(budgetWords: number): number {
-  return Math.min(8192, Math.max(4096, Math.ceil(budgetWords * 6)))
 }
 
 /** Build micro-context block from article data */

@@ -13,7 +13,7 @@ const mockApiGet = vi.mocked(apiGet)
 const mockApiPost = vi.mocked(apiPost)
 
 const mockArticleResponse = {
-  article: { title: 'Test Article', type: 'pilier' as const, slug: 'test-article', topic: 'Test', status: 'à rédiger' as const },
+  article: { title: 'Test Article', type: 'pilier' as const, slug: 'test-article', topic: 'Test', status: 'à rédiger' as const, captainKeywordLocked: 'mot clé capitaine' },
   cocoonName: 'Test Cocoon',
 }
 
@@ -52,7 +52,7 @@ describe('brief.store — fetchBrief', () => {
     expect(store.briefData!.article.cocoonName).toBe('Test Cocoon')
     expect(store.briefData!.keywords).toHaveLength(3)
     expect(store.briefData!.dataForSeo).toEqual(mockDataForSeo)
-    expect(store.briefData!.contentLengthRecommendation).toBe(2650) // Pilier midpoint (1800-3500)
+    expect(store.briefData!.contentLengthRecommendation).toBe(2500) // longueur visée du Pilier (source unique)
     expect(store.isLoading).toBe(false)
     expect(store.error).toBeNull()
   })
@@ -69,7 +69,9 @@ describe('brief.store — fetchBrief', () => {
     expect(mockApiGet).toHaveBeenCalledWith('/keywords/Test%20Cocoon', expect.objectContaining({ signal: expect.any(AbortSignal) }))
   })
 
-  it('calls apiPost for DataForSEO with pilier keyword', async () => {
+  // R13 : les données SERP (questions PAA comprises) portaient sur le mot-clé
+  // pilier du cocon : un intermédiaire était rédigé avec les questions du pilier.
+  it('DataForSEO porte sur le capitaine de l’article, pas sur le pilier du cocon (R13)', async () => {
     mockApiGet.mockResolvedValueOnce(mockArticleResponse)
     mockApiGet.mockResolvedValueOnce(mockKeywords)
     mockApiPost.mockResolvedValueOnce(mockDataForSeo)
@@ -77,15 +79,23 @@ describe('brief.store — fetchBrief', () => {
     const store = useBriefStore()
     await store.fetchBrief('test-article')
 
-    expect(mockApiPost).toHaveBeenCalledWith('/dataforseo/brief', { keyword: 'mot clé pilier' }, expect.objectContaining({ signal: expect.any(AbortSignal) }))
+    expect(mockApiPost).toHaveBeenCalledWith('/dataforseo/brief', { keyword: 'mot clé capitaine' }, expect.objectContaining({ signal: expect.any(AbortSignal) }))
   })
 
-  it('skips DataForSEO call when no pilier keyword exists', async () => {
-    const keywordsNoPilier = [
-      { keyword: 'secondaire', cocoonName: 'Test Cocoon', type: 'Moyenne traine' as const },
-    ]
-    mockApiGet.mockResolvedValueOnce(mockArticleResponse)
-    mockApiGet.mockResolvedValueOnce(keywordsNoPilier)
+  it('capitaine pas encore verrouillé : le mot-clé suggéré de l’article', async () => {
+    mockApiGet.mockResolvedValueOnce({ ...mockArticleResponse, article: { ...mockArticleResponse.article, captainKeywordLocked: null, suggestedKeyword: 'mot clé suggéré' } })
+    mockApiGet.mockResolvedValueOnce(mockKeywords)
+    mockApiPost.mockResolvedValueOnce(mockDataForSeo)
+
+    const store = useBriefStore()
+    await store.fetchBrief('test-article')
+
+    expect(mockApiPost).toHaveBeenCalledWith('/dataforseo/brief', { keyword: 'mot clé suggéré' }, expect.objectContaining({ signal: expect.any(AbortSignal) }))
+  })
+
+  it('sans mot-clé d’article : aucun appel, jamais le pilier en repli', async () => {
+    mockApiGet.mockResolvedValueOnce({ ...mockArticleResponse, article: { ...mockArticleResponse.article, captainKeywordLocked: null } })
+    mockApiGet.mockResolvedValueOnce(mockKeywords)
 
     const store = useBriefStore()
     await store.fetchBrief('test-article')
@@ -127,8 +137,41 @@ describe('brief.store — fetchBrief', () => {
   })
 })
 
-describe('brief.store — pilierKeyword', () => {
-  it('returns the pilier keyword from briefData', async () => {
+// R16 — l'écran affichait la recommandation du brief même quand l'utilisateur
+// avait choisi une autre longueur : la barre de mots, l'écart et la réduction
+// ne visaient pas la cible que la rédaction et sa porte suivent.
+describe('brief.store — longueur visée', () => {
+  async function loaded(micro: unknown) {
+    mockApiGet.mockResolvedValueOnce(mockArticleResponse)
+    mockApiGet.mockResolvedValueOnce(mockKeywords)
+    mockApiGet.mockResolvedValueOnce(micro)
+    mockApiPost.mockResolvedValueOnce(mockDataForSeo)
+    const store = useBriefStore()
+    await store.fetchBrief(7)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    return store
+  }
+
+  it('la cible choisie pour l’article l’emporte sur la recommandation', async () => {
+    const store = await loaded({ targetWordCount: 3100 })
+    expect(mockApiGet).toHaveBeenCalledWith('/articles/7/micro-context')
+    expect(store.targetWordCount).toBe(3100)
+  })
+
+  it('sans cible choisie, la recommandation fait foi', async () => {
+    const store = await loaded(null)
+    expect(store.targetWordCount).toBe(store.briefData!.contentLengthRecommendation)
+  })
+
+  it('un nouveau choix est suivi aussitôt', async () => {
+    const store = await loaded(null)
+    store.setRetainedWordCount(1900)
+    expect(store.targetWordCount).toBe(1900)
+  })
+})
+
+describe('brief.store — serpKeyword', () => {
+  it('le mot-clé de l’article, celui des données SERP', async () => {
     mockApiGet.mockResolvedValueOnce(mockArticleResponse)
     mockApiGet.mockResolvedValueOnce(mockKeywords)
     mockApiPost.mockResolvedValueOnce(mockDataForSeo)
@@ -136,12 +179,12 @@ describe('brief.store — pilierKeyword', () => {
     const store = useBriefStore()
     await store.fetchBrief('test-article')
 
-    expect(store.pilierKeyword).toEqual({ keyword: 'mot clé pilier', cocoonName: 'Test Cocoon', type: 'Pilier' })
+    expect(store.serpKeyword).toBe('mot clé capitaine')
   })
 
   it('returns null when no briefData loaded', () => {
     const store = useBriefStore()
-    expect(store.pilierKeyword).toBeNull()
+    expect(store.serpKeyword).toBeNull()
   })
 })
 
@@ -159,7 +202,7 @@ describe('brief.store — refreshDataForSeo', () => {
 
     await store.refreshDataForSeo()
 
-    expect(mockApiPost).toHaveBeenCalledWith('/dataforseo/brief', { keyword: 'mot clé pilier', forceRefresh: true })
+    expect(mockApiPost).toHaveBeenCalledWith('/dataforseo/brief', { keyword: 'mot clé capitaine', forceRefresh: true })
     expect(store.briefData!.dataForSeo!.cachedAt).toBe('2026-03-06T13:00:00.000Z')
     expect(store.isRefreshing).toBe(false)
   })
@@ -188,22 +231,21 @@ describe('brief.store — refreshDataForSeo', () => {
 })
 
 describe('calculateContentLength (fallback heuristique)', () => {
-  // Ces valeurs sont les midpoints des bornes TYPE_BASE définies dans
-  // target-word-count.service.ts. Elles servent de fallback synchrone tant
-  // que la recommandation IA serveur n'a pas répondu.
-  it('returns 2650 for Pilier (midpoint 1800-3500)', () => {
-    expect(calculateContentLength('pilier')).toBe(2650)
+  // FR-INFRA-TYPE-RULES-SSOT — la longueur visée du type, la même que la
+  // rédaction (l'écran affichait 2 650 quand la rédaction visait 2 500).
+  it('returns 2500 for Pilier', () => {
+    expect(calculateContentLength('pilier')).toBe(2500)
   })
 
-  it('returns 1850 for Intermédiaire (midpoint 1200-2500)', () => {
-    expect(calculateContentLength('intermediaire')).toBe(1850)
+  it('returns 1800 for Intermédiaire', () => {
+    expect(calculateContentLength('intermediaire')).toBe(1800)
   })
 
-  it('returns 1150 for Spécialisé (midpoint 800-1500)', () => {
-    expect(calculateContentLength('specifique')).toBe(1150)
+  it('returns 1200 for Spécialisé', () => {
+    expect(calculateContentLength('specifique')).toBe(1200)
   })
 
-  it('returns 1500 for unknown type', () => {
-    expect(calculateContentLength('unknown' as ArticleLevel)).toBe(1500)
+  it('returns the single default (2000) for unknown type', () => {
+    expect(calculateContentLength('unknown' as ArticleLevel)).toBe(2000)
   })
 })

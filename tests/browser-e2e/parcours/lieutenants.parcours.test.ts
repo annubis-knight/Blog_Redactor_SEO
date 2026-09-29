@@ -18,6 +18,7 @@
  */
 import { test, expect, type Page, type Response } from '@playwright/test'
 import { scanAndLockCaptain, selectArticle, useParcours, type ParcoursLevel } from '../helpers/parcours-fixtures'
+import { ARTICLE_TYPE_RULES } from '../../../shared/constants/article-type-rules'
 
 test.describe.configure({ mode: 'serial' })
 
@@ -170,12 +171,17 @@ for (const level of LEVELS) {
       }
     })
 
-    await test.step('⑧ décision — un Lieutenant coché et un plan Hn enregistré valident l’étape', async () => {
+    // M7 (FR-HN-TAB) : la structure a son onglet ; retenir les lieutenants suffit à cette étape.
+    await test.step('⑧ décision — les Lieutenants requis par le type valident l’étape', async () => {
       const cases = page.locator('[data-testid="lt-card-checkbox"]')
       await expect(cases.first()).toBeVisible({ timeout: 30000 })
       // L'IA propose, l'utilisateur valide : les cartes arrivent décochées.
       expect(await cases.first().isChecked(), 'une proposition n’est pas validée d’office').toBe(false)
-      await cases.first().check()
+      // La porte (FR-LIE-LOCK-GATE) attend le minimum du type : 3 pour un
+      // pilier, 2 pour un intermédiaire, 1 pour un spécialisé.
+      const requis = ARTICLE_TYPE_RULES[level].minLieutenants
+      expect(await cases.count(), `au moins ${requis} proposition(s) à retenir`).toBeGreaterThanOrEqual(requis)
+      for (let i = 0; i < requis; i++) await cases.nth(i).check()
 
       // Le clic doit se traduire en base : statut « locked » sur le Lieutenant.
       await expect
@@ -183,24 +189,22 @@ for (const level of LEVELS) {
           const kw = await apiJson<{ richLieutenants?: Array<{ status: string }> } | null>(page, `/articles/${article.id}/keywords`)
           return kw?.richLieutenants?.filter(lt => lt.status === 'locked').length ?? 0
         }, { timeout: 20000 })
-        .toBeGreaterThan(0)
+        .toBe(requis)
 
-      // La règle du workflow demande aussi un plan Hn : on le génère s'il manque…
-      const vide = page.locator('[data-testid="hn-structure-empty"]')
-      if (await vide.count() > 0) {
-        const générer = page.locator('[data-testid="hn-generate-btn"]')
-        await expect(générer).toBeEnabled({ timeout: 15000 })
-        await générer.click()
-      }
-      await expect(page.locator('.hn-structure-item').first(), 'un plan Hn doit s’afficher')
-        .toBeVisible({ timeout: 120000 })
+      // Ce que la Rédaction et la porte lisent (la liste « plate ») doit être
+      // exactement ce que l'utilisateur a coché — ni plus, ni moins.
+      await expect
+        .poll(async () => {
+          const kw = await apiJson<{ lieutenants: string[]; richLieutenants?: Array<{ keyword: string; status: string }> } | null>(
+            page, `/articles/${article.id}/keywords`)
+          const coches = (kw?.richLieutenants ?? []).filter(lt => lt.status === 'locked').map(lt => lt.keyword).sort()
+          const plate = [...(kw?.lieutenants ?? [])].sort()
+          return { identiques: JSON.stringify(plate) === JSON.stringify(coches), plate, coches }
+        }, { timeout: 20000, message: 'liste plate = lieutenants cochés' })
+        .toMatchObject({ identiques: true })
 
-      // …puis on l'enregistre : c'est ce geste qui clôt la sous-phase.
-      const sauvegarder = page.locator('.btn-save-hn')
-      await expect(sauvegarder).toBeEnabled({ timeout: 15000 })
-      await sauvegarder.click()
-      await expect(page.locator('.hn-saved-badge'), 'le plan doit être marqué sauvegardé')
-        .toBeVisible({ timeout: 30000 })
+      // Aucun plan Hn ici : l'onglet Lieutenants n'en produit plus (M7).
+      await expect(page.locator('.lieutenants-selection').locator('[data-testid="hn-structure-section"], .hn-structure-item'), 'la structure a quitté cet onglet').toHaveCount(0)
 
       await expect
         .poll(async () => (await apiJson<{ completedChecks: string[] }>(page, `/articles/${article.id}/progress`)).completedChecks,

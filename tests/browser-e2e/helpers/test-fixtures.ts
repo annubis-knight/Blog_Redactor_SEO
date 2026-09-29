@@ -201,7 +201,12 @@ export const test = base.extend<{ ctx: BrowserCtx }>({
     // Cleanup (cocoon_strategies part en cascade avec le cocon)
     const pattern = `${TEST_PREFIX}${runId}]%`
     try {
-      await query(`DELETE FROM articles WHERE titre LIKE $1`, [pattern])
+      // C7 : les enfants créés par le produit (titre sans étiquette) empêcheraient
+      // de supprimer leur parent (ON DELETE RESTRICT) : détachés d'abord, puis
+      // supprimés avec leur cocon de test au lieu d'y rester orphelins.
+      const inTestCocoon = `cocoon_id IN (SELECT id FROM cocoons WHERE nom LIKE $1)`
+      await query(`UPDATE articles SET parent_id = NULL WHERE parent_id IN (SELECT id FROM articles WHERE titre LIKE $1 OR ${inTestCocoon})`, [pattern])
+      await query(`DELETE FROM articles WHERE titre LIKE $1 OR ${inTestCocoon}`, [pattern])
       await query(`DELETE FROM cocoons WHERE nom LIKE $1`, [pattern])
     } catch (err) {
       console.warn(`[browser-test cleanup] ${(err as Error).message}`)

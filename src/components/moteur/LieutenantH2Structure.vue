@@ -107,19 +107,19 @@ function onRegenerate(): void {
   <div>
     <!-- HN Structure from IA -->
     <CollapsableSection
-      title="Structure Hn recommandee (IA)"
+      title="Structure Hn recommandée (IA)"
       :default-open="true"
       data-testid="hn-structure-section"
     >
       <template v-if="hnStructure.length > 0">
         <div class="hn-toolbar">
           <p class="hn-toolbar-hint">
-            Verrouille les titres a conserver puis regenere — l'IA construira la nouvelle structure autour de tes titres verrouilles et integrera les nouveaux lieutenants coches.
+            Verrouillez les titres à conserver, puis régénérez : l’IA bâtit la nouvelle structure autour d’eux, avec les lieutenants retenus dans l’onglet Lieutenants.
           </p>
           <button
             class="btn-regen-hn"
             :disabled="!canRegenerate"
-            :title="selectedCardsSize === 0 ? 'Coche au moins un lieutenant pour pouvoir regenerer' : ''"
+            :title="selectedCardsSize === 0 ? 'Retenez au moins un lieutenant dans l’onglet Lieutenants pour régénérer' : ''"
             data-testid="hn-regenerate-btn"
             @click="onRegenerate"
           >
@@ -127,7 +127,7 @@ function onRegenerate(): void {
               <path d="M14 8a6 6 0 1 1-2-4.47" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
               <path d="M14 2v3.5h-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
-            {{ hnRegenStreaming ? 'Regeneration...' : 'Regenerer la structure' }}
+            {{ hnRegenStreaming ? 'Régénération…' : 'Régénérer la structure' }}
           </button>
         </div>
         <p v-if="hnRegenError" class="hn-error" role="alert">
@@ -190,7 +190,7 @@ function onRegenerate(): void {
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
-              Sauvegardee
+              Sauvegardée
             </span>
           </Transition>
           <!-- Badge "Validée avec les lieutenants" supprimé. Statut porté par .hn-saved-badge. -->
@@ -199,22 +199,22 @@ function onRegenerate(): void {
       </template>
       <div v-else class="hn-empty" data-testid="hn-structure-empty">
         <p class="section-empty">
-          Aucune structure Hn generee pour cet article.
+          Aucune structure pour cet article.
           {{ selectedCardsSize > 0
-            ? 'Lance la generation IA pour obtenir une proposition basee sur tes lieutenants coches.'
-            : 'Coche au moins un lieutenant ci-dessus, puis lance la generation IA.' }}
+            ? 'Générez-la : l’IA part des lieutenants retenus.'
+            : 'Retenez d’abord au moins un lieutenant dans l’onglet Lieutenants.' }}
         </p>
         <button
           class="btn-regen-hn"
           :disabled="!canRegenerate"
-          :title="selectedCardsSize === 0 ? 'Coche au moins un lieutenant pour pouvoir generer' : ''"
+          :title="selectedCardsSize === 0 ? 'Retenez au moins un lieutenant dans l’onglet Lieutenants pour générer' : ''"
           data-testid="hn-generate-btn"
           @click="onRegenerate"
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
           </svg>
-          {{ hnRegenStreaming ? 'Generation...' : 'Generer la structure Hn' }}
+          {{ hnRegenStreaming ? 'Génération…' : 'Générer la structure' }}
         </button>
         <p v-if="hnRegenError" class="hn-error" role="alert">
           {{ hnRegenError }}

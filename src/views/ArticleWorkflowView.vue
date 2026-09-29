@@ -24,6 +24,7 @@ import AsyncContent from '@/components/shared/AsyncContent.vue'
 import BriefStructureStep from '@/components/workflow/BriefStructureStep.vue'
 import ArticleActions from '@/components/article/ArticleActions.vue'
 import ArticleStreamDisplay from '@/components/article/ArticleStreamDisplay.vue'
+import DraftAcceptance from '@/components/article/DraftAcceptance.vue'
 import ArticleMetaDisplay from '@/components/article/ArticleMetaDisplay.vue'
 import OutlineRecap from '@/components/article/OutlineRecap.vue'
 import ArticleCostBadges from '@/components/article/ArticleCostBadges.vue'
@@ -109,7 +110,7 @@ function _isStepCompleted(stepId: string): boolean {
 // --- Body gating for scoring panels ---
 const hasBody = computed(() => !!editorStore.content)
 
-const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showIaBriefPanel, hasActivePanel } = usePanelToggle('seo')
+const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showIaBriefPanel, showEnrichPanel, hasActivePanel } = usePanelToggle('seo')
 
 useKeyboardShortcuts([
   {
@@ -131,7 +132,7 @@ useKeyboardShortcuts([
 ])
 
 function guardedToggle(panel: Parameters<typeof toggle>[0]) {
-  if (!hasBody.value && (panel === 'seo' || panel === 'geo' || panel === 'linking')) return
+  if (!hasBody.value && (panel === 'seo' || panel === 'geo' || panel === 'linking' || panel === 'enrich')) return
   toggle(panel)
 }
 
@@ -146,9 +147,10 @@ const {
 // Scoring composables — watch editorStore.content reactively
 const { seoStore: _seoStore } = useSeoScoring(
   () => keywordsStore.keywords.length > 0 ? keywordsStore.keywords : (briefStore.briefData?.keywords ?? []),
-  () => briefStore.briefData?.contentLengthRecommendation ?? undefined,
+  () => briefStore.targetWordCount ?? undefined,
   () => briefStore.briefData?.dataForSeo?.relatedKeywords ?? [],
   () => articleKeywordsStore.keywords,
+  () => briefStore.briefData?.article.slug,
 )
 useGeoScoring()
 
@@ -158,6 +160,7 @@ const {
   canReduce,
   wordCountDeltaDisplay,
   handleGenerateArticle,
+  acceptDraft,
   handleReduce,
   handleHumanize,
   handleAbortReduce,
@@ -281,6 +284,9 @@ onMounted(async () => {
         content: saved.content,
         metaTitle: saved.metaTitle,
         metaDescription: saved.metaDescription,
+        articleId: id,
+        seoScore: saved.seoScore,
+        geoScore: saved.geoScore,
       })
     }
     log.info('[workflow] Saved content hydrated', {
@@ -359,10 +365,12 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
           :show-link-suggestions="showLinkSuggestions"
           :show-ia-brief-button="true"
           :show-ia-brief-panel="showIaBriefPanel"
+          :show-enrich-panel="showEnrichPanel"
           @toggle-seo="guardedToggle('seo')"
           @toggle-geo="guardedToggle('geo')"
           @toggle-linking="handleToggleLinkSuggestions"
           @toggle-ia-brief="handleToggleIaBrief"
+          @toggle-enrich="guardedToggle('enrich')"
         />
       </div>
 
@@ -391,15 +399,6 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
           <!-- Step 2: Article -->
           <div v-if="currentStep === 'article'" class="workflow-step">
             <CollapsableSection title="Article">
-              <label class="web-search-toggle">
-                <input
-                  v-model="editorStore.webSearchEnabled"
-                  type="checkbox"
-                  data-testid="web-search-toggle"
-                  :disabled="editorStore.isGenerating"
-                />
-                Recherche web
-              </label>
 
               <ArticleActions
                 :is-generating="editorStore.isGenerating"
@@ -461,6 +460,13 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
                 :target="wordCountTarget"
               />
 
+              <DraftAcceptance
+                :article-id="articleId"
+                :has-content="!!editorStore.content && !editorStore.isGenerating"
+                :busy="editorStore.isSaving"
+                @accept="articleId && acceptDraft(articleId)"
+              />
+
               <RouterLink
                 v-if="editorStore.content && !editorStore.isGenerating"
                 :to="`/article/${articleId}/editor`"
@@ -488,6 +494,8 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
           :show-seo-panel="showSeoPanel"
           :show-geo-panel="showGeoPanel"
           :show-link-suggestions="showLinkSuggestions"
+          :show-enrich-panel="showEnrichPanel"
+          :article-id="articleId"
           :link-suggestions="linkSuggestions"
           :is-suggesting="isSuggesting"
           @dismiss-suggestion="dismissSuggestion($event)"
@@ -512,16 +520,6 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
   color: var(--color-error, #e53e3e);
 }
 
-.web-search-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  color: var(--color-text-muted, #888);
-  cursor: pointer;
-  margin-bottom: 0.5rem;
-}
-.web-search-toggle input { cursor: pointer; }
 
 .workflow-layout {
   display: flex;

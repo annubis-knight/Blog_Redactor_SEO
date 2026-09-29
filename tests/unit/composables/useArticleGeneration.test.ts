@@ -3,7 +3,7 @@
  * + FR-RED-WORD-COUNT-TARGET — composable extrait V4 (Option B Vague).
  *
  * Invariants couverts (cf. PRD §8.10) :
- *   - wordCountTarget = briefStore.briefData.contentLengthRecommendation
+ *   - wordCountTarget = briefStore.targetWordCount (longueur choisie pour l’article, sinon la recommandation — R16)
  *   - canReduce = delta > 15% du target (article trop long)
  *   - currentKeyword = capitaine || briefData.article.title (fallback)
  *   - allKeywords = liste plate des keywords du brief
@@ -20,6 +20,19 @@ import { ref } from 'vue'
 
 vi.mock('../../../src/utils/logger', () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}))
+
+// C7 (FR-CER-PARENT-WRITTEN-GATE) : l'étape « premier jet accepté » passe par
+// la porte du premier jet ; l'alarme décide, puis l'action est rejouée.
+const { mockRunThroughGate, mockAddCheck } = vi.hoisted(() => ({
+  mockRunThroughGate: vi.fn(async (_id: number, action: () => Promise<unknown>) => ({ ok: true, value: await action() })),
+  mockAddCheck: vi.fn(async () => undefined),
+}))
+vi.mock('../../../src/stores/ui/gate-alarm.store', () => ({
+  useGateAlarmStore: () => ({ runThroughGate: mockRunThroughGate }),
+}))
+vi.mock('../../../src/stores/article/article-progress.store', () => ({
+  useArticleProgressStore: () => ({ addCheck: mockAddCheck }),
 }))
 
 import { useArticleGeneration } from '../../../src/composables/article/useArticleGeneration'
@@ -41,8 +54,10 @@ function makeEditorStore(overrides: Record<string, unknown> = {}) {
   } as never
 }
 
-function makeBriefStore(target: number | null = 1500) {
+function makeBriefStore(target: number | null = 1500, retained: number | null = null) {
   return {
+    targetWordCount: retained ?? target,
+    setRetainedWordCount: vi.fn(),
     briefData: {
       contentLengthRecommendation: target,
       article: { title: 'Le SEO local pour les artisans' },
@@ -82,9 +97,17 @@ describe('useArticleGeneration — FR-RED-ARTICLE/META/REDUCE/HUMANIZE', () => {
   })
 
   describe('computeds', () => {
-    it('wordCountTarget = briefData.contentLengthRecommendation', () => {
+    it('wordCountTarget = la longueur visée du brief (recommandation par défaut)', () => {
       const { api } = setup({ target: 2000 })
       expect(api.wordCountTarget.value).toBe(2000)
+    })
+
+    it('wordCountTarget suit la longueur choisie pour l’article, pas la recommandation (R16)', () => {
+      const api = useArticleGeneration({
+        articleId: ref(7), editorStore: makeEditorStore(), briefStore: makeBriefStore(2000, 3100),
+        outlineStore: makeOutlineStore(), articleKeywordsStore: makeArticleKeywordsStore(),
+      })
+      expect(api.wordCountTarget.value).toBe(3100)
     })
 
     it('wordCountTarget = null si brief absent', () => {
@@ -137,6 +160,42 @@ describe('useArticleGeneration — FR-RED-ARTICLE/META/REDUCE/HUMANIZE', () => {
       expect(editorStore.generateArticle).toHaveBeenCalledOnce()
       expect(editorStore.saveArticle).toHaveBeenCalledTimes(2)
       expect(editorStore.generateMeta).toHaveBeenCalledOnce()
+    })
+
+    // R24 — la longueur retenue par le premier jet reste celle de l'écran jusqu'au prochain chargement.
+    it('après le premier jet, l’écran garde la longueur qu’il a demandée', async () => {
+      const { api, briefStore } = setup({ target: 2400 })
+      await api.handleGenerateArticle()
+      expect((briefStore as unknown as { setRetainedWordCount: ReturnType<typeof vi.fn> }).setRetainedWordCount).toHaveBeenCalledWith(2400)
+    })
+
+    // Suite C5b : si une autre fenêtre avait choisi une longueur entre-temps,
+    // le serveur l'a visée ; l'écran doit garder celle-là, pas la sienne.
+    it('le serveur a visé une autre longueur : l’écran garde celle du serveur', async () => {
+      const { api, briefStore } = setup({ target: 2400, editorOverrides: { lastDraftTargetWordCount: 3000 } })
+      await api.handleGenerateArticle()
+      expect((briefStore as unknown as { setRetainedWordCount: ReturnType<typeof vi.fn> }).setRetainedWordCount).toHaveBeenCalledWith(3000)
+    })
+
+    // C7 : un article n'est « rédigé » (et ne peut donner naissance à ses
+    // enfants dans le cocon) qu'une fois son premier jet accepté par la porte.
+    it('après le premier jet, l’étape « premier jet accepté » est demandée à la porte', async () => {
+      const { api } = setup()
+      await api.handleGenerateArticle()
+      await vi.waitFor(() => expect(mockRunThroughGate).toHaveBeenCalledWith(7, expect.any(Function)))
+      expect(mockAddCheck).toHaveBeenCalledWith(7, 'redaction:draft_accepted')
+    })
+
+    it('premier jet en erreur : aucune étape demandée', async () => {
+      const { api } = setup({ editorOverrides: { error: 'IA indisponible' } })
+      await api.handleGenerateArticle()
+      expect(mockRunThroughGate).not.toHaveBeenCalled()
+    })
+
+    it('acceptDraft : refusée à l’alarme → faux, aucune étape', async () => {
+      mockRunThroughGate.mockResolvedValueOnce({ ok: false } as never)
+      const { api } = setup()
+      expect(await api.acceptDraft(7)).toBe(false)
     })
 
     it('utilise pilierKeyword.keyword pour meta (pas article.title)', async () => {

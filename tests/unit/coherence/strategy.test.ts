@@ -4,8 +4,8 @@
  * Verifie la structure des etapes Brain-First, completedSteps, et la transition
  * vers le Moteur via buildStrategyContext().
  *
- * Voir docs/data-flows/strategy.md pour la cartographie complete (donnee strategy elle-meme).
- * Voir docs/data-flows/strategy-context.md pour l'injection dans les prompts.
+ * Voir design/data-flows/strategy.md pour la cartographie complete (donnee strategy elle-meme).
+ * Voir design/data-flows/strategy-context.md pour l'injection dans les prompts.
  */
 import { describe, it, expect } from 'vitest'
 

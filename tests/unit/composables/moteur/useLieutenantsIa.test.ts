@@ -2,7 +2,9 @@
  * Vague 3 — Tests isolés useLieutenantsIa.
  *
  * Référence FR PRD : FR-LIE-PROPOSE-AI (streaming propose-lieutenants),
- * FR-LIE-CHECKBOX-COUNT (selection management).
+ * FR-LIE-CHECKBOX-COUNT (selection management), FR-HN-TAB (M7 : le composable
+ * ne produit plus de structure H1/H2/H3 ; elle naît à l'onglet Structure,
+ * `useStructureHn`).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
@@ -54,7 +56,6 @@ function buildDeps(overrides: Partial<Parameters<typeof useLieutenantsIa>[0]> = 
     resolvedRootKeywords: ref<string[]>([]),
     wordGroups: ref([]),
     cocoonSlug: ref(''),
-    isLocked: ref(false),
     articleKeywordsStore: useArticleKeywordsStore(),
     computeHnRecurrenceFrom: vi.fn(() => []),
     hnRecurrence: ref([]),
@@ -86,18 +87,6 @@ describe('useLieutenantsIa', () => {
     // Toggle à nouveau → retire
     api.toggleLieutenant(lt)
     expect(api.selectedCards.value.has('agence')).toBe(false)
-  })
-
-  it.skip('AC.J.7.bis — toggleLieutenant ne fait rien si isLocked = true (Sprint 17 — comportement inversé : toggleLieutenant doit toujours répondre pour FR-LIE-CHECKBOX-LOCK-IMMEDIATE)', () => {
-    const onLieutenantsUpdated = vi.fn()
-    const api = useLieutenantsIa(buildDeps({
-      isLocked: ref(true),
-      onLieutenantsUpdated,
-    }))
-
-    api.toggleLieutenant(makeLt('agence'))
-    expect(api.selectedCards.value.size).toBe(0)
-    expect(onLieutenantsUpdated).not.toHaveBeenCalled()
   })
 
   it('AC.J.8 — handleAssistAdd ajoute un keyword absent à lieutenantCards', () => {
@@ -192,7 +181,6 @@ describe('useLieutenantsIa', () => {
       totalGenerated: 3,
       selectedLieutenants: [makeLt('plombier urgence'), makeLt('plombier chauffagiste')],
       eliminatedLieutenants: [makeLt('plombier pas cher')],
-      hnStructure: [],
       contentGapInsights: '',
     })
 
@@ -207,7 +195,6 @@ describe('useLieutenantsIa', () => {
     api.eliminatedCards.value = [makeLt('b')]
     api.totalGenerated.value = 5
     api.selectedCards.value = new Map([['a', makeLt('a')]])
-    api.hnStructure.value = [{ level: 2, text: 'h2', children: [] }] as never
     api.contentGapInsights.value = 'insights'
     api.currentStep.value = 'done'
 
@@ -217,9 +204,15 @@ describe('useLieutenantsIa', () => {
     expect(api.eliminatedCards.value).toEqual([])
     expect(api.totalGenerated.value).toBe(0)
     expect(api.selectedCards.value.size).toBe(0)
-    expect(api.hnStructure.value).toEqual([])
     expect(api.contentGapInsights.value).toBe('')
     expect(api.currentStep.value).toBe('idle')
     expect(mockAbort).toHaveBeenCalled()
+  })
+
+  it('FR-HN-TAB (M7) — le composable n’expose plus de structure Hn ni sa régénération', () => {
+    const api = useLieutenantsIa(buildDeps()) as unknown as Record<string, unknown>
+    for (const gone of ['hnStructure', 'regenerateHnStructure', 'hnRegenStreaming', 'hnRegenError']) {
+      expect(api, `${gone} est parti avec la structure dans l’onglet Structure`).not.toHaveProperty(gone)
+    }
   })
 })

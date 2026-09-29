@@ -1,28 +1,33 @@
 /**
- * Phase 2 — Moteur · Valider (Capitaine + Lieutenants + Lexique).
+ * Phase 2 — Moteur · Valider (Capitaine + Lieutenants + Structure + Lexique).
  *
- *   1. scan de chaque candidat Radar → pickCapitaine (GO préféré, sinon forcé)
+ *   1. scan de chaque candidat Radar → rankCapitaines, puis le premier que la
+ *      porte capitaine accepte sans alerte (chooseThroughGate)
  *   2. SERP analyze sur le Capitaine (peuple le scrape pour le Lexique)
  *   3. pickLieutenants (dérivés des candidats)
- *   4. TF-IDF → pickLexique
- *   5. PUT /articles/:id/keywords (capitaine + lieutenants + lexique)
- *   6. émet capitaine_locked / lieutenants_locked / lexique_validated
+ *   4. structure H1/H2/H3 proposée à partir des lieutenants retenus
+ *      (POST /keywords/:kw/ai-hn-structure), comme à l'écran (FR-HN-TAB)
+ *   5. TF-IDF → pickLexique
+ *   6. chaque décision enregistrée (PUT /articles/:id/keywords), PUIS son étape
+ *      demandée : capitaine_locked / lieutenants_locked / hn_locked / lexique_validated
  */
 
 import type { PhaseDeps } from '../deps.js'
 import type { AutoRunContext } from '../types.js'
 import { toCanonicalType } from '../canonical.js'
-import { emitCheck } from '../checks.js'
-import { pickCapitaine, type CapitaineInput } from '../heuristics/pick-capitaine.js'
+import { saveThenEmit, type MoteurDecisions } from '../checks.js'
+import { rankCapitaines, chooseThroughGate, type CapitaineInput } from '../heuristics/pick-capitaine.js'
 import { pickLieutenants } from '../heuristics/pick-lieutenants.js'
 import { pickLexique, type TfidfResultLite } from '../heuristics/pick-lexique.js'
 import { detectCannibalization, requiresConfirmation, type ExistingCapitaine } from '../heuristics/detect-cannibalization.js'
 import { extractHnStructure, formatHnStructure } from '../heuristics/extract-hn-structure.js'
 import { mapLimit, DEFAULT_CONCURRENCY } from '../concurrency.js'
+import { collectSse } from '../collect-sse.js'
 import { offOfferTerm } from '../../../shared/seo-validators.js'
 import {
   MOTEUR_CAPITAINE_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
   MOTEUR_LEXIQUE_VALIDATED,
 } from '../../../shared/constants/workflow-checks.constants.js'
 
@@ -30,6 +35,11 @@ interface ScanResp {
   verdict: { level: string }
   relevanceScore: { total: number } | null
   marketScore: { total: number } | null
+}
+
+/** Ce que le mode automatique lit d'une évaluation de porte : ses alertes. */
+interface GateEvaluationLite {
+  issues: { message: string }[]
 }
 
 interface SerpResp {
@@ -76,8 +86,21 @@ async function pickFromScans(
   // Le sujet sert à calculer l'affinité topique (le relevanceScore produit
   // s'étant révélé non-discriminant en run réel).
   const topic = `${ctx.articleTitle} ${ctx.pilierKeyword} ${ctx.painPoint}`
-  const choice = pickCapitaine(scanned, topic, level)
-  if (!choice) throw new Error('Moteur : aucun Capitaine sélectionnable')
+  // La porte capitaine juge chaque candidat sur les données que le scan vient
+  // d'enregistrer (gratuit) : le premier qu'elle accepte sans alerte est retenu.
+  // Recette C8 : « artisan local » (SERP commerciale) était retenu pour un
+  // pilier informationnel, la porte le refusait, et le run s'arrêtait.
+  const articleId = ctx.articleId
+  const gated = await chooseThroughGate(rankCapitaines(scanned, topic, level), async (keyword) => {
+    const evaluation = await client.apiGet<GateEvaluationLite>(
+      `/articles/${articleId}/gates/captain-lock?keyword=${encodeURIComponent(keyword)}`,
+    )
+    return evaluation.issues.map(i => i.message)
+  })
+  if (!gated) throw new Error('Moteur : aucun Capitaine sélectionnable')
+  for (const r of gated.rejected) logger.dim(`« ${r.keyword} » écarté par la porte capitaine : ${r.issues.join(' ; ')}`)
+  if (!gated.clean) logger.warn('Aucun candidat ne passe la porte capitaine sans alerte : le meilleur est soumis, la porte dira pourquoi.')
+  const choice = gated.choice
 
   const scores = `affinité ${(choice.affinity * 100).toFixed(0)}%, pertinence ${choice.relevance ?? '—'}, marché ${choice.market ?? '—'}`
   if (choice.forced) {
@@ -115,7 +138,17 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
 
     ctx.capitaine = choice.keyword
     if (choice.imposed) logger.success(`Capitaine imposé : « ${choice.keyword} » (heuristique court-circuitée)`)
-    await emitCheck(client, ctx.articleId, MOTEUR_CAPITAINE_LOCKED)
+    // Chaque étape est demandée APRÈS l'enregistrement de ce qu'elle garde :
+    // la porte juge la base (FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE).
+    const decisions = (): MoteurDecisions => ({
+      capitaine: ctx.capitaine ?? '',
+      lieutenants: ctx.lieutenants ?? [],
+      lexique: ctx.lexique ?? [],
+      // La structure de l'article, jamais la récurrence des concurrents : sans
+      // H1 ni capitaine, celle-ci ne passerait pas la porte « structure ».
+      hnStructure: ctx.articleStructure ?? [],
+    })
+    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_CAPITAINE_LOCKED)
     report.addStep(
       `Moteur · Capitaine (${choice.keyword}${choice.imposed ? ' — imposé' : choice.forced ? ' — forcé' : ''})`,
     )
@@ -170,11 +203,28 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
     ctx.lieutenants = pickLieutenants(ctx.radarCandidates, ctx.capitaine, level, {
       competitorHeadings: headings,
     })
-    await emitCheck(client, ctx.articleId, MOTEUR_LIEUTENANTS_LOCKED)
+    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_LIEUTENANTS_LOCKED)
     report.addStep(
       `Moteur · Lieutenants (${ctx.lieutenants.length}${headings.length > 0 ? ', ancrés SERP' : ''})`,
     )
     logger.success(`Lieutenants : ${ctx.lieutenants.length} retenus.`)
+
+    // 2bis. Structure — proposée à partir des lieutenants retenus et de la
+    //       récurrence des concurrents, puis jugée par la porte `hn-lock`.
+    logger.step('Structure — proposition à partir des lieutenants retenus…')
+    const structureDone = await collectSse(deps, `/keywords/${encodeURIComponent(choice.keyword)}/ai-hn-structure`, {
+      lieutenants: ctx.lieutenants,
+      level,
+      hnStructure: hn.map((h) => ({ level: h.level, text: h.text, count: h.competitorCount, percent: Math.round(h.recurrence * 100) })),
+      lockedHeadings: [],
+      articleId: ctx.articleId,
+    })
+    const proposed = (structureDone.outline as { hnStructure?: AutoRunContext['articleStructure'] } | undefined)?.hnStructure ?? []
+    if (proposed.length === 0) throw new Error('Moteur : aucune structure proposée')
+    ctx.articleStructure = proposed
+    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_HN_LOCKED)
+    report.addStep(`Moteur · Structure (${proposed.filter((n) => n.level === 2).length} H2)`)
+    logger.success(`Structure : ${proposed.filter((n) => n.level === 2).length} chapitres.`)
 
     // 3. Lexique — TF-IDF (lit le scrape SERP hérité)
     logger.step('Lexique — extraction TF-IDF…')
@@ -185,19 +235,13 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
     })
     // Exclut les mots déjà portés par le Capitaine/Lieutenants → lexique complémentaire.
     ctx.lexique = pickLexique(tf, { exclude: [choice.keyword, ...ctx.lieutenants] })
-    await emitCheck(client, ctx.articleId, MOTEUR_LEXIQUE_VALIDATED)
+    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_LEXIQUE_VALIDATED)
     report.addStep(`Moteur · Lexique (${ctx.lexique.length} termes)`)
     logger.success(`Lexique : ${ctx.lexique.length} termes.`)
 
-    // 4. Persistance des décisions (lu par la Rédaction via getArticleKeywords).
-    //    `hnStructure` alimente aussi le brief IA et la recommandation de
-    //    longueur côté app — elle n'est plus vide (défaut n°16).
-    await client.apiPut(`/articles/${ctx.articleId}/keywords`, {
-      capitaine: ctx.capitaine,
-      lieutenants: ctx.lieutenants,
-      lexique: ctx.lexique,
-      hnStructure: ctx.hnStructure,
-    })
+    // 4. Les décisions sont déjà en base, enregistrées étape par étape (lu par la
+    //    Rédaction via getArticleKeywords). La structure devient le sommaire et
+    //    alimente la recommandation de longueur côté app (défaut n°16).
     logger.success('Décisions Moteur persistées (article_keywords).')
   }
 }

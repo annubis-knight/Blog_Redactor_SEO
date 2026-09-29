@@ -39,11 +39,13 @@ Chaque Intermédiaire approfondit une **facette distincte et complémentaire** d
 
 ## Ordre de génération : Mot-clé → Slug → Titre
 
+> **Les exemples de ce prompt viennent volontairement d'un autre métier (chauffagiste) et remplacent la ville par `[ville]`.** Ils montrent une forme. Ne recopie jamais un exemple : construis chaque mot-clé, slug et titre à partir du cocon, de sa stratégie et de sa zone.
+
 Pour chaque article, génère dans CET ORDRE :
 
 ### 1. Le mot-clé technique (suggestedKeyword)
 
-Le mot-clé est la **racine technique** de l'article : 3 à 5 mots nominatifs qui correspondent à ce qu'un professionnel taperait réellement dans Google.
+Le mot-clé est la **racine technique** de l'article : 3 à 4 mots nominatifs qui correspondent à ce qu'un professionnel taperait réellement dans Google.
 
 **Règles universelles :**
 - Forme **nominative** (pas de verbe conjugué, pas de "comment", "pourquoi", "quel")
@@ -61,8 +63,8 @@ Le slug est dérivé **directement** du mot-clé : c'est le mot-clé nettoyé po
 - Retirer tous les mots vides restants (articles, prépositions, conjonctions)
 - Tout en **minuscules**, sans accents, sans caractères spéciaux
 - Maximum 5 segments séparés par des tirets
-- Exemple : mot-clé `stratégie digitale entreprises Toulouse` → slug `strategie-digitale-entreprises-toulouse`
-- Exemple : mot-clé `design émotionnel site professionnel` → slug `design-emotionnel-site-professionnel`
+- Exemple : mot-clé `entretien chaudière particuliers [ville]` → slug `entretien-chaudiere-particuliers-[ville]`
+- Exemple : mot-clé `désembouage plancher chauffant maison` → slug `desembouage-plancher-chauffant-maison`
 
 ### 3. Le titre (title)
 
@@ -80,13 +82,13 @@ Le titre est la **couche humaine** : c'est le H1 de l'article, optimisé pour le
 - **Mot-clé** : 3-4 mots nominatifs, inclure la cible ET la localisation (ville/région/adjectif géo).
 - **Titre** : ton d'expert, ancrage local naturel.
 - **Intention** : informationnelle large
-- **Exemple** : mot-clé `stratégie digitale entreprises Toulouse` → slug `strategie-digitale-entreprises-toulouse` → titre "Propulser la croissance digitale des entreprises toulousaines : le guide complet"
+- **Exemple** : mot-clé `entretien chaudière particuliers [ville]` → slug `entretien-chaudiere-particuliers-[ville]` → titre "Entretenir sa chaudière à [ville] : le guide complet des particuliers"
 
 ### Article Intermédiaire
 - **Mot-clé** : 3-4 mots nominatifs, sujet + cible. **ZÉRO localisation** (pas de ville, pas de région, pas d'adjectif géo).
 - **Titre** : spécifique métier ou technique. Utiliser des synonymes de PME ("activité", "structure", "équipe").
 - **Intention** : info ou comparaison, expert/méthodo
-- **Exemple** : mot-clé `design émotionnel site professionnel` → slug `design-emotionnel-site-professionnel` → titre "L'UX Design au service de la conversion : transformer vos visiteurs en clients"
+- **Exemple** : mot-clé `désembouage plancher chauffant maison` → slug `desembouage-plancher-chauffant-maison` → titre "Désembouer un plancher chauffant : quand et comment le faire"
 
 ## Tableau récapitulatif STRICT des mots-clés
 
@@ -105,17 +107,17 @@ Ne JAMAIS utiliser "PME" ou "TPE" dans les titres ni les mots-clés. Utiliser à
 
 ### Exemples CORRECTS
 
-- **Pilier** : mot-clé `stratégie digitale entreprises Toulouse` → slug `strategie-digitale-entreprises-toulouse`
-- **Intermédiaire** : mot-clé `design émotionnel site professionnel` → slug `design-emotionnel-site-professionnel`
+- **Pilier** : mot-clé `entretien chaudière particuliers [ville]` → slug `entretien-chaudiere-particuliers-[ville]`
+- **Intermédiaire** : mot-clé `désembouage plancher chauffant maison` → slug `desembouage-plancher-chauffant-maison`
 
 ### Exemples INCORRECTS — NE PAS générer
 
-- Pilier sans ville : `stratégie digitale entreprises` -> manque la localisation
-- Pilier sans cible : `seo Toulouse 2025` -> manque la cible
-- Inter avec ville : `design site professionnel Toulouse` -> localisation interdite pour un Inter
-- Usage de "PME" : `stratégie PME digitale Toulouse` -> utiliser "entreprises" à la place
-- Mots de liaison dans le mot-clé : `stratégie de marketing pour entreprises` -> retirer "de" et "pour"
-- Verbe conjugué : `comment optimiser son site professionnel` -> forme nominative requise
+- Pilier sans ville : `entretien chaudière particuliers` -> manque la localisation
+- Pilier sans cible : `chaudière [ville] {{year}}` -> manque la cible
+- Inter avec ville : `désembouage plancher chauffant [ville]` -> localisation interdite pour un Inter
+- Usage de "PME" : `chauffage PME [ville]` -> utiliser "entreprises" à la place
+- Mots de liaison dans le mot-clé : `entretien de chaudière pour particuliers` -> retirer "de" et "pour"
+- Verbe conjugué : `comment entretenir sa chaudière` -> forme nominative requise
 
 ## Contraintes
 - Les mots-clés doivent être des **requêtes Google réalistes** que tapent de vrais dirigeants d'entreprise.
@@ -148,7 +150,7 @@ Le champ `painPoint` doit décrire le **problème concret** que le lecteur cherc
 Choisis exactement **une** des 4 valeurs suivantes selon le type de réponse que l'article doit apporter :
 
 - `"informational"` : article qui explique, guide, éduque (« Comment faire X », « Guide débutant Y », « Comprendre Z »). C'est le défaut pour la plupart des articles SEO éditoriaux.
-- `"commercial"` : comparatif, sélection, recommandation (« Meilleur X 2026 », « Comparatif X vs Y », « Top 10 Z »). Le lecteur compare avant d'acheter.
+- `"commercial"` : comparatif, sélection, recommandation (« Meilleur X {{year}} », « Comparatif X vs Y », « Top 10 Z »). Le lecteur compare avant d'acheter.
 - `"transactional"` : pousse directement à l'action ou la conversion (« Acheter X », « Réserver X », « Tarifs X »). Rare en SEO éditorial pur.
 - `"navigational"` : page produit/marque précise (« iPhone 15 Pro », « Notion vs Airtable » lorsque c'est un duel direct entre 2 produits identifiés). Très rare en SEO éditorial.
 

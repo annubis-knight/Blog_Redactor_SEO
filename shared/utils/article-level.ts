@@ -11,7 +11,7 @@
  *   - `'pilier'`, `'intermediaire'`, `'specifique'`
  *
  * **Frontières de conversion** : ce module est appelé exclusivement aux
- * frontières I/O — `rowToArticle()` côté lecture, `addArticlesToCocoon()` /
+ * frontières I/O — `rowToArticle()` côté lecture, `insertCocoonArticle()` /
  * écritures côté insert. Tout le reste du code manipule `ArticleLevel`.
  *
  * Cf. TD-DRIFT-004 (drift-code-vs-doc.md) — décision 2026-05-13 :

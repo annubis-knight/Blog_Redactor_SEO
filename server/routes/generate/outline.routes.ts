@@ -7,10 +7,13 @@ import { getStrategy } from '../../services/strategy/strategy.service.js'
 import { getArticleKeywords, loadArticleMicroContext } from '../../services/infra/data.service.js'
 import {
   buildKeywordContext,
-  buildStrategyContext,
+  pickStrategyContext,
   consumeStream,
   parseOutlineFromText,
 } from './_helpers.js'
+import { getCocoonStrategy } from '../../services/strategy/cocoon-strategy.service.js'
+import { ARTICLE_TYPE_RULES, describeTypeRules } from '../../../shared/constants/article-type-rules.js'
+import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 
 const router = Router()
 
@@ -35,7 +38,14 @@ router.post('/generate/outline', async (req, res) => {
       : 'Aucune question PAA disponible.'
 
     const articleId = parsed.data.articleId
-    const strategy = await getStrategy(articleId)
+    const [strategy, cocoonStrategy] = await Promise.all([
+      getStrategy(articleId),
+      // Stratégie du cocon en repli (R5) : son absence ne doit pas bloquer la rédaction.
+      getCocoonStrategy(cocoonName).catch((err: Error) => {
+        log.warn('Stratégie du cocon illisible — rédaction sans elle', { cocoonName, error: err.message })
+        return null
+      }),
+    ])
     const { data: articleKw } = await getArticleKeywords(articleId)
     const microCtx = await loadArticleMicroContext(articleId)
 
@@ -57,9 +67,11 @@ router.post('/generate/outline', async (req, res) => {
       competitorStructure: parsed.data.competitorStructure
         ? `## Structure des concurrents qui rankent\n\n${parsed.data.competitorStructure}`
         : '',
-      strategyContext: buildStrategyContext(strategy),
+      strategyContext: pickStrategyContext(strategy, cocoonStrategy),
       keywordContext: buildKeywordContext(articleKw),
       microContext: microContextBlock,
+      // Nombre de H2 / H3 du type : la source unique (FR-INFRA-TYPE-RULES-SSOT).
+      type_rules: articleType in ARTICLE_TYPE_RULES ? describeTypeRules(articleType as ArticleLevel) : '',
     })
 
     const userPrompt = `Génère le sommaire pour l'article "${articleTitle}" (type: ${articleType}, mot-clé: ${keyword}).`

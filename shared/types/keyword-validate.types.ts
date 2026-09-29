@@ -46,7 +46,7 @@ export interface ScanResponse {
   paaQuestions?: PaaQuestionScan[]
   /**
    * Score KPI / Marché (0-100) — calculé à partir de Volume / KD / Intent / PAA / AC / CPC.
-   * Affiché dans l'onglet Radar. Cf. docs/scoring-kpi-vs-relevance.md.
+   * Affiché dans l'onglet Radar. Cf. design/14-radar-capitaine.md.
    */
   marketScore?: MarketScoreResult
   /**

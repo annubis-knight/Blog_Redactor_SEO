@@ -26,7 +26,6 @@ function lieutenant(keyword: string, over: Record<string, unknown> = {}): Record
 function aiOutput(): Record<string, unknown> {
   return {
     lieutenants: [lieutenant('prix création site web'), lieutenant('délai création site', { suggestedHnLevel: 3, score: 64 })],
-    hnStructure: [{ level: 2, text: 'Combien coûte un site ?', children: [{ level: 3, text: 'Site vitrine' }] }],
     contentGapInsights: 'Aucun concurrent ne parle de maintenance.',
   }
 }
@@ -81,18 +80,13 @@ describe('proposeLieutenantsAiContract — sortie brute de l’IA', () => {
     expect(run).toThrow(ContractViolationError)
     expect(run).toThrow(/format inattendu/)
   })
-
-  it('sans plan Hn, la liste est servie avec un plan vide', () => {
-    const { hnStructure: _omitted, ...raw } = aiOutput()
-    expect(parseContract(proposeLieutenantsAiContract, raw, 'server').hnStructure).toEqual([])
-  })
 })
 
 describe('proposeLieutenantsContract — événement done côté écran', () => {
   it('garde la répartition retenus / éliminés et le compteur', () => {
     const raw = {
       selectedLieutenants: [lieutenant('a')], eliminatedLieutenants: [lieutenant('b', { score: null })],
-      hnStructure: [], contentGapInsights: '', totalGenerated: 2,
+      contentGapInsights: '', totalGenerated: 2,
     }
     const out = parseContract(proposeLieutenantsContract, raw, 'client')
     expect(out.selectedLieutenants).toHaveLength(1)

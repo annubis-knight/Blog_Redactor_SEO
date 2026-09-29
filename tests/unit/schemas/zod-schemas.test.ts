@@ -70,10 +70,6 @@ describe('article.schema — rawArticlesDbSchema', () => {
       expect(() => rawArticlesDbSchema.parse(data)).not.toThrow()
     }
   })
-
-  it.skip('validates the actual BDD_Articles_Blog.json file (migrated to PostgreSQL)', async () => {
-    // JSON files removed after PostgreSQL migration
-  })
 })
 
 describe('keyword.schema — rawKeywordsDbSchema', () => {
@@ -108,10 +104,6 @@ describe('keyword.schema — rawKeywordsDbSchema', () => {
       }
       expect(() => rawKeywordsDbSchema.parse(data)).not.toThrow()
     }
-  })
-
-  it.skip('validates the actual BDD_Mots_Clefs_SEO.json file (migrated to PostgreSQL)', async () => {
-    // JSON files removed after PostgreSQL migration
   })
 })
 

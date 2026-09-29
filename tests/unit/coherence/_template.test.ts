@@ -2,7 +2,7 @@
  * Template de test de cohérence affichage / calcul.
  *
  * À cloner pour chaque donnée partagée critique cartographiée dans
- * docs/data-flows/<nom>.md.
+ * design/data-flows/<nom>.md.
  *
  * Le test vérifie que la valeur AFFICHÉE à l'utilisateur et la valeur
  * UTILISÉE pour le tri / filtre / agrégat dérivent de la MÊME expression.

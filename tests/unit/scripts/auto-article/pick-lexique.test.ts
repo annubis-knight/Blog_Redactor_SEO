@@ -84,3 +84,13 @@ describe('auto:pick-lexique — filtrage bruit (régression run réel)', () => {
     expect(out).toEqual(['backlink'])
   })
 })
+
+describe('pickLexique — même règle que la porte du lexique (FR-LEX-METIER-ONLY)', () => {
+  it('n’emporte ni mot vide accentué ni décor de page', () => {
+    const picked = pickLexique({
+      obligatoire: [{ term: 'être' }, { term: 'cookies' }, { term: 'mentions' }, { term: 'pare-vapeur' }],
+      differenciateur: [{ term: 'newsletter', density: 3 }, { term: 'laine', density: 3 }],
+    })
+    expect(picked).toEqual(['pare-vapeur', 'laine'])
+  })
+})

@@ -7,12 +7,12 @@
  * `<TabBar>` du parent `LexiquePanel.vue` (FR-LEX-MULTI-KEYWORD-TABS).
  *
  * Ce composant ne s'affiche que lorsque l'onglet « + Tester un mot-clé »
- * est actif côté parent.
+ * est actif côté parent. Avoir déjà retenu des termes ne le ferme pas : on
+ * peut toujours tester un autre mot-clé (FR-LEX-MULTI-KEYWORD).
  */
 defineProps<{
   customKeywordInput: string
   isLoading: boolean
-  isLocked: boolean
 }>()
 
 defineEmits<{
@@ -29,7 +29,7 @@ defineEmits<{
         :value="customKeywordInput"
         type="text"
         class="custom-keyword-input"
-        :disabled="isLoading || isLocked"
+        :disabled="isLoading"
         placeholder="Ex: coach sportif Paris"
         @input="(e) => $emit('update:custom-keyword', (e.target as HTMLInputElement).value)"
         @keydown.enter="$emit('extract-custom')"
@@ -37,7 +37,7 @@ defineEmits<{
       <button
         type="button"
         class="btn-secondary"
-        :disabled="!customKeywordInput.trim() || isLoading || isLocked"
+        :disabled="!customKeywordInput.trim() || isLoading"
         @click="$emit('extract-custom')"
       >Extraire</button>
     </div>

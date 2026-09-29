@@ -2,6 +2,8 @@
 defineProps<{
   result: string
   isStreaming: boolean
+  /** Avis du serveur sur le résultat (liens retirés…). */
+  notice?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -16,6 +18,7 @@ const emit = defineEmits<{
       <div class="result-text">{{ result }}</div>
       <span v-if="isStreaming" class="streaming-indicator">●</span>
     </div>
+    <p v-if="notice" class="result-notice" data-testid="action-notice" role="status">{{ notice }}</p>
 
     <div class="result-actions">
       <button
@@ -26,7 +29,7 @@ const emit = defineEmits<{
       </button>
       <button
         class="btn-accept"
-        :disabled="isStreaming"
+        :disabled="isStreaming || !result"
         @click="emit('accept')"
       >
         Accepter
@@ -56,6 +59,12 @@ const emit = defineEmits<{
   font-size: 0.8125rem;
   line-height: 1.5;
   white-space: pre-wrap;
+}
+
+.result-notice {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-warning, #b45309);
 }
 
 .streaming-indicator {

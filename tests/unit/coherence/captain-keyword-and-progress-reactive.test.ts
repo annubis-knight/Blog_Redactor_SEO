@@ -9,7 +9,7 @@
  *   AC4  Uncheck → dot redevient vide
  *   AC5  Switch article A → B → A : pas de bleed-through
  *   AC6  FR-MOT-DISPLAY-FROM-STORE existe au PRD (couvert par contract test)
- *   AC7  docs/data-flows/captain-keyword-locked.md existe (couvert par fs check)
+ *   AC7  design/data-flows/captain-keyword-locked.md existe (couvert par fs check)
  *   AC8  completed-checks.md enrichi avec note ProgressDots + synced_with
  *   AC9  Test suite passe au vert
  *   AC10 Pas de régression cannibalization (icône warning + cohérence affichage/calcul)
@@ -533,8 +533,8 @@ describe('AC6/AC7/AC8 — documentation FR + data-flows', () => {
     expect(prd).toMatch(/FR-MOT-DISPLAY-FROM-STORE[\s\S]*Statut.*active/)
   })
 
-  it('AC7 — docs/data-flows/captain-keyword-locked.md existe avec frontmatter standard', () => {
-    const path = resolve(PROJECT_ROOT, 'docs/data-flows/captain-keyword-locked.md')
+  it('AC7 — design/data-flows/captain-keyword-locked.md existe avec frontmatter standard', () => {
+    const path = resolve(PROJECT_ROOT, 'design/data-flows/captain-keyword-locked.md')
     expect(existsSync(path)).toBe(true)
     const doc = readFileSync(path, 'utf8')
     expect(doc).toMatch(/^---\nname: captain-keyword-locked/)
@@ -545,7 +545,7 @@ describe('AC6/AC7/AC8 — documentation FR + data-flows', () => {
 
   it('AC8 — completed-checks.md enrichi avec note ProgressDots et synced_with', () => {
     const doc = readFileSync(
-      resolve(PROJECT_ROOT, 'docs/data-flows/completed-checks.md'),
+      resolve(PROJECT_ROOT, 'design/data-flows/completed-checks.md'),
       'utf8',
     )
     expect(doc).toContain('synced_with: [captain-keyword-locked.md]')

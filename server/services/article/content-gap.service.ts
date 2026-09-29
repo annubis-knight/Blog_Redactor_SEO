@@ -1,3 +1,10 @@
+/**
+ * AUTHORITY: PostgreSQL `keyword_metrics` (analyse d'écart de contenu, cross-article)
+ * READS FROM: keyword_metrics (fraîcheur), Tavily (pages concurrentes), IA, zone du client (theme_config)
+ * WRITES TO: keyword_metrics via upsertKeywordContentGap
+ * CONSUMERS: POST /content-gap, moyenne SERP de la recommandation de longueur
+ * RELATED FR: FR-INFRA-PROMPT-LAYERS (zone lue dans la configuration, plus écrite en dur)
+ */
 import { log } from '../../utils/logger.js'
 import {
   getKeywordMetrics,
@@ -5,6 +12,7 @@ import {
   isKeywordMetricsFresh,
 } from '../keyword/keyword-metrics.service.js'
 import { classifyWithTool } from '../external/ai-provider.service.js'
+import { loadZoneContext } from '../strategy/prompt-context.service.js'
 import type { ApiUsage } from '../external/claude.service.js'
 import type {
   ContentGapAnalysis,
@@ -80,6 +88,10 @@ async function analyzeCompetitorContent(
     localEntities: { entity: string; frequency: number }[]
   }
 
+  // La zone du client (theme_config), jamais une région écrite en dur (FR-INFRA-PROMPT-LAYERS).
+  const { zone } = await loadZoneContext()
+  const localScope = zone ? `de la zone ${zone}` : 'de la zone du client'
+
   try {
     const { result, usage } = await classifyWithTool<ContentGapPayload>(
       'Tu es un expert SEO specialise en analyse concurrentielle. Reponds UNIQUEMENT en JSON valide.',
@@ -88,7 +100,7 @@ async function analyzeCompetitorContent(
 ${contentSummaries}
 
 Pour les themes: identifie les sujets/sous-sujets couverts par au moins 2 concurrents.
-Pour les entites locales: detecte mentions de quartiers, villes, entreprises, lieux de Toulouse/Occitanie.
+Pour les entites locales: detecte mentions de quartiers, villes, entreprises, lieux ${localScope}.
 Pour publishDate: extrait la date de publication ou derniere mise a jour si visible (format YYYY-MM-DD). Si absente, omets le champ.
 Pour readabilityScore: estime un score de lisibilite 0-100 (0=tres difficile, 100=tres facile) base sur la longueur des phrases et la complexite du vocabulaire.
 Pour paasCovered: liste les questions PAA (People Also Ask) auxquelles le contenu repond explicitement.`,

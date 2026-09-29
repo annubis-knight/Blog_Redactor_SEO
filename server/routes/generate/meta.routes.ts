@@ -4,14 +4,8 @@ import { generateMetaRequestSchema } from '../../../shared/schemas/generate.sche
 import { streamChatCompletion } from '../../services/external/ai-provider.service.js'
 import type { ApiUsage } from '../../services/external/claude.service.js'
 import { loadPrompt } from '../../utils/prompt-loader.js'
-import {
-  RATE_LIMIT_DEFAULT_WAIT,
-  RATE_LIMIT_MAX_RETRIES,
-  consumeStream,
-  getRetryAfterSeconds,
-  isRateLimitError,
-  sleep,
-} from './_helpers.js'
+import { consumeStream } from './_helpers.js'
+import { fitMetaText } from '../../../shared/utils/meta-fit.js'
 
 const router = Router()
 
@@ -33,39 +27,24 @@ router.post('/generate/meta', async (req, res) => {
     const startTotal = Date.now()
     const systemPrompt = await loadPrompt('system-propulsite')
 
+    // Le texte de l'article est du contenu utilisateur : échappé (NFR-SEC-PROMPT-INJECTION).
     const userPrompt = await loadPrompt('generate-meta', {
       articleTitle,
       keyword,
       articleContent,
-    })
+    }, { escapeKeys: ['articleContent'] })
     log.debug('meta prompts built', { systemChars: systemPrompt.length, userChars: userPrompt.length })
 
-    // Retry loop with backoff on 429 rate-limit
-    let fullContent = ''
-    let usage: ApiUsage | null = null
-    for (let attempt = 0; attempt < RATE_LIMIT_MAX_RETRIES; attempt++) {
-      try {
-        const startAi = Date.now()
-        const result = await consumeStream(
-          streamChatCompletion(systemPrompt, userPrompt, 1024),
-          () => {}, // no SSE chunks for meta
-        )
-        fullContent = result.fullContent
-        usage = result.usage
-        log.debug('meta stream complete', { chunkCount: result.chunkCount, contentChars: fullContent.length, ms: Date.now() - startAi })
-        break
-      } catch (metaErr) {
-        if (isRateLimitError(metaErr) && attempt < RATE_LIMIT_MAX_RETRIES - 1) {
-          const waitSeconds = getRetryAfterSeconds(metaErr, RATE_LIMIT_DEFAULT_WAIT * (attempt + 1))
-          log.warn(`Meta generation hit rate limit (429), waiting ${waitSeconds}s before retry ${attempt + 1}/${RATE_LIMIT_MAX_RETRIES - 1}`, {
-            error: (metaErr as Error).message, waitSeconds,
-          })
-          await sleep(waitSeconds * 1000)
-          continue
-        }
-        throw metaErr
-      }
-    }
+    // Les réessais (quota, surcharge) vivent dans ai-provider (withRetry /
+    // withFallbackChain) : la route ne réessaie pas (épopée qualité SEO, R15).
+    const startAi = Date.now()
+    const result = await consumeStream(
+      streamChatCompletion(systemPrompt, userPrompt, 1024),
+      () => {}, // no SSE chunks for meta
+    )
+    const fullContent = result.fullContent
+    const usage: ApiUsage | null = result.usage
+    log.debug('meta stream complete', { chunkCount: result.chunkCount, contentChars: fullContent.length, ms: Date.now() - startAi })
 
     // Parse JSON response from Claude
     const cleaned = fullContent.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
@@ -75,18 +54,18 @@ router.post('/generate/meta', async (req, res) => {
       throw new Error('Invalid meta response: missing metaTitle or metaDescription')
     }
 
-    // Enforce SEO character limits — truncate at last word boundary
+    // Longueurs affichées par Google : on raccourcit sans jamais couper en plein vol
+    // ni ajouter « ... », que validateArticleMeta classe en erreur (épopée qualité SEO, R4).
     const MAX_TITLE = 60
     const MAX_DESC = 160
-    if (meta.metaTitle.length > MAX_TITLE) {
-      const truncated = meta.metaTitle.slice(0, MAX_TITLE)
-      meta.metaTitle = truncated.slice(0, truncated.lastIndexOf(' ')) || truncated
-      log.warn(`Meta title truncated from ${meta.metaTitle.length + (MAX_TITLE - meta.metaTitle.length)} to ${meta.metaTitle.length} chars`)
-    }
-    if (meta.metaDescription.length > MAX_DESC) {
-      const truncated = meta.metaDescription.slice(0, MAX_DESC - 3)
-      meta.metaDescription = (truncated.slice(0, truncated.lastIndexOf(' ')) || truncated) + '...'
-      log.warn(`Meta description truncated to ${meta.metaDescription.length} chars`)
+    const rawLengths = { title: meta.metaTitle.length, description: meta.metaDescription.length }
+    meta.metaTitle = fitMetaText(meta.metaTitle, MAX_TITLE)
+    meta.metaDescription = fitMetaText(meta.metaDescription, MAX_DESC)
+    if (meta.metaTitle.length !== rawLengths.title || meta.metaDescription.length !== rawLengths.description) {
+      log.warn('Meta ajustée aux longueurs affichées par Google', {
+        title: `${rawLengths.title} → ${meta.metaTitle.length}`,
+        description: `${rawLengths.description} → ${meta.metaDescription.length}`,
+      })
     }
 
     log.info(`Meta generated for "${articleTitle}"`, { titleLen: meta.metaTitle.length, descLen: meta.metaDescription.length, totalMs: Date.now() - startTotal })

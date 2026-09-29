@@ -1,19 +1,24 @@
 /**
- * Parcours de bout en bout — un cocon vide devient trois articles rédigés.
+ * Parcours de bout en bout — un cocon vide devient trois articles rédigés,
+ * chacun né d'une section de son parent (C7, FR-CER-COCOON-PROGRESSIVE).
  *
  * C'est le seul test qui traverse les trois phases du produit dans l'ordre où
  * un utilisateur les vit, sans raccourci de préparation :
  *
- *   Cerveau   — cinq étapes de stratégie, puis génération et acceptation des
- *               articles proposés (pilier, intermédiaire, spécifique).
+ *   Cerveau   — cinq étapes de stratégie, puis le pilier créé depuis le
+ *               constructeur du cocon (mot-clé choisi parmi des candidats mesurés).
  *   Moteur    — pour chaque article : Capitaine verrouillé, Lieutenants
- *               retenus, plan Hn enregistré, Lexique validé.
- *   Rédaction — brief et micro-contexte, sommaire validé, article généré,
- *               relecture dans l'éditeur, aperçu, publication.
+ *               retenus, structure Hn validée, Lexique validé.
+ *   Rédaction — brief et micro-contexte, sommaire validé, premier jet généré
+ *               puis accepté (sa porte), relecture, aperçu, publication.
+ *   Puis      — l'intermédiaire naît d'une section du pilier rédigé, le
+ *               spécialisé d'une section de l'intermédiaire rédigé, et chacun
+ *               refait Moteur et Rédaction.
  *
- * Les phases s'enchaînent par de vrais verrous : le plan Hn du Moteur devient
- * le sommaire de la Rédaction, et le passage en Rédaction reste fermé tant que
- * les trois verrous du Moteur ne sont pas posés. Un raccourci de préparation
+ * Les phases s'enchaînent par de vrais verrous : la structure Hn du Moteur
+ * devient le sommaire de la Rédaction, le passage en Rédaction reste fermé tant
+ * que les verrous du Moteur ne sont pas posés, et un enfant ne naît que d'un
+ * parent dont le premier jet est accepté. Un raccourci de préparation
  * masquerait précisément ce qu'on veut vérifier.
  *
  * Sources simulées par défaut. `PARCOURS_REEL=1` bascule sur les vraies API
@@ -22,6 +27,8 @@
 import { test, expect, type Page } from '@playwright/test'
 import { query } from '../../../server/db/client.js'
 import { ETAPES_STRATEGIE, REPONSES, useCerveau } from '../helpers/cerveau-fixtures'
+import { acceptDraftThroughGate, publishThroughGate } from '../helpers/gate-alarm'
+import { createChildFromSection, createPillar, openCocoonTree } from '../helpers/cocoon-builder-ui'
 import {
   checksDeLArticle,
   dismissLoadPrompt,
@@ -31,6 +38,7 @@ import {
   selectArticleByTitle,
   tabLocator,
   validerLexique,
+  validerStructure,
 } from '../helpers/moteur-ui'
 
 test.describe.configure({ mode: 'serial' })
@@ -38,14 +46,19 @@ test.describe.configure({ mode: 'serial' })
 const REEL = process.env.PARCOURS_REEL === '1'
 const cerveau = useCerveau(REEL ? 'real' : 'mock')
 
-/** Les trois articles retenus à l'issue du Cerveau, un par niveau. */
+/** Les trois articles du parcours, un par niveau, créés un à un depuis le Cerveau. */
 interface ArticleDuParcours {
   id: number
   titre: string
   type: 'Pilier' | 'Intermédiaire' | 'Spécialisé'
   keyword: string
+  /** La section du parent dont il est né (`null` pour le pilier). */
+  section: string | null
 }
 const articles: Partial<Record<ArticleDuParcours['type'], ArticleDuParcours>> = {}
+
+/** Le parent de chaque niveau : un enfant naît d'une section de son parent rédigé. */
+const PARENT_DE = { 'Intermédiaire': 'Pilier', 'Spécialisé': 'Intermédiaire' } as const
 
 const MICRO_CONTEXTE = {
   angle: "Partir de ce que le dirigeant constate lui-même — un site en ligne mais zéro demande — plutôt que d'expliquer le SEO dans l'abstrait.",
@@ -57,7 +70,7 @@ const MICRO_CONTEXTE = {
 // Phase 1 — Cerveau
 // ---------------------------------------------------------------------------
 
-test('Cerveau — la stratégie du cocon et les articles', async ({ page }) => {
+test('Cerveau — la stratégie du cocon, puis son pilier', async ({ page }) => {
   test.setTimeout(REEL ? 900_000 : 300_000)
 
   await page.goto(cerveau.cerveauUrl())
@@ -78,47 +91,19 @@ test('Cerveau — la stratégie du cocon et les articles', async ({ page }) => {
     })
   }
 
-  await test.step('génération et acceptation des articles', async () => {
-    const generer = page.locator('[data-testid="brain-generate-articles"]')
-    await expect(generer).toBeVisible({ timeout: 30000 })
-    await expect(generer).toBeEnabled({ timeout: 60000 })
-    await generer.click()
+  // FR-CER-COCOON-PROGRESSIVE : dans un cocon vide, seul le pilier naît ; ses
+  // enfants viendront de ses sections, une fois rédigé.
+  await test.step('le pilier naît du constructeur du cocon', async () => {
+    const tree = await openCocoonTree(page, cerveau.cerveauUrl())
+    const pilier = await createPillar(page, tree, REEL ? 300_000 : 120_000)
+    articles.Pilier = { id: pilier.id, titre: pilier.title, type: 'Pilier', keyword: pilier.keyword, section: null }
 
-    await expect(page.locator('[data-testid="proposal-item"]').first(), 'des articles sont proposés')
-      .toBeVisible({ timeout: REEL ? 600_000 : 300_000 })
-
-    // La génération se fait en trois temps : le Pilier et les Intermédiaires
-    // arrivent d'abord, les Spécialisés à la fin. Valider entre les deux ne
-    // créerait que la première moitié.
-    await expect(generer, 'la génération doit être terminée').toBeEnabled({ timeout: REEL ? 600_000 : 300_000 })
-
-    const toutValider = page.locator('[data-testid="brain-validate-all"]')
-    await expect(toutValider, 'le bouton « Tout valider » doit être accessible').toBeVisible({ timeout: 30000 })
-    await expect(toutValider, 'et actif une fois la génération finie').toBeEnabled({ timeout: 60000 })
-    await toutValider.scrollIntoViewIfNeeded()
-    const creations: number[] = []
-    page.on('response', r => {
-      if (r.url().endsWith('/articles/batch-create')) creations.push(r.status())
-    })
-    await toutValider.click()
-    await expect
-      .poll(() => creations.length, { timeout: 60000, message: 'le clic doit déclencher des créations' })
-      .toBeGreaterThan(0)
-    expect(creations.every(s => s === 200 || s === 201), `créations en échec : ${creations.join(', ')}`).toBe(true)
-
-    // Un cocon a besoin des trois niveaux : le pilier, ses intermédiaires et
-    // leurs spécialisés. Le compte par type dit tout de suite lequel manque.
-    await expect.poll(async () => {
-      const r = await query<{ type: string; n: string }>(
-        `SELECT a.type, count(*) n FROM articles a JOIN cocoons c ON c.id = a.cocoon_id
-         WHERE c.nom = $1 GROUP BY a.type`,
-        [cerveau.cocoonName],
-      )
-      return r.rows.map(x => `${x.type}×${x.n}`).sort().join(' ')
-    }, {
-      timeout: 180000,
-      message: 'le Cerveau doit créer au moins un article de chaque niveau',
-    }).toMatch(/Intermédiaire×[1-9].*Pilier×[1-9].*Spécialisé×[1-9]/)
+    const r = await query<{ type: string; parent_id: number | null; suggested_keyword: string | null }>(
+      `SELECT type, parent_id, suggested_keyword FROM articles WHERE id = $1`, [pilier.id])
+    expect(r.rows[0], 'le pilier est en base, sans parent, avec le mot-clé choisi')
+      .toEqual({ type: 'Pilier', parent_id: null, suggested_keyword: pilier.keyword })
+    await expect(tree.locator(`[data-testid="tree-node-${pilier.id}"] [data-testid="tree-node-state"]`),
+      'l’arbre le montre, à rédiger').toHaveText('À rédiger')
   })
 
   await test.step('terminer le brainstorm marque le Cerveau complet', async () => {
@@ -138,28 +123,8 @@ test('Cerveau — la stratégie du cocon et les articles', async ({ page }) => {
   })
 })
 
-test('Cerveau — un article de chaque niveau est retenu pour la suite', async () => {
-  const res = await query<{ id: number; titre: string; type: ArticleDuParcours['type']; suggested_keyword: string | null }>(
-    `SELECT a.id, a.titre, a.type, a.suggested_keyword
-     FROM articles a JOIN cocoons c ON c.id = a.cocoon_id
-     WHERE c.nom = $1 ORDER BY a.id`,
-    [cerveau.cocoonName],
-  )
-
-  for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
-    const trouve = res.rows.find(a => a.type === type)
-    expect(trouve, `le Cerveau a produit un article de type ${type}`).toBeTruthy()
-    articles[type] = {
-      id: trouve!.id,
-      titre: trouve!.titre,
-      type,
-      keyword: trouve!.suggested_keyword ?? trouve!.titre,
-    }
-  }
-})
-
 // ---------------------------------------------------------------------------
-// Phase 2 — Moteur, puis phase 3 — Rédaction, article par article
+// Article par article : (Cerveau pour un enfant), Moteur, Rédaction
 // ---------------------------------------------------------------------------
 
 /** Ouvre le Moteur sur l'article demandé. */
@@ -169,7 +134,27 @@ async function ouvrirArticle(page: Page, article: ArticleDuParcours): Promise<vo
 }
 
 for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
-  test(`Moteur — ${type} : Capitaine, Lieutenants et Lexique verrouillés`, async ({ page }) => {
+  if (type !== 'Pilier') {
+    test(`Cerveau — ${type} : il naît d'une section de son parent rédigé`, async ({ page }) => {
+      test.setTimeout(REEL ? 600_000 : 240_000)
+      const parent = articles[PARENT_DE[type]]
+      expect(parent, 'le parent doit avoir été créé et rédigé').toBeTruthy()
+
+      const tree = await openCocoonTree(page, cerveau.cerveauUrl())
+      const enfant = await createChildFromSection(page, tree, parent!.id, REEL ? 300_000 : 120_000)
+      articles[type] = { id: enfant.id, titre: enfant.title, type, keyword: enfant.keyword, section: enfant.section }
+
+      const r = await query<{ type: string; parent_id: number | null; parent_section: string | null; suggested_keyword: string | null }>(
+        `SELECT type, parent_id, parent_section, suggested_keyword FROM articles WHERE id = $1`, [enfant.id])
+      expect(r.rows[0], 'l’enfant connaît son parent et la section dont il est né').toEqual({
+        type, parent_id: parent!.id, parent_section: enfant.section, suggested_keyword: enfant.keyword,
+      })
+      await expect(tree.locator(`[data-testid="tree-node-${parent!.id}"] [data-testid="tree-section-child"]`)
+        .filter({ hasText: enfant.title }), 'la section du parent mène désormais à l’enfant').toHaveCount(1)
+    })
+  }
+
+  test(`Moteur — ${type} : Capitaine, Lieutenants, Structure et Lexique verrouillés`, async ({ page }) => {
     test.setTimeout(REEL ? 900_000 : 600_000)
     const article = articles[type]
     expect(article, 'l’article du Cerveau doit être connu').toBeTruthy()
@@ -186,8 +171,13 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
         .toContain('moteur:capitaine_locked')
     })
 
-    await test.step('Lieutenants et plan Hn', async () => {
+    await test.step('Lieutenants', async () => {
       await lockLieutenants(page, article!.id)
+    })
+
+    // FR-HN-TAB : la structure naît des lieutenants retenus, dans son onglet.
+    await test.step('Structure', async () => {
+      await validerStructure(page, article!.id)
     })
 
     await test.step('Lexique', async () => {
@@ -198,7 +188,7 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
       await tabLocator(page, 'finalisation').click()
       const cta = page.locator('[data-testid="finalisation-cta-redaction"]')
       await expect(cta, 'le récapitulatif propose la sortie').toBeVisible({ timeout: 30000 })
-      await expect(cta, 'les trois verrous posés, la porte s’ouvre').toBeEnabled({ timeout: 30000 })
+      await expect(cta, 'les quatre verrous posés, la porte s’ouvre').toBeEnabled({ timeout: 30000 })
       await expect(page.locator('[data-testid="finalisation-title"]')).toContainText('Prêt pour la Rédaction')
     })
   })
@@ -247,27 +237,37 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
       await continuer.click()
     })
 
-    await test.step('l’article se génère, section par section', async () => {
+    // C7 (FR-CER-PARENT-WRITTEN-GATE) : une fois le premier jet écrit, l'écran
+    // demande de lui-même l'étape « premier jet accepté » à sa porte. Si elle
+    // alerte sur ce texte simulé, l'utilisateur assume ; un défaut ⛔ échoue.
+    await test.step('le premier jet s’écrit, puis il est accepté', async () => {
       const generer = page.locator('[data-testid="generate-button"]')
       await expect(generer, 'le bouton de génération apparaît une fois le sommaire validé')
         .toBeVisible({ timeout: 60000 })
-      await generer.click()
 
-      // Le texte est enregistré au fil des sections : voir arriver les premiers
-      // caractères prouve que la rédaction a démarré, pas qu'elle est finie.
-      await expect.poll(async () => {
-        const r = await query<{ content: string | null }>(
-          `SELECT content FROM article_content WHERE article_id = $1`, [article.id])
-        return r.rows[0]?.content?.length ?? 0
-      }, { timeout: REEL ? 600_000 : 300_000, message: 'la rédaction doit démarrer' })
-        .toBeGreaterThan(200)
+      const alertes = await acceptDraftThroughGate(page, async () => {
+        await generer.click()
 
-      // La fin, c'est le retour du bouton de régénération : un pilier réel
-      // compte une vingtaine de sections, soit ~20 min.
-      // Le bouton n'apparaît qu'une fois le texte complet posé, et reste
-      // désactivé tant que la génération tourne : son activation est le signal.
-      await expect(page.locator('[data-testid="regenerate-button"]'), 'la rédaction doit aller à son terme')
-        .toBeEnabled({ timeout: REEL ? 2_400_000 : 300_000 })
+        // Le texte est enregistré au fil des sections : voir arriver les premiers
+        // caractères prouve que la rédaction a démarré, pas qu'elle est finie.
+        await expect.poll(async () => {
+          const r = await query<{ content: string | null }>(
+            `SELECT content FROM article_content WHERE article_id = $1`, [article.id])
+          return r.rows[0]?.content?.length ?? 0
+        }, { timeout: REEL ? 600_000 : 300_000, message: 'la rédaction doit démarrer' })
+          .toBeGreaterThan(200)
+
+        // La fin, c'est le retour du bouton de régénération. Il n'apparaît qu'une
+        // fois le texte complet posé, et reste désactivé tant que la génération
+        // tourne : son activation est le signal.
+        await expect(page.locator('[data-testid="regenerate-button"]'), 'la rédaction doit aller à son terme')
+          .toBeEnabled({ timeout: REEL ? 2_400_000 : 300_000 })
+      }, REEL ? 3_000_000 : 420_000)
+      if (alertes.length > 0) test.info().annotations.push({ type: 'porte du premier jet', description: alertes.join(', ') })
+
+      await expect.poll(() => checksDeLArticle(page, article.id), { timeout: 60000, message: 'le premier jet est accepté' })
+        .toContain('redaction:draft_accepted')
+      await expect(page.locator('[data-testid="draft-accepted"]'), 'l’écran le dit').toBeVisible({ timeout: 30000 })
     })
 
     await test.step('la méta suit automatiquement', async () => {
@@ -294,22 +294,57 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
         .toBeGreaterThan(200)
     })
 
-    await test.step('une retouche se sauvegarde', async () => {
+    // La retouche est ensuite annulée : en mode réel, l'article reste en base
+    // pour être relu, et un « Relu. » ajouté par le test s'était retrouvé dans
+    // l'introduction du pilier 1013 (épopée qualité SEO, T1).
+    await test.step('une retouche se sauvegarde, puis s’annule sans laisser de trace', async () => {
+      const MARQUEUR = ' RETOUCHEPARCOURS'
+      const contenuEnBase = async () => {
+        const r = await query<{ content: string | null }>(
+          `SELECT content FROM article_content WHERE article_id = $1`, [article.id])
+        return r.rows[0]?.content ?? ''
+      }
       const editeur = page.locator('.ProseMirror').first()
+      const sauver = page.locator('[data-testid="editor-save"]')
+
       await editeur.click()
       await page.keyboard.press('Control+End')
-      await page.keyboard.type(' Relu.')
-
-      const sauver = page.locator('[data-testid="editor-save"]')
+      await page.keyboard.type(MARQUEUR)
       await expect(sauver, 'la sauvegarde s’active dès qu’on touche au texte').toBeEnabled({ timeout: 30000 })
       await sauver.click()
       await expect(sauver, 'et se désactive une fois enregistré').toBeDisabled({ timeout: 60000 })
+      await expect.poll(async () => (await contenuEnBase()).includes(MARQUEUR.trim()),
+        { timeout: 60000, message: 'la retouche doit atteindre la base' }).toBe(true)
 
-      await expect.poll(async () => {
-        const r = await query<{ content: string | null }>(
-          `SELECT content FROM article_content WHERE article_id = $1`, [article.id])
-        return r.rows[0]?.content?.includes('Relu.') ?? false
-      }, { timeout: 60000, message: 'la retouche doit atteindre la base' }).toBe(true)
+      // Comme un utilisateur : double-cliquer sur le mot ajouté, puis l'effacer
+      // avec l'espace qui le précède. Compter des retours arrière depuis la fin
+      // ne suffisait pas (la sauvegarde peut réorganiser la fin du texte), et une
+      // sélection posée par script n'est vue par l'éditeur qu'au tick suivant.
+      const boite = await editeur.evaluate((el, marqueur) => {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          const debut = (n.textContent ?? '').indexOf(marqueur)
+          if (debut < 0) continue
+          n.parentElement?.scrollIntoView({ block: 'center' })
+          const plage = document.createRange()
+          plage.setStart(n, debut)
+          plage.setEnd(n, debut + marqueur.length)
+          const r = plage.getBoundingClientRect()
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+        }
+        return null
+      }, MARQUEUR.trim())
+      expect(boite, 'la retouche doit être visible dans l’éditeur').not.toBeNull()
+      await page.mouse.dblclick(boite!.x, boite!.y)
+      await page.keyboard.press('Backspace')
+      await page.keyboard.press('Backspace')
+      await expect.poll(async () => (await editeur.innerText()).includes(MARQUEUR.trim()),
+        { timeout: 15000, message: 'la retouche doit avoir disparu du texte à l’écran' }).toBe(false)
+      await expect(sauver, 'retirer la retouche réactive la sauvegarde').toBeEnabled({ timeout: 30000 })
+      await sauver.click()
+      await expect(sauver).toBeDisabled({ timeout: 60000 })
+      await expect.poll(async () => (await contenuEnBase()).includes(MARQUEUR.trim()),
+        { timeout: 60000, message: 'l’article ne doit garder aucune trace du test' }).toBe(false)
     })
 
     await test.step('l’aperçu s’ouvre et l’article peut être exporté', async () => {
@@ -327,8 +362,11 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
       await expect(exporter, 'l’export est proposé').toBeVisible({ timeout: 60000 })
       await expect(exporter).toBeEnabled({ timeout: 60000 })
 
-      const telechargement = onglet.waitForEvent('download', { timeout: 60000 })
-      await exporter.click()
+      // Publier passe la porte (FR-RED-PUBLISH-GATE) : si elle alerte sur ce
+      // texte simulé, l'utilisateur assume ; un défaut ⛔ ferait échouer le test.
+      const telechargement = onglet.waitForEvent('download', { timeout: 120000 })
+      const alertes = await publishThroughGate(onglet, () => exporter.click())
+      if (alertes.length > 0) test.info().annotations.push({ type: 'porte de publication', description: alertes.join(', ') })
       const fichier = await telechargement
       expect(fichier.suggestedFilename(), 'un fichier HTML est proposé').toMatch(/\.html$/)
 
@@ -345,6 +383,29 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
 // ---------------------------------------------------------------------------
 // Bilan
 // ---------------------------------------------------------------------------
+
+test('Bilan — l’arbre du cocon : pilier ← intermédiaire ← spécialisé, tous rédigés', async () => {
+  const res = await query<{ id: number; type: string; parent_id: number | null; parent_section: string | null; completed_checks: string[] }>(
+    `SELECT a.id, a.type, a.parent_id, a.parent_section, a.completed_checks
+     FROM articles a JOIN cocoons c ON c.id = a.cocoon_id
+     WHERE c.nom = $1 ORDER BY a.id`,
+    [cerveau.cocoonName],
+  )
+  const parId = new Map(res.rows.map(a => [a.id, a]))
+  const pilier = parId.get(articles.Pilier!.id)
+  const intermediaire = parId.get(articles['Intermédiaire']!.id)
+  const specialise = parId.get(articles['Spécialisé']!.id)
+
+  expect(res.rows, 'le cocon compte exactement les trois articles créés un à un').toHaveLength(3)
+  expect(pilier?.parent_id, 'le pilier n’a pas de parent').toBeNull()
+  expect(intermediaire?.parent_id, 'l’intermédiaire est né du pilier').toBe(articles.Pilier!.id)
+  expect(specialise?.parent_id, 'le spécialisé est né de l’intermédiaire').toBe(articles['Intermédiaire']!.id)
+  expect(intermediaire?.parent_section).toBe(articles['Intermédiaire']!.section)
+  expect(specialise?.parent_section).toBe(articles['Spécialisé']!.section)
+  for (const a of res.rows) {
+    expect(a.completed_checks, `#${a.id} (${a.type}) a son premier jet accepté`).toContain('redaction:draft_accepted')
+  }
+})
 
 test('Bilan — les trois articles sont rédigés et publiés', async () => {
   const res = await query<{ titre: string; type: string; status: string; mots: string; meta_title: string | null }>(

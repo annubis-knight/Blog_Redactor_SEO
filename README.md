@@ -22,8 +22,17 @@ Tout est expliqué simplement, avec des images et des exemples concrets.
 | [GUIDE-03-CAS-PRATIQUES.md](GUIDE-03-CAS-PRATIQUES.md) | Je veux faire quelque chose de précis, pas à pas. |
 | [GUIDE-04-OUTILS.md](GUIDE-04-OUTILS.md) | Quels outils, librairies et services le projet utilise, et où changer une clé. |
 
-> Les dossiers `docs/` et `_bmad-output/` contiennent la documentation **technique**
-> (pour développer). Le fichier `.claude/CLAUDE.md` contient les règles de travail
+> **La référence du projet tient en trois documents** (depuis le 2026-09-28) :
+>
+> | Document | Question |
+> |---|---|
+> | [spec/requirements.md](spec/requirements.md) | Que doit faire l'outil ? (exigences et leur statut) |
+> | [spec/](spec/README.md) — 18 chapitres | Comment se comporte-t-il aujourd'hui ? (produit, glossaire, chaque écran, recette manuelle) |
+> | [design/](design/README.md) — 21 chapitres et `data-flows/` | Comment est-il construit ? (architecture, données, API, IA, tests, chaque domaine, flux des données) |
+>
+> Les dossiers `docs/` et `_bmad-output/` gardent le détail technique et l'historique des
+> décisions ; en cas de désaccord, ce sont les trois documents ci-dessus qui font foi (et,
+> au-dessus d'eux, le code). Le fichier `.claude/CLAUDE.md` contient les règles de travail
 > destinées à l'IA. Ces quatre guides-ci sont pour **l'utilisateur**.
 
 ---
@@ -127,7 +136,8 @@ flowchart LR
   ROOT --> SERVER["server/<br/>le serveur + l'IA"]
   ROOT --> SHARED["shared/<br/>le langage commun"]
   ROOT --> SCRIPTS["scripts/<br/>le robot + outils"]
-  ROOT --> DOCS["docs/ + _bmad-output/<br/>la documentation"]
+  ROOT --> REF["spec/ + design/<br/>la référence"]
+  ROOT --> DOCS["docs/ + _bmad-output/<br/>le détail et l'historique"]
   ROOT --> OUT["_auto-output/<br/>les articles produits"]
 ```
 
@@ -140,7 +150,9 @@ flowchart LR
 | `server/db/schema.sql` | La photo de la structure de la base de données. | Jamais à la main |
 | `_auto-output/` | Les articles finis, en HTML. **Ignoré par git.** | Oui, tu les lis |
 | `data/` | Sauvegardes et vieilles données archivées. | Non |
-| `docs/` | Documentation technique détaillée. | Pour comprendre en profondeur |
+| `spec/` | Les exigences et la spécification officielle de l'outil. | Pour savoir ce qu'il doit faire |
+| `design/` | Le document de design : comment l'outil est construit. | Pour comprendre le code |
+| `docs/` | Documentation technique détaillée, par sujet. | Pour comprendre en profondeur |
 | `_bmad-output/` | Spécifications, audits, suivi de sprint. | Pour l'historique des décisions |
 | `tests/` | Les tests automatiques. | Non |
 

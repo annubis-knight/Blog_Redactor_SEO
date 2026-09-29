@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { injectInternalLinks } from '../../../../scripts/auto-article/heuristics/inject-internal-links.js'
+import { injectInternalLinks, removeLinksTo } from '../../../../scripts/auto-article/heuristics/inject-internal-links.js'
 
 const T = (id: number, slug: string, anchor: string) => ({ targetId: id, slug, anchor })
 
@@ -92,5 +92,19 @@ describe('auto:inject-internal-links', () => {
 
   it('retourne le html inchangé sans cible', () => {
     expect(injectInternalLinks('<p>x</p>', [])).toEqual({ html: '<p>x</p>', applied: [] })
+  })
+})
+
+// Recette C8 : le pilier exporté pointait vers un article pas encore publié —
+// une page 404 pour le lecteur. Le lien est retiré, son texte gardé.
+describe('auto:removeLinksTo', () => {
+  it('retire les liens vers les cibles données (par adresse ou identifiant), garde leur texte', () => {
+    const html = '<p>Voir <a href="/guide-site" data-slug="guide-site">le guide</a>, <a href="#article-12">les avis</a> et <a href="/publie">ceci</a>.</p>'
+    expect(removeLinksTo(html, new Set([12]), new Set(['guide-site'])))
+      .toBe('<p>Voir le guide, les avis et <a href="/publie">ceci</a>.</p>')
+  })
+
+  it('sans cible, le texte ne change pas', () => {
+    expect(removeLinksTo('<p><a href="/x">x</a></p>', new Set(), new Set())).toBe('<p><a href="/x">x</a></p>')
   })
 })

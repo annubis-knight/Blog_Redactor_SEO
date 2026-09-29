@@ -64,7 +64,6 @@ vi.mock('../../../src/components/editor/tiptap/extensions/internal-link', () => 
 
 // Mock shared html-utils — pass-through for simplicity
 vi.mock('@shared/html-utils', () => ({
-  mergeConsecutiveElements: (html: string) => html,
   removeEmptyElements: (html: string) => html,
   splitArticleSections: (html: string) => ({
     intro: '',

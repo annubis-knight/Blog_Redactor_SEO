@@ -59,6 +59,7 @@ vi.mock('../../server/db/cache-helpers', () => ({
 
 import { getCached, slugify } from '../../server/db/cache-helpers'
 import { loadPrompt } from '../../server/utils/prompt-loader'
+import { describeTypeRules } from '../../shared/constants/article-type-rules'
 import { extractRoots } from '../../src/composables/keyword/useCapitaineScan'
 import { checkKeywordComposition } from '../../shared/composition-rules'
 import type { SerpAnalysisResult, SerpCompetitor } from '../../shared/types/serp-analysis.types'
@@ -69,6 +70,7 @@ import type { PaaQuestion } from '../../shared/types/dataforseo.types'
 // ---------------------------------------------------------------------------
 const CAPTAIN_KEYWORD = 'creation site web entreprises Toulouse'
 const ARTICLE_LEVEL = 'pilier' as const
+const PAIN_POINT = 'Mes clients ne me trouvent pas sur Google'
 
 // Root keywords from Captain's extractRoots
 const ROOT_KEYWORDS = extractRoots(CAPTAIN_KEYWORD)
@@ -248,12 +250,17 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
 
     it('computes Hn recurrence from merged competitors', () => {
       hnRecurrence = computeHnRecurrence(mergedResult.competitors)
-      expect(hnRecurrence.length).toBeGreaterThan(0)
-
-      for (const item of hnRecurrence.slice(0, 3)) {
-        expect(item.percent).toBeGreaterThanOrEqual(0)
-        expect(item.percent).toBeLessThanOrEqual(100)
-      }
+      // 2026-09-25 (épopée qualité SEO, C2 · T3) : les bornes « >= 0 / <= 100 »
+      // passaient quoi qu'il arrive ; les 4 concurrents synthétiques donnent
+      // une récurrence exacte (tri : pourcentage décroissant, puis niveau).
+      expect(hnRecurrence.map(h => [h.level, h.text, h.percent])).toEqual([
+        [2, 'Nos services', 75],
+        [2, 'Pourquoi choisir nous', 50],
+        [1, 'Création de site web', 25],
+        [1, 'Agence web', 25],
+        [1, 'Développement web', 25],
+        [1, 'Création site', 25],
+      ])
     })
 
     it('builds propose-lieutenants prompt with all cross-tab data', async () => {
@@ -280,6 +287,11 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
       const prompt = await loadPrompt('propose-lieutenants', {
         keyword: CAPTAIN_KEYWORD,
         level: ARTICLE_LEVEL,
+        // Comme la route : la douleur de l'article et les SERP des racines (FR-INFRA-PROMPT-LAYERS,
+        // le chargeur refuse désormais un prompt dont une variable manque).
+        painPoint: PAIN_POINT,
+        root_keywords_serp_data: '',
+        type_rules: describeTypeRules(ARTICLE_LEVEL),
         paa_questions: paaFormatted,
         hn_recurrence: hnFormatted,
         serp_competitors: competitorsFormatted,
@@ -290,6 +302,7 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
 
       expect(prompt.length).toBeGreaterThan(500)
       expect(prompt).toContain(CAPTAIN_KEYWORD)
+      expect(prompt, 'la douleur de l’article arrive à l’IA').toContain(PAIN_POINT)
       expect(prompt).toContain(ARTICLE_LEVEL)
       // All roots from Captain's send-to-lieutenants are in the prompt
       for (const root of ROOT_KEYWORDS) {
@@ -337,6 +350,7 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
       const prompt = await loadPrompt('lexique-analysis-upfront', {
         keyword: CAPTAIN_KEYWORD,
         level: ARTICLE_LEVEL,
+        painPoint: PAIN_POINT,
         obligatoire_terms: obligatoire.join(', '),
         differenciateur_terms: differenciateur.join(', '),
         optionnel_terms: optionnel.join(', '),
@@ -344,6 +358,7 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
 
       expect(prompt.length).toBeGreaterThan(200)
       expect(prompt).toContain(CAPTAIN_KEYWORD)
+      expect(prompt, 'la douleur de l’article arrive à l’IA').toContain(PAIN_POINT)
       expect(prompt).toContain(ARTICLE_LEVEL)
     })
 

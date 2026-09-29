@@ -457,7 +457,8 @@ export async function upsertAutocomplete(
  *
  * Cas mixte : si N rows dans keyword_serp_results mais < N dans
  * keyword_serp_scrapes, on remplit avec headings=[] / textContent=null pour
- * les positions sans scrape (cf. */
+ * les positions sans scrape (cf. AC.C2.5). Aucune page lue : `null`, ce n'est
+ * pas une analyse. */
 export interface ReconstructedSerpAnalysisResult {
   keyword: string
   competitors: Array<{
@@ -485,7 +486,9 @@ export async function reconstructSerpAnalysisResult(
     getSerpScrapes(keyword, lang, country),
     getPaaQuestions(keyword, lang, country),
   ])
-  if (results.length === 0) return null
+  // Des résultats sans aucune page lue ne font pas une analyse : les relire
+  // priverait Lieutenants, Structure et Lexique des pages concurrentes (C7).
+  if (results.length === 0 || scrapes.length === 0) return null
 
   const scrapesByPosition = new Map<number, (typeof scrapes)[number]>()
   for (const s of scrapes) scrapesByPosition.set(s.position, s)

@@ -66,10 +66,12 @@ export interface ProposeLieutenantsHnNode {
   children?: { level: number; text: string }[]
 }
 
-/** Raw AI output (before filtering) */
+/**
+ * Raw AI output (before filtering). Plus de structure H1/H2/H3 ici : elle naît
+ * à l'onglet Structure, des lieutenants retenus (FR-HN-TAB, M7).
+ */
 export interface ProposeLieutenantsResult {
   lieutenants: ProposedLieutenant[]
-  hnStructure: ProposeLieutenantsHnNode[]
   contentGapInsights: string
 }
 
@@ -77,7 +79,6 @@ export interface ProposeLieutenantsResult {
 export interface FilteredProposeLieutenantsResult {
   selectedLieutenants: ProposedLieutenant[]
   eliminatedLieutenants: ProposedLieutenant[]
-  hnStructure: ProposeLieutenantsHnNode[]
   contentGapInsights: string
   totalGenerated: number
 }

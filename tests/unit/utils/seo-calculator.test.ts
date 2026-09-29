@@ -192,7 +192,11 @@ describe('seo-calculator', () => {
     it('returns a score between 0 and 100', () => {
       const html = '<h1>SEO Guide</h1><h2>Optimisation</h2><p>Le seo est important pour l\'optimisation des sites web.</p>'
       const result = calculateSeoScore(html, keywords, 'Guide SEO complet pour les entreprises françaises en 2026', 'Découvrez notre guide complet sur le SEO et l\'optimisation de votre site web pour améliorer votre référencement naturel durablement.', 100)
-      expect(result.global).toBeGreaterThanOrEqual(0)
+      // Sans articleKeywords : densités neutres (50 et 50), titres valides (100),
+      // title 57 car. dans la cible mais sans mot-clé (100 × 0,7 = 70),
+      // description 132 car. (88 × 0,7 → 62), 12 mots sur 100 visés (12).
+      // 50×0,25 + 50×0,15 + 100×0,20 + 70×0,15 + 62×0,10 + 12×0,15 = 58,5 → 59.
+      expect(result.global).toBe(59)
       expect(result.global).toBeLessThanOrEqual(100)
     })
 
@@ -217,7 +221,9 @@ describe('seo-calculator', () => {
 
     it('handles empty content gracefully', () => {
       const result = calculateSeoScore('', [], null, null)
-      expect(result.global).toBeGreaterThanOrEqual(0)
+      // Texte vide : densités neutres (50, 50), pas de H1 (100 − 25 = 75),
+      // metas absentes (0, 0), 0 mot (0) → 12,5 + 7,5 + 15 = 35.
+      expect(result.global).toBe(35)
       expect(result.wordCount).toBe(0)
     })
 
@@ -318,7 +324,8 @@ describe('seo-calculator', () => {
       const html = '<h1>T</h1><p>text</p>'
       const result = calculateSeoScore(html, keywords, null, null)
       expect(result).toHaveProperty('hasArticleKeywords')
-      expect(typeof result.hasArticleKeywords).toBe('boolean')
+      // Aucun articleKeywords passé : les mots-clés du cocon ne comptent pas.
+      expect(result.hasArticleKeywords).toBe(false)
     })
   })
 

@@ -21,6 +21,8 @@ defineProps<{
   /** True si on doit afficher le bouton "IA Brief" (mode workflow). */
   showIaBriefButton?: boolean
   showIaBriefPanel?: boolean
+  /** Panneau des passes d'enrichissement (FR-RED-ENRICH-PASSES). */
+  showEnrichPanel?: boolean
 }>()
 
 defineEmits<{
@@ -29,6 +31,7 @@ defineEmits<{
   (e: 'toggle-linking'): void
   (e: 'toggle-blocks'): void
   (e: 'toggle-ia-brief'): void
+  (e: 'toggle-enrich'): void
 }>()
 </script>
 
@@ -63,6 +66,17 @@ defineEmits<{
       @click="$emit('toggle-linking')"
     >
       Maillage
+    </button>
+    <button
+      class="btn-toggle"
+      data-testid="toggle-enrich"
+      :class="{ active: showEnrichPanel, disabled: !hasBody }"
+      :aria-pressed="!!showEnrichPanel"
+      :disabled="!hasBody"
+      :title="!hasBody ? 'Rédigez le premier jet pour l’enrichir' : undefined"
+      @click="$emit('toggle-enrich')"
+    >
+      Enrichir
     </button>
     <button
       v-if="showBlocksButton"

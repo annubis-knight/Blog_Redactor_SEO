@@ -4,10 +4,11 @@ import { articlePhaseSchema } from './shared-enums.schema.js'
 /**
  * Format strict checks : `moteur:<snake_case>`. Rejette legacy sans préfixe
  * (causait doublons DB + dots non-rendus) ainsi que les anciens préfixes
- * `cerveau:*` / `redaction:*` retirés 2026-05-13 (cf. DRIFT-002).
+ * `cerveau:*` / `redaction:*` retirés 2026-05-13 (cf. DRIFT-002) — sauf la
+ * seule étape Rédaction revenue avec C7, `redaction:draft_accepted`.
  * Utiliser constantes `shared/constants/workflow-checks.constants.ts`.
  */
-const writeCheckRegex = /^moteur:[a-z]+(_[a-z]+)*$/
+const writeCheckRegex = /^(moteur:[a-z]+(_[a-z]+)*|redaction:draft_accepted)$/
 
 /**
  * Format tolérant côté lecture : accepte également `cerveau:*` / `redaction:*`
@@ -26,6 +27,6 @@ export type ArticleProgressInput = z.infer<typeof articleProgressSchema>
 
 export const addCheckSchema = z.object({
   check: z.string().regex(writeCheckRegex, {
-    message: 'check must be prefixed `moteur:<snake_case_action>`',
+    message: 'check must be prefixed `moteur:<snake_case_action>` (or be `redaction:draft_accepted`)',
   }),
 })

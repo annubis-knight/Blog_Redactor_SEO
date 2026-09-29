@@ -5,7 +5,7 @@ import { averageScores, compareScores } from '@shared/score/index.js'
 /**
  * Ranking local RadarCard proposer Capitaine (pas IA). Filtre NOGO × 2.
  * Score final = (market + relevance) / 2. Pas de fallback combinedScore.
- * Voir docs/scoring-kpi-vs-relevance.md.
+ * Voir design/14-radar-capitaine.md.
  */
 export interface RadarRankedCard {
   card: RadarCard

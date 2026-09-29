@@ -17,6 +17,8 @@ export class ApiError extends Error {
     message: string,
     readonly code: string,
     readonly status: number,
+    /** Détail renvoyé par le serveur (ex. l'évaluation d'une porte refusée). */
+    readonly details?: unknown,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -112,12 +114,13 @@ async function unwrap<T>(res: Response): Promise<T> {
     return null as T
   }
 
-  const obj = payload as { data?: T; error?: { code?: string; message?: string } }
+  const obj = payload as { data?: T; error?: { code?: string; message?: string; details?: unknown } }
   if (obj?.error) {
     throw new ApiError(
       obj.error.message ?? 'Erreur API',
       obj.error.code ?? 'API_ERROR',
       res.status,
+      obj.error.details,
     )
   }
   if (!res.ok) {

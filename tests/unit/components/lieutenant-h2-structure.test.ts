@@ -59,6 +59,16 @@ describe('LieutenantH2Structure', () => {
     expect((wrapper.find('[data-testid="hn-generate-btn"]').element as HTMLButtonElement).disabled).toBe(true)
   })
 
+  // U3 : le composant vit dans l'onglet Structure depuis C6 ; « cochez un
+  // lieutenant ci-dessus » renvoyait à des cases qui n'y sont plus.
+  it('sans lieutenant retenu, le texte renvoie à l’onglet Lieutenants', () => {
+    const wrapper = mount(LieutenantH2Structure, { props: BASE, global: { stubs: STUBS } })
+    const empty = wrapper.get('[data-testid="hn-structure-empty"]').text()
+    expect(empty).toContain('onglet Lieutenants')
+    expect(empty).not.toMatch(/ci-dessus|coche/i)
+    expect(wrapper.get('[data-testid="hn-generate-btn"]').attributes('title')).toContain('onglet Lieutenants')
+  })
+
   it('structure Hn IA absente + lieutenants cochés → bouton Generer activable', () => {
     const wrapper = mount(LieutenantH2Structure, {
       props: { ...BASE, selectedCardsSize: 3 },
@@ -102,7 +112,7 @@ describe('LieutenantH2Structure', () => {
       global: { stubs: STUBS },
     })
     const btn = wrapper.find('[data-testid="hn-regenerate-btn"]')
-    expect(btn.text()).toContain('Regeneration')
+    expect(btn.text()).toContain('Régénération')
     expect((btn.element as HTMLButtonElement).disabled).toBe(true)
   })
 
@@ -178,7 +188,7 @@ describe('LieutenantH2Structure', () => {
       props: { ...BASE, hnStructure, hnSaved: true },
       global: { stubs: STUBS },
     })
-    expect(wrapper.text()).toContain('Sauvegardee')
+    expect(wrapper.text()).toContain('Sauvegardée')
   })
 
   it('REGRESSION GUARD : badge "Validee avec les lieutenants" SUPPRIME (2026-05-08)', () => {

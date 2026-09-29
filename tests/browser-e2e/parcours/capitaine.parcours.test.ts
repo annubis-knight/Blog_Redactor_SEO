@@ -21,6 +21,7 @@
  */
 import { test, expect, type Page, type Response } from '@playwright/test'
 import { selectArticle, useParcours, type ParcoursLevel } from '../helpers/parcours-fixtures'
+import { passThroughGate } from '../helpers/gate-alarm'
 
 test.describe.configure({ mode: 'serial' })
 
@@ -55,22 +56,35 @@ async function scanKeyword(page: Page, keyword: string): Promise<ScanResponseLik
 /**
  * Après un rechargement, l'écran propose « Charger Capitaine » plutôt que de
  * restaurer tout seul : c'est une étape du parcours utilisateur, pas un détour.
+ *
+ * L'invite ne se ferme pas après un chargement : elle compte ce qui est en base
+ * et sert aussi à rafraîchir (FR-MOT-CACHE-PANEL-COUNT) ; seule la croix la ferme.
+ * On attend donc la fin du chargement, pas sa disparition. Et quand l'invite est
+ * attendue (après rechargement, des explorations sont en base), on attend qu'elle
+ * s'affiche : ses compteurs arrivent un peu après la sélection de l'article, et
+ * regarder trop tôt faisait sauter l'étape une fois sur deux.
  */
-async function loadSavedResults(page: Page): Promise<void> {
+async function loadSavedResults(page: Page, { expectPrompt = false } = {}): Promise<void> {
   const prompt = page.locator('[data-testid="tab-load-prompt"]')
+  if (expectPrompt) {
+    await expect(prompt, 'des explorations sont en base : l’invite propose de les recharger')
+      .toBeVisible({ timeout: 15000 })
+  }
   if (await prompt.count() === 0) return
   const loadDb = page.locator('[data-testid="tlp-load-db"]')
   if (await loadDb.count() > 0) {
     await loadDb.first().click()
+    // Grisé pendant le chargement : de nouveau actif, le chargement est terminé.
+    await expect(loadDb.first()).toBeEnabled({ timeout: 15000 })
   } else {
     await page.locator('[data-testid="tlp-dismiss"]').first().click()
+    await expect(prompt, 'la croix ferme l’invite').toHaveCount(0, { timeout: 15000 })
   }
-  await expect(prompt).toHaveCount(0, { timeout: 15000 })
 }
 
 /** Ouvre le tiroir de droite sur la première carte de la liste. */
-async function openSidePanel(page: Page): Promise<void> {
-  await loadSavedResults(page)
+async function openSidePanel(page: Page, { afterReload = false } = {}): Promise<void> {
+  await loadSavedResults(page, { expectPrompt: afterReload })
   const item = page.locator('[data-testid="radar-list-item-0"]')
   await expect(item, 'la carte scannée doit apparaître dans la liste').toBeVisible({ timeout: 30000 })
   // Sélection au clavier : un clic au centre tomberait sur les mots interactifs
@@ -177,15 +191,17 @@ for (const level of LEVELS) {
       await page.reload()
       await page.waitForLoadState('networkidle', { timeout: 20000 })
       await selectArticle(page, parcours, level)
-      await openSidePanel(page)
+      await openSidePanel(page, { afterReload: true })
       await expectKpiDisplay(page, scan, 'kd', 'Difficult', /^\d+(\.\d+)?$/)
       await expectKpiDisplay(page, scan, 'volume', 'Volume', /rech\/m$/)
     })
 
-    await test.step('⑧ décision — verrouiller enregistre le check du workflow', async () => {
+    await test.step('⑧ décision — verrouiller passe la porte, puis enregistre le check du workflow', async () => {
       const lock = page.locator('[data-testid="radar-card-lock"]').first()
       await expect(lock, 'le cadenas de la carte doit être présent').toBeVisible({ timeout: 15000 })
-      await lock.click()
+      // FR-CAP-LOCK-GATE : si la porte alerte sur ces données simulées,
+      // l'utilisateur assume avec une vraie raison.
+      await passThroughGate(page, 'captain-lock', () => lock.click())
       await expect(lock).toHaveAttribute('aria-pressed', 'true', { timeout: 10000 })
 
       await expect

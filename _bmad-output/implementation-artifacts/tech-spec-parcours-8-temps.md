@@ -204,12 +204,12 @@ Aucun de ces défauts n'apparaissait en testant les phases séparément.
 | Défaut | Ce que vivait l'utilisateur | Correctif |
 |---|---|---|
 | L'étape « Article » de la Rédaction interrogeait `article_strategies`, table qu'aucun écran ne remplit plus | Le Moteur annonce « ✅ Prêt pour la Rédaction », la Rédaction répond « Complétez le Cerveau » — verrou infranchissable | lit la stratégie du cocon |
-| Le pré-cochage du Lexique n'écrivait rien | 38 cases cochées, lexique vide en base, étape invalidable ; il fallait décocher puis recocher | `lockMany()` persiste en un enregistrement |
+| Le pré-cochage du Lexique n'écrivait rien | 38 cases cochées, lexique vide en base, étape invalidable ; il fallait décocher puis recocher | `lockMany()` persiste en un enregistrement *(remplacé le 2026-09-25 : plus aucun pré-cochage, `lockMany()` supprimé — épopée qualité SEO C3, FR-LEX-METIER-ONLY)* |
 | `ON CONFLICT (slug) DO NOTHING` traité comme un succès | Article marqué « créé » avec une coche verte, absent de la base | refus + message nommant le slug |
 | Le watcher de saisie écrasait le champ | Écrire pendant le chargement effaçait la réponse et regrisait « Valider » | une valeur distante vide n'écrase plus une saisie en cours |
 | Le niveau d'article rendu par l'IA n'était jamais reconnu | **17 articles tous « Spécialisé », cocon sans tête** — invisible en simulé | `parseArticleLevel()` lit les deux écritures |
 
-| Le pré-cochage du Lexique était branché sur l'analyse IA | Même symptôme par un autre chemin : `fetchTfidf` coche dès l'extraction, et à la restauration l'IA ne tourne même pas | `lockMany()` appelé sur le chemin principal |
+| Le pré-cochage du Lexique était branché sur l'analyse IA | Même symptôme par un autre chemin : `fetchTfidf` coche dès l'extraction, et à la restauration l'IA ne tourne même pas | `lockMany()` appelé sur le chemin principal *(idem : supprimé le 2026-09-25, C3)* |
 | « SERP analysis failed » affiché tel quel | Message anglais, sans cause ni action, pour un mot-clé simplement trop étroit | trois causes nommées, en français, avec la suite à donner |
 | Aucune sauvegarde pendant la génération | Vingt minutes de rédaction perdues en fermant l'onglet — texte et argent | le corps part en base après chaque section |
 

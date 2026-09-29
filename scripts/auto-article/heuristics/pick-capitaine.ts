@@ -81,16 +81,30 @@ function normalize(value: number | null, min: number, max: number): number {
   return (value - min) / (max - min)
 }
 
+function toChoice(c: Scored): CapitaineChoice {
+  return {
+    keyword: c.keyword,
+    forced: c.verdict !== 'GO',
+    verdict: c.verdict,
+    relevance: c.relevance,
+    market: c.market,
+    affinity: c.affinity,
+  }
+}
+
 /**
+ * Tous les candidats, du meilleur au moins bon. Garde anti-dérive : un
+ * mot-clé totalement hors-sujet passe après tous ceux qui touchent le sujet.
+ *
  * @param candidates mots-clés scannés
  * @param topic texte du sujet (titre + mot-clé pilier + point de douleur)
  */
-export function pickCapitaine(
+export function rankCapitaines(
   candidates: CapitaineInput[],
   topic = '',
   level = 'intermediaire',
-): CapitaineChoice | null {
-  if (candidates.length === 0) return null
+): CapitaineChoice[] {
+  if (candidates.length === 0) return []
   const w = WEIGHTS_BY_LEVEL[level] ?? DEFAULT_WEIGHTS
 
   const relValues = candidates.map((c) => c.relevance ?? 0)
@@ -115,22 +129,43 @@ export function pickCapitaine(
     return (b.market ?? -1) - (a.market ?? -1)
   })
 
-  let chosen = ranked[0]
-  if (!chosen) return null
-
-  // Garde anti-dérive : ne jamais retenir un mot-clé totalement hors-sujet
+  // Garde anti-dérive : ne jamais préférer un mot-clé totalement hors-sujet
   // s'il existe un candidat qui touche le sujet.
-  if (chosen.affinity === 0) {
-    const onTopic = ranked.find((c) => c.affinity > 0)
-    if (onTopic) chosen = onTopic
-  }
+  const onTopic = ranked.filter((c) => c.affinity > 0)
+  const offTopic = ranked.filter((c) => c.affinity === 0)
+  return (onTopic.length > 0 ? [...onTopic, ...offTopic] : ranked).map(toChoice)
+}
 
-  return {
-    keyword: chosen.keyword,
-    forced: chosen.verdict !== 'GO',
-    verdict: chosen.verdict,
-    relevance: chosen.relevance,
-    market: chosen.market,
-    affinity: chosen.affinity,
+/** Le meilleur candidat du classement (`rankCapitaines`). */
+export function pickCapitaine(
+  candidates: CapitaineInput[],
+  topic = '',
+  level = 'intermediaire',
+): CapitaineChoice | null {
+  return rankCapitaines(candidates, topic, level)[0] ?? null
+}
+
+/** Candidats soumis à la porte capitaine avant de renoncer : chaque évaluation est gratuite (base). */
+export const MAX_GATE_TRIES = 5
+
+/**
+ * Le premier candidat du classement que la porte capitaine accepte sans
+ * aucune alerte (C8 : un pilier doit passer sans dérogation). `evaluate` rend
+ * les alertes de la porte pour un mot-clé. Aucun candidat propre : le premier
+ * du classement — la porte le refusera et le run s'arrêtera en le disant,
+ * plutôt que de déroger à la place de l'utilisateur.
+ */
+export async function chooseThroughGate(
+  ranked: CapitaineChoice[],
+  evaluate: (keyword: string) => Promise<string[]>,
+  maxTries = MAX_GATE_TRIES,
+): Promise<{ choice: CapitaineChoice; clean: boolean; rejected: Array<{ keyword: string; issues: string[] }> } | null> {
+  if (ranked.length === 0) return null
+  const rejected: Array<{ keyword: string; issues: string[] }> = []
+  for (const candidate of ranked.slice(0, maxTries)) {
+    const issues = await evaluate(candidate.keyword)
+    if (issues.length === 0) return { choice: candidate, clean: true, rejected }
+    rejected.push({ keyword: candidate.keyword, issues })
   }
+  return { choice: ranked[0]!, clean: false, rejected }
 }

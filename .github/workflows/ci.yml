@@ -1,8 +1,10 @@
 name: CI
 
 on:
+  # Toutes les branches : chaque chantier est vérifié dès qu'il est poussé,
+  # avant même l'ouverture de sa PR (épopée qualité SEO, réparation de la CI).
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
     branches: [main]
 
@@ -19,14 +21,19 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # .nvmrc (24) : le lock est écrit par npm 11. Il doit aussi être complet
+          # pour Linux : écrit sous Windows, il omettait @emnapi/runtime et
+          # @emnapi/core (« Missing: … from lock file » à npm ci). Pour le
+          # régénérer comme la CI le lit :
+          #   docker run --rm -v <dépôt>:/w -w /w node:24 npm install --package-lock-only --ignore-scripts
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
       - name: Type-check
-        run: npx tsc --noEmit
+        run: npm run verify:types
 
       - name: Tests unitaires (unit + functional uniquement, pas de DB)
         run: npx vitest run tests/unit tests/functional --reporter=dot
@@ -43,7 +50,8 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        # Même version que les postes de dev : bootstrap.sql est produit par pg_dump 18.
+        image: postgres:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -61,16 +69,25 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # .nvmrc (24) : le lock est écrit par npm 11. Il doit aussi être complet
+          # pour Linux : écrit sous Windows, il omettait @emnapi/runtime et
+          # @emnapi/core (« Missing: … from lock file » à npm ci). Pour le
+          # régénérer comme la CI le lit :
+          #   docker run --rm -v <dépôt>:/w -w /w node:24 npm install --package-lock-only --ignore-scripts
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
       - name: Prepare .env for CI
+        env:
+          DFS_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+          DFS_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
         run: |
           cat > .env <<'EOF'
-          PORT=3005
+          # 3400 : une douzaine de tests visent http://localhost:3400 en dur (NFR-CFG-APP-PORTS).
+          PORT=3400
           PG_HOST=localhost
           PG_PORT=5432
           PG_USER=postgres
@@ -83,17 +100,26 @@ jobs:
           DATAFORSEO_PASSWORD=test
           ANTHROPIC_API_KEY=dummy
           EOF
+          # DataForSEO : même le bac à sable (gratuit) exige de vrais identifiants,
+          # à poser en secrets du dépôt (DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD).
+          # Sans eux, les tests qui mesurent un mot-clé se déclarent ignorés
+          # (tests/helpers/external-sources.ts), et le passage le signale.
+          if [ -n "$DFS_LOGIN" ]; then
+            sed -i '/^DATAFORSEO_\(LOGIN\|PASSWORD\)=/d' .env
+            printf 'DATAFORSEO_LOGIN=%s\nDATAFORSEO_PASSWORD=%s\n' "$DFS_LOGIN" "$DFS_PASSWORD" >> .env
+          else
+            echo "::warning::DataForSEO non configuré (secrets DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD absents) : les tests qui mesurent un mot-clé sont ignorés."
+          fi
 
-      - name: Run DB migrations
-        run: |
-          for f in server/db/migrations/*.sql; do
-            echo "Running migration: $f"
-            PGPASSWORD=postgres psql -h localhost -U postgres -d blog_redactor_seo_test -f "$f"
-          done
+      # Les migrations sont archivées depuis mai : la boucle sur migrations/*.sql
+      # ne créait plus aucune table. Le schéma rejouable est bootstrap.sql
+      # (npm run db:bootstrap), et ON_ERROR_STOP fait échouer l'étape au premier souci.
+      - name: Create DB schema
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -d blog_redactor_seo_test -v ON_ERROR_STOP=1 -q -f server/db/bootstrap.sql
 
-      - name: Seed minimal DB (silos + theme_config)
+      - name: Seed minimal DB (silo)
         run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d blog_redactor_seo_test <<'EOF'
+          PGPASSWORD=postgres psql -h localhost -U postgres -d blog_redactor_seo_test -v ON_ERROR_STOP=1 <<'EOF'
           INSERT INTO silos (nom, description) VALUES
             ('Stratégie & Visibilité', 'CI test silo')
           ON CONFLICT DO NOTHING;
@@ -105,7 +131,7 @@ jobs:
           echo $! > server.pid
           # Wait for server ready
           for i in {1..30}; do
-            if curl -sf http://localhost:3005/api/health > /dev/null 2>&1; then
+            if curl -sf http://localhost:3400/api/health > /dev/null 2>&1; then
               echo "Server up after ${i}s"
               exit 0
             fi
@@ -116,10 +142,10 @@ jobs:
           exit 1
 
       - name: Tests contract + integration + e2e
-        run: npx vitest run tests/contract-api tests/integration-tabs tests/e2e-workflows --reporter=dot
+        run: npx vitest run tests/contract-api tests/integration-tabs tests/e2e-workflows tests/integration/data.service.test.ts tests/integration/internal-links-prune.test.ts --reporter=dot
         env:
           AI_PROVIDER: mock
-          TEST_BASE_URL: http://localhost:3005/api
+          TEST_BASE_URL: http://localhost:3400/api
 
       - name: Stop server
         if: always()
@@ -146,7 +172,8 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        # Même version que les postes de dev : bootstrap.sql est produit par pg_dump 18.
+        image: postgres:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -164,7 +191,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # .nvmrc (24) : le lock est écrit par npm 11. Il doit aussi être complet
+          # pour Linux : écrit sous Windows, il omettait @emnapi/runtime et
+          # @emnapi/core (« Missing: … from lock file » à npm ci). Pour le
+          # régénérer comme la CI le lit :
+          #   docker run --rm -v <dépôt>:/w -w /w node:24 npm install --package-lock-only --ignore-scripts
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -174,9 +206,14 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Prepare .env for CI
+        env:
+          DFS_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+          DFS_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
         run: |
           cat > .env <<'EOF'
-          PORT=3005
+          # Les tests navigateur démarrent leur propre serveur sur leurs ports dédiés
+          # (playwright.config.ts : E2E_SERVER_PORT, par défaut 3410), qui priment sur .env.
+          PORT=3410
           PG_HOST=localhost
           PG_PORT=5432
           PG_USER=postgres
@@ -189,21 +226,46 @@ jobs:
           DATAFORSEO_PASSWORD=test
           ANTHROPIC_API_KEY=dummy
           EOF
+          # DataForSEO : même le bac à sable (gratuit) exige de vrais identifiants,
+          # à poser en secrets du dépôt (DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD).
+          # Sans eux, les tests qui mesurent un mot-clé se déclarent ignorés
+          # (tests/helpers/external-sources.ts), et le passage le signale.
+          if [ -n "$DFS_LOGIN" ]; then
+            sed -i '/^DATAFORSEO_\(LOGIN\|PASSWORD\)=/d' .env
+            printf 'DATAFORSEO_LOGIN=%s\nDATAFORSEO_PASSWORD=%s\n' "$DFS_LOGIN" "$DFS_PASSWORD" >> .env
+          else
+            echo "::warning::DataForSEO non configuré (secrets DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD absents) : les tests qui mesurent un mot-clé sont ignorés."
+          fi
 
-      - name: Run DB migrations
-        run: |
-          for f in server/db/migrations/*.sql; do
-            PGPASSWORD=postgres psql -h localhost -U postgres -d blog_redactor_seo_test -f "$f"
-          done
+      # Les migrations sont archivées depuis mai : la boucle sur migrations/*.sql
+      # ne créait plus aucune table. Le schéma rejouable est bootstrap.sql
+      # (npm run db:bootstrap), et ON_ERROR_STOP fait échouer l'étape au premier souci.
+      - name: Create DB schema
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -d blog_redactor_seo_test -v ON_ERROR_STOP=1 -q -f server/db/bootstrap.sql
 
-      - name: Seed minimal DB
+      - name: Seed minimal DB (silo)
         run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d blog_redactor_seo_test <<'EOF'
+          PGPASSWORD=postgres psql -h localhost -U postgres -d blog_redactor_seo_test -v ON_ERROR_STOP=1 <<'EOF'
           INSERT INTO silos (nom, description) VALUES ('Stratégie & Visibilité', 'CI test silo')
           ON CONFLICT DO NOTHING;
           EOF
 
+      - name: DataForSEO configuré ?
+        id: dfs
+        env:
+          DFS_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+        run: echo "ok=$([ -n "$DFS_LOGIN" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      # Les parcours navigateur verrouillent des capitaines, donc mesurent des
+      # mots-clés : sans DataForSEO, ils échoueraient pour une raison étrangère
+      # au produit. Ils sont alors ignorés, et le passage l'affiche.
+      - name: Tests navigateur ignorés (DataForSEO non configuré)
+        if: steps.dfs.outputs.ok != 'true'
+        run: |
+          echo "::warning::Tests navigateur ignorés : DataForSEO non configuré (secrets DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD)."
+
       - name: Run Playwright tests (auto-starts dev servers)
+        if: steps.dfs.outputs.ok == 'true'
         run: npx playwright test --reporter=github
         env:
           AI_PROVIDER: mock

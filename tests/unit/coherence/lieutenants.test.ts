@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { compareScores } from '../../../shared/score/compare.js'
 import type { HnRecurrenceItem, ProposedLieutenant, ProposeLieutenantsResult, FilteredProposeLieutenantsResult } from '../../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
+import { ARTICLE_TYPE_RULES } from '../../../shared/constants/article-type-rules.js'
 
 /**
  * Test suite de cohérence du flux Lieutenants (FR-LIE-*)
@@ -266,12 +267,8 @@ describe('FR-LIE-PROPOSE-AI — filterLieutenants tri score + cap par level', ()
     }
 
     const filterLieutenants = (parsed: ProposeLieutenantsResult, level: ArticleLevel): FilteredProposeLieutenantsResult => {
-      const MAX_SELECTED: Record<ArticleLevel, number> = {
-        pilier: 5,
-        intermediaire: 5,
-        specifique: 4,
-      }
-      const maxKeep = MAX_SELECTED[level] ?? 5
+      // Le maximum retenu vient de la source unique (FR-INFRA-TYPE-RULES-SSOT).
+      const maxKeep = ARTICLE_TYPE_RULES[level].maxLieutenants
       const sorted = [...parsed.lieutenants].sort((a, b) => compareScores(a.score ?? null, b.score ?? null))
 
       return {
@@ -312,12 +309,8 @@ describe('FR-LIE-PROPOSE-AI — filterLieutenants tri score + cap par level', ()
     }
 
     const filterLieutenants = (parsed: ProposeLieutenantsResult, level: ArticleLevel): FilteredProposeLieutenantsResult => {
-      const MAX_SELECTED: Record<ArticleLevel, number> = {
-        pilier: 5,
-        intermediaire: 5,
-        specifique: 4,
-      }
-      const maxKeep = MAX_SELECTED[level] ?? 5
+      // Le maximum retenu vient de la source unique (FR-INFRA-TYPE-RULES-SSOT).
+      const maxKeep = ARTICLE_TYPE_RULES[level].maxLieutenants
       const sorted = [...parsed.lieutenants].sort((a, b) => compareScores(a.score ?? null, b.score ?? null))
       return {
         selectedLieutenants: sorted.slice(0, maxKeep),
@@ -346,12 +339,8 @@ describe('FR-LIE-PROPOSE-AI — filterLieutenants tri score + cap par level', ()
     }
 
     const filterLieutenants = (parsed: ProposeLieutenantsResult, level: ArticleLevel): FilteredProposeLieutenantsResult => {
-      const MAX_SELECTED: Record<ArticleLevel, number> = {
-        pilier: 5,
-        intermediaire: 5,
-        specifique: 4,
-      }
-      const maxKeep = MAX_SELECTED[level] ?? 5
+      // Le maximum retenu vient de la source unique (FR-INFRA-TYPE-RULES-SSOT).
+      const maxKeep = ARTICLE_TYPE_RULES[level].maxLieutenants
       const sorted = [...parsed.lieutenants].sort((a, b) => compareScores(a.score ?? null, b.score ?? null))
       return {
         selectedLieutenants: sorted.slice(0, maxKeep),

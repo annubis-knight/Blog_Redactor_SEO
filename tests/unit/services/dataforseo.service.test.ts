@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Mock cache-helpers (replaces json-storage for caching)
 const mockGetCached = vi.fn()
@@ -673,6 +673,45 @@ describe('dataforseo.service — fetchSearchIntentBatch', () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error' })
     const result = await fetchSearchIntentBatch(['test'])
     expect(result.size).toBe(0)
+  })
+})
+
+// Le bac à sable répond par des mots-clés factices (« phone », « watch »), jamais
+// ceux demandés. Les appels unitaires lisent items[0] quel que soit le mot-clé ;
+// les appels groupés rattachaient par mot-clé, donc rien : en mode simulé, aucun
+// candidat du Cerveau n'était jamais mesuré, et aucun article ne pouvait naître.
+describe('dataforseo.service — appels groupés dans le bac à sable', () => {
+  const original = process.env.DATAFORSEO_SANDBOX
+  beforeEach(() => { process.env.DATAFORSEO_SANDBOX = 'true' })
+  afterEach(() => {
+    if (original !== undefined) process.env.DATAFORSEO_SANDBOX = original
+    else delete process.env.DATAFORSEO_SANDBOX
+  })
+
+  it('fetchKeywordOverviewBatch : les réponses factices sont rattachées, dans l’ordre, aux mots-clés demandés', async () => {
+    mockFetch.mockResolvedValueOnce(makeBatchResponse([
+      { keyword: 'phone', keyword_info: { search_volume: 100, cpc: 1, competition: 0.1, monthly_searches: null }, keyword_properties: { keyword_difficulty: 10 } },
+      { keyword: 'watch', keyword_info: { search_volume: 200, cpc: 2, competition: 0.2, monthly_searches: null }, keyword_properties: { keyword_difficulty: 20 } },
+    ]))
+
+    const result = await fetchKeywordOverviewBatch(['isolation combles', 'Isolation Combles Prix', 'isolation combles erreurs'])
+
+    expect([...result.keys()]).toEqual(['isolation combles', 'isolation combles prix', 'isolation combles erreurs'])
+    expect(result.get('isolation combles')?.searchVolume).toBe(100)
+    expect(result.get('isolation combles prix')?.searchVolume).toBe(200)
+    expect(result.get('isolation combles erreurs')?.searchVolume, 'moins de réponses que de demandes : on reprend au début').toBe(100)
+  })
+
+  it('fetchSearchIntentBatch : même rattachement', async () => {
+    mockFetch.mockResolvedValueOnce(makeBatchResponse([
+      { keyword: 'login page', keyword_intent: { label: 'navigational', probability: 0.9 } },
+      { keyword: 'pizza new york', keyword_intent: { label: 'transactional', probability: 0.8 } },
+    ]))
+
+    const result = await fetchSearchIntentBatch(['isolation combles', 'isolation combles prix'])
+
+    expect(result.get('isolation combles')).toEqual({ intent: 'navigational', intentProbability: 0.9 })
+    expect(result.get('isolation combles prix')).toEqual({ intent: 'transactional', intentProbability: 0.8 })
   })
 })
 

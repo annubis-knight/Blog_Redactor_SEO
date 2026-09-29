@@ -106,26 +106,6 @@ registerStreamFixture(
   },
 )
 
-// generate/article — section par section
-registerStreamFixture(
-  'generate-article-section',
-  ({ userPrompt }) =>
-    /Section [aà] r[eé]diger|Sommaire complet de l'article/i.test(userPrompt)
-    || /section\s*\d|<h2>|g[eé]n[eé]rer.*section/i.test(userPrompt),
-  ({ userPrompt }) => {
-    const titleMatch = userPrompt.match(/H2\s*:\s*([^\n]{5,120})/i)
-    const title = titleMatch?.[1]?.trim() ?? 'Section'
-    return [
-      `<h2>${title}</h2>\n`,
-      `<p>Premier paragraphe de la section "${title}". `,
-      `Il pose le contexte et introduit les points-clés.</p>\n\n`,
-      `<p>Deuxième paragraphe. On entre dans le détail concret avec un exemple chiffré : `,
-      `selon les retours de PME locales, environ <strong>62 %</strong> améliorent leur trafic dans les 90 jours.</p>\n\n`,
-      `<ul>\n  <li>Action 1 : auditer la situation actuelle</li>\n  <li>Action 2 : prioriser les chantiers</li>\n  <li>Action 3 : mesurer les progrès chaque semaine</li>\n</ul>\n`,
-    ]
-  },
-)
-
 // generate/article-meta
 registerStreamFixture(
   'generate-article-meta',
@@ -146,12 +126,16 @@ registerStreamFixture(
   'humanize-section',
   ({ userPrompt }) => /humanise|humanize|rendre.*plus.*humain|moins\s+robotique/i.test(userPrompt),
   ({ userPrompt }) => {
-    // Récupère le HTML d'origine pour le retourner légèrement modifié
-    const htmlMatch = userPrompt.match(/<h2>[\s\S]+?<\/(?:p|ul|ol)>/)
-    const html = htmlMatch?.[0] ?? '<p>Contenu humanisé via mock.</p>'
-    return html
-      .replace(/<p>([A-Z])/, (_m, c) => `<p>Tu sais quoi ? ${c.toLowerCase()}`)
-      .replace(/\.<\/p>/, '. Tu vois l\'idée ?</p>')
+    // La section entière, structure intacte (sinon la route retombe sur
+    // l'original et la relecture ne fait rien) : seuls quelques tics et
+    // anglicismes changent, comme le demande le prompt (FR-RED-LANG-REVIEW).
+    const section = /<user-content>\n([\s\S]*?)\n<\/user-content>/.exec(userPrompt)?.[1] ?? '<p>Contenu relu.</p>'
+    return section
+      .replace(/\bIl est important de noter que\s+/g, '')
+      .replace(/\bEn effet,\s+(\p{Ll})/gu, (_m, c: string) => c.toUpperCase())
+      .replace(/\bleads\b/g, 'prospects')
+      .replace(/\blead\b/g, 'prospect')
+      .replace(/\bfeedback\b/g, 'retour')
   },
 )
 

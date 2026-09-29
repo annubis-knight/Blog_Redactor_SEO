@@ -306,7 +306,7 @@ export interface RadarCard {
    * @deprecated Score legacy hybride (mélange marché + pertinence). Conservé
    * pour compatibilité avec les payloads radar persistés. NE PAS utiliser
    * pour de nouveaux affichages : utiliser `marketScore` (Radar) ou
-   * `relevanceScore` (Capitaine) — voir docs/scoring-kpi-vs-relevance.md.
+   * `relevanceScore` (Capitaine) — voir design/14-radar-capitaine.md.
    */
   combinedScore: number
   /**

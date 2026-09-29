@@ -1,23 +1,17 @@
 import type { TfidfTerm, TfidfResult } from '../../../shared/types/serp-analysis.types.js'
 import { getSerpScrapes } from './keyword-serp.service.js'
 import { log } from '../../utils/logger.js'
+import { isGenericWord } from '../../../shared/utils/generic-terms.js'
 
-const FRENCH_STOPWORDS = new Set([
-  'le', 'la', 'les', 'de', 'du', 'des', 'un', 'une', 'et', 'en', 'a', 'au', 'aux',
-  'pour', 'par', 'sur', 'avec', 'dans', 'qui', 'que', 'est', 'sont', 'ce', 'cette',
-  'ces', 'il', 'elle', 'ils', 'elles', 'nous', 'vous', 'on', 'se', 'ne', 'pas',
-  'plus', 'ou', 'mais', 'si', 'son', 'sa', 'ses', 'leur', 'leurs', 'mon', 'ma',
-  'mes', 'ton', 'ta', 'tes', 'notre', 'votre', 'tout', 'tous', 'toute', 'toutes',
-  'autre', 'autres', 'meme', 'aussi', 'bien', 'fait', 'faire', 'peut', 'comme',
-  'etre', 'avoir', 'entre', 'dont', 'tres', 'puis', 'sans', 'chez', 'vers',
-])
-
+// Mots vides et décor de page : source unique, comparée sans accents
+// (FR-LEX-METIER-ONLY, épopée qualité SEO M4). L'ancienne liste disait « etre »
+// sans accent et laissait passer « être », « vos », « nos ».
 export function tokenize(text: string): string[] {
   return text
     .toLowerCase()
     .replace(/[^a-zàâäéèêëïîôùûüÿçœæ\s-]/g, ' ')
     .split(/\s+/)
-    .filter(t => t.length >= 3 && !FRENCH_STOPWORDS.has(t) && !/^\d+$/.test(t))
+    .filter(t => !isGenericWord(t))
 }
 
 /**

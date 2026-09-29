@@ -6,11 +6,11 @@ Tu dois recommander une structure H1/H2/H3 optimale pour un article de blog, en 
 
 - **Mot-cle Capitaine** : {{keyword}}
 - **Niveau d'article** : {{level}}
-  - pilier (N2) = contenu long de reference 2000-3000 mots → 6-12 H2
-  - intermediaire (N3) = contenu de support 1000-1500 mots → 4-8 H2
-  - specifique (N4) = contenu de niche 500-800 mots → 3-6 H2
+  - pilier (N2) = contenu long de reference ; intermediaire (N3) = contenu de support ; specifique (N4) = contenu de niche
+
+{{type_rules}}
 - **Douleur de l'article** : {{painPoint}}
-  - Si la douleur est definie, structure les Hn pour qu'au moins 2 sections sur 5 repondent explicitement a cette douleur. Le H2 d'introduction et le H2 de conclusion peuvent etre l'occasion de la nommer directement.
+  - Si la douleur est definie, structure les Hn pour qu'au moins 2 sections sur 5 repondent explicitement a cette douleur.
   - Si la douleur est marquee « (non defini) », fonctionne comme avant a partir des Lieutenants et de la structure des concurrents.
 
 ## Lieutenants selectionnes par l'utilisateur
@@ -33,10 +33,16 @@ Si la liste est vide ("Aucun heading verrouille"), tu as carte blanche sur l'ens
 
 {{strategy_context}}
 
+{{#cocoon_context}}
+{{cocoon_context}}
+
+Un chapitre ne developpe pas un sujet deja traite par un autre article du cocon : il le resume et y renvoie. Pour un article pilier, chaque H2 peut preparer un article enfant — un H2 par sujet, sans le creuser en H3 si un article le traite deja.
+{{/cocoon_context}}
+
 ## Regles de structure Hn
 
-1. **H1** = Reformule legerement le Capitaine pour le rendre plus lisible et humain (le lecteur doit immediatement voir le lien avec le Title et le slug). Le H1 ne doit PAS etre un copier-coller brut du mot-cle.
-2. **H2** = Lieutenants principaux. 5-8 mots par heading. Chaque H2 doit etre "searchable" comme requete Google.
+1. **H1** = le titre de l'article : il contient le Capitaine **en entier** (tous ses mots, dans un ordre naturel), formule pour un lecteur humain plutot que comme un copier-coller brut du mot-cle.
+2. **H2** = Lieutenants principaux. 5-8 mots par heading. Chaque H2 doit etre "searchable" comme requete Google. **N'ecris ni introduction ni conclusion** : le sommaire les ajoute de lui-meme ; les H2 comptes par les regles du type sont les H2 de fond.
 3. **H3** = Sous-sections des H2 quand le contenu depasse 300 mots sous un H2. Variantes semantiques.
 4. **Jamais sauter de niveau** : H2 → H3 → H4 (hierarchie logique)
 5. **PAA comme H2/H3** : transformer les questions PAA directement en headings quand pertinent
@@ -51,7 +57,7 @@ Quand de nouveaux lieutenants ont ete selectionnes mais ne correspondent a aucun
 
 ### SEO Local dans les headings (CRITIQUE)
 Si le mot-cle Capitaine contient un nom de ville/region, NE REPETE PAS ce nom dans chaque H2/H3. C'est du bourrage qui rend les titres lourds et cree de la cannibalisation.
-- **Pilier** : Le nom de ville peut apparaitre dans 1-2 H2 maximum (pas tous). Les autres H2 doivent etre thematiques sans localisation.
+- **Pilier** : Le nom de ville peut apparaitre dans quelques H2, jamais tous (le maximum est donne par les regles du type ci-dessus). Les autres H2 doivent etre thematiques sans localisation.
 - **Intermediaire** : Evite le nom de ville dans les H2. Utilise des variantes subtiles ("localement", "en region", "de proximite") si un ancrage est vraiment necessaire.
 - **Specifique** : ZERO nom de ville dans les H2/H3. L'ancrage local se fait dans le corps du texte (quartiers, zones economiques, references terrain).
 - Prefere des signaux locaux riches (quartiers, ecosystemes, zones economiques) plutot que de repeter la ville comme un adjectif.

@@ -2,11 +2,11 @@
 /**
  * F7 / U7 — Onglet Finalisation du workflow Moteur.
  *
- * Affichage 100% lecture seule : récap du Capitaine, des Lieutenants et du Lexique
- * validés par l'utilisateur. 3 sections repliables (collapse). Aucune interaction
- * autre que : (a) déplier/replier une section, (b) partir vers la Rédaction.
+ * Affichage 100% lecture seule : récap du Capitaine, des Lieutenants, de la
+ * Structure et du Lexique validés par l'utilisateur. 4 sections repliables. Aucune
+ * interaction autre que : (a) déplier/replier une section, (b) partir vers la Rédaction.
  *
- * Accessibilité : seulement si les 3 checks du Moteur sont verts.
+ * Accessibilité : seulement si les 4 verrous du Moteur sont posés (FR-HN-TAB).
  */
 import { computed } from 'vue'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
@@ -19,9 +19,11 @@ import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import {
   MOTEUR_CAPITAINE_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
   MOTEUR_LEXIQUE_VALIDATED,
 } from '@shared/constants/workflow-checks.constants.js'
 import type { SelectedArticle } from '@shared/types/index.js'
+import { structureHeadings } from '@shared/verifiers/structure.js'
 
 const props = defineProps<{
   selectedArticle: SelectedArticle | null
@@ -51,10 +53,13 @@ const lieutenants = computed(() =>
 
 const lexique = computed(() => articleKeywordsStore.keywords?.lexique ?? [])
 
+/** Structure validée : H1, H2 et H3 dans l'ordre de lecture. */
+const structure = computed(() => structureHeadings(articleKeywordsStore.keywords?.hnStructure ?? []))
+
 /**
  * FR-MOT-FINAL-CTA-GATED — L'onglet Finalisation est librement accessible
  * (FR-MOT-FREE-NAV), mais la sortie vers la Rédaction obéit à la même règle
- * que le bouton du bas de page : les 3 verrous Phase ② doivent être posés.
+ * que le bouton du bas de page : les 4 verrous Phase ② doivent être posés.
  *
  * Sans cela, deux portes menaient à la Rédaction pour la même action — l'une
  * gardée, l'autre non — et l'en-tête annonçait « Prêt pour la Rédaction » sur
@@ -68,6 +73,7 @@ const checks = computed(() => {
   return {
     capitaineLocked: done.includes(MOTEUR_CAPITAINE_LOCKED),
     lieutenantsLocked: done.includes(MOTEUR_LIEUTENANTS_LOCKED),
+    structureLocked: done.includes(MOTEUR_HN_LOCKED),
     lexiqueValidated: done.includes(MOTEUR_LEXIQUE_VALIDATED),
   }
 })
@@ -114,6 +120,25 @@ const ctaTitle = computed(() => finalisationButtonTitle(checks.value))
         </li>
       </ul>
       <p v-else class="finalisation__empty">Aucun lieutenant verrouillé.</p>
+    </CollapsableSection>
+
+    <CollapsableSection
+      :default-open="true"
+      :title="`Structure (${structure.filter(h => h.level === 2).length} H2)`"
+      data-testid="finalisation-structure"
+    >
+      <ul v-if="structure.length > 0" class="finalisation__list">
+        <li
+          v-for="(heading, i) in structure"
+          :key="`hn-${i}`"
+          class="finalisation__item"
+          :class="`finalisation__heading--h${heading.level}`"
+        >
+          <span class="finalisation__tag">H{{ heading.level }}</span>
+          <span class="finalisation__keyword-sm">{{ heading.text }}</span>
+        </li>
+      </ul>
+      <p v-else class="finalisation__empty">Aucune structure validée.</p>
     </CollapsableSection>
 
     <CollapsableSection
@@ -286,5 +311,8 @@ const ctaTitle = computed(() => finalisationButtonTitle(checks.value))
 
 .finalisation__cta:active {
   transform: translateY(0);
+}
+.finalisation__heading--h3 {
+  padding-left: 1.5rem;
 }
 </style>

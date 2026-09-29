@@ -1,9 +1,12 @@
 /**
  * Tests de cohérence data-flow pour les analyses d'intention SERP.
  *
- * AUTHORITY: PostgreSQL `keyword_intent_analyses`
- * READS FROM: POST /intent/analyze (hydrate intentData store), scanIntent (Radar), scanRadarKeywords
- * WRITES TO: intentData, comparisonData, autocompleteData refs du useIntentStore
+ * AUTHORITY: aucune table — tests purs sur le type `IntentAnalysis` et sur
+ *            `intentValueToPseudoScore` (shared/scoring-kpi.ts). `keyword_intent_analyses`
+ *            n'est plus lue ni écrite (M3, épopée qualité SEO) : son service, son TTL
+ *            de 7 jours et `intentStore.intentData` sont supprimés.
+ * READS FROM: scanIntent (Radar), scanRadarKeywords
+ * WRITES TO: rien
  * CONSUMERS: IntentStep.vue, ExplorationVerdict.vue, RadarKeywordCard.vue, scoring KPI/pertinence
  * RELATED FR: FR-EXP-INTENT-ANALYZE, FR-RAD-SCAN-2PASS, FR-CAP-VALIDATE, FR-DIS-INTENT-SCAN
  *
@@ -13,6 +16,7 @@
 
 import { describe, it, expect } from 'vitest'
 import type { IntentAnalysis, SerpModule, RadarIntentType } from '@shared/types/index.js'
+import { intentValueToPseudoScore } from '@shared/scoring-kpi.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -81,21 +85,10 @@ function makeMockIntentAnalysis(overrides?: Partial<IntentAnalysis>): IntentAnal
   }
 }
 
-// Mock intent types mapping (from shared/scoring-kpi.ts)
-const INTENT_VALUES: Record<RadarIntentType, number> = {
-  informational: 60,
-  commercial: 80,
-  transactional_local: 90,
-  navigational: 40,
-  mixed: 50,
-}
-
-function intentValueToPseudoScore(intentTypes: RadarIntentType[], prob: number | null): number {
-  if (!intentTypes.length) return 0
-  const maxVal = Math.max(...intentTypes.map(t => INTENT_VALUES[t] ?? 0))
-  const score = Math.round((maxVal / 100) * (prob ?? 0.5) * 100)
-  return Math.min(100, Math.max(0, score))
-}
+// T11 — la VRAIE fonction de shared/scoring-kpi.ts. Le test en vérifiait une
+// copie locale qui divergeait (échelle 0-100 au lieu de 0-1, autres valeurs,
+// types `transactional_local` / `mixed` inconnus du Radar) : il ne prouvait
+// rien sur le code réel.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests
@@ -124,7 +117,7 @@ describe('FR-EXP-INTENT-ANALYZE — affichage vs calcul intent dans scoring KPI'
     // Assert
     expect(displayedLabel).toBe('Informationnel')
     expect(intentTypes[0]).toBe(analysis.dominantIntent)
-    expect(pseudoScore).toBeGreaterThan(0)
+    expect(pseudoScore).toBeCloseTo(0.5 * 0.85) // informationnel = 0,5 × probabilité
   })
 
   it('intent null → affichage "—", scoring KPI = 0 (pas fallback silencieux)', () => {
@@ -145,21 +138,20 @@ describe('FR-EXP-INTENT-ANALYZE — affichage vs calcul intent dans scoring KPI'
     expect(pseudoScore).toBe(0)
   })
 
-  it('intent types de différentes précisions mappent correctement', () => {
-    // Test des 4 types principaux
-    const testCases: Array<{ intentType: IntentType; expectedScore: number }> = [
-      { intentType: 'informational', expectedScore: 50 },      // 60 * 0.5 * 100 / 100 = 30, mais cap max
-      { intentType: 'transactional_local', expectedScore: 90 }, // 90 * 0.5 * 100 / 100 = 45, mais max
-      { intentType: 'navigational', expectedScore: 20 },       // 40 * 0.5 * 100 / 100 = 20
-      { intentType: 'mixed', expectedScore: 25 },              // 50 * 0.5 * 100 / 100 = 25
+  it('les 4 intentions du Radar valent leur poids × la probabilité', () => {
+    const cases: Array<{ intentType: RadarIntentType; expected: number }> = [
+      { intentType: 'commercial', expected: 0.5 },     // 1,0 × 0,5
+      { intentType: 'transactional', expected: 0.4 },  // 0,8 × 0,5
+      { intentType: 'informational', expected: 0.25 }, // 0,5 × 0,5
+      { intentType: 'navigational', expected: 0.1 },   // 0,2 × 0,5
     ]
-
-    for (const testCase of testCases) {
-      const score = intentValueToPseudoScore([testCase.intentType as RadarIntentType], 0.5)
-      // Score dépend de la formule exacte, juste vérifier non-zero pour type valide
-      expect(score).toBeGreaterThanOrEqual(0)
-      expect(score).toBeLessThanOrEqual(100)
+    for (const { intentType, expected } of cases) {
+      expect(intentValueToPseudoScore([intentType], 0.5), intentType).toBeCloseTo(expected)
     }
+  })
+
+  it('plusieurs intentions : la plus forte l’emporte ; sans probabilité, elle compte pleinement', () => {
+    expect(intentValueToPseudoScore(['informational', 'commercial'], null)).toBe(1)
   })
 })
 
@@ -305,48 +297,10 @@ describe('FR-CAP-VALIDATE — intent modules cross-article shared correctness', 
   })
 })
 
-describe('FR-EXP-INTENT-ANALYZE — stability et freshness', () => {
-  it('intent frais (< 7j) ne doit pas diverger au reload', () => {
-    // Arrange
-    const now = new Date()
-    const freshDate = new Date(now.getTime() - 6 * 24 * 3600 * 1000) // 6 days ago
-
-    const analysis = makeMockIntentAnalysis({
-      cachedAt: freshDate.toISOString(),
-    })
-
-    // Simule freshness check (keyword-intent-analysis.service.ts ligne 97-101)
-    const isKeywordIntentFresh = (fetchedAt: string | Date | null | undefined, ttlDays: number = 7): boolean => {
-      if (!fetchedAt) return false
-      const ts = typeof fetchedAt === 'string' ? new Date(fetchedAt).getTime() : fetchedAt.getTime()
-      return Date.now() - ts < ttlDays * 24 * 60 * 60 * 1000
-    }
-
-    // Assert
-    expect(isKeywordIntentFresh(analysis.cachedAt, 7)).toBe(true)
-  })
-
-  it('intent stale (>= 7d) → refetch, affichage peut différer', () => {
-    // Arrange
-    const now = new Date()
-    const staleDate = new Date(now.getTime() - 8 * 24 * 3600 * 1000) // 8 days ago
-
-    const analysis = makeMockIntentAnalysis({
-      cachedAt: staleDate.toISOString(),
-    })
-
-    // Freshness check
-    const isKeywordIntentFresh = (fetchedAt: string | Date | null | undefined, ttlDays: number = 7): boolean => {
-      if (!fetchedAt) return false
-      const ts = typeof fetchedAt === 'string' ? new Date(fetchedAt).getTime() : fetchedAt.getTime()
-      return Date.now() - ts < ttlDays * 24 * 60 * 60 * 1000
-    }
-
-    // Assert
-    expect(isKeywordIntentFresh(analysis.cachedAt, 7)).toBe(false)
-    // → Service should refetch instead of using stale data
-  })
-})
+// M3 (épopée qualité SEO) : les deux tests « stability et freshness » simulaient
+// une copie locale de `isKeywordIntentFresh` (keyword-intent-analysis.service.ts,
+// supprimé avec les lecteurs de `keyword_intent_analyses`). Ils ne prouvaient
+// rien sur le code réel ; ils sont retirés avec le service.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Placeholders (to be implemented with full store/service setup)
@@ -364,9 +318,3 @@ describe('FR-DIS-INTENT-SCAN — intent scoring cohérence', () => {
 describe('FR-EXP-INTENT-ANALYZE — fallback Claude handling', () => {
   it.todo('Fallback Claude (confidence=0.3) → affichage label "Estimation par défaut"')
 })
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Types (local)
-// ─────────────────────────────────────────────────────────────────────────────
-
-type IntentType = 'informational' | 'transactional_local' | 'navigational' | 'mixed'

@@ -11,6 +11,9 @@ const FRONTEND_PORT = Number(process.env.VITE_PORT) || 5400
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Les tests navigateur ont leur propre cache (playwright.config.ts) : une ré-optimisation
+  // de leurs dépendances ne doit pas recharger le front du serveur de développement.
+  cacheDir: process.env.VITE_CACHE_DIR ?? 'node_modules/.vite',
   plugins: [
     vue(),
     vueDevTools(),

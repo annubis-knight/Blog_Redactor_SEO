@@ -13,6 +13,11 @@ vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
   isKeywordMetricsFresh: (...args: unknown[]) => mockIsFresh(...args),
 }))
 
+// Zone du client (theme_config) : pas de base en test unitaire.
+vi.mock('../../../server/services/strategy/prompt-context.service', () => ({
+  loadZoneContext: async () => ({ zone: 'Nantes, France', landmarks: '' }),
+}))
+
 vi.mock('../../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
@@ -48,6 +53,11 @@ beforeEach(() => {
   vi.resetAllMocks()
   vi.stubEnv('TAVILY_API_KEY', 'test_key')
   vi.stubEnv('ANTHROPIC_API_KEY', 'test_anthropic_key')
+  // Ce test simule le SDK Claude : il fixe donc le fournisseur. Sans cela il
+  // dépendait du .env (claude sur un poste, mock en CI) et ne testait pas la
+  // même chose selon la machine.
+  vi.stubEnv('AI_PROVIDER', 'claude')
+  vi.stubEnv('AI_PROVIDER_NO_FALLBACK', '1')
 
   mockFetch = vi.fn()
   vi.stubGlobal('fetch', mockFetch)

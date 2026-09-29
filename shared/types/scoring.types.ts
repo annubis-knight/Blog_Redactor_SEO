@@ -5,7 +5,7 @@
  *   - marketScore  → onglet Radar  → "ce mot-clé pèse-t-il SEO ?"
  *   - relevanceScore → onglet Capitaine → "ce mot-clé parle-t-il vraiment de la douleur ?"
  *
- * Source of truth: docs/scoring-kpi-vs-relevance.md
+ * Source of truth: design/14-radar-capitaine.md
  */
 
 import type { KpiScoreBreakdown } from '../scoring-kpi.js'
@@ -62,7 +62,7 @@ export interface RelevanceScoreInput {
    * `articles.pain_intent_expected`). Si différent de l'intent réel détecté sur
    * le mot-clé, un MALUS est intégré directement dans `intentPain.normalized`
    * (-10 points sur la composante elle-même, pas une variable séparée).
-   * Cf. docs/pain-point-editorial-backbone.md — "Pattern malus intégré".
+   * Cf. design/11-cerveau.md — "Pattern malus intégré".
    */
   painIntentExpected?: PainIntentExpected
 }
@@ -132,7 +132,7 @@ export interface RelevanceScoreResult {
 
 /**
  * Cause typée backend quand relevanceScore est null (FR-CAP-RELEVANCE-UNAVAILABLE-REASON).
- * Voir docs/data-flows/relevance-score-live-computation.md §8.
+ * Voir design/data-flows/relevance-score-live-computation.md §8.
  * Mapping UI : no-pain|long-tail|missing-paa|missing-autocomplete|null.
  */
 export type RelevanceUnavailableReason =

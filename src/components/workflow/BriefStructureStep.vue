@@ -114,7 +114,6 @@ function suggestMicroContext() {
     keyword: articleKeywordsStore.keywords?.capitaine ?? props.articleTitle,
     cocoonName: props.cocoonName,
     siloName: props.siloName,
-    cocoonStrategy: cocoonStrategyStore.getPreviousAnswers(),
     themeConfig: themeConfigStore.config,
   }, {
     onDone: (data) => {
@@ -145,6 +144,7 @@ function cancelSuggestion() {
 
 // --- Target word count ---
 function handleTargetWordCountUpdate(value: number) {
+  briefStore.setRetainedWordCount(value)
   targetWordCount.value = value
   saveMicroContext()
 }

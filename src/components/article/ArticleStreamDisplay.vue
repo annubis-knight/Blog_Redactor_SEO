@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { mergeConsecutiveElements, removeEmptyElements } from '@shared/html-utils'
+import { removeEmptyElements } from '@shared/html-utils'
 
 const props = defineProps<{
   streamedText: string
@@ -13,9 +13,9 @@ const streamedWithCursor = computed(() =>
   props.streamedText + '<span class="streaming-cursor">&#x2588;</span>',
 )
 
-/** Final content: merge consecutive tags, then strip empty elements */
+/** Final content: empty elements stripped; paragraphs stay paragraphs (R14). */
 const processedContent = computed(() =>
-  props.content ? removeEmptyElements(mergeConsecutiveElements(props.content)) : null,
+  props.content ? removeEmptyElements(props.content) : null,
 )
 </script>
 

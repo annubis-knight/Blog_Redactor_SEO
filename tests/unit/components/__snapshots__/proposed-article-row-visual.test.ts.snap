@@ -1,12 +1,14 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders collapsed default state 1`] = `
-"<div data-v-6ebf81e5="" class="proposal-item" data-testid="proposal-item" data-accepted="false" data-created="false">
+"<div data-v-6ebf81e5="" class="proposal-item" data-testid="proposal-item" data-created="false">
   <!-- Header row -->
   <div data-v-6ebf81e5="" class="proposal-header">
     <div data-v-6ebf81e5="" class="proposal-title-block">
       <!--v-if--><span data-v-6ebf81e5="" class="proposal-title" title="Comment optimiser le SEO local pour PME">Comment optimiser le SEO local pour PME</span>
-    </div><!-- Composition badge (between title and slider nav) -->
+    </div><!-- Article déjà créé (depuis le constructeur du cocon) : la carte le montre. -->
+    <!--v-if-->
+    <!-- Composition badge (between title and slider nav) -->
     <!--v-if-->
     <div data-v-99771f1f="" data-v-6ebf81e5="" class="slider-nav"><button data-v-99771f1f="" class="slider-arrow" disabled=""><svg data-v-99771f1f="" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
           <path d="M6.5 1.5L3 5l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -15,9 +17,7 @@ exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders collapsed def
         </svg></button></div>
     <!--v-if-->
     <!-- Header (collapsed only) -->
-    <div data-v-33c5c761="" class="proposal-actions"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-accept" data-testid="proposal-accept-header" title="Valider cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
-        </svg></button><button data-v-33c5c761="" class="proposal-action-btn proposal-action-kebab" title="Plus d'actions" data-testid="kebab-btn"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <div data-v-33c5c761="" class="proposal-actions"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-kebab" title="Plus d'actions" data-testid="kebab-btn"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <circle cx="8" cy="3.5" r="1.2" fill="currentColor"></circle>
           <circle cx="8" cy="8" r="1.2" fill="currentColor"></circle>
           <circle cx="8" cy="12.5" r="1.2" fill="currentColor"></circle>
@@ -36,7 +36,7 @@ exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders collapsed def
 `;
 
 exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders expanded state with all details 1`] = `
-"<div data-v-6ebf81e5="" class="proposal-item expanded" data-testid="proposal-item" data-accepted="false" data-created="false">
+"<div data-v-6ebf81e5="" class="proposal-item expanded" data-testid="proposal-item" data-created="false">
   <!-- Header row -->
   <div data-v-6ebf81e5="" class="proposal-header">
     <div data-v-6ebf81e5="" class="proposal-title-block">
@@ -44,7 +44,9 @@ exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders expanded stat
             <path d="M11.5 2.5l2 2-8 8H3.5v-2l8-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
             <path d="M9.5 4.5l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
           </svg></button></div><span data-v-6ebf81e5="" class="proposal-title">Comment optimiser le SEO local pour PME</span>
-    </div><!-- Composition badge (between title and slider nav) -->
+    </div><!-- Article déjà créé (depuis le constructeur du cocon) : la carte le montre. -->
+    <!--v-if-->
+    <!-- Composition badge (between title and slider nav) -->
     <!--v-if-->
     <div data-v-99771f1f="" data-v-6ebf81e5="" class="slider-nav"><button data-v-99771f1f="" class="slider-arrow" disabled=""><svg data-v-99771f1f="" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
           <path d="M6.5 1.5L3 5l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -98,9 +100,7 @@ exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders expanded stat
     <!-- Kebab dropdown (collapsed only) -->
     <!--v-if-->
     <!-- Bottom (expanded only) -->
-    <div data-v-33c5c761="" class="proposal-actions proposal-actions--bottom"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-accept" data-testid="proposal-accept-bottom" title="Valider cet article"><svg data-v-33c5c761="" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
-        </svg><span data-v-33c5c761="" class="action-label">Valider</span></button>
+    <div data-v-33c5c761="" class="proposal-actions proposal-actions--bottom">
       <div data-v-33c5c761="" class="regen-dropdown-wrapper"><button data-v-33c5c761="" class="proposal-action-btn" title="Régénérer" data-testid="regen-dropdown-btn"><svg data-v-33c5c761="" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M2.5 8a5.5 5.5 0 0 1 9.68-3.5M13.5 8a5.5 5.5 0 0 1-9.68 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
             <path d="M12.5 1v3.5H9M3.5 15v-3.5H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -116,12 +116,14 @@ exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders expanded stat
 `;
 
 exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders with composition warnings (badge + tooltip-eligible) 1`] = `
-"<div data-v-6ebf81e5="" class="proposal-item" data-testid="proposal-item" data-accepted="false" data-created="false">
+"<div data-v-6ebf81e5="" class="proposal-item" data-testid="proposal-item" data-created="false">
   <!-- Header row -->
   <div data-v-6ebf81e5="" class="proposal-header">
     <div data-v-6ebf81e5="" class="proposal-title-block">
       <!--v-if--><span data-v-6ebf81e5="" class="proposal-title" title="Comment optimiser le SEO local pour PME">Comment optimiser le SEO local pour PME</span>
-    </div><!-- Composition badge (between title and slider nav) --><span data-v-6ebf81e5="" class="composition-badge composition-badge--warn" data-testid="composition-badge-warn">⚠ 3</span>
+    </div><!-- Article déjà créé (depuis le constructeur du cocon) : la carte le montre. -->
+    <!--v-if-->
+    <!-- Composition badge (between title and slider nav) --><span data-v-6ebf81e5="" class="composition-badge composition-badge--warn" data-testid="composition-badge-warn">⚠ 3</span>
     <div data-v-99771f1f="" data-v-6ebf81e5="" class="slider-nav"><button data-v-99771f1f="" class="slider-arrow" disabled=""><svg data-v-99771f1f="" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
           <path d="M6.5 1.5L3 5l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
         </svg></button><span data-v-99771f1f="" class="slider-counter">1/2</span><button data-v-99771f1f="" class="slider-arrow"><svg data-v-99771f1f="" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
@@ -129,9 +131,7 @@ exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders with composit
         </svg></button></div>
     <!--v-if-->
     <!-- Header (collapsed only) -->
-    <div data-v-33c5c761="" class="proposal-actions"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-accept" data-testid="proposal-accept-header" title="Valider cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
-        </svg></button><button data-v-33c5c761="" class="proposal-action-btn proposal-action-kebab" title="Plus d'actions" data-testid="kebab-btn"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <div data-v-33c5c761="" class="proposal-actions"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-kebab" title="Plus d'actions" data-testid="kebab-btn"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <circle cx="8" cy="3.5" r="1.2" fill="currentColor"></circle>
           <circle cx="8" cy="8" r="1.2" fill="currentColor"></circle>
           <circle cx="8" cy="12.5" r="1.2" fill="currentColor"></circle>

@@ -8,7 +8,14 @@
  * dans `articles.completed_checks` ; les familles `cerveau:*` et `redaction:*`
  * ont ete retirees par decision produit.
  *
- * Voir docs/data-flows/completed-checks.md pour la cartographie complete.
+ * Voir design/data-flows/completed-checks.md pour la cartographie complete.
+ *
+ * FR-HN-TAB (chantier C6) : 6e check Moteur `moteur:hn_locked` (structure
+ * H1/H2/H3 validee a l'onglet Structure), entre Lieutenants et Lexique.
+ *
+ * FR-CER-PARENT-WRITTEN-GATE (chantier C7) : une seule etape Redaction revient,
+ * `redaction:draft_accepted` (premier jet accepte par sa porte) — c'est elle
+ * qui dit qu'un parent est « redige ». Aucune autre valeur `redaction:*`.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
@@ -20,7 +27,10 @@ import {
   MOTEUR_RADAR_DONE,
   MOTEUR_CAPITAINE_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
   MOTEUR_LEXIQUE_VALIDATED,
+  REDACTION_CHECKS,
+  REDACTION_DRAFT_ACCEPTED,
 } from '../../../shared/constants/workflow-checks.constants.js'
 import { addCheckSchema } from '../../../shared/schemas/article-progress.schema.js'
 
@@ -41,9 +51,20 @@ describe('FR-MOT-CHECKS — namespace Moteur', () => {
     expect(unique.size).toBe(all.length)
   })
 
-  it('ALL_WORKFLOW_CHECKS = MOTEUR_CHECKS depuis 2026-05-13 (cf. DRIFT-002)', () => {
-    expect(ALL_WORKFLOW_CHECKS.length).toBe(MOTEUR_CHECKS.length)
-    expect([...ALL_WORKFLOW_CHECKS]).toEqual([...MOTEUR_CHECKS])
+  it('FR-HN-TAB — MOTEUR_CHECKS = 6 checks, dans l’ordre des onglets (structure entre lieutenants et lexique)', () => {
+    expect([...MOTEUR_CHECKS]).toEqual([
+      MOTEUR_DISCOVERY_DONE,
+      MOTEUR_RADAR_DONE,
+      MOTEUR_CAPITAINE_LOCKED,
+      MOTEUR_LIEUTENANTS_LOCKED,
+      MOTEUR_HN_LOCKED,
+      MOTEUR_LEXIQUE_VALIDATED,
+    ])
+  })
+
+  it('ALL_WORKFLOW_CHECKS = les 6 étapes Moteur + la seule étape Rédaction (C7)', () => {
+    expect([...REDACTION_CHECKS]).toEqual([REDACTION_DRAFT_ACCEPTED])
+    expect([...ALL_WORKFLOW_CHECKS]).toEqual([...MOTEUR_CHECKS, REDACTION_DRAFT_ACCEPTED])
   })
 })
 
@@ -68,8 +89,16 @@ describe('FR-MOT-CHECKS-CONSTANTS — valeurs canoniques attendues', () => {
     expect(MOTEUR_LIEUTENANTS_LOCKED).toBe('moteur:lieutenants_locked')
   })
 
+  it('MOTEUR_HN_LOCKED = "moteur:hn_locked" (FR-HN-TAB)', () => {
+    expect(MOTEUR_HN_LOCKED).toBe('moteur:hn_locked')
+  })
+
   it('MOTEUR_LEXIQUE_VALIDATED = "moteur:lexique_validated"', () => {
     expect(MOTEUR_LEXIQUE_VALIDATED).toBe('moteur:lexique_validated')
+  })
+
+  it('REDACTION_DRAFT_ACCEPTED = "redaction:draft_accepted" (FR-CER-PARENT-WRITTEN-GATE)', () => {
+    expect(REDACTION_DRAFT_ACCEPTED).toBe('redaction:draft_accepted')
   })
 })
 
@@ -78,11 +107,10 @@ describe('FR-MOT-CHECKS-CONSTANTS — valeurs canoniques attendues', () => {
 // =====================================================
 
 describe('NFR-INT-COMPLETED-CHECKS-SSOT — TEXT[] unique flat', () => {
-  it('tous les checks suivent le format moteur:snake_case', () => {
+  it('tous les checks suivent le format moteur:snake_case, ou redaction:draft_accepted', () => {
     const all: readonly string[] = ALL_WORKFLOW_CHECKS
     all.forEach(check => {
-      expect(typeof check).toBe('string')
-      expect(check).toMatch(/^moteur:[a-z_]+$/)
+      expect(check).toMatch(/^(moteur:[a-z_]+|redaction:draft_accepted)$/)
     })
   })
 
@@ -125,9 +153,23 @@ describe('FR-MOT-CHECKS-CONSTANTS — schema Zod accepte uniquement moteur:*', (
     expect(result.success).toBe(false)
   })
 
+  it('accepte "redaction:draft_accepted", la seule étape Rédaction (C7)', () => {
+    expect(addCheckSchema.safeParse({ check: 'redaction:draft_accepted' }).success).toBe(true)
+  })
+
   it('refuse "redaction:brief_validated" (famille retiree 2026-05-13, cf. DRIFT-002)', () => {
     const result = addCheckSchema.safeParse({ check: 'redaction:brief_validated' })
     expect(result.success).toBe(false)
+  })
+
+  it('refuse "hn_locked" (sans prefixe, FR-HN-TAB)', () => {
+    const result = addCheckSchema.safeParse({ check: 'hn_locked' })
+    expect(result.success).toBe(false)
+  })
+
+  it('accepte "moteur:hn_locked" (FR-HN-TAB)', () => {
+    const result = addCheckSchema.safeParse({ check: MOTEUR_HN_LOCKED })
+    expect(result.success).toBe(true)
   })
 
   it('accepte "moteur:capitaine_locked"', () => {
@@ -150,6 +192,7 @@ describe('FR-MOT-CHECKS-CONSTANTS — aucune string en dur dans src/', () => {
   const FORBIDDEN_LITERALS = [
     "'capitaine_locked'", "\"capitaine_locked\"",
     "'lieutenants_locked'", "\"lieutenants_locked\"",
+    "'hn_locked'", "\"hn_locked\"",
     "'discovery_done'", "\"discovery_done\"",
     "'radar_done'", "\"radar_done\"",
     "'lexique_validated'", "\"lexique_validated\"",

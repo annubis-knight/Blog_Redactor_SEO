@@ -1,35 +1,14 @@
 /**
  * Mock stream fixtures.
  *
- * Simule les réponses des streams (POST /keywords/translate-pain, theme-parse,
+ * Simule les réponses des streams (theme-parse,
  * captain AI panel, propose-lieutenants, ai-lexique-upfront, etc.). Chaque
  * fixture a un matcher qui identifie le contexte et un builder qui retourne
  * soit une chaîne complète, soit des chunks pré-découpés.
  */
 import { registerStreamFixture } from '../mock-registry.js'
-
-// ---------------------------------------------------------------------------
-// translate-pain — retourne un JSON { keywords: [{keyword, reasoning}] }
-// ---------------------------------------------------------------------------
-registerStreamFixture(
-  'translate-pain',
-  ({ userPrompt }) => /traduis cette douleur/i.test(userPrompt) || /douleur client en mots-clés/i.test(userPrompt),
-  ({ userPrompt }) => {
-    const painMatch = userPrompt.match(/"([^"]+)"/)
-    const pain = (painMatch?.[1] ?? 'problème client').slice(0, 80)
-
-    const json = {
-      keywords: [
-        { keyword: `résoudre ${pain}`, reasoning: 'Verbe d\'action direct, intention résolution' },
-        { keyword: `solution ${pain}`, reasoning: 'Terme générique à fort volume' },
-        { keyword: `${pain} que faire`, reasoning: 'Question naturelle, longue-traîne' },
-        { keyword: `éviter ${pain}`, reasoning: 'Prévention, angle éditorial' },
-        { keyword: `${pain} urgent`, reasoning: 'Variante transactionnelle' },
-      ],
-    }
-    return JSON.stringify(json, null, 2)
-  },
-)
+import { ARTICLE_TYPE_RULES } from '../../../../shared/constants/article-type-rules.js'
+import type { ArticleLevel } from '../../../../shared/types/keyword-validate.types.js'
 
 // ---------------------------------------------------------------------------
 // theme-parse — parse libre d'une description d'entreprise vers ThemeConfig
@@ -71,16 +50,19 @@ registerStreamFixture(
 // ---------------------------------------------------------------------------
 registerStreamFixture(
   'captain-ai-panel',
-  // Calé sur le prompt système : le prompt utilisateur d'une rédaction de
-  // section contient lui aussi le mot « capitaine » (le mot-clé de l'article y
-  // est injecté), ce qui détournait toutes les générations d'article vers cette
-  // fixture — l'article obtenu tenait alors en dix caractères.
-  ({ userPrompt }) =>
-    /capitaine|panel.*analyse|6 KPI|verdict/i.test(userPrompt)
-    // Le gabarit de rédaction d'une section contient lui aussi le mot
-    // « capitaine » (le mot-clé de l'article y est injecté) et arrivait ici en
-    // premier : l'article généré tenait alors en dix caractères.
-    && !/Section [aà] r[eé]diger|Sommaire complet de l'article/i.test(userPrompt),
+  // Le conseil du Capitaine (`capitaine-ai-panel.md`) se reconnaît à sa consigne
+  // système : son message utilisateur dit seulement « Analyse le mot-clé "…" pour
+  // un article de niveau … », sans « capitaine » ni « verdict ». Sans ce critère,
+  // l'écran recevait la réponse par défaut (NFR-COST-AI-MOCK).
+  ({ systemPrompt, userPrompt }) =>
+    /analyser un mot-cl[eé] candidat pour un article de blog/i.test(systemPrompt)
+    || (
+      /capitaine|panel.*analyse|6 KPI|verdict/i.test(userPrompt)
+      // Le gabarit de rédaction d'une section contient lui aussi le mot
+      // « capitaine » (le mot-clé de l'article y est injecté) et arrivait ici en
+      // premier : l'article généré tenait alors en dix caractères.
+      && !/Section [aà] r[eé]diger|Sommaire complet de l'article/i.test(userPrompt)
+    ),
   ({ userPrompt }) => {
     const kwMatch = userPrompt.match(/["«]([^"»]{3,60})["»]/)
     const kw = kwMatch?.[1] ?? 'mot-clé'
@@ -122,20 +104,27 @@ registerStreamFixture(
 
     const kwMatch = userPrompt.match(/article "([^"]+)"/i)
     const captain = kwMatch?.[1] ?? 'sujet principal'
+    const levelMatch = /de niveau (pilier|intermediaire|specifique)/i.exec(userPrompt)?.[1]?.toLowerCase() as ArticleLevel | undefined
+    const rules = ARTICLE_TYPE_RULES[levelMatch ?? 'intermediaire']
 
+    // Une structure qui passe la porte « valider la structure » : H1 qui porte
+    // le capitaine en entier, un H2 par lieutenant retenu, complétée par des H2
+    // thématiques jusqu'au minimum du type, ni introduction ni conclusion (le
+    // sommaire les ajoute), pas de FAQ (passe d'enrichissement).
+    const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`
+    const fillers = ['Les erreurs à éviter', 'Les étapes pour bien démarrer', 'Le budget à prévoir',
+      'Les questions à se poser avant de choisir', 'Mesurer les résultats', 'Aller plus loin']
+    const h2Titles = [...lieutenants.map(capitalize), ...fillers].slice(0, Math.max(rules.h2Min, Math.min(lieutenants.length, rules.h2Max)))
     const json = {
       hnStructure: [
-        { level: 1, text: `${captain} : guide complet (mock)` },
-        ...lieutenants.slice(0, 6).map((lt, i) => ({
+        { level: 1, text: `${capitalize(captain)} : le guide pratique` },
+        ...h2Titles.map((title, i) => ({
           level: 2,
-          text: `${lt.charAt(0).toUpperCase()}${lt.slice(1)}`,
-          children: i === 0
-            ? [{ level: 3, text: `${lt} — détails et bonnes pratiques` }]
-            : undefined,
+          text: title,
+          children: i === 0 ? [{ level: 3, text: `${title} : ce qu’il faut savoir` }] : undefined,
         })),
-        { level: 2, text: 'Foire aux questions (FAQ)' },
       ],
-      justification: 'Structure générée par le provider mock — chaque lieutenant fourni a été placé en H2, le premier dispose d\'un sous-H3 d\'illustration. À remplacer par un appel réel pour de la production.',
+      justification: 'Structure simulée : chaque lieutenant retenu en H2, complétée jusqu’au minimum du type.',
     }
     return JSON.stringify(json, null, 2)
   },
@@ -150,38 +139,42 @@ registerStreamFixture(
 registerStreamFixture(
   'propose-lieutenants',
   ({ userPrompt }) => /Propose les meilleurs lieutenants|propose.*mots-clés.*support/i.test(userPrompt),
-  () => {
+  ({ userPrompt }) => {
+    // Les lieutenants dérivent du capitaine demandé (T4, épopée qualité SEO) :
+    // une proposition figée « plombier » rendait les parcours incohérents et
+    // aveugles aux portes (cannibalisation, lieutenant = capitaine).
+    const captain = (userPrompt.match(/"([^"]+)"/)?.[1] ?? 'mot-clé principal').trim().toLowerCase()
     const json = {
       lieutenants: [
         {
-          keyword: 'plombier urgence toulouse',
+          keyword: `prix ${captain}`,
           level: 'intermediaire',
-          hnTitle: 'Intervention urgente à Toulouse',
+          hnTitle: `Combien coûte ${captain} ?`,
           score: 85,
-          reasoning: 'Forte intention transactionnelle locale, volume 320/mois.',
+          reasoning: 'Question de budget posée avant tout achat : forte intention.',
           priority: 'high',
         },
         {
-          keyword: 'plombier chauffagiste toulouse',
+          keyword: `${captain} avis`,
           level: 'intermediaire',
-          hnTitle: 'Plombier chauffagiste : double expertise',
+          hnTitle: `Ce qu'en disent les clients`,
           score: 78,
-          reasoning: 'Élargit la surface sémantique sur le chauffage.',
+          reasoning: 'Recherche de réassurance, présente dans les questions « Autres questions ».',
           priority: 'high',
         },
         {
-          keyword: 'dépannage fuite eau toulouse',
+          keyword: `comment choisir ${captain}`,
           level: 'specifique',
-          hnTitle: 'Fuite d\'eau : réaction en 30 min',
+          hnTitle: 'Les critères pour bien choisir',
           score: 72,
-          reasoning: 'Longue-traîne niche, forte conversion.',
+          reasoning: 'Longue traîne de décision, titres récurrents chez les concurrents.',
           priority: 'medium',
         },
       ],
       eliminated: [
         {
-          keyword: 'plombier paris',
-          reason: 'Hors zone géographique — cannibalisation impossible.',
+          keyword: `${captain} gratuit`,
+          reason: 'Intention sans valeur commerciale pour ce site.',
         },
       ],
     }

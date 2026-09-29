@@ -4,7 +4,7 @@
  * Verifie que la valeur affichee et la valeur utilisee pour le tri/agregat
  * derivent de la MEME expression (regle de coherence affichage/calcul).
  *
- * Voir docs/data-flows/score-capitaine.md pour la cartographie complete.
+ * Voir design/data-flows/score-capitaine.md pour la cartographie complete.
  */
 import { describe, it, expect } from 'vitest'
 

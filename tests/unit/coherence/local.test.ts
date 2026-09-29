@@ -3,7 +3,7 @@
  * Tests de coherence pour local data flow.
  * Verifie le calcul d'opportunityIndex, le review gap, et l'invariant cross-article.
  *
- * Voir docs/data-flows/local.md pour la cartographie complete.
+ * Voir design/data-flows/local.md pour la cartographie complete.
  */
 import { describe, it, expect } from 'vitest'
 

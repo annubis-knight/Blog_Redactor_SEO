@@ -79,6 +79,14 @@ export interface Article {
   painPoint: string | null
   /** Intent éditorial attendu — alimente le 5e signal du Score Pertinence (FR-CAP-RELEVANCE-INTENT-SIGNAL). */
   painIntentExpected: PainIntentExpected | null
+  /**
+   * Parent dans le cocon (FR-CER-CHILD-FROM-PILLAR-H2) : le pilier d'un
+   * intermédiaire, l'intermédiaire d'un spécialisé ; `null` pour un pilier ou
+   * un article d'avant C7 non encore rattaché. Toujours renseigné par le serveur.
+   */
+  parentId?: number | null
+  /** Titre du H2 du parent dont l'article est né (le parent le résume). */
+  parentSection?: string | null
   createdAt?: string      // ISO timestamp
   updatedAt?: string      // ISO timestamp
 }

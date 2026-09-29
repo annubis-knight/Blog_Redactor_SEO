@@ -1,8 +1,9 @@
 /**
  * Tests anti-régression pour FinalisationPanel (onglet Finalisation du Moteur).
  *
- * Composant 100 % lecture seule qui résume Capitaine + Lieutenants + Lexique
- * juste avant le passage à la Rédaction. Couvre :
+ * Composant 100 % lecture seule qui résume Capitaine + Lieutenants + Structure
+ * + Lexique juste avant le passage à la Rédaction (FR-HN-TAB : la Structure Hn
+ * validée est le 4ᵉ verrou et a sa propre section). Couvre :
  *   1. titre article injecté depuis prop
  *   2. capitaine affiché depuis le store (richCaptain.keyword, fallback flat)
  *   3. lieutenants : `richLieutenants` filtrés sur status='locked' affichés en priorité
@@ -11,6 +12,7 @@
  *   6. clic sur "Aller à la Rédaction" → emit navigate-redaction
  *   7. états vides : "Aucun lieutenant verrouillé" / "Aucun terme validé"
  *   8. lockedAt formaté en fr-FR
+ *   9. structure : H1/H2/H3 dans l'ordre de lecture, compteur de H2 (FR-HN-TAB)
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -21,6 +23,7 @@ import { useArticleProgressStore } from '../../../src/stores/article/article-pro
 import {
   MOTEUR_CAPITAINE_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
   MOTEUR_LEXIQUE_VALIDATED,
 } from '../../../shared/constants/workflow-checks.constants.js'
 
@@ -34,7 +37,7 @@ function withChecks(...checks: string[]) {
   } as never
 }
 
-const TOUS_LES_VERROUS = [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_LEXIQUE_VALIDATED]
+const TOUS_LES_VERROUS = [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED]
 
 const STUBS = {
   CollapsableSection: {
@@ -246,6 +249,55 @@ describe('FinalisationPanel', () => {
     expect(wrapper.text()).toContain('Aucun terme validé')
   })
 
+  it('FR-HN-TAB — structure : H1, H2 et H3 dans l’ordre de lecture, compteur de H2', () => {
+    const store = useArticleKeywordsStore()
+    store.keywords = {
+      articleId: 1, capitaine: null, richCaptain: null,
+      lieutenants: [], richLieutenants: [], lexique: [], richRootKeywords: [],
+      hnStructure: [
+        { level: 1, text: 'Agence SEO à Toulouse' },
+        { level: 2, text: 'Choisir son agence', children: [{ level: 3, text: 'Les critères' }] },
+        { level: 2, text: 'Les tarifs' },
+      ],
+    } as never
+
+    const wrapper = mount(FinalisationPanel, {
+      props: { selectedArticle: SELECTED_ARTICLE as never },
+      global: { stubs: STUBS },
+    })
+
+    const section = wrapper.find('[data-testid="finalisation-structure"]')
+    expect(section.exists()).toBe(true)
+    expect(section.text()).toContain('Structure (2 H2)')
+    const items = section.findAll('li').map(li => [
+      li.find('.finalisation__tag').text(),
+      li.find('.finalisation__keyword-sm').text(),
+    ])
+    expect(items).toEqual([
+      ['H1', 'Agence SEO à Toulouse'],
+      ['H2', 'Choisir son agence'],
+      ['H3', 'Les critères'],
+      ['H2', 'Les tarifs'],
+    ])
+  })
+
+  it('FR-HN-TAB — structure vide → message dédié', () => {
+    const store = useArticleKeywordsStore()
+    store.keywords = {
+      articleId: 1, capitaine: null, richCaptain: null,
+      lieutenants: [], richLieutenants: [], lexique: [], richRootKeywords: [], hnStructure: [],
+    } as never
+
+    const wrapper = mount(FinalisationPanel, {
+      props: { selectedArticle: SELECTED_ARTICLE as never },
+      global: { stubs: STUBS },
+    })
+
+    const section = wrapper.find('[data-testid="finalisation-structure"]')
+    expect(section.text()).toContain('Structure (0 H2)')
+    expect(section.text()).toContain('Aucune structure validée.')
+  })
+
   it('clic sur "Aller à la Rédaction" → emit navigate-redaction', async () => {
     withChecks(...TOUS_LES_VERROUS)
     const wrapper = mount(FinalisationPanel, {
@@ -281,8 +333,8 @@ describe('FinalisationPanel', () => {
 
 /**
  * FR-MOT-FINAL-CTA-GATED — deux boutons mènent à la Rédaction : celui du bas de
- * MoteurView et celui de ce panneau. Le premier était gardé par les 3 verrous
- * Phase ②, le second partait sans condition. L'écran annonçait même « Prêt pour
+ * MoteurView et celui de ce panneau. Le premier était gardé par les verrous
+ * Phase ② (4 depuis FR-HN-TAB), le second partait sans condition. L'écran annonçait même « Prêt pour
  * la Rédaction » au-dessus de sections disant « Aucun lieutenant verrouillé ».
  */
 describe('FinalisationPanel — sortie vers la Rédaction gardée', () => {
@@ -303,6 +355,7 @@ describe('FinalisationPanel — sortie vers la Rédaction gardée', () => {
 
     const cta = wrapper.find('[data-testid="finalisation-cta-redaction"]')
     expect(cta.attributes('disabled')).toBeDefined()
+    expect(cta.attributes('title')).toContain('Structure à valider')
     expect(cta.attributes('title')).toContain('Lexique à valider')
 
     await cta.trigger('click')
@@ -317,10 +370,23 @@ describe('FinalisationPanel — sortie vers la Rédaction gardée', () => {
     const restant = wrapper.find('[data-testid="finalisation-pending"]').text()
     expect(restant).toContain('Capitaine à verrouiller')
     expect(restant).toContain('Lieutenants à verrouiller')
+    expect(restant).toContain('Structure à valider')
     expect(restant).toContain('Lexique à valider')
   })
 
-  it('ouvre la porte une fois les trois verrous posés', async () => {
+  it('FR-HN-TAB — l’ancien trio (sans Structure) ne suffit plus', async () => {
+    withChecks(MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_LEXIQUE_VALIDATED)
+    const wrapper = monter()
+
+    const cta = wrapper.find('[data-testid="finalisation-cta-redaction"]')
+    expect(cta.attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="finalisation-pending"]').text()).toBe('Étapes restantes : Structure à valider')
+
+    await cta.trigger('click')
+    expect(wrapper.emitted('navigate-redaction')).toBeFalsy()
+  })
+
+  it('ouvre la porte une fois les quatre verrous posés', async () => {
     withChecks(...TOUS_LES_VERROUS)
     const wrapper = monter()
 

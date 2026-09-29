@@ -22,6 +22,7 @@ defineProps<{
   streamedResult: string
   articles: Article[]
   actionError: string | null
+  actionNotice?: string | null
 }>()
 
 defineEmits<{
@@ -48,6 +49,7 @@ defineEmits<{
     <ActionResult
       :result="streamedResult"
       :is-streaming="isStreaming"
+      :notice="actionNotice"
       @accept="$emit('accept-result')"
       @reject="$emit('reject-result')"
     />

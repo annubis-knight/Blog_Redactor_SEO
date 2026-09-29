@@ -8,7 +8,6 @@ const mockStreamGenerator = vi.fn()
 vi.mock('../../../server/services/external/ai-provider.service', () => ({
   streamChatCompletion: (...args: unknown[]) => mockStreamGenerator(...args),
   USAGE_SENTINEL: '__USAGE__',
-  WEB_SEARCH_TOOL: { type: 'web_search_20250305', name: 'web_search', max_uses: 3 },
 }))
 vi.mock('../../../server/services/external/claude.service', () => ({
   streamChatCompletion: (...args: unknown[]) => mockStreamGenerator(...args),
@@ -24,6 +23,11 @@ vi.mock('../../../server/utils/logger', () => ({
 }))
 
 const mockGetCocoonExistingLieutenants = vi.fn().mockResolvedValue([])
+// C7 : l'état du cocon (FR-INFRA-COCOON-CONTEXT), sans base de données.
+vi.mock('../../../server/services/strategy/cocoon-context.service', () => ({
+  cocoonContextForArticle: async () => 'ETAT-DU-COCON',
+}))
+
 vi.mock('../../../server/services/infra/data.service', () => ({
   getCocoonExistingLieutenants: (...args: unknown[]) => mockGetCocoonExistingLieutenants(...args),
 }))
@@ -259,6 +263,16 @@ describe('POST /api/keywords/:keyword/ai-hn-structure', () => {
       lieutenants: '- causes\n- solutions',
       locked_headings: 'Aucun heading verrouille',
     }), undefined)
+  })
+
+  // C7 (FR-INFRA-COCOON-CONTEXT) : la structure connaît l'état du cocon — les
+  // sujets qui ont leur propre article, la section du parent qui annonce celui-ci.
+  it('l’état du cocon de l’article arrive dans le prompt ; sans article, rien', async () => {
+    const handler = getHnHandler()
+    await handler(makeReq('seo local', { level: 'pilier', lieutenants: ['causes'], hnStructure: [], articleId: 7 }), makeRes())
+    expect(mockLoadPrompt).toHaveBeenLastCalledWith('lieutenants-hn-structure', expect.objectContaining({ cocoon_context: 'ETAT-DU-COCON' }), undefined)
+    await handler(makeReq('seo local', { level: 'pilier', lieutenants: ['causes'], hnStructure: [] }), makeRes())
+    expect(mockLoadPrompt).toHaveBeenLastCalledWith('lieutenants-hn-structure', expect.objectContaining({ cocoon_context: '' }), undefined)
   })
 
   it('passes lockedHeadings to prompt when provided', async () => {
@@ -639,6 +653,9 @@ describe('POST /api/keywords/:keyword/propose-lieutenants', () => {
     expect(data.outline.selectedLieutenants).toHaveLength(5) // MAX_SELECTED pilier = 5
     expect(data.outline.eliminatedLieutenants).toHaveLength(3)
     expect(data.outline.totalGenerated).toBe(8)
+    // FR-HN-TAB (M7) : un plan renvoyé malgré tout par l'IA n'atteint pas l'écran ;
+    // la structure naît à l'onglet Structure, des lieutenants retenus.
+    expect(data.outline).not.toHaveProperty('hnStructure')
   })
 
   it('filters empty PAA questions before formatting', async () => {

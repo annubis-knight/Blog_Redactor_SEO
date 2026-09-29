@@ -138,3 +138,19 @@ export function injectInternalLinks(
 
   return { html: out, applied }
 }
+
+/**
+ * Retire les liens vers les cibles données — adresse `/<slug>` ou `#article-<id>` —
+ * en gardant leur texte. Le mode automatique ne publie pas un lien vers un
+ * article pas encore publié : c'est une page 404 pour le lecteur (recette C8).
+ */
+export function removeLinksTo(html: string, targetIds: Set<number>, slugs: Set<string>): string {
+  if (targetIds.size === 0 && slugs.size === 0) return html
+  return html.replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (link, attrs: string, text: string) => {
+    const href = /\bhref="([^"]*)"/i.exec(attrs)?.[1] ?? ''
+    const id = /^#article-(\d+)$/.exec(href)?.[1]
+    const slug = /^\/([a-z0-9-]+)$/.exec(href)?.[1]
+    const dropped = (id !== undefined && targetIds.has(Number(id))) || (slug !== undefined && slugs.has(slug))
+    return dropped ? text : link
+  })
+}

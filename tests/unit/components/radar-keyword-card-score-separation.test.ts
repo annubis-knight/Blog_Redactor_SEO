@@ -1,7 +1,7 @@
 /**
  * 2026-05-02 — Tests de la séparation stricte KPI / Pertinence sur
  * `RadarKeywordCard`. Verrouille les invariants documentés dans
- * docs/scoring-kpi-vs-relevance.md.
+ * design/14-radar-capitaine.md.
  *
  * Règles testées :
  *   - Mode `kpi` (Radar)  → `displayedScore` = `computeKpiScore(kpis, level).total`
@@ -145,11 +145,12 @@ describe('RadarKeywordCard — séparation stricte KPI / Pertinence', () => {
     const value = wrapper.find('.score-ring__value').text()
     expect(value).not.toBe('42')
     expect(value).not.toBe('—')
-    // Le score doit être un nombre entre 0 et 100
+    // computeKpiScore (intermédiaire) : volume vert (100), KD 40 orange (50),
+    // CPC 1,5 € neutre (50), intent informationnel × 0,8 = 0,4 orange (50),
+    // PAA et autocomplete verts (100) → 72,5 / 0,95 = 76,3 → 76.
     const n = Number(value)
     expect(Number.isFinite(n)).toBe(true)
-    expect(n).toBeGreaterThanOrEqual(0)
-    expect(n).toBeLessThanOrEqual(100)
+    expect(n).toBe(76)
   })
 })
 

@@ -4,7 +4,15 @@ import { ref, nextTick } from 'vue'
 import LieutenantsPanel from '../../../src/components/moteur/LieutenantsPanel.vue'
 import type { SelectedArticle, SerpAnalysisResult } from '../../../shared/types/index'
 import type { WordGroup } from '../../../shared/types/discovery-tab.types'
-import type { FilteredProposeLieutenantsResult, ProposedLieutenant } from '../../../shared/types/serp-analysis.types'
+import type { FilteredProposeLieutenantsResult, ProposedLieutenant, ProposeLieutenantsHnNode } from '../../../shared/types/serp-analysis.types'
+
+/*
+ * FR-HN-TAB (onglet Structure) + M7 : l'onglet Lieutenants ne produit, n'affiche
+ * ni n'enregistre plus aucune structure H1/H2/H3. La structure Hn (recommandée
+ * par l'IA comme celle des concurrents) vit dans l'onglet Structure
+ * (`StructureHnPanel`, testé à part). Ici on vérifie son ABSENCE dans l'onglet
+ * Lieutenants, et que la liste des propositions reste bien affichée.
+ */
 
 // --- Mock api.service ---
 const mockApiPost = vi.fn()
@@ -223,13 +231,17 @@ const MOCK_ELIMINATED: ProposedLieutenant[] = [
 const MOCK_IA_RESULT: FilteredProposeLieutenantsResult = {
   selectedLieutenants: MOCK_CARDS,
   eliminatedLieutenants: MOCK_ELIMINATED,
-  hnStructure: [
-    { level: 2, text: 'Causes du SEO', children: [{ level: 3, text: 'Detail causes' }] },
-    { level: 2, text: 'Solutions SEO' },
-  ],
   contentGapInsights: 'Missing content about local SEO tools',
   totalGenerated: 4,
 }
+
+/** Structure Hn déjà en base (validée à l'onglet Structure) : l'onglet Lieutenants ne l'affiche pas. */
+const STORED_HN_STRUCTURE: ProposeLieutenantsHnNode[] = [
+  { level: 2, text: 'Causes du SEO', children: [{ level: 3, text: 'Detail causes' }] },
+  { level: 2, text: 'Solutions SEO' },
+]
+
+const HN_SECTION_TITLES = ['Structure Hn concurrents', 'Structure Hn recommandée (IA)']
 
 // --- LieutenantCard stub ---
 const LieutenantCardStub = {
@@ -451,14 +463,15 @@ describe('LieutenantsPanel', () => {
 
   // --- Collapsible sections ---
   describe('Collapsible sections', () => {
-    it('renders CollapsableSections after analysis', async () => {
+    it('renders the two IA source sections (PAA + clusters) after analysis, and no Hn section (FR-HN-TAB, M7)', async () => {
       const w = await mountWithResults()
-      // Sprint 1 (2026-05-04) — restauration architecture pré-C-1 :
-      // LieutenantH2Structure est rendu directement (plus besoin de cliquer
-      // un tab interne). Les sections "Hn concurrents" + "PAA" + "Groupes
-      // Discovery" sont toutes accessibles sans interaction préalable.
-      const sections = w.findAllComponents({ name: 'CollapsableSection' })
-      expect(sections.length).toBeGreaterThanOrEqual(3)
+      // Les sections "PAA" + "Groupes Discovery" sont accessibles sans
+      // interaction préalable. La section "Hn concurrents" est partie avec la
+      // structure dans l'onglet Structure.
+      const titles = w.findAllComponents({ name: 'CollapsableSection' }).map(s => s.props('title'))
+      expect(titles).toContain('Sources IA : questions Google (PAA)')
+      expect(titles).toContain('Sources IA : clusters Discovery')
+      for (const hnTitle of HN_SECTION_TITLES) expect(titles).not.toContain(hnTitle)
     })
 
     it('does not render sections before analysis', () => {
@@ -466,12 +479,11 @@ describe('LieutenantsPanel', () => {
       expect(w.find('.serp-results').exists()).toBe(false)
     })
 
-    it('Hn concurrents section has correct title', async () => {
+    it('FR-HN-TAB (M7) — no "Structure Hn concurrents" section in the Lieutenants tab', async () => {
       const w = await mountWithResults()
-      // Sprint 1 (2026-05-04) — section Hn rendue directement (plus de tab interne).
       const sections = w.findAllComponents({ name: 'CollapsableSection' })
-      const hnSection = sections.find(s => s.props('title') === 'Structure Hn concurrents')
-      expect(hnSection).toBeDefined()
+      expect(sections.find(s => s.props('title') === 'Structure Hn concurrents')).toBeUndefined()
+      expect(w.findComponent({ name: 'LieutenantH2Structure' }).exists()).toBe(false)
     })
 
     it('PAA section has correct title', async () => {
@@ -486,13 +498,6 @@ describe('LieutenantsPanel', () => {
       const sections = w.findAllComponents({ name: 'CollapsableSection' })
       const groupSection = sections.find(s => s.props('title') === 'Sources IA : clusters Discovery')
       expect(groupSection).toBeDefined()
-    })
-
-    it('Hn concurrents section is closed by default', async () => {
-      const w = await mountWithResults()
-      const sections = w.findAllComponents({ name: 'CollapsableSection' })
-      const hnSection = sections.find(s => s.props('title') === 'Structure Hn concurrents')
-      expect(hnSection!.props('defaultOpen')).toBe(false)
     })
 
     it('PAA and Groupes sections are closed by default', async () => {
@@ -555,19 +560,12 @@ describe('LieutenantsPanel', () => {
       }
     })
 
-    it('renders hn-recurrence-item elements', async () => {
+    it('FR-HN-TAB (M7) — recurrence is computed (IA input) but not rendered in the Lieutenants tab', async () => {
       const w = await mountWithResults()
-      const items = w.findAll('.hn-recurrence-item')
-      expect(items.length).toBeGreaterThan(0)
-    })
-
-    it('displays level tag, text, frequency', async () => {
-      const w = await mountWithResults()
-      const first = w.findAll('.hn-recurrence-item')[0]
-      expect(first.find('.hn-level-tag').exists()).toBe(true)
-      expect(first.find('.hn-text').exists()).toBe(true)
-      expect(first.find('.hn-freq').exists()).toBe(true)
-      expect(first.find('.hn-percent').exists()).toBe(true)
+      // Toujours calculée : elle nourrit la proposition IA des lieutenants.
+      expect((w.vm as any).hnRecurrence.length).toBeGreaterThan(0)
+      // Plus affichée ici : elle s'affiche dans l'onglet Structure.
+      expect(w.findAll('.hn-recurrence-item')).toHaveLength(0)
     })
 
     it('updates hnRecurrence when slider decreases', async () => {
@@ -947,20 +945,6 @@ describe('LieutenantsPanel', () => {
       expect((w.vm as any).selectedCards.size).toBe(0)
     })
 
-    it.skip('resets isLocked when article changes (Sprint 17 — bouton batch supprimé, isLocked computed dérivé)', async () => {
-      const w = await mountWithCards()
-      // Lock
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      expect((w.vm as any).isLocked).toBe(true)
-
-      await w.setProps({
-        selectedArticle: { ...ARTICLE, id: 2 },
-      })
-      await nextTick()
-      expect((w.vm as any).isLocked).toBe(false)
-    })
-
     it('calls abort when article changes', async () => {
       const w = await mountWithCards()
       iaStreaming.abort.mockClear()
@@ -984,165 +968,36 @@ describe('LieutenantsPanel', () => {
     })
   })
 
-  // --- Lock/unlock ---
-  // Sprint 17 — Bouton "Verrouiller les Lieutenants" en bloc supprimé du template.
-  // La checkbox de chaque LieutenantCard fait le lock immédiat (FR-LIE-CHECKBOX-LOCK-IMMEDIATE).
-  // Ces tests testaient le bouton batch obsolète — skippés.
-  // Les tests "Checkbox selection" plus haut couvrent désormais le nouveau flow.
-  describe.skip('Lock/unlock Lieutenants (batch — supprimé Sprint 17)', () => {
-    it('shows lock button after analysis with cards', async () => {
+  // --- Verrouillage ---
+  // 2026-09-25 (épopée qualité SEO, C2 · T2) : les tests du verrouillage par lot
+  // (bouton « Verrouiller les Lieutenants », état « panel locked », cartes
+  // désactivées) sont retirés : ce verrouillage n'existe plus. Chaque case verrouille
+  // son lieutenant (FR-LIE-CHECKBOX-LOCK-IMMEDIATE) ; la porte et l'étape sont
+  // couvertes par lieutenants-gate.test.ts.
+
+  // --- Hn Structure : partie dans l'onglet Structure (FR-HN-TAB, M7) ---
+  // FR-MOT-HN-EMPTY-VISIBLE (section « Structure Hn recommandée (IA) » avec
+  // placeholder vide) ne concerne plus cet onglet : StructureHnPanel en hérite.
+  describe('Hn structure section (moved to the Structure tab)', () => {
+    it('shows the lieutenant proposals list, but no Hn structure section nor empty placeholder', async () => {
       const w = await mountWithCards()
-      expect(w.find('[data-testid="lock-btn"]').exists()).toBe(true)
+      // La liste des propositions est bien là…
+      expect(w.find('[data-testid="ia-proposal-section"]').exists()).toBe(true)
+      expect(w.findAll('[data-testid="lt-card-stub"]')).toHaveLength(MOCK_CARDS.length)
+      // … sans structure Hn à côté.
+      const titles = w.findAllComponents({ name: 'CollapsableSection' }).map(s => s.props('title'))
+      expect(titles).not.toContain('Structure Hn recommandée (IA)')
+      expect(w.find('[data-testid="hn-structure-empty"]').exists()).toBe(false)
+      expect(w.findAll('.hn-structure-item')).toHaveLength(0)
     })
 
-    it('lock button is disabled when no cards selected', async () => {
+    it('does not display a structure already stored in base (validated in the Structure tab)', async () => {
+      mockStoreKeywords.value = { ...mockStoreKeywords.value!, hnStructure: STORED_HN_STRUCTURE } as never
       const w = await mountWithCards()
-      ;(w.vm as any).selectedCards = new Map()
-      await nextTick()
-      const btn = w.find('[data-testid="lock-btn"]')
-      expect((btn.element as HTMLButtonElement).disabled).toBe(true)
-    })
-
-    it('lock button is enabled when cards are selected', async () => {
-      const w = await mountWithCards()
-      const btn = w.find('[data-testid="lock-btn"]')
-      expect((btn.element as HTMLButtonElement).disabled).toBe(false)
-    })
-
-    it('calls saveDecisions on the store when locking', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      expect(mockSaveDecisions).toHaveBeenCalledWith(1)
-    })
-
-    it('writes lieutenants to store keywords before saving', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      // setRichLieutenants is called with selected and eliminated proposals
-      expect(mockSetRichLieutenants).toHaveBeenCalled()
-      const [selected] = mockSetRichLieutenants.mock.calls[0]
-      expect(selected.some((s: any) => s.keyword === 'causes seo')).toBe(true)
-    })
-
-    it('emits check-completed with lieutenants_locked on lock', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      expect(w.emitted('check-completed')).toBeTruthy()
-      expect(w.emitted('check-completed')![0][0]).toBe('moteur:lieutenants_locked')
-    })
-
-    it('shows locked state after locking', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      expect(w.find('[data-testid="locked-state"]').exists()).toBe(true)
-      expect(w.find('.locked-badge').text()).toBe('Lieutenants verrouillés')
-    })
-
-    it('shows unlock button in locked state', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      expect(w.find('[data-testid="unlock-btn"]').exists()).toBe(true)
-    })
-
-    it('emits check-removed with lieutenants_locked on unlock', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      await w.find('[data-testid="unlock-btn"]').trigger('click')
-      await nextTick()
-      expect(w.emitted('check-removed')).toBeTruthy()
-      expect(w.emitted('check-removed')![0][0]).toBe('moteur:lieutenants_locked')
-    })
-
-    it('unlocks after clicking unlock button', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      await w.find('[data-testid="unlock-btn"]').trigger('click')
-      await nextTick()
-      expect(w.find('[data-testid="lock-btn"]').exists()).toBe(true)
-      expect(w.find('[data-testid="locked-state"]').exists()).toBe(false)
-    })
-
-    it.skip('OBSOLETE 2026-05-08 : initialLocked prop sets locked state immediately', async () => {
-      // Test SUPPRIME : la computed `isLocked` au niveau panel + le data-testid
-      // `locked-state` ont ete elimines. Plus de notion "panel locked" : le
-      // verrouillage est par checkbox individuelle. Cf. FR-LIE-CHECKBOX-LOCK-IMMEDIATE
-      // etendu (suppression du concept "batch lock panel").
-    })
-  })
-
-  // --- Locked state behavior ---
-  describe('Locked state behavior', () => {
-    async function mountLocked() {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      return w
-    }
-
-    it.skip('passes disabled=true to LieutenantCard when locked (Sprint 17 — comportement inversé : checkbox active pour lock/unlock immédiat)', async () => {
-      const w = await mountLocked()
-      const stubs = w.findAllComponents({ name: 'LieutenantCard' })
-      for (const stub of stubs) {
-        expect(stub.props('disabled')).toBe(true)
-      }
-    })
-
-    it.skip('toggleLieutenant is a no-op when locked (Sprint 17 — toggleLieutenant fonctionne maintenant pour FR-LIE-CHECKBOX-LOCK-IMMEDIATE)', async () => {
-      const w = await mountLocked()
-      const sizeBefore = (w.vm as any).selectedCards.size
-      // Try to toggle a card via the component
-      const stubs = w.findAllComponents({ name: 'LieutenantCard' })
-      stubs[0].vm.$emit('update:checked', false)
-      await nextTick()
-      expect((w.vm as any).selectedCards.size).toBe(sizeBefore)
-    })
-  })
-
-  // --- Hn Structure section (from IA proposal) ---
-  describe('Hn structure section', () => {
-    it('renders hn-structure-section when hnStructure is populated', async () => {
-      // Sprint 1 (2026-05-04) — section rendue directement (plus de tab interne).
-      const w = await mountWithResults()
-      ;(w.vm as any).hnStructure = MOCK_IA_RESULT.hnStructure
-      await nextTick()
-      const sections = w.findAllComponents({ name: 'CollapsableSection' })
-      const hnIaSection = sections.find(s => s.props('title') === 'Structure Hn recommandee (IA)')
-      expect(hnIaSection).toBeDefined()
-    })
-
-    it('renders hn-structure-section even when hnStructure is empty (with empty placeholder)', async () => {
-      // FR-MOT-HN-EMPTY-VISIBLE (2026-05-07) : la section "Structure Hn recommandée (IA)"
-      // reste affichée même quand hnStructure est vide, avec un hint et un bouton
-      // "Générer la structure Hn" pour signaler à l'utilisateur qu'une HN est attendue ici.
-      const w = await mountWithResults()
-      const sections = w.findAllComponents({ name: 'CollapsableSection' })
-      const hnIaSection = sections.find(s => s.props('title') === 'Structure Hn recommandee (IA)')
-      expect(hnIaSection).toBeDefined()
-      // Placeholder explicite pour signaler le vide
-      expect(w.find('[data-testid="hn-structure-empty"]').exists()).toBe(true)
-    })
-
-    it('renders hn-structure-item elements for each node', async () => {
-      const w = await mountWithResults()
-      ;(w.vm as any).hnStructure = MOCK_IA_RESULT.hnStructure
-      await nextTick()
-      const items = w.findAll('.hn-structure-item')
-      expect(items).toHaveLength(2)
-    })
-
-    it('renders children under parent nodes', async () => {
-      const w = await mountWithResults()
-      ;(w.vm as any).hnStructure = MOCK_IA_RESULT.hnStructure
-      await nextTick()
-      const children = w.findAll('.hn-structure-child')
-      expect(children).toHaveLength(1) // Only first node has children
+      expect(w.findAll('.hn-structure-item')).toHaveLength(0)
+      expect(w.findAll('.hn-structure-child')).toHaveLength(0)
+      expect(w.text()).not.toContain('Causes du SEO')
+      expect(w.text()).not.toContain('Detail causes')
     })
   })
 

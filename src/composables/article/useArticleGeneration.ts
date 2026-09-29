@@ -4,14 +4,25 @@ import type { useEditorStore } from '@/stores/article/editor.store'
 import type { useBriefStore } from '@/stores/strategy/brief.store'
 import type { useOutlineStore } from '@/stores/article/outline.store'
 import type { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
+import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
+import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import { REDACTION_DRAFT_ACCEPTED } from '@shared/constants/workflow-checks.constants.js'
 
 /**
+ * AUTHORITY: PostgreSQL `article_content` (contenu, méta) via editorStore.saveArticle
+ * READS FROM: briefStore (cible de mots), outlineStore (sommaire), articleKeywordsStore (capitaine)
+ * WRITES TO: PUT /articles/:id (après le premier jet, puis après la méta) ;
+ *            POST /articles/:id/progress/check `redaction:draft_accepted` (via la
+ *            porte « accepter le premier jet », alarme si refusée — C7)
+ * CONSUMERS: ArticleWorkflowView, ArticleEditorView (bandeau DraftAcceptance) ; porte « accepter le premier jet » (gate-alarm)
+ * RELATED FR: FR-RED-DRAFT-SINGLE-PASS, FR-RED-META-CAPTAIN, FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-CER-PARENT-WRITTEN-GATE
+ *
  * Vague 4 — Composable extrait de ArticleWorkflowView et ArticleEditorView.
  *
  * Référence FR PRD : FR-RED-* (génération article + meta + reduce + humanize).
  *
  * Encapsule la logique partagée entre les deux vues Rédaction :
- *  - `wordCountTarget` (depuis `briefStore.briefData.contentLengthRecommendation`)
+ *  - `wordCountTarget` (`briefStore.targetWordCount` : la longueur choisie pour l’article, sinon la recommandation — R16)
  *  - `canReduce` (delta > 15 % du target)
  *  - `wordCountDeltaDisplay`
  *  - `currentKeyword` / `allKeywords` (lecture stores)
@@ -32,7 +43,7 @@ export interface ArticleGenerationDeps {
 }
 
 export interface ArticleGenerationApi {
-  /** Cible mots depuis briefStore.briefData.contentLengthRecommendation. */
+  /** Longueur visée : choisie pour l’article, sinon recommandée (briefStore.targetWordCount). */
   wordCountTarget: ComputedRef<number | null>
   /** True si delta > 15 % du target (article trop long). */
   canReduce: ComputedRef<boolean>
@@ -48,6 +59,8 @@ export interface ArticleGenerationApi {
    * intermédiaire après l'article pour ne pas perdre le contenu si meta plante).
    */
   handleGenerateArticle: () => Promise<void>
+  /** Demande l'étape « premier jet accepté » à sa porte ; vrai si elle est posée (C7). */
+  acceptDraft: (id: number) => Promise<boolean>
   /** Lance reduce + save (no-op si pas de target). */
   handleReduce: () => Promise<void>
   /** Lance humanize + save. */
@@ -59,7 +72,7 @@ export interface ArticleGenerationApi {
 export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenerationApi {
   const { articleId, editorStore, briefStore, outlineStore, articleKeywordsStore } = deps
 
-  const wordCountTarget = computed(() => briefStore.briefData?.contentLengthRecommendation ?? null)
+  const wordCountTarget = computed(() => briefStore.targetWordCount)
 
   const canReduce = computed(() => {
     if (!wordCountTarget.value || !editorStore.content) return false
@@ -79,6 +92,23 @@ export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenera
     briefStore.briefData?.keywords.map(kw => kw.keyword) ?? [],
   )
 
+  /**
+   * Demande l'étape « premier jet accepté » (FR-CER-PARENT-WRITTEN-GATE) : la
+   * porte du premier jet l'accorde, ou l'alarme s'ouvre et l'utilisateur décide.
+   * Accordée, l'article compte comme rédigé : il peut donner naissance à ses
+   * enfants dans le cocon. Vrai si l'étape est posée.
+   */
+  async function acceptDraft(id: number): Promise<boolean> {
+    try {
+      const progress = useArticleProgressStore()
+      const res = await useGateAlarmStore().runThroughGate(id, () => progress.addCheck(id, REDACTION_DRAFT_ACCEPTED))
+      return res.ok
+    } catch (err) {
+      log.warn('[useArticleGeneration] étape « premier jet accepté » non posée', { articleId: id, error: (err as Error).message })
+      return false
+    }
+  }
+
   async function handleGenerateArticle(): Promise<void> {
     if (!articleId.value) return
     const id = articleId.value
@@ -95,7 +125,13 @@ export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenera
 
     // L'identifiant permet d'enregistrer le texte au fil des sections : une
     // génération de pilier dure une vingtaine de minutes (FR-RED-GEN-SAUVEGARDE-AU-FIL).
-    await editorStore.generateArticle(briefStore.briefData, outlineStore.outline, wordCountTarget.value ?? undefined, id)
+    const target = wordCountTarget.value
+    await editorStore.generateArticle(briefStore.briefData, outlineStore.outline, target ?? undefined, id)
+    // Le serveur a retenu une longueur pour l'article : l'écran garde celle qu'il
+    // a réellement visée (une autre fenêtre a pu en choisir une entre-temps),
+    // même si la recommandation change d'ici le prochain chargement (R24).
+    const retained = editorStore.lastDraftTargetWordCount ?? target
+    if (!editorStore.error && retained) briefStore.setRetainedWordCount(retained)
 
     if (editorStore.content && !editorStore.error) {
       // Save article content immediately — don't lose it if meta generation fails
@@ -105,8 +141,9 @@ export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenera
       })
       await editorStore.saveArticle(id)
 
-      const pilierKeyword = briefStore.briefData.keywords.find(kw => kw.type === 'Pilier')
-      const keyword = pilierKeyword?.keyword ?? briefStore.briefData.article.title
+      // La méta porte le capitaine verrouillé, comme la réduction et l'humanisation :
+      // le mot-clé pilier du pool retombait sur le titre (épopée qualité SEO, R3).
+      const keyword = currentKeyword.value
       log.info('[useArticleGeneration] Generating meta', { articleId: id, keyword })
       await editorStore.generateMeta(id, keyword, briefStore.briefData.article.title, editorStore.content)
 
@@ -116,6 +153,10 @@ export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenera
           metaTitle: editorStore.metaTitle,
         })
         await editorStore.saveArticle(id)
+        // Porte « accepter le premier jet » (FR-RED-DRAFT-SINGLE-PASS) : jugée
+        // sur le texte enregistré ; l'alarme s'ouvre s'il ne la passe pas.
+        // Accordée, elle devient l'étape qui fait de l'article un parent rédigé (C7).
+        void acceptDraft(id)
       } else {
         log.warn('[useArticleGeneration] Meta generation failed — article content was already saved', {
           error: editorStore.error,
@@ -160,6 +201,7 @@ export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenera
     currentKeyword,
     allKeywords,
     handleGenerateArticle,
+    acceptDraft,
     handleReduce,
     handleHumanize,
     handleAbortReduce,

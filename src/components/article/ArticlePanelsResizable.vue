@@ -16,6 +16,7 @@ import SeoPanel from '@/components/panels/SeoPanel.vue'
 import GeoPanel from '@/components/panels/GeoPanel.vue'
 import BlocksPanel from '@/components/panels/BlocksPanel.vue'
 import LinkSuggestions from '@/components/linking/LinkSuggestions.vue'
+import EnrichmentPanel from '@/components/panels/EnrichmentPanel.vue'
 import ErrorBoundary from '@/components/shared/ErrorBoundary.vue'
 import type { LinkSuggestion } from '@shared/types/index.js'
 
@@ -25,6 +26,8 @@ defineProps<{
   showGeoPanel: boolean
   showLinkSuggestions: boolean
   showBlocksPanel?: boolean
+  showEnrichPanel?: boolean
+  articleId?: number | null
   linkSuggestions: LinkSuggestion[]
   isSuggesting: boolean
 }>()
@@ -38,7 +41,7 @@ defineEmits<{
 </script>
 
 <template>
-  <div v-if="!hasBody && (showSeoPanel || showGeoPanel || showLinkSuggestions || showBlocksPanel)" class="panel-disabled-overlay">
+  <div v-if="!hasBody && (showSeoPanel || showGeoPanel || showLinkSuggestions || showBlocksPanel || showEnrichPanel)" class="panel-disabled-overlay">
     <p class="panel-disabled-msg">Generez un article pour activer ce panneau</p>
   </div>
 
@@ -63,6 +66,10 @@ defineEmits<{
 
   <ErrorBoundary v-if="showBlocksPanel" fallback-message="Erreur dans le panneau blocs.">
     <BlocksPanel />
+  </ErrorBoundary>
+
+  <ErrorBoundary v-if="showEnrichPanel && hasBody" fallback-message="Erreur dans le panneau d’enrichissement.">
+    <EnrichmentPanel :article-id="articleId ?? null" />
   </ErrorBoundary>
 </template>
 

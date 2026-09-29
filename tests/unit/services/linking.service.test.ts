@@ -3,7 +3,9 @@ import {
   isValidHierarchyLink,
   getLinksForArticle,
   checkAnchorDiversity,
+  familySuggestions,
 } from '../../../server/services/article/linking.service'
+import type { Article } from '../../../shared/types/index'
 import type { LinkingMatrix, InternalLink } from '../../../shared/types/linking.types'
 
 describe('linking.service', () => {
@@ -117,3 +119,37 @@ describe('linking.service', () => {
     })
   })
 })
+
+// C7 — FR-RED-LINKING-MANUAL : le maillage se pose à la main, mais l'outil
+// propose d'office, pour un parent, un lien vers chacun de ses enfants (et pour
+// un enfant, vers son parent) ; un article pas encore publié est signalé.
+describe('familySuggestions', () => {
+  const art = (over: Partial<Article>): Article => ({
+    id: 0, title: '', type: 'pilier', slug: 's', topic: null, status: 'à rédiger', phase: 'proposed', completedChecks: [],
+    suggestedKeyword: null, captainKeywordLocked: null, painPoint: null, painIntentExpected: null, parentId: null, parentSection: null, ...over,
+  })
+  const PILIER = art({ id: 10, title: 'Rénovation énergétique : le guide', type: 'pilier' })
+  const COMBLES = art({ id: 11, title: 'Isoler ses combles', type: 'intermediaire', parentId: 10, parentSection: 'Isoler les combles', status: 'publié', captainKeywordLocked: 'isolation combles' })
+  const FENETRES = art({ id: 12, title: 'Changer ses fenêtres', type: 'intermediaire', parentId: 10, parentSection: 'Changer les fenêtres' })
+  const texte = '<h2>Isoler les combles</h2><p>Pour aller plus loin, lisez notre article « Isoler ses combles ».</p><h2>Changer les fenêtres</h2><p>Le double vitrage, puis Changer ses fenêtres pas à pas.</p>'
+
+  it('un parent : un lien vers chaque enfant, ancre prise dans le texte ; un enfant non publié est signalé', () => {
+    const s = familySuggestions(PILIER, [PILIER, COMBLES, FENETRES], texte, new Set())
+    expect(s.map(x => [x.targetId, x.suggestedAnchor])).toEqual([[11, 'Isoler ses combles'], [12, 'Changer ses fenêtres']])
+    expect(s[0]!.reason).toMatch(/Article enfant.*Isoler les combles/)
+    expect(s[0]!.reason).not.toMatch(/pas encore publié/)
+    expect(s[1]!.reason).toMatch(/pas encore publié/)
+  })
+
+  it('un enfant : un lien vers son parent', () => {
+    const s = familySuggestions(COMBLES, [PILIER, COMBLES], '<p>Tout part du guide « Rénovation énergétique : le guide ».</p>', new Set())
+    expect(s).toEqual([expect.objectContaining({ targetId: 10, suggestedAnchor: 'Rénovation énergétique : le guide' })])
+    expect(s[0]!.reason).toMatch(/Article parent/)
+  })
+
+  it('déjà lié, ou ancre introuvable dans le texte : rien', () => {
+    expect(familySuggestions(PILIER, [PILIER, COMBLES, FENETRES], texte, new Set([11, 12]))).toEqual([])
+    expect(familySuggestions(PILIER, [PILIER, COMBLES], '<p>Sans rapport.</p>', new Set())).toEqual([])
+  })
+})
+

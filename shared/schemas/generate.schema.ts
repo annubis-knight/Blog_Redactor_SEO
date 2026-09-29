@@ -23,24 +23,20 @@ export const generateOutlineRequestSchema = z.object({
 
 export type GenerateOutlineRequest = z.infer<typeof generateOutlineRequestSchema>
 
-export const generateArticleRequestSchema = z.object({
+/**
+ * Premier jet en un appel (FR-RED-DRAFT-SINGLE-PASS). Ni PAA ni recherche web :
+ * les sources viennent à la passe d'enrichissement.
+ */
+export const generateArticleDraftRequestSchema = z.object({
   articleId: z.number().int().positive(),
   outline: z.union([z.string().min(1), z.record(z.string(), z.unknown())]), // Outline object or JSON string
   keyword: z.string().min(1),
   keywords: z.array(z.string()),
-  paa: z.array(z.object({
-    question: z.string(),
-    answer: z.string().nullable(),
-  })),
   articleType: articleTypeSchema,
   articleTitle: z.string().min(1),
   cocoonName: z.string().min(1),
-  topic: z.string().nullable(),
   targetWordCount: z.number().int().positive().optional(),
-  webSearchEnabled: z.boolean().optional().default(true),
 })
-
-export type GenerateArticleRequest = z.infer<typeof generateArticleRequestSchema>
 
 export const generateMetaRequestSchema = z.object({
   articleId: z.number().int().positive(),
@@ -89,3 +85,27 @@ export const generateHumanizeSectionRequestSchema = z.object({
 })
 
 export type GenerateHumanizeSectionRequest = z.infer<typeof generateHumanizeSectionRequestSchema>
+
+/**
+ * Une passe d'enrichissement sur UN chapitre (FR-RED-ENRICH-PASSES). Le chapitre
+ * -1 est le chapeau ; pour la FAQ, `chapterIndex` est le chapitre avant lequel
+ * elle s'insère et `chapterHtml` est vide. L'article entier donne le contexte.
+ */
+export const generateEnrichRequestSchema = z.object({
+  articleId: z.number().int().positive(),
+  chapterIndex: z.number().int().min(-1),
+  chapterHtml: z.string(),
+  articleHtml: z.string().min(1),
+  keyword: z.string().min(1),
+  keywords: z.array(z.string()).default([]),
+})
+
+export type GenerateEnrichRequest = z.infer<typeof generateEnrichRequestSchema>
+
+/** Réécrire un chapitre selon une consigne, en voyant l'article entier (FR-RED-SECTION-REWRITE). */
+export const generateSectionRewriteRequestSchema = generateEnrichRequestSchema.extend({
+  chapterHtml: z.string().min(1),
+  instruction: z.string().trim().min(5).max(600),
+})
+
+export type GenerateSectionRewriteRequest = z.infer<typeof generateSectionRewriteRequestSchema>

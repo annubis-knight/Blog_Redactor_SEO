@@ -1,12 +1,12 @@
 -- ============================================================
 -- SCHEMA SNAPSHOT — Blog Redactor SEO
 -- ============================================================
--- Généré le        : 2026-05-09T16:13:20.162Z
--- Commit git       : cbfede7 (chore/drop-serp-raw-json-column)
--- Sujet commit     : Merge branch 'feat/keyword-metrics-decomposition' into main
+-- Généré le        : 2026-09-25T08:00:37.886Z
+-- Commit git       : fbb7c43 (feat/cocon-progressif)
+-- Sujet commit     : Merge branch 'feat/redaction-enrichissement' into feat/onglet-structure-hn
 -- Working tree     : ⚠️  NON (modifs non commitées)
--- Tables           : 25
--- Empreinte schéma : sha256:fe699ca76c0a21435de69501734017665a03fa1502f41bf772590fa4a1f48f88
+-- Tables           : 26
+-- Empreinte schéma : sha256:4b668dbfef95b1080f848179edfc67c396a21ed1882712ff7339fdaeab6a5ccf
 -- ============================================================
 -- ⚠️  Fichier généré automatiquement. NE PAS éditer à la main.
 --
@@ -79,9 +79,13 @@ CREATE TABLE "articles" (
   "captain_keyword_locked" TEXT,
   "pain_point" TEXT,
   "pain_intent_expected" TEXT,
+  "parent_id" INTEGER,
+  "parent_section" TEXT,
   CONSTRAINT "articles_pain_intent_expected_check" CHECK (((pain_intent_expected IS NULL) OR (pain_intent_expected = ANY (ARRAY['commercial'::text, 'transactional'::text, 'informational'::text, 'navigational'::text])))),
+  CONSTRAINT "articles_parent_not_self" CHECK (((parent_id IS NULL) OR (parent_id <> id))),
   CONSTRAINT "articles_type_check" CHECK ((type = ANY (ARRAY['Pilier'::text, 'Intermédiaire'::text, 'Spécialisé'::text]))),
   CONSTRAINT "articles_cocoon_id_fkey" FOREIGN KEY (cocoon_id) REFERENCES cocoons(id) ON DELETE SET NULL,
+  CONSTRAINT "articles_parent_id_fkey" FOREIGN KEY (parent_id) REFERENCES articles(id) ON DELETE RESTRICT,
   CONSTRAINT "articles_pkey" PRIMARY KEY (id),
   CONSTRAINT "articles_slug_key" UNIQUE (slug)
 );
@@ -127,6 +131,23 @@ CREATE TABLE "external_api_cache" (
   "expires_at" TIMESTAMPTZ NOT NULL,
   CONSTRAINT "api_cache_pkey" PRIMARY KEY (id),
   CONSTRAINT "api_cache_cache_key_cache_type_key" UNIQUE (cache_key, cache_type)
+);
+
+CREATE TABLE "gate_waivers" (
+  "id" INTEGER NOT NULL DEFAULT nextval('gate_waivers_id_seq'::regclass),
+  "article_id" INTEGER NOT NULL,
+  "gate_id" TEXT NOT NULL,
+  "rule" TEXT NOT NULL,
+  "level" TEXT NOT NULL,
+  "category" TEXT,
+  "reason" TEXT,
+  "input_hash" TEXT NOT NULL,
+  "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT "gate_waivers_category_check" CHECK (((category IS NULL) OR (category = ANY (ARRAY['longue-traine'::text, 'donnee-manquante'::text, 'marque'::text, 'autre'::text])))),
+  CONSTRAINT "gate_waivers_level_check" CHECK ((level = ANY (ARRAY['attention'::text, 'risque'::text]))),
+  CONSTRAINT "gate_waivers_article_id_fkey" FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
+  CONSTRAINT "gate_waivers_pkey" PRIMARY KEY (id),
+  CONSTRAINT "gate_waivers_unique" UNIQUE (article_id, gate_id, rule, input_hash)
 );
 
 CREATE TABLE "internal_links" (
@@ -336,6 +357,8 @@ CREATE TABLE "theme_config" (
 
 CREATE INDEX idx_articles_cocoon_id ON public.articles USING btree (cocoon_id);
 
+CREATE INDEX idx_articles_parent_id ON public.articles USING btree (parent_id);
+
 CREATE INDEX idx_articles_slug ON public.articles USING btree (slug);
 
 CREATE INDEX idx_articles_status ON public.articles USING btree (status);
@@ -345,6 +368,8 @@ CREATE INDEX idx_captain_explorations_article ON public.captain_explorations USI
 CREATE INDEX idx_external_api_cache_expires ON public.external_api_cache USING btree (expires_at);
 
 CREATE INDEX idx_external_api_cache_key_type ON public.external_api_cache USING btree (cache_key, cache_type);
+
+CREATE INDEX idx_gate_waivers_article ON public.gate_waivers USING btree (article_id);
 
 CREATE INDEX idx_internal_links_source ON public.internal_links USING btree (source_id);
 
@@ -377,6 +402,8 @@ CREATE INDEX idx_radar_explorations_scanned ON public.radar_explorations USING b
 -- (auto-créée par SERIAL/IDENTITY) "api_cache_id_seq"
 
 -- (auto-créée par SERIAL/IDENTITY) "cocoons_id_seq"
+
+-- (auto-créée par SERIAL/IDENTITY) "gate_waivers_id_seq"
 
 -- (auto-créée par SERIAL/IDENTITY) "internal_links_id_seq"
 

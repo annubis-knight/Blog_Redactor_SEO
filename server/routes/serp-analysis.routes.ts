@@ -32,9 +32,17 @@ router.post('/serp/analyze', async (req, res) => {
       return
     }
 
-    const { keyword, articleLevel } = parsed.data
+    const { keyword, articleLevel, cacheOnly } = parsed.data
 
-    log.info(`POST /api/serp/analyze — keyword="${keyword}" level="${articleLevel}"`)
+    log.info(`POST /api/serp/analyze — keyword="${keyword}" level="${articleLevel}"${cacheOnly ? ' (base seulement)' : ''}`)
+
+    // Lecture seule : l'analyse en base, même périmée, ou rien. Aucun appel
+    // payant sans un clic de l'utilisateur (FR-MOT-NO-AUTO-ACTION, M18).
+    if (cacheOnly) {
+      const stored = await reconstructSerpAnalysisResult(keyword)
+      res.json({ data: stored ? parseContract(serpAnalysisContract, { ...stored, articleLevel }, 'db') : null })
+      return
+    }
 
     // Cache check sur keyword_serp_results.fetched_at (TTL 7j) — préserve
     // NFR-INT-SERP-ONCE (multi-article même keyword = 1 seul fetch externe).

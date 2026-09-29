@@ -24,12 +24,18 @@
  *   - FR-INFRA-COCOON-STRATEGIES
  *   - FR-INFRA-MICRO-CONTEXTS
  *
+ * Et, depuis M3 (épopée qualité SEO, 2026-09-25) : `keyword_intent_analyses`
+ * est conservée en base mais n'est plus ni lue ni écrite par le code (la table
+ * n'avait plus de producteur ; ses lecteurs servaient des lignes figées).
+ *
  * Voir aussi :
  *   - _bmad-output/planning-artifacts/prd.md §8.14 et §8.14.bis (matrice)
  *   - CLAUDE.md §3.2 (header AUTHORITY:)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join, relative } from 'node:path'
 
 // ============================================================================
 // PART 1: Mocking & helpers
@@ -128,6 +134,42 @@ describe('FR-INFRA-INTENT-EXPLORATIONS-LEGACY — intent_explorations (no runtim
 })
 
 // ============================================================================
+// PART 3 bis: keyword_intent_analyses — conservée, plus lue ni écrite (M3)
+// ============================================================================
+
+const PROJECT_ROOT = join(__dirname, '..', '..', '..')
+
+/** Fichiers `.ts` / `.vue` du code applicatif (server/, src/, shared/). */
+function appSourceFiles(dir: string, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules') continue
+    const full = join(dir, entry.name)
+    if (entry.isDirectory()) appSourceFiles(full, out)
+    else if (/\.(ts|vue)$/.test(entry.name)) out.push(full)
+  }
+  return out
+}
+
+describe('keyword_intent_analyses — table conservée, plus lue ni écrite (M3)', () => {
+  it('la table reste dans le schéma courant (aucune migration, aucun DROP)', () => {
+    const schema = readFileSync(join(PROJECT_ROOT, 'server', 'db', 'schema.sql'), 'utf8')
+    expect(schema).toMatch(/CREATE TABLE "keyword_intent_analyses"/)
+  })
+
+  it("aucun fichier de server/, src/ ni shared/ ne la lit ni ne l'écrit en SQL", () => {
+    // Elle n'a plus de producteur depuis la suppression de /api/intent/analyze :
+    // la relire, c'est servir des lignes figées. La réactiver demande un
+    // producteur ET une décision — ce test cassera pour la forcer.
+    const sqlOnTable = /\b(?:FROM|INTO|UPDATE|JOIN)\s+keyword_intent_analyses\b/i
+    const offenders = ['server', 'src', 'shared']
+      .flatMap(dir => appSourceFiles(join(PROJECT_ROOT, dir)))
+      .filter(file => sqlOnTable.test(readFileSync(file, 'utf8')))
+      .map(file => relative(PROJECT_ROOT, file).replace(/\\/g, '/'))
+    expect(offenders).toEqual([])
+  })
+})
+
+// ============================================================================
 // PART 4: FR-INFRA-KEYWORDS-SEO
 // ============================================================================
 
@@ -150,7 +192,7 @@ describe('FR-INFRA-KEYWORDS-SEO — keywords_seo', () => {
   it('addKeyword() vérifie doublon puis INSERT INTO keywords_seo', async () => {
     const { addKeyword } = await import('../../../server/services/infra/data.service.js')
     await addKeyword({ keyword: 'kw', cocoonName: 'c', type: 'pilier', status: 'suggested' })
-    const dupCheck = capturedQueries.find(q => /SELECT id FROM keywords_seo WHERE LOWER\(mot_clef\)/i.test(q.sql))
+    const dupCheck = capturedQueries.find(q => /SELECT id, cocoon_name FROM keywords_seo WHERE LOWER\(mot_clef\)/i.test(q.sql))
     const insert = capturedQueries.find(q => /INSERT INTO keywords_seo/i.test(q.sql))
     expect(dupCheck, 'check doublon attendu').toBeDefined()
     expect(insert, 'INSERT INTO keywords_seo attendu').toBeDefined()

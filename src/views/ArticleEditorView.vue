@@ -16,6 +16,7 @@ import { useArticleGeneration } from '@/composables/article/useArticleGeneration
 import ArticlePanelsToolbar from '@/components/article/ArticlePanelsToolbar.vue'
 import ArticlePanelsResizable from '@/components/article/ArticlePanelsResizable.vue'
 import SectionProgressBar from '@/components/article/SectionProgressBar.vue'
+import DraftAcceptance from '@/components/article/DraftAcceptance.vue'
 import { useArticlesStore } from '@/stores/article/articles.store'
 import { useKeywordsStore } from '@/stores/keyword/keywords.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
@@ -67,7 +68,7 @@ const backLink = computed(() =>
   cocoonId.value ? `/cocoon/${cocoonId.value}/article/${articleId.value}` : '/',
 )
 
-const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showBlocksPanel, hasActivePanel } = usePanelToggle('blocks')
+const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showBlocksPanel, showEnrichPanel, hasActivePanel } = usePanelToggle('blocks')
 async function handlePreview() {
   if (!articleId.value) return
   if (editorStore.isDirty) {
@@ -80,7 +81,7 @@ async function handlePreview() {
 const hasBody = computed(() => !!editorStore.content)
 
 function guardedToggle(panel: Parameters<typeof toggle>[0]) {
-  if (!hasBody.value && (panel === 'seo' || panel === 'geo' || panel === 'linking' || panel === 'blocks')) return
+  if (!hasBody.value && (panel === 'seo' || panel === 'geo' || panel === 'linking' || panel === 'blocks' || panel === 'enrich')) return
   toggle(panel)
 }
 
@@ -89,6 +90,7 @@ const {
   canReduce,
   wordCountDeltaDisplay,
   handleGenerateArticle,
+  acceptDraft,
   handleReduce,
   handleHumanize,
   handleAbortReduce,
@@ -111,9 +113,10 @@ const {
 } = useInternalLinking(computed(() => articleId.value ?? 0))
 useSeoScoring(
   () => keywordsStore.keywords,
-  () => briefStore.briefData?.contentLengthRecommendation ?? undefined,
+  () => briefStore.targetWordCount ?? undefined,
   () => briefStore.briefData?.dataForSeo?.relatedKeywords ?? [],
   () => articleKeywordsStore.keywords,
+  () => briefStore.briefData?.article.slug,
 )
 useGeoScoring()
 const isLoading = ref(true)
@@ -130,6 +133,7 @@ const {
   isStreaming,
   streamedResult,
   actionError,
+  actionNotice,
   showArticlePicker,
   executeAction,
   acceptResult,
@@ -322,10 +326,12 @@ onMounted(async () => {
             :show-link-suggestions="showLinkSuggestions"
             :show-blocks-button="true"
             :show-blocks-panel="showBlocksPanel"
+            :show-enrich-panel="showEnrichPanel"
             @toggle-seo="guardedToggle('seo')"
             @toggle-geo="guardedToggle('geo')"
             @toggle-linking="handleToggleLinkSuggestions"
             @toggle-blocks="guardedToggle('blocks')"
+            @toggle-enrich="guardedToggle('enrich')"
           />
         </div>
 
@@ -451,15 +457,13 @@ onMounted(async () => {
             @humanize="handleHumanize()"
             @abort-humanize="handleAbortHumanize()"
           />
-          <label class="web-search-toggle">
-            <input
-              v-model="editorStore.webSearchEnabled"
-              type="checkbox"
-              :disabled="editorStore.isGenerating"
-            />
-            Recherche web
-          </label>
         </div>
+        <DraftAcceptance
+          :article-id="articleId"
+          :has-content="!!editorStore.content && !editorStore.isGenerating"
+          :busy="editorStore.isSaving"
+          @accept="articleId && acceptDraft(articleId)"
+        />
         <EditorToolbar :editor="articleEditorRef?.editor" />
 
         <EditorBubbleMenu
@@ -486,6 +490,7 @@ onMounted(async () => {
           :streamed-result="streamedResult"
           :articles="articlesStore.articles.filter(a => a.id !== articleId)"
           :action-error="actionError"
+          :action-notice="actionNotice"
           @close-menu="showActionMenu = false"
           @select-action="handleSelectAction"
           @accept-result="handleAcceptResult"
@@ -506,6 +511,8 @@ onMounted(async () => {
           :show-geo-panel="showGeoPanel"
           :show-link-suggestions="showLinkSuggestions"
           :show-blocks-panel="showBlocksPanel"
+          :show-enrich-panel="showEnrichPanel"
+          :article-id="articleId"
           :link-suggestions="linkSuggestions"
           :is-suggesting="isSuggesting"
           @accept-suggestion="handleAcceptSuggestion"
@@ -692,16 +699,6 @@ onMounted(async () => {
   border-radius: 6px;
 }
 
-.web-search-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.web-search-toggle input { cursor: pointer; }
 
 .btn-back {
   display: inline-block;

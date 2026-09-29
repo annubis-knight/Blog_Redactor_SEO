@@ -35,7 +35,6 @@ export interface ExplorationCounts {
   lexique?: number
   /** Champs additionnels exposés par le backend mais pas affichés dans le panel. */
   paa?: number
-  intent?: number
   local?: number
   contentGap?: number
 }

@@ -2,7 +2,8 @@
  * Vague 3 — Tests isolés useMoteurTabs.
  *
  * Référence FR PRD : FR-MOT-PHASES (3 phases : Générer/Valider/Finaliser),
- * FR-MOT-FREE-NAV (navigation libre, gating souple).
+ * FR-MOT-FREE-NAV (navigation libre, gating souple), FR-HN-TAB (onglet
+ * Structure entre Lieutenants et Lexique, ouvert après `lieutenants_locked`).
  *
  * Tests sans monter MoteurView. Stores + refs injectés.
  *
@@ -27,6 +28,7 @@ import type { SelectedArticle } from '../../../../shared/types/index'
 import {
   MOTEUR_CAPITAINE_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
   MOTEUR_LEXIQUE_VALIDATED,
 } from '../../../../shared/constants/workflow-checks.constants.js'
 
@@ -64,9 +66,23 @@ describe('useMoteurTabs', () => {
     setActivePinia(createPinia())
   })
 
-  it('AC.I.1 — TAB_IDS et TAB_LABELS exportent les 6 onglets attendus', () => {
-    expect(TAB_IDS).toEqual(['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique', 'finalisation'])
-    expect(Object.keys(TAB_LABELS).length).toBe(6)
+  it('AC.I.1 — TAB_IDS et TAB_LABELS exportent les 7 onglets attendus (FR-HN-TAB)', () => {
+    expect(TAB_IDS).toEqual(['discovery', 'radar', 'capitaine', 'lieutenants', 'structure', 'lexique', 'finalisation'])
+    expect(Object.keys(TAB_LABELS).length).toBe(7)
+    expect(TAB_LABELS.structure).toBe('Structure')
+  })
+
+  it('FR-HN-TAB — la phase Valider = Capitaine, Lieutenants, Structure, Lexique', () => {
+    const { api, unmount } = mountComposable({
+      selectedArticle: ref(null),
+      isDiscoveryAllowed: ref(true),
+      articleProgressStore: useArticleProgressStore(),
+      workflowNavStore: useWorkflowNavStore(),
+    })
+    const valider = api.phases.value.find(p => p.id === 'valider')!
+    expect(valider.tabs.map(t => t.id)).toEqual(['capitaine', 'lieutenants', 'structure', 'lexique'])
+    expect(valider.tabs.find(t => t.id === 'structure')!.label).toBe('Structure')
+    unmount()
   })
 
   it('AC.I.2 — activeTab par défaut = "capitaine", visitedTabs initialisé', () => {
@@ -94,6 +110,13 @@ describe('useMoteurTabs', () => {
 
     api.setActiveTab('capitaine')
     expect(api.nextTab.value).toBe('lieutenants')
+
+    // FR-HN-TAB : Lieutenants → Structure → Lexique
+    api.setActiveTab('lieutenants')
+    expect(api.nextTab.value).toBe('structure')
+
+    api.setActiveTab('structure')
+    expect(api.nextTab.value).toBe('lexique')
 
     api.setActiveTab('finalisation')
     expect(api.nextTab.value).toBe(null)
@@ -134,13 +157,19 @@ describe('useMoteurTabs', () => {
     articleProgressStore.progressMap['1'].completedChecks = [MOTEUR_CAPITAINE_LOCKED]
     expect(api.computeSmartTab(1)).toBe('lieutenants')
 
-    // lieutenants_locked → lexique
+    // lieutenants_locked → structure (FR-HN-TAB)
     articleProgressStore.progressMap['1'].completedChecks = [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED]
+    expect(api.computeSmartTab(1)).toBe('structure')
+
+    // hn_locked → lexique
+    articleProgressStore.progressMap['1'].completedChecks = [
+      MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_HN_LOCKED,
+    ]
     expect(api.computeSmartTab(1)).toBe('lexique')
 
     // Sprint 4 friction #1 : lexique_validated NE devient PAS finalisation
     articleProgressStore.progressMap['1'].completedChecks = [
-      MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_LEXIQUE_VALIDATED,
+      MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED,
     ]
     expect(api.computeSmartTab(1)).toBe('lexique')
     unmount()

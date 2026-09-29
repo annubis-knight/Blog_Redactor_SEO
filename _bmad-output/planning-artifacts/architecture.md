@@ -9,11 +9,17 @@ date: '2026-03-31'
 lastStep: 8
 status: 'complete'
 completedAt: '2026-03-30'
-lastUpdated: '2026-04-24'
-updateReason: 'Mise à jour majeure reflétant l''état réel : 3 phases / 6 onglets dans Moteur (pas 2 phases / 3 sous-onglets), migration PostgreSQL complète, réorganisation stores (5 domaines) / composables (5 domaines) / services (7 domaines), ajout Finalisation, cache multi-niveau (api_cache + keyword_metrics cross-article)'
+lastUpdated: '2026-09-25'
+updateReason: 'Mise à jour majeure reflétant l''état réel : 3 phases / 6 onglets dans Moteur (pas 2 phases / 3 sous-onglets), migration PostgreSQL complète, réorganisation stores (5 domaines) / composables (5 domaines) / services (7 domaines), ajout Finalisation, cache multi-niveau (api_cache + keyword_metrics cross-article). Ajout 2026-09-25 (épopée qualité SEO, C2) : décision « Portes de qualité » (serveur seul évaluateur, vérificateurs purs partagés, refus 422 GATE_BLOCKED, dérogations gate_waivers, alarme globale unique).'
 ---
 
 # Architecture Decision Document — Blog Redactor SEO
+
+> **⚠️ Ce document n'est plus la référence (2026-09-28), et il est largement périmé** (six onglets au lieu
+> de sept, 24 routes au lieu de 25, Labo et Explorateur encore décrits, tables et variables inventées).
+> L'architecture qui fait foi est dans [`design/01-architecture.md`](../../design/01-architecture.md) (vue d'ensemble, stack,
+> couches, modèle de données, routes, prompts, décisions encore valides). Ce document reste pour l'historique
+> des décisions de mars 2026.
 
 **Auteur :** Utilisateur + Claude (Architect)
 **Date :** 2026-03-30 — mis à jour 2026-04-24
@@ -89,7 +95,7 @@ Projet brownfield mature. Aucun starter template. Le stack est en place.
 | Vue Router | 5.0.3 | Routing SPA |
 | Pinia | 3.0.4 | State management |
 | TipTap Core | 3.22.3 | Éditeur rich-text |
-| TipTap extensions | 3.20.1 (link, placeholder, starter-kit, vue-3) | Éditeur |
+| TipTap extensions | 3.20.1 (link, placeholder, starter-kit, vue-3) ; 3.22.3 (table, image — depuis le 2026-09-25, pour les passes d'enrichissement) | Éditeur |
 | Express | 5.2.1 | Serveur API |
 | PostgreSQL (pg) | 8.20.0 | Base de données |
 | TypeScript | 5.9.3 | Typage |
@@ -142,13 +148,14 @@ npm run dev  # concurrently: vite (front) + node --watch server/index.ts (back)
 8. ✅ Cache multi-niveau : `api_cache` (TTL) + `keyword_metrics` (permanent cross-article)
 9. ✅ Extraction Intention/Audit/Local vers Dashboard et Explorateur
 10. ✅ Labo (`/labo`) avec composants en mode `libre`
+11. ✅ Portes de qualité et alarme graduée (2026-09-25, épopée qualité SEO C2) — cf. [Portes de qualité](#portes-de-qualité--alarme-graduée)
 
 **Décisions différées (vision) :**
 
-11. Batch processing multi-articles
-12. Boucle GSC post-publication (store présent, usage à étendre)
-13. Score de complémentarité Capitaine ↔ Lieutenants
-14. Suggestions proactives de cocons
+12. Batch processing multi-articles
+13. Boucle GSC post-publication (store présent, usage à étendre)
+14. Score de complémentarité Capitaine ↔ Lieutenants
+15. Suggestions proactives de cocons
 
 ### Data Architecture
 
@@ -214,8 +221,8 @@ Pour les métriques mot-clé : consultation `keyword_metrics` AVANT DataForSEO (
 
 - Prefix : `/api/`
 - Format succès : `{ data: T }`
-- Format erreur : `{ error: { code: string, message: string } }`
-- Streaming : SSE pour génération (outline, article, reduce-section, AI panels)
+- Format erreur : `{ error: { code: string, message: string, details?: unknown } }` — `details` porte l'évaluation complète d'une porte refusée (422 `GATE_BLOCKED`, cf. [Portes de qualité](#portes-de-qualité--alarme-graduée)) ; côté client, `ApiRequestError` expose `status`, `code` et `details`
+- Streaming : SSE pour génération (outline, premier jet `article-draft`, reduce-section, humanize-section, AI panels) ; les passes d'enrichissement et la réécriture d'un chapitre (`enrich/:pass`, `section-rewrite`) accumulent puis envoient un seul événement `done` (proposition vérifiée)
 - Proxy Vite : `/api` → `http://localhost:3400` (frontend dev sur `:5400` — NFR-CFG-APP-PORTS)
 
 **Wrapper frontend :**
@@ -232,7 +239,7 @@ Pour les métriques mot-clé : consultation `keyword_metrics` AVANT DataForSEO (
 | keywords.routes | `/api` | Keywords (discover, audit, suggest-lexique…) |
 | articles.routes | `/api` | Articles (CRUD, status, micro-context, progress) |
 | dataforseo.routes | `/api/dataforseo` | DataForSEO (brief, cost-status) |
-| generate.routes | `/api` | Génération SSE (outline, article, reduce-section, meta) |
+| generate.routes | `/api` | Génération SSE (outline, premier jet `article-draft`, meta, reduce-section, humanize-section, action, passes `enrich/:pass`, `section-rewrite`…) ; `/generate/article` retirée le 2026-09-25 |
 | links.routes | `/api` | Matrice liens internes |
 | export.routes | `/api` | Export HTML |
 | intent.routes | `/api` | Analyse d'intention |
@@ -323,6 +330,25 @@ Scraping top N résultats (curseur 3-10, défaut 10, DataForSEO)
               └──→ optionnel[] (<30%)
 ```
 
+### Portes de qualité — alarme graduée
+
+**Décision (2026-09-25, épopée qualité SEO C2 — FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER).** Chaque transition sensible du parcours (verrouiller le capitaine, valider les lieutenants, publier) passe par une **porte** qui vérifie ce qui passe. Contexte : le pilier 1013 a été verrouillé, rédigé et publié sans qu'aucune transition ne contrôle quoi que ce soit.
+
+| Choix | Détail | Pourquoi |
+|---|---|---|
+| **Serveur seul évaluateur** | `server/services/gates/gate.service.ts` : `evaluateArticleGate(articleId, gateId, { keyword? })` charge les données, appelle le vérificateur, calcule l'empreinte, applique les dérogations. L'écran n'évalue jamais une porte : il affiche le verdict du serveur. | Un seul verdict possible ; aucune empreinte ne peut diverger entre navigateur et serveur. |
+| **Vérificateurs purs partagés** | `shared/verifiers/` (`gate.ts`, `captain.ts`, `lieutenants.ts`, `publish.ts`), sans I/O, règles par type dans `shared/constants/article-type-rules.ts`. Utilisés par le serveur, par l'écran (activation du bouton de l'alarme : `waiverDraftsFrom`, `worstLevel`) et par `npm run verify:content`, qui rejoue la porte de publication avec le code du serveur. | Une règle écrite une fois, testable sans base ; l'audit ne peut pas dire autre chose que le serveur. |
+| **Refus = 422 `GATE_BLOCKED`** | `POST /articles/:id/progress/check` (checks listés dans `CHECK_GATES` : capitaine, lieutenants ; depuis C3, C6 et C7 aussi lexique, structure et premier jet) et `PUT /articles/:id/status` vers `publié` répondent `422 { error: { code: 'GATE_BLOCKED', message, details: GateEvaluation } }`. Évaluation seule : `GET /api/articles/:id/gates/:gateId`. | L'écran ouvre l'alarme sans redemander le verdict ; `auto:article` liste les points et s'arrête. La porte garde l'**étape** et le **statut**, pas l'écriture des décisions (`article_keywords` reste libre). |
+| **Trois niveaux** | 🟠 attention (accusé « J'ai lu »), 🔴 risque (catégorie + raison ≥ 20 caractères), ⛔ technique (jamais dérogeable). | Alarme graduée plutôt que blocage binaire : l'utilisateur garde la main, par écrit. |
+| **Dérogations liées à une empreinte** | Table `gate_waivers` (article, porte, règle, niveau, catégorie, raison, `input_hash`, date ; UNIQUE `(article_id, gate_id, rule, input_hash)`, CASCADE sur `articles`). `hashGateInput` = FNV-1a 32 bits sur JSON à clés triées. Une règle multi-éléments embarque l'élément dans son identifiant (`lieutenant-cannibalization:<mot>`). | Une dérogation tombe dès que les données vérifiées changent, et ne couvre qu'un point. |
+| **Alarme globale unique** | `src/stores/ui/gate-alarm.store.ts` (`evaluate`, `ensure`, `open`, `submit`, `cancel`, `runThroughGate` qui rejoue l'action une fois après dérogation) + `src/components/shared/GateAlarm.vue`, monté une seule fois dans `App.vue`. | Le geste a lieu dans n'importe quel panneau, l'alarme s'affiche au-dessus de tout, une seule à la fois. |
+
+**Portes livrées** : `captain-lock`, `lieutenants-lock`, `publish` (C2), `lexique-lock` (C3), `draft` (C5a : « accepter le premier jet » ; depuis C7 elle garde l'étape `redaction:draft_accepted`, qui fait d'un article un parent rédigé), `hn-lock` (C6).
+
+**Cocon né du pilier (2026-09-25, épopée qualité SEO C7 — FR-CER-COCOON-PROGRESSIVE, FR-CER-PARENT-WRITTEN-GATE, FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-KEYWORD-REAL-DATA, FR-INFRA-COCOON-CONTEXT).** L'arbre du cocon passe du JSON de stratégie à la base : `articles.parent_id` (clé étrangère `ON DELETE RESTRICT`) et `parent_section` (le H2 du parent dont l'article est né), posés par un changement daté (`server/db/changes/`, `npm run db:apply`). Un article naît seul (`POST /api/cocoons/:cocoonId/articles`, la création en lot est supprimée) ; un vérificateur pur (`shared/verifiers/cocoon-hierarchy.ts`, tout ⛔, sans dérogation) impose pilier d'abord et parent du niveau juste au-dessus ; un parent non rédigé fait jouer sa porte `draft` (409 `GATE_BLOCKED`, alarme sur le parent). Le mot-clé d'un nouvel article se choisit parmi des candidats mesurés (base d'abord). L'état du cocon (`{{cocoon_context}}`, rendu pur `shared/cocoon-context.ts`) est une variable d'appelant, pas une globale du chargeur. Détails : registre, `DESIGN-CER-COCOON-PROGRESSIVE` et suivantes. **Réservée** (acceptée par la route, sans alerte tant que son chantier n'est pas livré) : `hn-lock` (C6). **Hors portes** : `shared/verifiers/enrichment.ts` juge chaque proposition des passes d'enrichissement avant qu'elle soit montrée (mêmes niveaux, sans empreinte ni dérogation ; une proposition ⛔ ne s'accepte pas — C5b).
+
+**Invariants** : aucune dérogation automatique (les scripts s'arrêtent) ; tout nouveau vérificateur est pur et vit dans `shared/verifiers/` ; tout nouveau point de passage gardé passe par `evaluateArticleGate`. Détails : `design-registry.md` (`DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-RED-PUBLISH-GATE`).
+
 ### Frontend Architecture
 
 **State management : Pinia (composition API)**
@@ -397,7 +423,7 @@ export const useXxxStore = defineStore('xxx', () => {
 |---------|----------|
 | `keyword/` | autocomplete, keyword-assignment, keyword-discovery, keyword-discovery-db, keyword-metrics, keyword-radar, keyword-validate, lexique-exploration, suggest, tfidf, word-groups |
 | `external/` | ai-provider, claude, dataforseo, dataforseo-cost-guard, embedding, gemini, gsc, mock (+ mock-fixtures), openrouter, serp-analysis |
-| `intent/` | community-discussions, intent, intent-scan, keyword-intent-analysis |
+| `intent/` | community-discussions, intent-scan *(`intent` retiré avec l'Explorateur, 2026-05-10 ; `keyword-intent-analysis` retiré le 2026-09-25, épopée qualité SEO M3 : la table `keyword_intent_analyses` reste en base, plus lue ni écrite)* |
 | `article/` | article-content, content-gap, export, linking, target-word-count |
 | `strategy/` | cocoon-strategy, local-seo, strategy, theme-config |
 | `infra/` | data, discovery-cache, paa-cache, radar-cache, radar-exploration, local-entities |
@@ -482,8 +508,8 @@ res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid id' 
 
 ```
 event: chunk\ndata: {"text": "..."}\n\n
-event: section_start\ndata: {"title": "..."}\n\n
-event: section_done\ndata: {"title": "..."}\n\n
+event: section-start\ndata: {"index": 0, "total": 7, "title": "..."}\n\n   (premier jet)
+event: section-done\ndata: {"index": 0}\n\n                               (premier jet)
 event: usage\ndata: {"inputTokens": ..., "outputTokens": ..., "cost": ...}\n\n
 event: done\ndata: {"result": ...}\n\n
 event: error\ndata: {"message": "..."}\n\n
@@ -529,9 +555,11 @@ async function onCheckCompleted(check: string) {
 
 | Workflow | Checks |
 |----------|--------|
-| Moteur (5) | `moteur:discovery_done`, `moteur:radar_done`, `moteur:capitaine_locked`, `moteur:lieutenants_locked`, `moteur:lexique_validated` |
-| Cerveau (3) | `cerveau:strategy_defined`, `cerveau:hierarchy_built`, `cerveau:articles_proposed` |
-| Rédaction (5) | `redaction:brief_validated`, `redaction:outline_validated`, `redaction:content_written`, `redaction:seo_validated`, `redaction:published` |
+| Moteur (6 depuis C6) | `moteur:discovery_done`, `moteur:radar_done`, `moteur:capitaine_locked`, `moteur:lieutenants_locked`, `moteur:hn_locked` (C6), `moteur:lexique_validated` |
+| ~~Cerveau (3)~~ | ~~`cerveau:strategy_defined`, `cerveau:hierarchy_built`, `cerveau:articles_proposed`~~ — retirés le 2026-05-13 (DRIFT-002) |
+| Rédaction (1 depuis C7) | `redaction:draft_accepted` (« premier jet accepté », gardé par la porte `draft`) ; les cinq anciens (`redaction:brief_validated`… `redaction:published`) sont retirés depuis le 2026-05-13 (DRIFT-002) |
+
+*(Tableau mis à jour le 2026-09-25 en documentant C7 : il listait encore les familles retirées en mai.)* L'écriture n'admet que `moteur:*` et la valeur exacte `redaction:draft_accepted` (`writeCheckRegex`, `shared/schemas/article-progress.schema.ts`).
 
 **Règle d'or** : toujours passer par la constante, jamais hardcoder la string.
 
@@ -639,13 +667,14 @@ Blog_Redactor_SEO_rebirth/
 │   ├── services/                 # 42 services en 7 domaines
 │   │   ├── keyword/              # autocomplete, keyword-assignment, keyword-discovery, keyword-discovery-db, keyword-metrics, keyword-radar, keyword-validate, lexique-exploration, suggest, tfidf, word-groups
 │   │   ├── external/             # ai-provider, claude, dataforseo, dataforseo-cost-guard, embedding, gemini, gsc, mock (+ mock-fixtures/), openrouter, serp-analysis
-│   │   ├── intent/               # community-discussions, intent, intent-scan, keyword-intent-analysis
+│   │   ├── intent/               # community-discussions, intent-scan (M3, 2026-09-25)
 │   │   ├── article/              # article-content, content-gap, export, linking, target-word-count
 │   │   ├── strategy/             # cocoon-strategy, local-seo, strategy, theme-config
 │   │   ├── infra/                # data, discovery-cache, paa-cache, radar-cache, radar-exploration, local-entities
 │   │   └── queries/              # keyword-queries
 │   ├── prompts/                  # 45 prompts .md
-│   │   ├── generate-outline.md, generate-article.md, generate-article-section.md, generate-meta.md, generate-reduce-section.md
+│   │   ├── generate-outline.md, generate-article-draft.md, generate-meta.md, reduce-section.md   (generate-article.md, generate-article-section.md supprimés en 2026-09)
+│   │   ├── enrich-sources.md, enrich-exemples.md, enrich-tableaux.md, enrich-images.md, enrich-faq.md, section-rewrite.md   (passes d'enrichissement, 2026-09-25)
 │   │   ├── strategy-suggest.md, strategy-deepen.md, strategy-consolidate.md, strategy-merge.md, strategy-enrich.md
 │   │   ├── cocoon-brainstorm.md, cocoon-paa-queries.md, cocoon-articles.md, cocoon-articles-topics.md, cocoon-articles-spe.md, cocoon-add-article.md
 │   │   ├── intent-keywords.md, intent-scan.md
@@ -697,7 +726,7 @@ Blog_Redactor_SEO_rebirth/
 │   ├── composables/              # 30+ composables en 5 domaines
 │   │   ├── keyword/, intent/, editor/, seo/, ui/
 │   ├── components/               # 100+ composants en 17 dossiers
-│   │   ├── moteur/               # CaptainValidation, LieutenantsSelection, LexiqueExtraction, CaptainAiPanel, CaptainCarousel, CaptainInput, CaptainVerdictPanel, LieutenantCard, LieutenantProposals, LieutenantSerpAnalysis, LieutenantH2Structure, MoteurContextRecap, MoteurStrategyContext, KeywordDiscoveryTab, DouleurIntentScanner, FinalisationRecap, SelectedArticlePanel, BasketStrip, TabCachePanel, PhaseTransitionBanner, ProgressDots, UnlockLieutenantsModal, VerdictBar, CaptainInteractiveWords, CaptainLockPanel
+│   │   ├── moteur/               # CaptainValidation, LieutenantsSelection, LexiqueExtraction, CaptainAiPanel, CaptainCarousel, CaptainInput, CaptainVerdictPanel, LieutenantCard, LieutenantProposals, LieutenantSerpAnalysis, LieutenantH2Structure, MoteurContextRecap, MoteurStrategyContext, KeywordDiscoveryTab, DouleurIntentScanner, FinalisationRecap, SelectedArticlePanel, BasketStrip, TabCachePanel, ProgressDots, UnlockLieutenantsModal, VerdictBar, CaptainInteractiveWords, CaptainLockPanel
 │   │   ├── intent/               # VerdictBadge, ConfidenceBar, SourceDots, LatentAlert, ValidationSummary, SourceBlock, DiscussionList, AutocompleteChips, ValidationRow, RadarCardCheckable, PainVerdict, PainTranslator, NlpOptinBanner, RowDetail
 │   │   ├── keywords/             # KeywordAlertBadge, KeywordLevelBadge, KeywordMigrationPreview
 │   │   ├── brief/                # KeywordList, DataForSeoPanel, ContentRecommendation
@@ -794,7 +823,7 @@ MoteurView.vue (orchestrateur, 6 onglets)
 ├── Phase ③ Finalisation
 │   └── FinalisationRecap         # Read-only, récap des 3 verrouillages (FR32-FR34)
 │
-└── PhaseTransitionBanner         # Bandeau suggestion (FR42-FR43)
+└── (PhaseTransitionBanner)       # Supprimé le 2026-09-25 : remplacé par le bouton « Continuer vers… » de MoteurView
 ```
 
 **Boundary Explorateur (hors Moteur) :**
@@ -873,6 +902,8 @@ Dots mapping :
 
 Phase ③ Finalisation débloquée quand les 3 checks Phase ② sont présents.
 ```
+
+Depuis le 2026-09-25, `moteur:capitaine_locked` et `moteur:lieutenants_locked` sont gardés par une porte de qualité : le serveur peut refuser le check en 422 `GATE_BLOCKED`, et l'émission passe par `useGateAlarmStore.runThroughGate` (cf. [Portes de qualité](#portes-de-qualité--alarme-graduée)).
 
 ### Data Flow — Cascade SERP (Lieutenants → Lexique)
 
@@ -953,12 +984,12 @@ Appel service keyword-validate pour "crm pme"
 | FR32-FR34 : Finalisation | `src/components/moteur/FinalisationRecap.vue` |
 | FR35-FR37 : Règles transversales | Pattern dans `MoteurView.vue` |
 | FR38-FR39 : Dashboard & Explorateur | `src/views/ExplorateurView.vue`, `src/views/DashboardView.vue`, `src/components/local/*` |
-| FR40-FR43 : Dots + checks + bandeaux | `src/stores/article/article-progress.store.ts` (5 checks), `src/components/moteur/ProgressDots.vue`, `PhaseTransitionBanner.vue`, `shared/constants/workflow-checks.constants.ts` |
+| FR40-FR43 : Dots + checks + bandeaux | `src/stores/article/article-progress.store.ts` (5 checks), `src/components/moteur/ProgressDots.vue`, bouton « Continuer vers… » de `MoteurView.vue`, `shared/constants/workflow-checks.constants.ts` |
 | FR44-FR45 : Pont Cerveau→Moteur | `src/components/moteur/MoteurStrategyContext.vue`, `server/utils/prompt-loader.ts` |
 | FR46-FR48 : Labo | `src/views/LaboView.vue` (composants en mode `libre`) |
 | FR49-FR52 : Cache & persistance | `server/services/infra/*-cache.service.ts`, `server/services/keyword/keyword-metrics.service.ts`, `server/db/client.ts`, purge horaire dans `server/index.ts` |
 | FR53-FR54 : Cerveau | `src/views/CerveauView.vue`, `src/components/strategy/*`, `src/stores/strategy/{strategy,cocoon-strategy}.store.ts`, `server/services/strategy/*`, prompts `strategy-*.md` |
-| FR55-FR60 : Rédaction | `src/views/RedactionView.vue`, `ArticleWorkflowView.vue`, `ArticleEditorView.vue`, `src/components/editor/ArticleEditor.vue`, `src/components/outline/*`, `src/stores/article/{brief,outline,editor,seo}.store.ts`, `server/routes/generate.routes.ts`, `server/services/article/*`, prompts `generate-*.md`, `actions/*.md` |
+| FR55-FR60 : Rédaction | `src/views/RedactionView.vue`, `ArticleWorkflowView.vue`, `ArticleEditorView.vue`, `src/components/editor/ArticleEditor.vue`, `src/components/outline/*`, `src/stores/article/{brief,outline,editor,seo,enrichment}.store.ts`, `src/components/panels/EnrichmentPanel.vue`, `server/routes/generate.routes.ts` (dont `generate/article-draft.routes.ts`, `generate/enrich.routes.ts`), `server/services/article/*`, prompts `generate-*.md`, `actions/*.md` |
 
 ---
 
@@ -1030,3 +1061,6 @@ Toutes les FRs et NFRs sont couvertes par l'architecture livrée (voir mapping c
 8. Ne jamais introduire de fichier JSON de données chaudes — tout passe par PostgreSQL
 9. Ne jamais hardcoder les seuils de scoring — utiliser `shared/kpi-scoring.ts` / `shared/scoring.ts`
 10. Émettre `check-completed` dans les composants Moteur en mode workflow
+
+
+> **Schéma rejouable (2026-09-25).** `server/db/schema.sql` reste l'introspection de référence (lisible, empreinte vérifiée par `npm run db:check`). Il n'est pas rejouable (ordre alphabétique, séquences en commentaire) : la CI crée donc sa base depuis `server/db/bootstrap.sql`, produit par `pg_dump --schema-only`. `npm run db:snapshot` régénère les deux, et le test `db-bootstrap-sync` vérifie qu'ils portent la même empreinte.

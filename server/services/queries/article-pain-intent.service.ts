@@ -3,8 +3,9 @@
  *            sur 'commercial' | 'transactional' | 'informational' | 'navigational').
  * READS FROM: SELECT pain_intent_expected FROM articles WHERE id = $1.
  * WRITES TO: rien (read-only par contrat).
- * CONSUMERS: captain-relevance.service → computeRelevanceForCaptainTab
- *            (5e signal Pertinence — Intent SERP × Intent éditorial attendu).
+ * CONSUMERS: captain-relevance.service → computeRelevanceForCaptainTab et
+ *            keyword-scan.routes (POST /keywords/:kw/scan, M2) — 5e signal
+ *            Pertinence : intention SERP × intention éditoriale attendue.
  * RELATED FR: FR-CAP-RELEVANCE-INTENT-SIGNAL.
  *
  * Helper miroir de `getArticlePainPoint` mais pour le champ `pain_intent_expected`.

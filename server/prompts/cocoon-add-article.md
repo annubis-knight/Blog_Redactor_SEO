@@ -53,7 +53,8 @@ Couche humaine H1, intégrant le mot-clé naturellement.
 
 {{#isPilier}}
 ### Règles — Article Pilier
-- Tu génères un Pilier complémentaire qui couvre un **angle différent** du sujet, non couvert par les Piliers existants.
+- Si la liste ci-dessus ne contient encore aucun Pilier, tu génères le **Pilier fondateur** du cocon : l'article qui couvre le sujet principal du cocon de manière large et experte.
+- Sinon, tu génères un Pilier complémentaire qui couvre un **angle différent** du sujet, non couvert par les Piliers existants.
 - `"parentTitle"` : `null`
 - **Mot-clé** : 3-4 mots nominatifs, inclure la cible ET la localisation (ville/région/adjectif géo).
 - **Titre** : ton d'expert, ancrage local naturel.
@@ -103,7 +104,7 @@ Réponds **uniquement** en JSON, sans code fence, sans explication. Un **objet u
 Choisis exactement **une** des 4 valeurs suivantes selon le type de réponse que l'article doit apporter :
 
 - `"informational"` : article qui explique, guide, éduque (« Comment faire X », « Guide débutant Y »). Défaut pour la plupart des articles SEO éditoriaux.
-- `"commercial"` : comparatif, sélection (« Meilleur X 2026 », « Comparatif X vs Y »).
+- `"commercial"` : comparatif, sélection (« Meilleur X {{year}} », « Comparatif X vs Y »).
 - `"transactional"` : pousse à l'action (« Acheter X », « Réserver X »). Rare en SEO éditorial.
 - `"navigational"` : page marque/produit précis. Très rare.
 

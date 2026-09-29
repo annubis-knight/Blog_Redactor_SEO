@@ -6,9 +6,11 @@ Tu dois analyser les donnees SERP, PAA, racines et groupes de mots pour proposer
 
 - **Mot-cle Capitaine** : {{keyword}}
 - **Niveau d'article** : {{level}}
-  - pilier (N2) = contenu long de reference 2000-3000 mots → 8 a 12 candidats lieutenants thematiques larges couvrant les grandes intentions satellites (concepts de services, solutions globales)
-  - intermediaire (N3) = contenu de support 1000-1500 mots → 6 a 10 candidats sous-themes cibles du pilier (methodes, comparaisons, benefices)
-  - specifique (N4) = contenu de niche 500-800 mots → 4 a 8 candidats precisions techniques, questions concretes de terrain
+  - pilier (N2) = contenu long de reference → lieutenants thematiques larges couvrant les grandes intentions satellites (concepts de services, solutions globales)
+  - intermediaire (N3) = contenu de support → sous-themes cibles du pilier (methodes, comparaisons, benefices)
+  - specifique (N4) = contenu de niche → precisions techniques, questions concretes de terrain
+
+{{type_rules}}
 - **Douleur de l'article** : {{painPoint}}
   - Si la douleur est definie, ecarte les lieutenants qui n'eclaireraient pas cette douleur. Privilegie les lieutenants qui aident un visiteur vivant cette douleur a trouver une reponse concrete.
   - Si la douleur est marquee « (non defini) », fonctionne comme avant a partir des donnees SERP/PAA.
@@ -33,7 +35,7 @@ NOTE : Si aucun heading n'atteint une recurrence elevee, cela signifie que les c
 {{hn_recurrence}}
 
 ### B. Donnees SERP des mots-cles racine (POIDS REDUIT — intention potentiellement differente)
-Ces donnees proviennent de l'analyse SERP de variantes plus courtes du Capitaine (ex: "creation site web" au lieu de "creation site web entreprise toulouse").
+Ces donnees proviennent de l'analyse SERP de variantes plus courtes du Capitaine (ex: "creation site web" au lieu de "creation site web entreprise [ville]").
 **ATTENTION** : Ces mots-cles racine etant plus generiques, ils peuvent exprimer une intention de recherche differente. Les donnees ci-dessous doivent etre PONDEREES A LA BAISSE :
 - Un heading recurrent sur un mot-cle racine ne vaut PAS autant qu'un heading recurrent sur le Capitaine
 - Une PAA de mot-cle racine est utile comme signal complementaire, mais pas comme source principale
@@ -67,21 +69,21 @@ Veille a proposer un mix equilibre de lieutenants couvrant differentes intention
 Ne force pas ce mix — si les donnees SERP ne soutiennent qu'un type d'intention, c'est OK.
 
 #### SEO Local — Regle de l'Entonnoir geographique (CRITIQUE)
-Si le mot-cle Capitaine contient un nom de ville/region (ex: "Toulouse", "Lyon", "Bordeaux"), applique la REGLE DE L'ENTONNOIR : plus le niveau d'article descend (Pilier → Intermediaire → Specifique), plus les lieutenants doivent etre EPURES des mentions geographiques directes.
+Si le mot-cle Capitaine contient un nom de ville/region (ex: "[ville]", "[region]"), applique la REGLE DE L'ENTONNOIR : plus le niveau d'article descend (Pilier → Intermediaire → Specifique), plus les lieutenants doivent etre EPURES des mentions geographiques directes.
 
 **INTERDIT** : Proposer 3+ lieutenants qui contiennent tous le meme nom de ville. C'est du bourrage de mots-cles qui cree de la cannibalisation interne et des titres H2 lourds et repetitifs.
 
 **Par niveau d'article :**
-- **Pilier (N2)** : Maximum 1-2 lieutenants sur le pool total peuvent contenir le nom de ville. Les autres doivent couvrir des THEMATIQUES (services, methodes, benefices) sans repetition geographique. Prefere des entites larges ("Haute-Garonne", "Occitanie", "Sud-Ouest") plutot que de repeter la ville.
+- **Pilier (N2)** : Pas plus de lieutenants avec le nom de ville que de H2 autorises a le citer (voir les regles du type). Les autres doivent couvrir des THEMATIQUES (services, methodes, benefices) sans repetition geographique. Prefere des entites larges (le departement, la region) plutot que de repeter la ville.
 - **Intermediaire (N3)** : ZERO mention directe de la ville dans les lieutenants. L'article herite du poids local du Pilier via le maillage interne. Utilise des termes de methodologie, comparaison, ou benefices sans localisation. Si un ancrage est utile, prefere "local", "proximite", "bassin [region]".
 - **Specifique (N4)** : ZERO localisation dans les lieutenants. L'ancrage local sera assure dans le CORPS du texte par des references hyper-locales (quartiers, zones economiques, evenements locaux), PAS dans les mots-cles eux-memes.
 
 **Signaux locaux subtils (prefere ces approches a la repetition brute) :**
 - Citer des quartiers ou zones economiques specifiques (au lieu de repeter la ville)
-- Utiliser le vocabulaire metier local ("artisans du bassin toulousain" au lieu de "artisans Toulouse")
+- Utiliser le vocabulaire metier local ("artisans du bassin [ville]" au lieu de "artisans [ville]")
 - Mentionner des enjeux locaux concrets au lieu d'un simple adjectif geographique
 
-**Scoring** : Un lieutenant qui ne fait qu'ajouter un nom de ville a un terme generique (ex: "prix site web Toulouse" quand le capitaine est "creation site web Toulouse") doit recevoir un malus de score (-15 a -25 points) car il cannibalise le capitaine sans apporter d'angle distinct.
+**Scoring** : Un lieutenant qui ne fait qu'ajouter un nom de ville a un terme generique (ex: "prix site web [ville]" quand le capitaine est "creation site web [ville]") doit recevoir un malus de score (-15 a -25 points) car il cannibalise le capitaine sans apporter d'angle distinct.
 
 #### Formulation naturelle
 Chaque lieutenant doit etre formule comme une requete que quelqu'un taperait reellement sur Google (2-5 mots, langage naturel). Utilise les termes que l'audience cible emploie reellement dans ses recherches — pas du jargon administratif ou technique qu'elle n'utilise pas.
@@ -101,23 +103,15 @@ Evalue chaque candidat selon ces criteres ponderes :
 - **Content Gap** (0.15) : bonus si le terme comble une faille reelle dans le contenu concurrent
 - **Alignement d'intention** (0.10) : coherence avec l'intention de recherche du capitaine (attention : les mots-cles racine plus courts ont souvent une intention plus large/differente)
 
-### 3. Structure Hn recommandee
-Propose une structure Hn complete utilisant les lieutenants les mieux scores (top 3-5 selon le niveau d'article) :
-- **H1** : Reformule legerement le Capitaine pour le rendre plus lisible et humain, tout en gardant les termes cles reconnaissables (le lecteur doit immediatement voir le lien avec le Title et le slug). Le H1 ne doit PAS etre un copier-coller brut du mot-cle, mais il doit rester thematiquement aligne avec le titre de l'article.
-- **H2** = lieutenants principaux. Formule chaque H2 comme une requete searchable (5-8 mots) que quelqu'un pourrait taper sur Google.
-- **H3** = sous-sections si le contenu sous un H2 depasse 300 mots
-- Jamais sauter de niveau (H2 → H3 → H4)
-- PAA transformees directement en headings H2 ou H3
-- Le mot-cle Capitaine doit apparaitre naturellement dans l'intro (100 premiers mots) et dans 1-2 H2, mais utilise des variations semantiques — pas de repetition exacte forcee.
-- **SEO Local dans les Hn** : Si le Capitaine contient un nom de ville, NE LE REPETE PAS dans chaque H2. Maximum 1-2 H2 avec le nom de ville pour un Pilier, 0 pour un Intermediaire/Specifique. Des titres comme "Agence web Toulouse", "Prix site Toulouse", "Developpeur Toulouse" sont un signal negatif de bourrage — varie les formulations.
-
-### 4. Content Gap
+### 3. Content Gap
 Identifie ce que les concurrents reels (listes ci-dessus) n'ont PAS couvert — les angles manquants representent une opportunite. Sois specifique en citant quels concurrents couvrent quoi.
+
+La structure H1/H2/H3 de l'article n'est PAS de ton ressort ici : elle sera construite a l'etape suivante, a partir des seuls lieutenants retenus par l'utilisateur.
 
 ## Contraintes
 
 - Reponds en francais
-- Genere un pool LARGE de candidats (pilier: 8-12, intermediaire: 6-10, specifique: 4-8). Le filtrage pour ne garder que les meilleurs sera fait automatiquement apres. Explore toutes les pistes pertinentes dans les donnees.
+- Genere un pool LARGE de candidats (leur nombre est donne par les regles du type). Le filtrage pour ne garder que les meilleurs sera fait automatiquement apres. Explore toutes les pistes pertinentes dans les donnees.
 - NE PROPOSE PAS de lieutenants deja dans la liste anti-cannibalisation
 - Les PAA sont la source #1 — priorise-les
 - Filtre les headings de navigation ("Nous contacter", "A propos"), noms d'agences, temoignages clients
@@ -138,19 +132,6 @@ Reponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni apres. Le JSON
       "sources": ["paa", "serp"],
       "suggestedHnLevel": 2,
       "score": 82
-    }
-  ],
-  "hnStructure": [
-    {
-      "level": 1,
-      "text": "H1 reformule du Capitaine (lisible, aligne avec le Title)"
-    },
-    {
-      "level": 2,
-      "text": "Titre H2 (lieutenant searchable)",
-      "children": [
-        { "level": 3, "text": "Sous-titre H3" }
-      ]
     }
   ],
   "contentGapInsights": "Resume des failles identifiees chez les concurrents reels"

@@ -40,7 +40,7 @@ describe('RadarKeywordCard — displayMode', () => {
   it('mode "relevance" affiche `relevanceScore.total` et le label "Score Pertinence"', () => {
     // Sprint 2026-05 — fin du fallback combinedScore en mode relevance.
     // Le score affiché provient strictement de `card.relevanceScore.total`
-    // (cf. docs/scoring-kpi-vs-relevance.md). Si absent → "—".
+    // (cf. design/14-radar-capitaine.md). Si absent → "—".
     const card = makeCard({
       combinedScore: 67, // legacy ignoré en mode relevance
       relevanceScore: {
@@ -81,8 +81,9 @@ describe('RadarKeywordCard — displayMode', () => {
     const valueText = ring.find('.score-ring__value').text()
     const parsed = Number(valueText)
     expect(Number.isFinite(parsed)).toBe(true)
-    expect(parsed).toBeGreaterThanOrEqual(0)
-    expect(parsed).toBeLessThanOrEqual(100)
+    // computeKpiScore (intermédiaire) : volume, KD, intent, PAA, autocomplete
+    // verts, CPC neutre → 90 / 0,95 = 94,7 → 95, et non combinedScore (67).
+    expect(parsed).toBe(95)
     expect(ring.find('.score-ring__label').text()).toBe('Score KPI')
   })
 

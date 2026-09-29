@@ -117,6 +117,7 @@ export async function* streamChatCompletionGemini(
   const startedAt = Date.now()
   let inputTokens = 0
   let outputTokens = 0
+  let finishReason: string | undefined
 
   const config: Record<string, unknown> = {
     systemInstruction: systemPrompt,
@@ -138,6 +139,7 @@ export async function* streamChatCompletionGemini(
     // Each chunk may contain text + usage metadata on the last one.
     const chunkText = chunk.text ?? ''
     if (chunkText) yield chunkText
+    finishReason = chunk.candidates?.[0]?.finishReason ?? finishReason
     const meta = chunk.usageMetadata
     if (meta) {
       if (meta.promptTokenCount != null) inputTokens = meta.promptTokenCount
@@ -152,6 +154,8 @@ export async function* streamChatCompletionGemini(
     cacheReadTokens: 0,
     cacheCreationTokens: 0,
     estimatedCost: 0,
+    // Raison d'arrêt : un texte coupé au plafond est incomplet (FR-RED-DRAFT-SINGLE-PASS).
+    stopReason: finishReason === 'MAX_TOKENS' ? 'max_tokens' : finishReason === 'STOP' ? 'end' : finishReason ? 'other' : undefined,
   }
   usage.estimatedCost = calculateGeminiCost(usage)
 

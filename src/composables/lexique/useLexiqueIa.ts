@@ -11,30 +11,19 @@ import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
  * Encapsule l'analyse IA upfront du Lexique :
  *  - streaming `/api/keywords/{kw}/ai-lexique-upfront`
  *  - parsing des recommandations dans une Map indexée par term lowercase
- *  - pré-cochage automatique des termes obligatoires + différenciateurs
- *    `aiRecommended === true` dans `selectedTerms` (mutable, partagé avec le
- *    parent qui gère aussi le toggle manuel)
+ *
+ * Les recommandations s'affichent ; elles ne cochent rien. L'utilisateur
+ * choisit ses termes (FR-LEX-METIER-ONLY, épopée qualité SEO M11).
  *
  * Dépendances injectées explicites → testable en isolation.
- *
- * NOTE : `selectedTerms` est une `Ref<Set<string>>` mutable partagée avec le
- * parent. Le composable la mute uniquement lors du `onDone` du streaming
- * (pré-cochage). Le toggle manuel reste au parent.
  */
 export interface LexiqueIaDeps {
   tfidfResult: Ref<TfidfResult | null>
-  selectedTerms: Ref<Set<string>>
   activeSourceKeyword: Ref<string>
   captainKeyword: Ref<string | null>
   articleLevel: Ref<ArticleLevel | null>
   cocoonSlug: Ref<string>
   selectedArticleId: Ref<number | undefined>
-  /**
-   * Appelé avec les termes que l'analyse vient de pré-cocher, pour que le
-   * parent les verrouille réellement : sans cela, l'écran affichait une
-   * sélection que la base ignorait (FR-LEX-PRECHECK-PERSISTE).
-   */
-  onPreChecked?: (terms: string[]) => void
 }
 
 export interface LexiqueIaApi {
@@ -63,7 +52,7 @@ export interface LexiqueIaApi {
 }
 
 export function useLexiqueIa(deps: LexiqueIaDeps): LexiqueIaApi {
-  const { tfidfResult, selectedTerms, activeSourceKeyword, captainKeyword, articleLevel, cocoonSlug, selectedArticleId, onPreChecked } = deps
+  const { tfidfResult, activeSourceKeyword, captainKeyword, articleLevel, cocoonSlug, selectedArticleId } = deps
 
   const {
     isStreaming: iaIsStreaming,
@@ -124,22 +113,8 @@ export function useLexiqueIa(deps: LexiqueIaDeps): LexiqueIaApi {
             map.set(rec.term.toLowerCase(), rec)
           }
           iaRecommendations.value = map
-
-          // Pre-check : all obligatoire + differenciateur where aiRecommended
-          if (tfidfResult.value) {
-            const preChecked = new Set<string>()
-            for (const term of tfidfResult.value.obligatoire) {
-              preChecked.add(term.term)
-            }
-            for (const term of tfidfResult.value.differenciateur) {
-              const rec = map.get(term.term.toLowerCase())
-              if (rec?.aiRecommended) {
-                preChecked.add(term.term)
-              }
-            }
-            selectedTerms.value = preChecked
-            onPreChecked?.([...preChecked])
-          }
+          // L'IA recommande, elle ne coche pas : l'utilisateur choisit
+          // (FR-LEX-METIER-ONLY, épopée qualité SEO M11).
         },
       },
       { contract: lexiqueAnalysisContract },

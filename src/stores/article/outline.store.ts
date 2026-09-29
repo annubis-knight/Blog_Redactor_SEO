@@ -5,37 +5,15 @@ import { useStreaming } from '@/composables/editor/useStreaming'
 import { apiPut } from '@/services/api.service'
 import type { Outline, OutlineSection, BriefData, ApiUsage } from '@shared/types/index.js'
 import type { ProposeLieutenantsHnNode } from '@shared/types/serp-analysis.types.js'
+import { articleMainKeyword } from '@shared/utils/article-keyword.js'
+import { structureToOutline } from '@shared/structure-outline.js'
 
-/** Transform HN structure from Moteur into an editable Outline */
+/**
+ * Transform HN structure from Moteur into an editable Outline. La conversion
+ * vit dans `shared/structure-outline.ts` : le mode automatique l'utilise aussi.
+ */
 export function hnToOutline(hnNodes: ProposeLieutenantsHnNode[], articleTitle: string): Outline {
-  const now = Date.now()
-  const sections: OutlineSection[] = []
-
-  // H1 — Article title
-  sections.push({ id: `h1-${now}`, level: 1, title: articleTitle, annotation: 'sommaire-cliquable', status: 'suggested' })
-
-  // Introduction
-  sections.push({ id: `h2-${now}-intro`, level: 2, title: 'Introduction', annotation: 'content-valeur', status: 'suggested' })
-
-  // Flatten HN nodes with clamping [2, 3]
-  let idx = 0
-  for (const node of hnNodes) {
-    const clampedLevel = Math.min(3, Math.max(2, node.level)) as 2 | 3
-    sections.push({ id: `h${clampedLevel}-${now}-${idx}`, level: clampedLevel, title: node.text, annotation: null, status: 'suggested' })
-    idx++
-    if (node.children) {
-      for (const child of node.children) {
-        const childLevel = Math.min(3, Math.max(2, child.level)) as 2 | 3
-        sections.push({ id: `h${childLevel}-${now}-${idx}`, level: childLevel, title: child.text, annotation: null, status: 'suggested' })
-        idx++
-      }
-    }
-  }
-
-  // Conclusion
-  sections.push({ id: `h2-${now}-conclusion`, level: 2, title: 'Conclusion', annotation: 'content-reminder', status: 'suggested' })
-
-  return { sections }
+  return structureToOutline(hnNodes, articleTitle)
 }
 
 const MAX_UNDO_STACK = 20
@@ -85,11 +63,10 @@ export const useOutlineStore = defineStore('outline', () => {
     outline.value = null
     lastApiUsage.value = null
 
-    const pilierKeyword = briefData.keywords.find(kw => kw.type === 'Pilier')
-
     const body = {
       articleId: briefData.article.id,
-      keyword: pilierKeyword?.keyword ?? briefData.article.title,
+      // Le capitaine de CET article, pas le mot-clé pilier du cocon (épopée qualité SEO, R3).
+      keyword: articleMainKeyword(briefData.article),
       keywords: briefData.keywords.map(kw => kw.keyword),
       paa: briefData.dataForSeo?.paa ?? [],
       articleType: briefData.article.type,

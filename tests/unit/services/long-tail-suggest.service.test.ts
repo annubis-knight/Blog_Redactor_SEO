@@ -15,6 +15,7 @@ const {
   mockGetRadarExploration,
   mockSaveRadarExploration,
   mockPersistLongTail,
+  mockGetArticleById,
 } = vi.hoisted(() => ({
   mockClassifyWithTool: vi.fn(),
   mockGetCached: vi.fn(),
@@ -22,6 +23,7 @@ const {
   mockGetRadarExploration: vi.fn(),
   mockSaveRadarExploration: vi.fn(),
   mockPersistLongTail: vi.fn(),
+  mockGetArticleById: vi.fn(),
 }))
 
 vi.mock('../../../server/services/external/ai-provider.service.js', () => ({
@@ -37,6 +39,9 @@ vi.mock('../../../server/services/infra/radar-exploration.service.js', () => ({
   getRadarExploration: mockGetRadarExploration,
   saveRadarExploration: mockSaveRadarExploration,
   persistLongTailSuggestions: mockPersistLongTail,
+}))
+vi.mock('../../../server/services/infra/data.service.js', () => ({
+  getArticleById: mockGetArticleById,
 }))
 vi.mock('../../../server/utils/prompt-loader.js', () => ({
   loadPrompt: vi.fn(async (_name: string, vars: Record<string, string>) =>
@@ -62,6 +67,8 @@ describe('moteur:radar long-tail-suggest service', () => {
     mockSetCached.mockReset()
     mockGetRadarExploration.mockReset()
     mockSaveRadarExploration.mockReset()
+    mockGetArticleById.mockReset()
+    mockGetArticleById.mockResolvedValue(null)
   })
 
   const validInput = {
@@ -94,6 +101,20 @@ describe('moteur:radar long-tail-suggest service', () => {
   }
 
   describe('happy path (mock provider)', () => {
+    // FR-INFRA-PROMPT-LAYERS — le prompt cite {{strategy_context}} ; le client
+    // envoie `strategyContext: ''` : sans le cocon, la stratégie restait vide.
+    it('demande au chargeur la stratégie du cocon de l’article', async () => {
+      const { loadPrompt } = await import('../../../server/utils/prompt-loader.js')
+      mockGetArticleById.mockResolvedValueOnce({ article: { id: 42 }, cocoonName: 'Copywriting B2B industriel' })
+      mockGetCached.mockResolvedValueOnce(null)
+      mockClassifyWithTool.mockResolvedValueOnce({ result: validAiResponse, usage: {} })
+
+      await generateLongTailSuggestions(validInput)
+
+      expect(mockGetArticleById).toHaveBeenCalledWith(42)
+      expect(loadPrompt).toHaveBeenCalledWith('radar-long-tail-suggest', expect.any(Object), { cocoonSlug: 'Copywriting B2B industriel' })
+    })
+
     it('appelle classifyWithTool avec le prompt chargé et retourne suggestions validées', async () => {
       mockGetCached.mockResolvedValueOnce(null) // cache miss
       mockClassifyWithTool.mockResolvedValueOnce({ result: validAiResponse, usage: {} })

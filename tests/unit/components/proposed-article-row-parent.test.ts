@@ -29,27 +29,43 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('ProposedArticleRow — accepted border', () => {
-  it('does not have accepted class when article is not accepted', () => {
+// Carte indicative (C7) : une proposition ne s'accepte plus ; seule la marque
+// « créé » (article né de l'arbre du cocon) reste visible.
+describe('ProposedArticleRow — marque d’un article déjà créé', () => {
+  it('une proposition pas encore créée ne porte ni bordure ni badge « Créé »', () => {
     const wrapper = mount(ProposedArticleRow, {
       props: {
-        article: makeArticle({ accepted: false }),
+        article: makeArticle({ createdInDb: false }),
         index: 0,
       },
     })
     const item = wrapper.find('.proposal-item')
-    expect(item.classes()).not.toContain('accepted')
+    expect(item.classes()).not.toContain('created')
+    expect(item.attributes('data-created')).toBe('false')
+    expect(wrapper.find('[data-testid="proposal-created-badge"]').exists()).toBe(false)
   })
 
-  it('has accepted class when article is accepted', () => {
+  it('un article créé garde sa bordure et son badge « Créé »', () => {
     const wrapper = mount(ProposedArticleRow, {
       props: {
-        article: makeArticle({ accepted: true }),
+        article: makeArticle({ createdInDb: true, accepted: true }),
         index: 0,
       },
     })
     const item = wrapper.find('.proposal-item')
-    expect(item.classes()).toContain('accepted')
+    expect(item.classes()).toContain('created')
+    expect(item.attributes('data-created')).toBe('true')
+    expect(wrapper.get('[data-testid="proposal-created-badge"]').text()).toBe('Créé')
+  })
+
+  it('n’offre plus de bouton « Valider » (ni replié, ni déplié)', async () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: { article: makeArticle(), index: 0 },
+    })
+    expect(wrapper.find('[data-testid="proposal-accept-header"]').exists()).toBe(false)
+    await wrapper.find('.proposal-item').trigger('click')
+    expect(wrapper.find('[data-testid="proposal-accept-bottom"]').exists()).toBe(false)
+    expect(wrapper.emitted('toggle-accept')).toBeUndefined()
   })
 })
 

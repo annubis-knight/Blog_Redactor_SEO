@@ -1,5 +1,9 @@
 /**
  * -bis — Endpoints CRUD de lecture reconstruite.
+ *
+ * Plus de GET /keywords/:keyword/intent-for-article/:articleId (M3, épopée
+ * qualité SEO) : il relisait `keyword_intent_analyses`, table sans producteur,
+ * et aucun écran ne l'appelait.
  */
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
@@ -7,7 +11,6 @@ import {
   getArticlesUsingKeyword,
   getKeywordMetricsWithFreshness,
   getCocoonKeywordMetrics,
-  getKeywordIntentForArticle,
   getKeywordLocalAnalysisForArticle,
   getKeywordContentGapForArticle,
 } from '../services/queries/keyword-queries.service.js'
@@ -43,23 +46,6 @@ router.get('/keywords/:keyword/metrics', async (req, res) => {
   } catch (err) {
     log.error(`GET /keywords/:keyword/metrics — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch keyword metrics' } })
-  }
-})
-
-/** GET /keywords/:keyword/intent-for-article/:articleId — contextualised intent */
-router.get('/keywords/:keyword/intent-for-article/:articleId', async (req, res) => {
-  try {
-    const articleId = parseId(req.params.articleId)
-    if (!articleId) {
-      res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a positive integer' } })
-      return
-    }
-    const keyword = decodeURIComponent(req.params.keyword)
-    const data = await getKeywordIntentForArticle(articleId, keyword)
-    res.json({ data })
-  } catch (err) {
-    log.error(`GET /keywords/:keyword/intent-for-article — ${(err as Error).message}`)
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch keyword intent' } })
   }
 })
 

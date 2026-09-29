@@ -22,7 +22,9 @@ function makeKpis(over: Partial<RadarKeywordKpis> = {}): RadarKeywordKpis {
 describe('computeKpiScore', () => {
   it('returns 0-100 integer', () => {
     const r = computeKpiScore(makeKpis(), 'intermediaire')
-    expect(r.total).toBeGreaterThanOrEqual(0)
+    // Volume, KD, intent, PAA, autocomplete verts (100) ; CPC 1,5 € neutre (50) :
+    // (30 + 20 + 5 + 15 + 10 + 10) / 0,95 = 94,7 → 95.
+    expect(r.total).toBe(95)
     expect(r.total).toBeLessThanOrEqual(100)
     expect(Number.isInteger(r.total)).toBe(true)
   })

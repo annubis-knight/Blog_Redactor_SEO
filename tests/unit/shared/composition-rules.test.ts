@@ -260,7 +260,9 @@ describe('checkKeywordComposition — full check', () => {
     expect(result.keyword).toBe('test mot cle')
     expect(result.level).toBe('pilier')
     expect(Array.isArray(result.results)).toBe(true)
-    expect(typeof result.warningCount).toBe('number')
-    expect(typeof result.allPass).toBe('boolean')
+    // 3 mots (conforme) mais ni ville ni cible : 2 règles sur 3 en échec.
+    expect(result.results).toHaveLength(3)
+    expect(result.warningCount).toBe(2)
+    expect(result.allPass).toBe(false)
   })
 })

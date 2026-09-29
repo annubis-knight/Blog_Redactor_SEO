@@ -14,6 +14,7 @@
  */
 import { test, expect, type Page, type Response } from '@playwright/test'
 import { scanAndLockCaptain, selectArticle, useParcours, type ParcoursLevel } from '../helpers/parcours-fixtures'
+import { answerGateAlarm } from '../helpers/gate-alarm'
 
 test.describe.configure({ mode: 'serial' })
 
@@ -139,16 +140,9 @@ for (const level of LEVELS) {
         .toBeVisible({ timeout: 60000 })
     })
 
-    await test.step('⑧ décision — les termes retenus valident l’étape', async () => {
+    await test.step('⑧ décision — rien n’est validé d’office ; le terme choisi valide l’étape', async () => {
       const progression = async () =>
         (await apiJson<{ completedChecks: string[] }>(page, `/articles/${article.id}/progress`)).completedChecks
-
-      // Les termes obligatoires arrivent pré-cochés : l'étape peut déjà être
-      // validée. Sinon, on coche à la main — si la liste n'est pas verrouillée.
-      if ((await progression()).includes('moteur:lexique_validated')) {
-        expect(await progression()).toContain('moteur:lexique_validated')
-        return
-      }
 
       const cases = page.locator('[data-testid="lexique-results"] .term-checkbox')
       const total = await cases.count()
@@ -159,16 +153,23 @@ for (const level of LEVELS) {
         return
       }
 
-      const première = cases.first()
-      if (await première.isDisabled()) {
-        // Liste verrouillée : la décision a déjà été enregistrée, on le vérifie.
-        expect(await progression(), 'liste verrouillée → étape déjà validée')
-          .toContain('moteur:lexique_validated')
-        return
+      // FR-LEX-METIER-ONLY (M11) : aucune case cochée, aucune étape validée
+      // tant que l'utilisateur n'a rien choisi.
+      for (let i = 0; i < total; i++) {
+        expect(await cases.nth(i).isChecked(), 'aucun terme coché d’office').toBe(false)
       }
+      expect(await progression(), 'l’étape ne se valide pas toute seule').not.toContain('moteur:lexique_validated')
 
-      // Un seul terme suffit : dès qu'un terme est retenu, la liste se verrouille.
-      if (!(await première.isChecked())) await première.check()
+      // L'utilisateur retient un terme ; la porte du lexique (FR-LEX-METIER-ONLY)
+      // peut retenir l'étape : le bandeau le dit, et il assume depuis l'alarme.
+      await cases.first().check()
+      const bandeau = page.locator('[data-testid="lexique-gate-banner"]')
+      await expect.poll(async () => (await bandeau.isVisible()) || (await progression()).includes('moteur:lexique_validated'),
+        { timeout: 30000 }).toBe(true)
+      if (await bandeau.isVisible()) {
+        await page.locator('[data-testid="lexique-gate-review"]').click()
+        await answerGateAlarm(page)
+      }
 
       await expect.poll(progression, { timeout: 30000 }).toContain('moteur:lexique_validated')
     })

@@ -1,6 +1,19 @@
+/**
+ * AUTHORITY: PostgreSQL `article_content` (sommaire, texte) et les champs méta de
+ *            `articles` (meta_title, meta_description, seo_score, geo_score, phase).
+ * READS FROM: article_content, articles.
+ * WRITES TO: article_content, articles (méta, scores notés à l'écran, phase qui ne
+ *            recule jamais) ; internal_links via linking.pruneStaleLinks (la
+ *            matrice suit le texte enregistré).
+ * CONSUMERS: routes articles (PUT /articles/:id, GET /articles/:id/content), route
+ *            du premier jet, portes (draft, publish), mode automatique.
+ * RELATED FR: FR-RED-SEO-SCORE-PERSIST, FR-RED-LINKING-MANUAL, FR-RED-DRAFT-SINGLE-PASS
+ */
 import { pool } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import type { ArticleContent } from '../../../shared/types/index.js'
+import { nextArticlePhase } from '../../../shared/utils/article-phase.js'
+import { pruneStaleLinks } from './linking.service.js'
 
 const DEFAULT_CONTENT: ArticleContent = {
   outline: null,
@@ -66,6 +79,20 @@ export async function saveArticleContent(
         outline = COALESCE(EXCLUDED.outline, article_content.outline),
         content = COALESCE(EXCLUDED.content, article_content.content)
     `, [id, updates.outline ? JSON.stringify(updates.outline) : null, updates.content ?? null])
+  }
+
+  // La matrice du maillage suit le texte : un lien retiré sort d'internal_links.
+  if (updates.content !== undefined && updates.content !== null) {
+    await pruneStaleLinks(id, updates.content)
+  }
+
+  // Du contenu enregistré fait entrer l'article en rédaction ; la phase ne
+  // recule jamais (épopée qualité SEO, P2).
+  if (updates.content && updates.content.trim()) {
+    const current = await pool.query(`SELECT phase FROM articles WHERE id = $1`, [id])
+    const phase = current.rows[0]?.phase as string | undefined
+    const next = nextArticlePhase(phase, 'content-saved')
+    if (next !== phase) await pool.query(`UPDATE articles SET phase = $1 WHERE id = $2`, [next, id])
   }
 
   // Save meta in articles table

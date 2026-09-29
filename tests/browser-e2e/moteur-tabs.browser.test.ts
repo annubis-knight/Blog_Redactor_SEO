@@ -9,7 +9,7 @@ import { test, expect } from './helpers/test-fixtures'
 import { MOTEUR_TABS, openMoteur, selectArticleByTitle, tabLocator } from './helpers/moteur-ui'
 
 test.describe('Moteur — Navigation tabs', () => {
-  test('les 5 onglets sont présents et portent leur libellé', async ({ page, ctx }) => {
+  test('les 6 onglets sont présents et portent leur libellé (Structure : FR-HN-TAB)', async ({ page, ctx }) => {
     const article = await ctx.createArticle('AllTabs Browser')
     await openMoteur(page, article.cocoonId)
     await selectArticleByTitle(page, article.titre)
@@ -19,6 +19,7 @@ test.describe('Moteur — Navigation tabs', () => {
       radar: /Radar/i,
       capitaine: /Capitaine/i,
       lieutenants: /Lieutenants/i,
+      structure: /Structure/i,
       lexique: /Lexique/i,
     }
     for (const tab of MOTEUR_TABS) {

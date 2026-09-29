@@ -34,14 +34,13 @@ describe('useArticleResults', () => {
       const _discoveryStore = useKeywordDiscoveryStore()
 
       // Populate stores with some data
-      intentStore.intentData = { dominantIntent: 'informational' } as any
       intentStore.comparisonData = { alert: 'some alert' } as any
+      intentStore.autocompleteData = { suggestions: ['a'] } as any
       localStore.mapsData = { hasLocalPack: true } as any
 
       const { clearResults, currentArticleId } = useArticleResults()
       clearResults()
 
-      expect(intentStore.intentData).toBeNull()
       expect(intentStore.comparisonData).toBeNull()
       expect(intentStore.autocompleteData).toBeNull()
       expect(localStore.mapsData).toBeNull()
@@ -65,7 +64,6 @@ describe('useArticleResults', () => {
       const localStore = useLocalStore()
 
       const explorations = {
-        intent: { capitaine: { dominantIntent: 'informational', modules: [] }, all: [] },
         local: {
           capitaine: {
             hasLocalPack: true,
@@ -90,14 +88,33 @@ describe('useArticleResults', () => {
       expect(mockApiGet).toHaveBeenCalledWith('/articles/1/explorations', { contract: expect.objectContaining({ name: 'explorations' }) })
       expect(mockApiGet).toHaveBeenCalledWith('/articles/1/external-cache')
 
-      expect(intentStore.intentData).toEqual(explorations.intent.capitaine)
       expect(intentStore.comparisonData).toEqual(explorations.local.capitaine.comparison)
       expect(intentStore.autocompleteData).toEqual(external.autocomplete)
       expect(localStore.mapsData?.hasLocalPack).toBe(true)
     })
 
+    it('M3 — un ancien groupe `intent` encore servi n’hydrate plus rien', async () => {
+      // `keyword_intent_analyses` n'a plus de producteur : ses lignes figées ne
+      // sont plus relues. Même si un serveur en retard renvoyait encore le
+      // groupe, le store d'intention ne le reprend pas.
+      const intentStore = useIntentStore()
+      mockSplit({
+        intent: { capitaine: { dominantIntent: 'informational', modules: [] }, all: [] },
+        local: { capitaine: null, all: [] },
+        contentGap: { capitaine: null, all: [] },
+        radar: null,
+      })
+
+      const { loadCachedResults } = useArticleResults()
+      await loadCachedResults(5)
+
+      expect('intentData' in intentStore).toBe(false)
+      expect(intentStore.comparisonData).toBeNull()
+      expect(intentStore.autocompleteData).toBeNull()
+    })
+
     it('calls correct URL with numeric id', async () => {
-      mockSplit({ intent: { capitaine: null, all: [] }, local: { capitaine: null, all: [] }, contentGap: { capitaine: null, all: [] }, radar: null })
+      mockSplit({ local: { capitaine: null, all: [] }, contentGap: { capitaine: null, all: [] }, radar: null })
 
       const { loadCachedResults } = useArticleResults()
       await loadCachedResults(42)
@@ -110,12 +127,11 @@ describe('useArticleResults', () => {
       const intentStore = useIntentStore()
       const localStore = useLocalStore()
 
-      mockSplit({ intent: { capitaine: null, all: [] }, local: { capitaine: null, all: [] }, contentGap: { capitaine: null, all: [] }, radar: null })
+      mockSplit({ local: { capitaine: null, all: [] }, contentGap: { capitaine: null, all: [] }, radar: null })
 
       const { loadCachedResults } = useArticleResults()
       await loadCachedResults(99)
 
-      expect(intentStore.intentData).toBeNull()
       expect(intentStore.comparisonData).toBeNull()
       expect(intentStore.autocompleteData).toBeNull()
       expect(localStore.mapsData).toBeNull()
@@ -130,7 +146,7 @@ describe('useArticleResults', () => {
       await loadCachedResults(7)
 
       expect(isLoading.value).toBe(false)
-      expect(intentStore.intentData).toBeNull()
+      expect(intentStore.comparisonData).toBeNull()
     })
 
     it('guards against race condition — discards stale results', async () => {
@@ -141,8 +157,7 @@ describe('useArticleResults', () => {
       mockApiGet.mockImplementation((path: string) => {
         if (path === '/articles/1/explorations') return new Promise(resolve => { resolveFirst = resolve })
         if (path === '/articles/2/explorations') return Promise.resolve({
-          intent: { capitaine: { dominantIntent: 'navigational' }, all: [] },
-          local: { capitaine: null, all: [] },
+          local: { capitaine: { hasLocalPack: false, comparison: { localVolume: 20 } }, all: [] },
           contentGap: { capitaine: null, all: [] },
           radar: null,
         })
@@ -156,18 +171,17 @@ describe('useArticleResults', () => {
       await p2
 
       expect(currentArticleId.value).toBe(2)
-      expect(intentStore.intentData).toEqual({ dominantIntent: 'navigational' })
+      expect(intentStore.comparisonData).toEqual({ localVolume: 20 })
 
       resolveFirst({
-        intent: { capitaine: { dominantIntent: 'informational' }, all: [] },
-        local: { capitaine: null, all: [] },
+        local: { capitaine: { hasLocalPack: true, comparison: { localVolume: 999 } }, all: [] },
         contentGap: { capitaine: null, all: [] },
         radar: null,
       })
       await p1
 
       // Store should still have the second article's data (guard dropped the stale write).
-      expect(intentStore.intentData).toEqual({ dominantIntent: 'navigational' })
+      expect(intentStore.comparisonData).toEqual({ localVolume: 20 })
     })
   })
 })

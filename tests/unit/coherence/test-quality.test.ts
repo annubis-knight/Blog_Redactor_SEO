@@ -67,12 +67,23 @@ interface ScanResult {
   byFile: Record<string, number>
 }
 
+/**
+ * Contenu des fichiers de test, lu une seule fois pour tous les scans : relire
+ * ~400 fichiers à chaque test faisait expirer le délai quand toute la suite
+ * tourne en parallèle (vu sur la simulation du job CI, 2026-09-25).
+ */
+let contentsPromise: Promise<Array<[string, string]>> | null = null
+function testFileContents(): Promise<Array<[string, string]>> {
+  contentsPromise ??= walkTestFiles(TESTS_ROOT).then(files =>
+    Promise.all(files.map(async f => [f, await readFile(f, 'utf8')] as [string, string])),
+  )
+  return contentsPromise
+}
+
 async function scanPattern(regex: RegExp): Promise<ScanResult> {
-  const files = await walkTestFiles(TESTS_ROOT)
   const byFile: Record<string, number> = {}
   let total = 0
-  for (const f of files) {
-    const content = await readFile(f, 'utf8')
+  for (const [f, content] of await testFileContents()) {
     // Reset lastIndex pour les regex /g
     regex.lastIndex = 0
     const matches = content.match(regex)
@@ -132,7 +143,35 @@ const SOFT_LIMITS = {
   //   apparus dans les tests de Brain (smart-add, paa-cascade) car certains
   //   scenarii dépendaient de la disponibilité de fixtures PascalCase + de la
   //   fonction `articleTypeToLevel` (supprimée).
-  itSkip: 91,                      // it.skip / test.skip / describe.skip
+  // 2026-09-25 — épopée qualité SEO (C2, T2) : les 46 it.skip de
+  //   captain-validation.test.ts (ancienne mise en page) retirés ; les
+  //   comportements encore valables sont couverts par captain-lock-gate.test.ts.
+  // 2026-09-25 — C6 (T13) : deux it.skip Lieutenants/structure supprimés avec
+  //   l'onglet Structure ; le plafond suit (42 → 40).
+  // 2026-09-25 — épopée qualité SEO (C2, T2) : les 40 skip triés un à un —
+  //   obsolètes retirés (verrouillage par lot, onglets du journal des coûts,
+  //   Export, JSON migrés…), valables réécrits sur le code actuel. Restent 2
+  //   bugs réels, ignorés avec `// SKIP: <exigence>` (40 → 2).
+  // 2026-09-25 — FR-LEX-MULTI-KEYWORD corrigé (« Tester un mot-clé » ne se
+  //   grise plus quand des termes sont retenus) : son test reprend (2 → 1).
+  itSkip: 1,                       // it.skip / test.skip / describe.skip
+  // 2026-09-24 — épopée qualité SEO (C1, cliquet des faux verts) : trois formes
+  // d'assertion qui passent quoi qu'il arrive, figées à leur niveau du jour.
+  //   - `toBeGreaterThanOrEqual(0)` sur un compte ou une longueur : toujours vrai ;
+  //   - `expect(typeof x).toBe('boolean')` : vérifie le type, jamais la valeur ;
+  //   - `if (requireServer().skip) return` : sans serveur, le test sort VERT au
+  //     lieu d'apparaître « ignoré ». 2026-09-25 (C2, T7) : les 362 occurrences
+  //     sont devenues `skip()` (contexte du test) — plafond à 0, il ne remonte plus.
+  // 2026-09-25 — épopée qualité SEO (C2, T3) : occurrences de tests/unit réécrites
+  //   en vérifications qui peuvent échouer ; restent celles des tests contre
+  //   serveur/navigateur (31 → 12 pour « >= 0 », 10 → 8 pour le type booléen).
+  // 2026-09-25 — épopée qualité SEO (C2, T3) : celles des tests contre serveur
+  //   et de tests/functional réécrites (valeur exacte, forme stricte, ou données
+  //   posées par le test) ; ne restent que celles de tests/browser-e2e, dont 2
+  //   dans des commentaires (12 → 6 pour « >= 0 », 8 → 1 pour le type booléen).
+  alwaysTrueGte0: 6,
+  typeofBoolean: 1,
+  silentServerSkip: 0,
 } as const
 
 // ============================================================================
@@ -183,6 +222,37 @@ describe('Test quality — anti-régression qualité de la suite', () => {
         `Si tu en as ajouté, soit dé-skip et fix, soit baisse / monte la baseline en justifiant. ` +
         `Localisations:\n${formatViolations(byFile)}`,
     ).toBeLessThanOrEqual(SOFT_LIMITS.itSkip)
+  })
+
+  it(`toBeGreaterThanOrEqual(0) ne doit pas augmenter (baseline: ${SOFT_LIMITS.alwaysTrueGte0})`, async () => {
+    const { total, byFile } = await scanPattern(/toBeGreaterThanOrEqual\(0\)/g)
+    expect(
+      total,
+      `${total} assertion(s) « >= 0 » (baseline=${SOFT_LIMITS.alwaysTrueGte0}). Un compte ou une longueur ` +
+        `est toujours >= 0 : l'assertion ne teste rien. Vérifie la valeur attendue. Localisations:
+${formatViolations(byFile)}`,
+    ).toBeLessThanOrEqual(SOFT_LIMITS.alwaysTrueGte0)
+  })
+
+  it(`expect(typeof …).toBe('boolean') ne doit pas augmenter (baseline: ${SOFT_LIMITS.typeofBoolean})`, async () => {
+    const { total, byFile } = await scanPattern(/expect\(typeof [^)]+\)\.toBe\('boolean'\)/g)
+    expect(
+      total,
+      `${total} assertion(s) sur le seul type booléen (baseline=${SOFT_LIMITS.typeofBoolean}). ` +
+        `Vérifie la valeur attendue (true / false), pas son type. Localisations:
+${formatViolations(byFile)}`,
+    ).toBeLessThanOrEqual(SOFT_LIMITS.typeofBoolean)
+  })
+
+  it(`les tests qui sortent verts sans serveur ne doivent pas augmenter (baseline: ${SOFT_LIMITS.silentServerSkip})`, async () => {
+    const { total, byFile } = await scanPattern(/requireServer\(\)\.skip\) return/g)
+    expect(
+      total,
+      `${total} « if (requireServer().skip) return » (baseline=${SOFT_LIMITS.silentServerSkip}). Sans serveur, ` +
+        `ces tests passent au vert sans rien vérifier. Utilise it.skipIf(!serverOk) pour qu'ils apparaissent ignorés. ` +
+        `Localisations:
+${formatViolations(byFile)}`,
+    ).toBeLessThanOrEqual(SOFT_LIMITS.silentServerSkip)
   })
 
   // Sentinelle : si la liste de fichiers de tests s'effondre brutalement,

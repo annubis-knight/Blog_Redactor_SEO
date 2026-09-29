@@ -17,6 +17,7 @@ import {
 import { serpExistsContract } from '../../shared/contracts/serp.contract.js'
 import { runPaaJudgmentsForArticle } from '../services/keyword/captain-paa-judge.service.js'
 import { extractRoots } from '../../shared/utils/keyword-roots.js'
+import { parseKeywordType } from '../../shared/utils/keyword-type.js'
 import { auditCocoonKeywords, getAuditCacheStatus, detectRedundancy } from '../services/external/dataforseo.service.js'
 import { discoverKeywords, discoverFromDomain } from '../services/keyword/keyword-discovery.service.js'
 import { previewMigration, applyMigration } from '../services/keyword/keyword-assignment.service.js'
@@ -27,6 +28,8 @@ import { hasSerpScrape } from '../services/keyword/keyword-serp.service.js'
 import type { ArticleKeywordAssignment } from '../services/keyword/keyword-assignment.service.js'
 import type { Keyword, KeywordStatus } from '../../shared/types/index.js'
 import type { ProposeLieutenantsHnNode } from '../../shared/types/serp-analysis.types.js'
+import { hnStructureSchema } from '../../shared/schemas/keyword.schema.js'
+import { splitGenericTerms } from '../../shared/utils/generic-terms.js'
 
 const router = Router()
 
@@ -137,15 +140,23 @@ router.get('/keywords/audit/:cocoon/status', async (req, res) => {
 /** POST /api/keywords — Add a keyword */
 router.post('/keywords', async (req, res) => {
   try {
-    const { keyword, cocoonName, type } = req.body as Keyword
-    if (!keyword || !cocoonName || !type) {
+    const { keyword, cocoonName, type: rawType } = req.body as { keyword?: string; cocoonName?: string; type?: unknown }
+    if (!keyword || !cocoonName || !rawType) {
       res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'keyword, cocoonName, and type are required' } })
+      return
+    }
+    // Strict en écriture : seul un KeywordType entre dans le pool (épopée qualité SEO, K2).
+    const type = parseKeywordType(rawType)
+    if (!type) {
+      res.status(400).json({ error: { code: 'INVALID_TYPE', message: `Type de mot-clé inconnu : « ${String(rawType)} ». Attendus : Pilier, Intermédiaire, Spécialisé, Moyenne traine, Longue traine.` } })
       return
     }
 
     const result = await addKeyword({ keyword, cocoonName, type, status: 'suggested' })
     if (!result.success && result.duplicate) {
-      res.status(409).json({ error: { code: 'DUPLICATE', message: `Le mot-clé "${keyword}" existe déjà` } })
+      // Ce message est affiché tel quel à l'utilisateur : il doit dire où est le doublon (K1).
+      const where = result.existingCocoon ? ` dans le cocon « ${result.existingCocoon} »` : ''
+      res.status(409).json({ error: { code: 'DUPLICATE', message: `Le mot-clé « ${keyword} » est déjà utilisé${where} : deux cocons qui visent le même mot-clé se font concurrence. Choisissez-en un autre au Moteur.` } })
       return
     }
     res.json({ data: { success: true } })
@@ -164,7 +175,12 @@ router.put('/keywords', async (req, res) => {
       return
     }
 
-    const success = await replaceKeyword(oldKeyword, newKeyword)
+    const type = parseKeywordType(newKeyword.type)
+    if (!type) {
+      res.status(400).json({ error: { code: 'INVALID_TYPE', message: `Type de mot-clé inconnu : « ${String(newKeyword.type)} ».` } })
+      return
+    }
+    const success = await replaceKeyword(oldKeyword, { ...newKeyword, type })
     if (!success) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: `Keyword not found: ${oldKeyword}` } })
       return
@@ -290,12 +306,19 @@ router.put('/articles/:id/keywords', async (req, res) => {
       res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'capitaine is required' } })
       return
     }
+    // La porte `hn-lock` lit `{ level: nombre, text }` : une autre forme passait
+    // en base, et la porte voyait une structure vide (FR-HN-TAB).
+    if (hnStructure !== undefined && !hnStructureSchema.safeParse(hnStructure).success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'hnStructure : chaque titre attend { level: 1 à 6, text }' } })
+      return
+    }
     const saved = await saveArticleKeywords(id, {
       capitaine,
       lieutenants: lieutenants ?? [],
       lexique: lexique ?? [],
       rootKeywords: rootKeywords ?? [],
-      hnStructure: hnStructure ?? [],
+      // Absente = inchangée : un enregistrement Lieutenants ou Lexique n’efface plus la structure (C6).
+      hnStructure,
     })
     res.json({ data: saved })
   } catch (err) {
@@ -489,10 +512,13 @@ router.post('/keywords/lexique-suggest', async (req, res) => {
 
     // Parse JSON array from response
     const cleaned = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
-    const lexique = JSON.parse(cleaned) as string[]
+    // Même filtre que le Moteur (M15, FR-LEX-METIER-ONLY) : la suggestion
+    // remplace le lexique, un mot vide y entrait sans filtre ni porte.
+    const { kept: lexique, rejected } = splitGenericTerms(JSON.parse(cleaned) as string[])
+    if (rejected.length) log.info('[lexique-suggest] termes génériques écartés', { capitaine, rejected })
 
     // usage remonté au front pour alimenter la pile d'activité
-    res.json({ data: { lexique, usage } })
+    res.json({ data: { lexique, rejected, usage } })
   } catch (err) {
     log.error(`POST /api/keywords/lexique-suggest — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'SUGGESTION_ERROR', message: 'Failed to suggest lexique' } })

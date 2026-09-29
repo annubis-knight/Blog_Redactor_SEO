@@ -154,7 +154,7 @@ const kpiBreakdown = computed(() =>
 
 /**
  * Score strict par mode : kpi (Radar) ou relevance (Capitaine).
- * null → affiche "—". Pas de fallback combinedScore (separation docs/scoring-kpi-vs-relevance.md).
+ * null → affiche "—". Pas de fallback combinedScore (separation design/14-radar-capitaine.md).
  */
 const displayedScore = computed<number | null>(() => {
   if (props.displayMode === 'kpi') {

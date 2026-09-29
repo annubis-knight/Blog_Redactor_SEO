@@ -382,6 +382,33 @@ describe('extractTextContent (migré de serp-analysis.test.ts)', () => {
   it('collapses whitespace', () => {
     expect(extractTextContent('<p>  lots   of    spaces  </p>')).toBe('lots of spaces')
   })
+
+  // FR-LEX-METIER-ONLY (épopée qualité SEO, M5) : le lexique aspirait les menus,
+  // pieds de page et bandeaux cookies des pages concurrentes.
+  it('garde le contenu principal : ni menu, ni bandeau cookies, ni pied de page', () => {
+    const html = '<header><nav>Accueil Contact</nav></header>'
+      + '<div id="cookie-banner">Nous utilisons des cookies</div>'
+      + '<main><p>Laine soufflée</p></main><footer>Mentions légales</footer>'
+    expect(extractTextContent(html)).toBe('Laine soufflée')
+  })
+
+  it('sans <main>, retire quand même menus, encarts, formulaires et pied de page', () => {
+    const html = '<nav>Menu</nav><div class="content"><p>Pare-vapeur</p></div>'
+      + '<aside>Articles récents</aside><form>Votre email</form><footer>© 2026</footer>'
+    expect(extractTextContent(html)).toBe('Pare-vapeur')
+  })
+
+  it('dans un <article>, l’en-tête (le titre) est gardé, le pied (partage) retiré', () => {
+    const html = '<body><header>Logo</header><article><header><h1>Isolation des combles</h1></header>'
+      + '<p>Texte utile</p><footer>Partager</footer></article></body>'
+    expect(extractTextContent(html)).toBe('Isolation des combles Texte utile')
+  })
+
+  it('les bandeaux de consentement se reconnaissent à leur classe', () => {
+    const html = '<div class="didomi-popup"><p>Accepter les cookies</p></div><p>Résistance thermique</p>'
+      + '<section class="newsletter-box"><p>Inscrivez-vous</p></section>'
+    expect(extractTextContent(html)).toBe('Résistance thermique')
+  })
 })
 
 // --- Constantes exportées --------------------------------------------------

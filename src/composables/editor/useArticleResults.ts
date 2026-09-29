@@ -1,3 +1,17 @@
+/**
+ * AUTHORITY: PostgreSQL `radar_explorations`, `keyword_metrics.local_analysis`
+ *            (dont `comparison`) via GET /articles/:id/explorations ;
+ *            `external_api_cache` (autocomplete) via GET /articles/:id/external-cache.
+ * READS FROM: GET /articles/:id/explorations (contrat `explorations`),
+ *             GET /articles/:id/external-cache
+ * WRITES TO: useIntentStore (comparisonData, autocompleteData), useLocalStore
+ *            (mapsData) ; callback `onRadarLoaded` (thermomètre Radar).
+ *            Plus de `intentData` (M3, épopée qualité SEO) : le groupe `intent`
+ *            des explorations est supprimé, `keyword_intent_analyses` n'a plus
+ *            de producteur.
+ * CONSUMERS: MoteurView (montage et changement d'article)
+ * RELATED FR: FR-MOT-EXPLORATIONS-HYDRATATION, NFR-INT-DISPLAY-CONTRACTS
+ */
 import { ref } from 'vue'
 import { apiGet } from '@/services/api.service'
 import { useIntentStore } from '@/stores/keyword/intent.store'
@@ -46,7 +60,6 @@ export function useArticleResults(options: ArticleResultsOptions = {}) {
 
       log.debug('[useArticleResults] Split endpoints received', {
         articleId,
-        intent: !!explorations.intent?.capitaine,
         local: !!explorations.local?.capitaine,
         contentGap: !!explorations.contentGap?.capitaine,
         autocomplete: !!external.autocomplete,
@@ -62,10 +75,7 @@ export function useArticleResults(options: ArticleResultsOptions = {}) {
         return
       }
 
-      // Populate intent store
-      if (explorations.intent?.capitaine) {
-        intentStore.intentData = explorations.intent.capitaine as any
-      }
+      // Populate intent store (comparaison locale + autocomplete)
       if (explorations.local?.capitaine?.comparison) {
         intentStore.comparisonData = explorations.local.capitaine.comparison as any
       }

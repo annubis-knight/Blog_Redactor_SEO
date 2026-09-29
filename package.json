@@ -8,10 +8,15 @@
     "predev": "node scripts/kill-port.mjs 3400 5400 && (npm run db:check || echo \"⚠️  Snapshot DB possiblement périmé — démarrage quand même\")",
     "dev": "concurrently --raw \"npm:dev:client\" \"npm:dev:server\"",
     "db:snapshot": "tsx scripts/db-snapshot.ts",
+    "db:bootstrap": "tsx scripts/db-bootstrap.ts",
     "db:check": "tsx scripts/db-check.ts",
+    "db:apply": "tsx scripts/db-apply-change.ts",
     "db:backup": "tsx scripts/db-backup.ts",
     "db:clean-tests": "tsx scripts/db-clean-tests.ts",
+    "db:reconcile-hn": "tsx scripts/reconcile-hn-checks.ts",
+    "db:backfill-cocoon": "tsx scripts/backfill-cocoon.ts",
     "content:clean": "tsx scripts/clean-article-content.ts",
+    "docs:prompts": "tsx scripts/prompts-reference.ts",
     "verify": "run-p --print-label verify:lint verify:types verify:unit verify:content db:check",
     "verify:lint": "oxlint .",
     "verify:types": "run-p --print-label type-check auto:typecheck",
@@ -27,7 +32,7 @@
     "test:unit": "vitest",
     "test:snapshot": "tsx scripts/test-snapshot.ts",
     "test:check": "tsx scripts/test-check.ts",
-    "pretest:browser": "node scripts/kill-port.mjs 3400 5400",
+    "pretest:browser": "node scripts/kill-port.mjs 3410 5410 && tsx scripts/e2e-test-db.ts",
     "test:browser": "playwright test",
     "test:browser:ui": "playwright test --ui",
     "build-only": "vite build",
@@ -52,8 +57,10 @@
     "@google/genai": "^1.50.1",
     "@huggingface/transformers": "^3.8.1",
     "@tiptap/core": "^3.22.3",
+    "@tiptap/extension-image": "^3.22.3",
     "@tiptap/extension-link": "^3.20.1",
     "@tiptap/extension-placeholder": "^3.20.1",
+    "@tiptap/extension-table": "^3.22.3",
     "@tiptap/pm": "^3.22.3",
     "@tiptap/starter-kit": "^3.20.1",
     "@tiptap/vue-3": "^3.20.1",
@@ -109,7 +116,7 @@
     "vue-tsc": "^3.2.5"
   },
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": ">=24"
   },
   "lint-staged": {
     "*.{ts,vue,js,mjs}": [

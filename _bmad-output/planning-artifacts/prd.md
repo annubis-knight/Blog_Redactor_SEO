@@ -10,7 +10,7 @@ inputDocuments:
   - '_bmad-output/implementation-artifacts/tech-spec-kpi-types-nullable.md'
 workflowType: 'prd'
 completedAt: '2026-03-31'
-lastUpdated: '2026-09-22T00:00:00Z'
+lastUpdated: '2026-09-25T00:00:00Z'
 updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1). Ajout 2026-05-04 (delta vague 3 composables) : FR-MOT-SOFT-GATING formalise le gating souple Phase ②/③ — la consultation reste libre, seules les écritures sont conditionnées par les checks workflow. Cette FR documente l''invariant porté par useMoteurSoftGating (composable extrait de MoteurView). Ajout 2026-05-04 (delta vague 5 — audit FRs post-refactor V1-V5) : 10 FRs formalisant des fonctionnalités utilisateur visibles mais jamais documentées au PRD (cache 30j Discovery, filtre pertinence sémantique, score ring SVG + tooltip 4 messages contextuels Pertinence absent, arbre PAA récursif parent→children, payload cross-tab Discovery→Lexique, détection cannibalisation Capitaine cocon, counts DB explorations TabCachePanel, bouton vider cache external api_cache, architecture panels toolbar+ResizablePanel partagée Workflow/Editor, panel IA Brief markdown stream). Ces FRs ne créent aucune nouvelle fonctionnalité — elles documentent l''existant pour que les futurs refactors préservent l''intent utilisateur sans se baser uniquement sur le code. Ajout 2026-05-04 (delta vague 5 bis — réorganisation FRs par composants macro partagés) : nouvelle §8.15 "Composants UI partagés (FR-UI)" avec 4 FRs (FR-UI-RADAR-CARD, FR-UI-AI-PANELS-PATTERN, FR-UI-ARTICLE-SHARED, FR-UI-MOTEUR-SHARED) qui formalisent les invariants partagés cross-onglets de composants macro consommés à plusieurs endroits (RadarKeywordCard sur 3 contextes, infrastructure AiPanel sur 6 panels, sous-composants article partagés Workflow/Editor, briques Moteur cross-onglets). Ces FRs ne dupliquent pas les FR métier des §8.4-§8.10 mais référencent celles-ci via "voir aussi" — elles capturent uniquement le fait qu''un composant est partagé et que sa cohérence cross-contextes est un invariant en soi (motivation : le chantier vague 1-5 a montré que les FR par onglet ne suffisent pas pour valider la non-régression d''un composant macro touché par un refactor). Ajout 2026-05-05 (chantier KPI nullable) : 4 nouvelles FRs §8.14 (FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-DISPLAY-DASH, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-SCORING-NULLSAFE) qui formalisent la migration des types KPI marché (KeywordOverview, LocationMetrics, RadarKeywordKpis, ValidatePainResult.dataforseo, KeywordAuditResult) vers number | null de bout en bout. Chaque FR porte des AC testables Vitest (pas seulement narratives). Extension FR-INFRA-NO-SCORE-FALLBACK (ajout Difficulty/Cpc/Competition au scope ESLint), FR-INFRA-SCORE-MODULE (ajout helpers formatVolume/Cpc/Kd/Percent), FR-MOT-RAW-KPIS (placeholder "—" quand KPI absent). Source : tech-spec-kpi-types-nullable. Ajout 2026-05-05 (chantier fetch-to-wrapper-migration) : FR-INFRA-API-WRAPPER affiné (périmètre clarifié, dette résorbée, critère mesurable via audit), FR-INFRA-API-STREAM nouveau (wrapper SSE unifié pour POST → ReadableStream avec mêmes garanties cost-log + KNOWN_ERROR_CODES que apiPost), NFR-INT-API-WRAPPER affiné (critère d''acceptation = 0 violation audit), NFR-OBS-EXTERNAL-API-OPT-OUT nouveau (commentaire `// External API call — bypass wrapper by design` obligatoire sur les 14 fetch externes côté server/services/external/*). Section §12.5 dette technique : ligne `fetch() directs résiduels` marquée résorbée. Source : tech-spec-fetch-to-wrapper-migration. Ajout 2026-05-05 (chantier audit couverture DB) : 9 nouvelles FR-INFRA §8.14 formalisant les tables PostgreSQL jusqu''ici fantômes ou sous-couvertes au PRD (FR-INFRA-PAA-EXPLORATIONS, FR-INFRA-INTENT-EXPLORATIONS-LEGACY, FR-INFRA-KEYWORDS-SEO, FR-INFRA-LOCAL-ENTITIES, FR-INFRA-LIEUTENANT-EXPLORATIONS, FR-INFRA-KEYWORD-DISCOVERIES, FR-INFRA-ARTICLE-STRATEGIES, FR-INFRA-COCOON-STRATEGIES, FR-INFRA-MICRO-CONTEXTS). Chaque FR documente le schéma + producteurs + consommateurs avec lignes de code source. Vérification DB live (psql) confirme 20 tables actives (vs 22 dans les CREATE TABLE — 2 renommées via migration 010, 1 jamais matérialisée : `intent_explorations`). Ajout d''une §8.14.bis Matrice de couverture tables ↔ FR (vue inverse FR↔table) qui répond aux questions opérationnelles : impact d''un changement schéma, impact d''un changement FR, détection de tables sans FR. Règle de maintenance : toute migration créant/modifiant une table doit ajouter/maj une ligne dans la matrice. Migration 2026-05-12 (chantier docs/prd-split-spec-design) : §8.10 Rédaction (13 FRs FR-RED-*) réécrites en langage utilisateur avec critères d''acceptation observables et bloc "En situation" narratif. Détails techniques (refs code, endpoints, flux DB, stores Pinia, watchers, décisions d''architecture) déplacés vers le design-registry §8.10 (13 entrées DESIGN-RED-*). Stores vérifiés : useEditorStore, useOutlineStore, useSeoStore, useGeoStore, useBriefStore, useLinkingStore, useArticleProgressStore. DRIFT-015 consigné (`internal_links.position` est une string offset caractère, pas une position ProseMirror stable — non bloquant tant que la matrice cocon n''a pas besoin de jumper précisément vers le mark). Migration 2026-05-12 (chantier docs/prd-split-spec-design suite) : §9.1 Performance (7 NFRs NFR-PERF-*), §9.2 Coût (6 NFRs NFR-COST-*), §9.3 Intégration (10 NFRs NFR-INT-* + NFR-OBS-EXTERNAL-API-OPT-OUT), §9.4 Maintenabilité (10 NFRs NFR-MAIN-*) réécrites au format utilisateur avec critères observables et exemples "En situation" succincts. Conception déportée vers design-registry §9.1-§9.4 (entrées DESIGN-PERF-*, DESIGN-COST-*, DESIGN-INT-*, DESIGN-MAIN-*, DESIGN-OBS-EXTERNAL-API-OPT-OUT). Drifts consignés : DRIFT-021 (NFR-MAIN-FILE-SIZE listait CaptainValidation.vue 1507L et KeywordDiscoveryTab.vue 1419L qui n''existent plus — refactorisés depuis ; BrainPhase.vue ramené de 1066L à 575L ; nouveaux offenders identifiés : CaptainPanel.vue 1509L, data.service.ts 1052L), DRIFT-022 (NFR-COST-DATAFORSEO-BUDGET citait env vars `DATAFORSEO_COST_BUDGET` / `DATAFORSEO_COST_WINDOW_MINUTES` ; les vraies sont `DATAFORSEO_COST_BUDGET_USD` / `DATAFORSEO_COST_WINDOW_MIN`), DRIFT-023 (NFR-MAIN-ORG-COMPOSABLES citait 5 domaines mais le code en a 8 : article, editor, intent, keyword, lexique, moteur, seo, ui).'
 synced_with:
   - '_bmad-output/planning-artifacts/architecture.md'
@@ -29,6 +29,13 @@ classification:
 ---
 
 # Product Requirements Document — Blog Redactor SEO
+
+> **⚠️ Ce document n'est plus la référence (2026-09-28).** Les exigences qui font foi sont dans
+> [`spec/requirements.md`](../../spec/requirements.md), et le comportement actuel dans
+> [les chapitres de `spec/`](../../spec/README.md), réécrits d'après le code. Tous les identifiants
+> `FR-…` / `NFR-…` d'ici s'y retrouvent (actifs, non tenus ou retirés). Ce PRD reste pour l'historique et
+> les « En situation » ; il n'est plus mis à jour, et il contient des écarts connus avec le code
+> (liste : [`_archive/drift-consolidation-2026-09-28.md`](./_archive/drift-consolidation-2026-09-28.md)).
 
 **Auteur :** Utilisateur
 **Date initiale :** 2026-03-30
@@ -53,6 +60,7 @@ Chaque exigence a un identifiant **stable** préfixé par domaine. Les FR ne son
 | `FR-RAD` | Moteur — onglet Radar (Phase ① Explorer) |
 | `FR-CAP` | Moteur — onglet Capitaine (Phase ② Valider) |
 | `FR-LIE` | Moteur — onglet Lieutenants (Phase ② Valider) |
+| `FR-HN` | Moteur — onglet Structure : titre H1, chapitres H2, sous-parties H3 (Phase ② Valider, depuis 2026-09-25) |
 | `FR-LEX` | Moteur — onglet Lexique (Phase ② Valider) |
 | `FR-FIN` | Moteur — onglet Finalisation (Phase ③) |
 | `FR-RED` | Rédaction (brief, sommaire, article, meta, éditeur) |
@@ -89,8 +97,8 @@ Si non précisé, la valeur par défaut est : `Statut: active`, `Depuis: 2026-03
 **Blog Redactor SEO** est un outil de production de contenu SEO pour un consultant solo expert. L'application couvre le cycle complet :
 
 1. **Cerveau** — stratégie de cocon sémantique (cible, douleur, angle, promesse, CTA, hiérarchisation des articles).
-2. **Moteur** — validation de mots-clés sur 6 onglets en 3 phases visuelles (Phase ① Explorer : Discovery / Radar — Phase ② Valider : Capitaine / Lieutenants / Lexique — Phase ③ Finalisation).
-3. **Rédaction** — brief enrichi, sommaire et article streamés en SSE, éditeur TipTap avec scoring SEO live et 12 actions contextuelles.
+2. **Moteur** — validation de mots-clés et du plan de l'article sur 7 onglets en 3 phases visuelles (Phase ① Explorer : Discovery / Radar — Phase ② Valider : Capitaine / Lieutenants / Structure / Lexique — Phase ③ Finalisation). L'onglet Structure existe depuis le 2026-09-25.
+3. **Rédaction** — brief enrichi, sommaire et article streamés en SSE, éditeur TipTap avec scoring SEO live et 11 actions contextuelles.
 
 L'objectif est de passer de « j'ai un cocon à remplir » à « article publié avec mots-clés validés » rapidement, sans se noyer dans la complexité.
 
@@ -99,13 +107,13 @@ L'objectif est de passer de « j'ai un cocon à remplir » à « article publié
 Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** dans le mot-clé et la structure **avant** de rédiger. Le Moteur est conçu pour donner cette confiance via :
 
 - un scoring **bimodal** (Score Marché objectif + Score Pertinence subjectif lié à la douleur de l'article),
-- un verdict **informatif** (l'utilisateur garde le libre arbitre, peut verrouiller même un NO-GO),
+- un verdict qui **alerte sans décider à sa place** (l'utilisateur garde le libre arbitre : depuis le 2026-09-25, il peut verrouiller un NO-GO en écrivant pourquoi — cf. FR-CAP-LOCK-GATE, FR-INFRA-GATE-WAIVER),
 - des **panels IA contextuels** en streaming SSE qui enrichissent sans imposer,
 - du **cache cross-article** qui élimine les appels redondants.
 
 ### Ce qui rend ce produit unique
 
-1. **Verdict bimodal qui donne confiance** — Score Marché (Volume / KD / CPC / PAA / Intent / Autocomplete) ET Score Pertinence (Pain alignment / PAA×douleur / Autocomplete×douleur / Racines / Intent×douleur) calculés et affichés séparément. Verdicts informatifs, l'utilisateur lock librement.
+1. **Verdict bimodal qui donne confiance** — Score Marché (Volume / KD / CPC / PAA / Intent / Autocomplete) ET Score Pertinence (Pain alignment / PAA×douleur / Autocomplete×douleur / Racines / Intent×douleur) calculés et affichés séparément. L'utilisateur verrouille en connaissance de cause : un mot-clé risqué déclenche l'alarme graduée, qu'il peut dépasser en assumant son choix par écrit (FR-CAP-LOCK-GATE, depuis le 2026-09-25).
 
 2. **Sophistication invisible** — Cache à 3 niveaux (`external_api_cache` TTL, `keyword_metrics` cross-article permanent, cache PAA hiérarchique adossé à `keyword_metrics.paa_questions`). Cost-guard sliding-window sur DataForSEO. Multi-provider IA (Claude / Gemini / OpenRouter / Mock) avec fallback automatique 429/503. Progression cochée silencieusement via `articles.completed_checks` TEXT[].
 
@@ -141,7 +149,7 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 
 ### Business Success
 
-- **Workflow bout-en-bout** — Le chemin Cerveau → Moteur (6 onglets) → Rédaction fonctionne pour tout article d'un cocon.
+- **Workflow bout-en-bout** — Le chemin Cerveau → Moteur (7 onglets) → Rédaction fonctionne pour tout article d'un cocon.
 - **Réduction du temps de production** — La Phase ② Valider est celle où l'on passe le MOINS de temps possible grâce au cache cross-article.
 - **Autonomie complète** — L'outil couvre 100% du workflow sans outil externe.
 
@@ -157,8 +165,8 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 | Indicateur | Cible |
 |---|---|
 | Appels API redondants | 0 (cache `external_api_cache` + `keyword_metrics` + cache PAA hiérarchique sur `keyword_metrics.paa_questions`) |
-| Phases du Moteur identifiables | 3 phases visuelles sur 6 onglets |
-| Progression par article | 5 checks `moteur:*` automatiquement écrits (Cerveau et Rédaction ne posent plus de checks workflow — décision 2026-05-13, cf. DRIFT-002) |
+| Phases du Moteur identifiables | 3 phases visuelles sur 7 onglets (6 avant l'onglet Structure, C6, 2026-09-25) |
+| Progression par article | 6 checks `moteur:*` automatiquement écrits, dont « Structure validée » depuis C6 (le Cerveau ne pose plus de checks workflow — décision 2026-05-13, cf. DRIFT-002) ; la Rédaction en pose un seul depuis C7, « Premier jet accepté » (`FR-CER-PARENT-WRITTEN-GATE`) |
 | Persistance | 100% PostgreSQL (pas de fichier JSON côté chaud) |
 | Workflow sans outil externe | Oui |
 | Cache hit rate DataForSEO après première utilisation | > 90% |
@@ -180,7 +188,7 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 5. **Moteur — Phase ② Valider — Lieutenants** → Bouton « Analyser SERP » → scraping top 10 via DataForSEO. Hn concurrents, PAA associés, groupes croisés. Filtre auto post-IA (cap par level : Pilier 5 / Intermédiaire 5 / Spécifique 4). Sélection (check `moteur:lieutenants_locked`).
 6. **Moteur — Phase ② Valider — Lexique** → TF-IDF extrait des données SERP déjà scrapées (zéro requête supplémentaire). 3 niveaux : Obligatoire / Différenciateur / Optionnel. Tri configurable (A-Z / densité / alignement douleur Jaccard). Panel IA upfront. (check `moteur:lexique_validated`).
 7. **Moteur — Phase ③ Finalisation** → Récap read-only des 3 verrouillages. Bouton « Passer à la rédaction ».
-8. **Rédaction** → Brief enrichi (analyse markdown) → Sommaire streamé via SSE (`generate-outline.md`) → Article streamé section par section avec rate-limit 429 backoff (`generate-article-section.md`) → Meta titre + description (`generate-meta.md`) → Éditeur TipTap avec scoring SEO live (300ms debounce + `requestIdleCallback`) et 12 actions contextuelles sur sélection.
+8. **Rédaction** → Brief enrichi (analyse markdown) → Sommaire streamé via SSE (`generate-outline.md`) → Premier jet rédigé en un seul appel, sans recherche web, affiché chapitre par chapitre (`generate-article-draft.md`, depuis le 2026-09-25) → Meta titre + description (`generate-meta.md`) → étape « Premier jet accepté », accordée par la porte du premier jet (alarme graduée si le texte ne passe pas ; depuis C7, c'est elle qui permet à l'article de donner naissance à ses enfants dans le cocon) → panneau « Enrichir » (depuis le 2026-09-25) : passes Sources (recherche web), Exemples, Tableaux, Images, FAQ, Résumer (chapitres devenus des articles, C7), relecture de la langue et réécriture d'un chapitre, chaque proposition vérifiée puis acceptée ou refusée chapitre par chapitre → Éditeur TipTap avec scoring SEO live (300ms debounce + `requestIdleCallback`) et 11 actions contextuelles sur sélection.
 9. **Résultat** → Article rédigé, mots-clés validés, export HTML.
 
 ### ~~Journey 2 — Vérification au Labo~~ — **REMOVED 2026-05-10**
@@ -212,7 +220,7 @@ Article publié il y a 30 jours. L'utilisateur veut voir si le mot-clé ranke.
 ### 5.1 Sophistication invisible
 
 - Tracking progression silencieux via `articles.completed_checks` TEXT[] — source unique de vérité.
-- Suggestions sans bloquer (bandeaux `PhaseTransitionBanner`).
+- Suggestions sans bloquer (bouton « Continuer vers {onglet suivant} », FR-MOT-PHASE-TRANSITION).
 - Enrichissement automatique des prompts IA avec `{{strategy_context}}` et `{{painPoint}}` sans que l'utilisateur le voie.
 - Navigation libre 100 % — aucun gating dur.
 
@@ -228,11 +236,11 @@ Injection automatique du contexte stratégique (cible, douleur, angle, promesse,
 
 ### 5.4 Scoring bimodal et verdict informatif
 
-Score Marché (objectif, 6 KPIs, poids Vol 30 / KD 20 / Intent 15 / PAA 10 / AC 10 / CPC 10) et Score Pertinence (subjectif, lié à la douleur de l'article, poids Pain 30 / PAA×douleur 25 / AC×douleur 15 / Racines 20 / Intent×douleur 10) coexistent. Le verdict reste informatif, le lock est indépendant.
+Score Marché (objectif, 6 KPIs, poids Vol 30 / KD 20 / Intent 15 / PAA 10 / AC 10 / CPC 10) et Score Pertinence (subjectif, lié à la douleur de l'article, poids Pain 30 / PAA×douleur 25 / AC×douleur 15 / Racines 20 / Intent×douleur 10) coexistent. Le verdict n'est plus purement informatif depuis le 2026-09-25 : un verrouillage risqué (NO-GO, volume inconnu, intention contraire à l'article) passe par l'alarme graduée, et l'utilisateur garde la main par une dérogation motivée (FR-CAP-LOCK-GATE).
 
 ### 5.5 Multi-provider IA avec fallback
 
-`ai-provider.service.ts` route vers Claude, Gemini, OpenRouter ou Mock selon `AI_PROVIDER`. Fallback automatique sur 429 (`AIProviderQuotaError`) et 503 (`AIProviderOverloadedError`), désactivable via `AI_PROVIDER_NO_FALLBACK=1`. USAGE_SENTINEL en fin de stream pour parsing uniforme.
+`ai-provider.service.ts` route vers Claude, Gemini, OpenRouter ou Mock selon `AI_PROVIDER`. Fallback automatique sur 429 (`AIProviderQuotaError`) et 503 (`AIProviderOverloadedError`), désactivable via `AI_PROVIDER_NO_FALLBACK=1`. USAGE_SENTINEL en fin de stream pour parsing uniforme. Depuis le 2026-09-25, une requête avec recherche web n'essaie que Claude (ou la simulation) : pas de repli silencieux vers un fournisseur qui ne sait pas chercher (cf. `FR-RED-ENRICH-SOURCES`).
 
 ### 5.6 Cost-guard sliding-window DataForSEO
 
@@ -260,7 +268,7 @@ SPA Vue 3 + backend Express 5, usage local/desktop, utilisateur unique. Pas de d
 - Frontend : Vue 3.5 + Vue Router 5 + Pinia 3 (22 stores en 5 domaines) + TipTap 3
 - Backend : Express 5.2, port 3400 (configurable via `PORT`), CORS localhost only
 - Frontend dev : Vite, port 5400 (configurable via `VITE_PORT`)
-- Communication : REST API + SSE streaming (Claude tokens, génération article par section, panels IA)
+- Communication : REST API + SSE streaming (Claude tokens, premier jet de l'article affiché chapitre par chapitre, panels IA)
 - Validation : Zod 4 schémas partagés front/back (`shared/schemas/`)
 - Data : PostgreSQL (pg 8.20) — articles, keywords, cocoons, strategies, external_api_cache, keyword_metrics, article_explorations, captain_explorations, radar_explorations, theme_config, internal_links…
 - APIs externes : Anthropic Claude, Google GenAI, OpenRouter, HuggingFace Transformers (embeddings), DataForSEO, Google Autocomplete, Google Search Console
@@ -279,12 +287,15 @@ SPA Vue 3 + backend Express 5, usage local/desktop, utilisateur unique. Pas de d
 
 | Chantier | Livraison | Source |
 |---|---|---|
-| Moteur 6 onglets / 3 phases | ✅ | PRD initial |
+| Moteur 6 onglets / 3 phases (7 avec l'onglet Structure, C6) | ✅ | PRD initial ; épopée qualité SEO (C6) |
 | Verdict GO/NO-GO Capitaine seuils contextuels | ✅ | PRD initial |
 | Scraping SERP unique cascade Lieutenants → Lexique TF-IDF | ✅ | PRD initial |
-| 5 checks `moteur:*` automatiques | ✅ | PRD initial |
+| 5 checks `moteur:*` automatiques (6 depuis l'onglet Structure, C6) | ✅ | PRD initial ; épopée qualité SEO (C6) |
 | ~~3 checks `cerveau:*`~~ retirés 2026-05-13 — promesse non tenue côté code (jamais émis), cf. DRIFT-002 | ❌ | décision produit 2026-05-13 |
 | ~~5 checks `redaction:*`~~ retirés 2026-05-13 — promesse partiellement câblée (1 émetteur sur 5), cf. DRIFT-002 | ❌ | décision produit 2026-05-13 |
+| 1 check `redaction:draft_accepted` — « Premier jet accepté », gardé par la porte du premier jet : ce qui fait d'un article un parent rédigé | ✅ 2026-09-25 | épopée qualité SEO (C7) |
+| Cocon né du pilier : création un article à la fois depuis l'arbre réel, parent et section enregistrés, mots-clés candidats mesurés, état du cocon transmis aux générations, proposition de plan en carte indicative | ✅ 2026-09-25 (parcours navigateur « pilier → intermédiaire → spécialisé » vert, commit `2d39345`) | épopée qualité SEO (C7), tech-spec-cocon-progressif |
+| Recette réelle : un pilier produit en mode réel (`npm run auto:article -- --mode=real`) passe la porte de publication sans alerte ni dérogation | ✅ 2026-09-25 (pilier #1030, 6 passages) | épopée qualité SEO (C8) |
 | Enrichissement prompts Cerveau → Moteur (`{{strategy_context}}`) | ✅ | PRD initial |
 | Labo & Explorateur découplés | ✅ | PRD initial |
 | Migration PostgreSQL | ✅ | tech-spec-migration-json-to-postgresql (archivé) |
@@ -337,9 +348,12 @@ Avant de produire des articles individuels, l'utilisateur peut poser une **strat
 
 **Critères d'acceptation**
 - Les 6 étapes principales sont franchies dans le même esprit que les étapes article (suggestion IA → ajustement → consolidation → validation).
-- À l'issue des 6 étapes principales, l'utilisateur peut faire générer une proposition de structure du cocon (un Pilier + N Intermédiaires + M Spécifiques).
+- À l'issue des 6 étapes principales, l'utilisateur peut faire générer une proposition de structure du cocon (un Pilier + N Intermédiaires + M Spécifiques), d'un coup ou un article à la fois (cf. `FR-CER-COCOON-PROGRESSIVE`).
 - Les 4 étapes annexes sont optionnelles mais accessibles à tout moment.
 - La stratégie cocon est consultable en lecture depuis n'importe quel article du cocon (cf. `FR-CER-CONTEXT-FOR-MOTEUR`).
+- La proposition de structure du cocon est une **carte indicative** : elle montre où va le cocon et se retouche (titre, mot-clé, adresse, parent, intention), mais ne crée aucun article. Les articles naissent un par un, à partir du pilier (cf. `FR-CER-COCOON-PROGRESSIVE`).
+
+**Statut :** active. **Amendée le 2026-09-25 (C7)** : la proposition de structure ne sert plus à créer les articles en lot (cf. `FR-CER-BATCH-CREATE`, superseded) ; elle devient une carte indicative.
 
 > **En situation.** L'utilisateur ouvre un nouveau cocon « Création d'entreprise ». Plutôt que de plonger directement dans un article, il pose d'abord la stratégie cocon : cible commune (« entrepreneur solo qui veut créer une structure adaptée »), douleur racine (« peur de choisir le mauvais statut »), angle (« comparatif chiffré + cas concrets »), promesse, CTA. Puis il fait travailler l'IA sur la structure : 1 Pilier (« Guide complet création entreprise »), 4 Intermédiaires (statuts, étapes, fiscalité, social), 10 Spécifiques. Quand il attaquera la stratégie de chaque article, ces choix-là sont déjà figés — il ne refait pas le travail 15 fois.
 
@@ -358,7 +372,7 @@ L'étape Aiguillage place l'article dans la hiérarchie du cocon en lui attribua
 - Le niveau choisi est visible sur la fiche article et propagé au Moteur (seuils contextuels) et à la Rédaction (longueur cible).
 - **Le niveau suggéré par l'IA est conservé tel qu'elle le rend**, quelle que soit son écriture (« Pilier » comme « pilier », avec ou sans accent). Un cocon généré a toujours une tête : si aucun pilier n'apparaît dans la proposition, c'est un défaut, pas un choix éditorial.
 
-**Statut** : durci le 2026-09-23. **Pourquoi** : les prompts demandaient `"type": "Pilier"` et le code ne reconnaissait que `"pilier"`. Aucun niveau n'était donc jamais lu : un passage réel a produit 17 articles tous classés « Spécifique », sans pilier ni intermédiaire, alors que les titres proposés étaient eux parfaitement hiérarchisés.
+**Statut** : durci le 2026-09-23. **Pourquoi** : les prompts demandaient `"type": "Pilier"` et le code ne reconnaissait que `"pilier"`. Aucun niveau n'était donc jamais lu : un passage réel a produit 17 articles tous classés « Spécifique », sans pilier ni intermédiaire, alors que les titres proposés étaient eux parfaitement hiérarchisés. **Précisée le 2026-09-25 (C7)** : le rattachement n'est plus seulement une intention de la stratégie ; l'article enregistre son parent et la section de ce parent dont il est né, et l'outil refuse à la création un parent qui n'est pas du niveau juste au-dessus (cf. `FR-CER-COCOON-PROGRESSIVE`, `FR-CER-CHILD-FROM-PILLAR-H2`).
 
 > **En situation.** Pour l'article « Statut juridique entreprise individuelle », l'IA évalue : sujet large mais pas premier au cocon → suggère **Intermédiaire** rattaché au Pilier « Statut juridique entreprise ». L'utilisateur valide. Quand il attaquera le Moteur sur cet article, les seuils de scoring du Capitaine seront ceux d'un Intermédiaire (KD moyen toléré, volume moyen attendu). En Rédaction, la longueur cible suggérée tombera dans la fourchette Intermédiaire (1200-2500 mots).
 
@@ -366,7 +380,13 @@ L'étape Aiguillage place l'article dans la hiérarchie du cocon en lui attribua
 
 ---
 
-#### FR-CER-BATCH-CREATE — Création d'articles en lot
+#### FR-CER-BATCH-CREATE — Création d'articles en lot *(superseded 2026-09-25 par FR-CER-COCOON-PROGRESSIVE)*
+
+> **Statut :** superseded. **Depuis :** 2026-09-25. **Remplacée par :** `FR-CER-COCOON-PROGRESSIVE` (avec `FR-CER-PARENT-WRITTEN-GATE`, `FR-CER-CHILD-FROM-PILLAR-H2` et `FR-CER-KEYWORD-REAL-DATA`). **Source :** épopée qualité SEO, chantier C7 (checklist K6).
+>
+> **Ce qui change.** Les articles ne se créent plus en lot. La création en bloc acceptait n'importe quel ordre : un intermédiaire naissait avant son pilier, sans parent ni section, et les doublons n'étaient repérés que sur une adresse identique. Le cocon se construit désormais un article à la fois, à partir du pilier ; chaque enfant naît d'une section de son parent rédigé, sur un mot-clé mesuré. La proposition de plan complet de l'IA reste affichée comme carte indicative : elle se retouche, mais ne crée plus aucun article. Restent en place : le titre, le niveau, le mot-clé, la douleur et l'intention éditoriale posés à la création ; un refus qui s'explique (cf. `FR-CER-CREATION-HONNETE`).
+>
+> Le texte ci-dessous est conservé pour l'historique.
 
 Quand la structure du cocon est validée (cf. `FR-CER-STEPS-COCOON`), l'utilisateur peut **créer en un seul geste** tous les articles proposés par l'IA — typiquement 10 à 20 articles d'un coup, chacun avec son titre, son niveau, son mot-clé suggéré, son point de douleur et son slug. Au lieu de cliquer 15 fois sur « Nouvel article » et de remplir un formulaire à chaque fois, l'utilisateur valide la structure une fois et les articles apparaissent immédiatement dans le cocon.
 
@@ -382,21 +402,173 @@ Quand la structure du cocon est validée (cf. `FR-CER-STEPS-COCOON`), l'utilisat
 
 ---
 
-#### FR-LEX-PRECHECK-PERSISTE — Ce que l'écran coche est réellement retenu
+#### FR-CER-COCOON-PROGRESSIVE — Le cocon se construit article par article
 
-Après l'analyse du Lexique, les termes présents chez au moins 70 % des concurrents arrivent **déjà cochés** : c'est une checklist de rédaction, pas une décision fine, et les pré-cocher fait gagner du temps. Mais une case cochée doit valoir décision enregistrée — sans quoi l'utilisateur croit son Lexique validé alors que rien n'est retenu.
+Jusqu'ici, tous les articles d'un cocon naissaient d'un seul clic, à partir de la proposition de plan de l'IA : rien ne disait dans quel ordre les créer, un intermédiaire pouvait exister avant son pilier, et aucun article ne savait de quel autre il dépendait — si bien que le pilier 1013 a traité en profondeur ce que ses enfants devaient dire. Le cocon se construit désormais comme un expert le ferait : d'abord le pilier, la page qui présente tout le sujet ; puis, une fois le pilier rédigé, un article pour chacune de ses sections ; puis, de la même façon, les articles spécialisés sous chaque intermédiaire. La proposition de plan complet de l'IA reste utile pour voir où l'on va : c'est une carte, pas un bon de commande.
 
 **Critères d'acceptation**
-- Les termes pré-cochés sont enregistrés comme retenus, sans geste supplémentaire.
+- Dans un cocon vide, seul un pilier peut être créé. Un cocon n'a qu'un pilier, et un pilier n'a pas de parent.
+- Les autres articles se créent un par un : un intermédiaire sous le pilier, un spécialisé sous un intermédiaire — jamais sous un autre niveau, jamais sous un article d'un autre cocon.
+- Chaque article enregistre son parent et la section de ce parent dont il est né (cf. `FR-CER-CHILD-FROM-PILLAR-H2`) ; le parent doit être rédigé (cf. `FR-CER-PARENT-WRITTEN-GATE`) ; son mot-clé, s'il en a un, a été mesuré (cf. `FR-CER-KEYWORD-REAL-DATA`).
+- Ces règles de construction ne se dérogent pas (⛔) : un refus dit ce qui manque (« Un cocon commence par son pilier : créez-le d'abord. », « La section « Audit de site » a déjà donné l'article « Auditer son site web ». »). Une adresse de page déjà prise est refusée avec le même soin (cf. `FR-CER-CREATION-HONNETE`).
+- Un article qui a encore des enfants dans le cocon ne peut pas en être retiré : le retrait est refusé avec sa raison (« Des articles sont nés de ses sections : retirez-les d'abord du cocon, sinon ils perdraient leur parent. »), et la carte du Cerveau le garde. Un enfant retiré du cocon quitte l'arbre et libère sa section, qui peut donner un autre article. Un article qui a des enfants ne peut pas non plus disparaître de la base.
+- La création en lot a disparu. À l'étape Articles du Cerveau, un constructeur montre l'arbre réel du cocon — chaque pilier puis ses intermédiaires, leur état (« Rédigé » / « À rédiger »), leurs sections et l'article né de chacune — et c'est lui qui crée : « Créer le pilier » tant que le cocon n'en a pas, puis « Créer l'article de cette section » sur chaque section libre d'un parent. Ce bouton reste grisé tant que le parent n'est pas rédigé, et un message invite à valider d'abord son premier jet ; un lien ouvre sa rédaction.
+- Créer un article passe par le choix de son mot-clé parmi des candidats mesurés (cf. `FR-CER-KEYWORD-REAL-DATA`) et d'un titre (prérempli par le candidat, 3 caractères au moins). L'article créé rejoint la carte du cocon, d'où le Moteur tire sa liste d'articles, et son mot-clé rejoint le pool du cocon ; un refus du pool est dit sans annuler l'article (cf. `FR-CER-CREATION-HONNETE`).
+- La proposition de plan complet de l'IA reste affichée sous le constructeur, comme une **carte indicative** : « Carte indicative du cocon », avec « Carte indicative : elle guide les articles à créer, elle n'en crée aucun. » On peut encore la générer et la retoucher, mais plus rien ne s'y « valide » ; un article déjà créé y porte la marque « Créé ».
+- « Générer avec Claude » est un **menu** qui fait grandir la carte, soit un article à la fois, soit d'un coup. Il le dit en tête : « Sur la carte seulement : aucun article n'est créé. » Un article ne s'ajoute que si son parent est déjà sur la carte, avec un titre :
+  - « Le pilier », toujours proposé : Claude pose le pilier seul, celui qui couvre le sujet principal du cocon. Une fois le pilier posé, ce choix est grisé (« Déjà sur la carte : un seul pilier par cocon. ») ;
+  - « 1 article intermédiaire », proposé seulement quand la carte a son pilier : Claude en ajoute un sous le pilier ;
+  - « 1 article spécialisé », proposé seulement quand la carte a un intermédiaire : Claude en ajoute un sous l'intermédiaire qui en a le plus besoin, c'est-à-dire celui qui a le moins d'articles spécialisés, ou dont un angle reste à couvrir ;
+  - « La carte complète du cocon », toujours proposée : tous les articles d'un coup, à la place de la carte actuelle.
+
+  Chaque article ajouté suit les règles de mot-clé de la carte complète, niveau par niveau (le pilier cite la cible et la localisation, l'intermédiaire n'en cite aucune, le spécialisé vise une longue traîne). Ce mot-clé est proposé par Claude et n'est pas mesuré. Si Claude échoue, une ligne vide s'ajoute à la carte, sans message (limite connue).
+- Les articles sans place dans l'arbre (créés avant la construction progressive) sont listés à part, « Articles hors de l'arbre ». Chacun, sauf un pilier, se **rattache** à une section d'un parent : « Rattacher » propose les sections libres des parents rédigés du niveau juste au-dessus (« « Financer ses travaux » — Rénovation énergétique maison »), et « Rattacher ici » confirme. Les règles sont celles d'une création : parent du bon niveau et rédigé, section qu'il a vraiment et qu'aucun autre article n'a prise ; un refus est dit, et rien ne change. L'article rejoint alors l'arbre (son parent pourra le résumer et renvoyer vers lui), et la carte du cocon suit. Sans aucune section libre d'un parent rédigé du bon niveau, le bouton est grisé et dit pourquoi.
+- Le mode automatique suit les mêmes règles : il crée l'article dans la section libre de son parent dont le titre parle le plus de son sujet (à égalité, sous un parent déjà rédigé) ; si aucun parent du bon niveau n'existe ou si toutes ses sections ont déjà leur article, il s'arrête en le disant ; si le parent n'est pas rédigé, il s'arrête sans déroger.
+- Les cocons d'avant ce changement sont rattachés par un rattrapage, en simulation par défaut : chaque article sans parent est rapproché du parent que désigne la carte de stratégie (à défaut, pour un intermédiaire, du pilier unique du cocon), puis de la section de ce parent qui parle de son sujet — au moins deux mots propres à la section, et au moins la moitié d'entre eux, les mots du sujet du parent ne comptant pas. Ce qui ne se rapproche pas sûrement est listé, jamais deviné.
+
+**Limites connues**
+- ~~Le parent ou la section d'un article existant ne se changent pas depuis l'outil : un article que le rattrapage n'a pas su placer reste « hors de l'arbre ».~~ Soldé le 2026-09-25 (checklist K8) : un article hors de l'arbre se rattache depuis le constructeur. Reste : un article **déjà placé** ne change pas de parent depuis l'écran (l'outil l'accepterait, aux mêmes règles, mais aucun bouton ne le propose).
+- La carte indicative et l'arbre réel sont deux listes : retoucher une proposition de la carte (titre, parent) ne change rien à l'arbre.
+- « La carte complète du cocon » remplace toute la carte, y compris les articles déjà créés : ils restent dans l'arbre et en base, mais quittent la carte, et donc la liste d'articles du Moteur (défaut connu, relevé à la consolidation du 2026-09-28).
+
+**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-CER-BATCH-CREATE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C7 (checklist K6). **Amendée à la livraison :** s'ajoutent l'enregistrement du parent et de sa section, le constructeur de l'arbre réel (c'est lui qui crée), le mode automatique, le rattrapage des cocons existants et le refus de retirer un parent ; la carte indicative n'est pas en lecture seule au sens strict (elle se retouche), elle ne crée simplement plus rien. **Corrigé à la livraison** : retirer un article de la carte avalait jusque-là tout refus du serveur — l'article disparaissait de la carte et du Moteur en restant en base. **Amendée le 2026-09-25 (checklist K8, commit `1cbc921`)** : un article hors de l'arbre se rattache à la section libre d'un parent rédigé, aux règles d'une création ; avant, seul un passage direct en base pouvait le placer. **Amendée le 2026-09-25 (U7, recette manuelle d'Arnaud)** : « Générer avec Claude » devient un menu à deux choix. Le bouton unique dessinait la carte entière, et il passait pour le créateur d'articles. **Revue le même jour (recette, constat R1)** : le choix « pilier » ouvrait les candidats du constructeur. Il pose désormais le pilier seul sur la carte, puis le menu y ajoute un article à la fois, toujours sous un parent déjà posé.
+
+> **En situation.** Arnaud démarre un cocon « Rénovation énergétique ». Le constructeur ne lui propose qu'une chose, « Créer le pilier » : il demande des candidats, choisit « rénovation énergétique maison » sur son volume et ses premiers résultats Google, et crée le pilier. Une fois sa structure validée, les sections du pilier apparaissent sous lui, mais leurs boutons « Créer l'article de cette section » restent grisés : « Validez d'abord le premier jet de « Rénovation énergétique maison » ». La proposition de plan de l'IA reste affichée en dessous — un pilier, cinq intermédiaires, douze spécialisés — pour qu'il sache où il va. Plus tard, il veut retirer le pilier du cocon : refusé, « Isolation des combles » est né de l'une de ses sections. Sous l'arbre, un ancien intermédiaire, « Aides à la rénovation », écrit avant la construction progressive, attend « hors de l'arbre » : Arnaud clique « Rattacher », choisit la section « Financer ses travaux » du pilier, et l'article prend sa place sous elle.
+
+→ Conception : [DESIGN-CER-COCOON-PROGRESSIVE](./design-registry.md#design-cer-cocoon-progressive)
+
+---
+
+#### FR-CER-PARENT-WRITTEN-GATE — Pas d'enfant tant que le parent n'est pas rédigé
+
+Un enfant développe ce que son parent résume. Tant que le parent n'est pas écrit, on ne sait ni ce qu'il dira de ce sujet ni sous quel titre : créer l'enfant revient à écrire deux pages sur le même sujet sans savoir comment elles se partagent le travail. « Rédigé » a désormais un sens précis : le premier jet de l'article a été accepté par sa porte (cf. `FR-RED-DRAFT-SINGLE-PASS`), et l'outil l'enregistre comme une étape de l'article, « Premier jet accepté ».
+
+**Critères d'acceptation**
+- L'étape « Premier jet accepté » n'est posée que si la porte du premier jet passe, ou si l'utilisateur assume par écrit ses alertes 🔴 ; un défaut ⛔ (texte vide, H1 absent…) ne se déroge pas (cf. `FR-INFRA-GATE-WAIVER`).
+- L'étape est demandée d'elle-même à la fin du premier jet, une fois le texte et sa méta enregistrés. Dans les deux vues de rédaction, un bandeau dit si le premier jet est accepté ; sinon, un bouton « Valider le premier jet » la redemande — après une correction, ou pour assumer par écrit.
+- L'étape reste acquise : enrichir l'article ensuite, ce qui l'éloigne de sa longueur visée, ne la retire pas.
+- Un intermédiaire ne se crée que sous un pilier rédigé, un spécialisé que sous un intermédiaire rédigé. Dans le Cerveau, le bouton qui crée l'article d'une section reste grisé tant que le parent n'est pas rédigé, avec un message qui invite à valider d'abord son premier jet (cf. `FR-CER-COCOON-PROGRESSIVE`).
+- Si une création arrive malgré tout pour un parent qui n'a pas l'étape (état changé entre-temps, mode automatique), sa porte du premier jet est jouée : si elle passe, l'étape est posée sur le parent et l'enfant est créé ; sinon, l'alarme s'ouvre **sur le parent** — l'utilisateur voit ce qui lui manque, corrige ou assume, puis la création reprend d'elle-même. Revenir corriger ne crée rien.
+- Les mots-clés candidats d'un enfant ne sont pas demandés tant que le parent n'est pas rédigé : l'outil le dit avant tout appel payant (« « Isolation des combles » n'est pas encore rédigé : validez d'abord son premier jet, puis créez ses articles enfants. »).
+- Le mode automatique demande aussi l'étape après le premier jet ; sur un refus, il s'arrête et dit de décider dans la Rédaction, sans jamais déroger à la place de l'utilisateur.
+- Au rattrapage des cocons existants, l'étape est posée sur les articles déjà publiés et sur ceux dont le premier jet passe la porte ; les autres sont listés avec leurs défauts.
+
+**Limites connues**
+- L'étape n'est pas un dot de progression : les dots restent ceux du Moteur. Elle se lit dans le bandeau de la Rédaction et dans l'arbre du cocon (« rédigé » / « à rédiger »).
+- Si la génération de la méta échoue, l'étape n'est pas demandée d'elle-même : le bouton du bandeau la redemande.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C7. **Amendée à la livraison :** « premier jet vérifié » devient une étape enregistrée, accordée par la porte du premier jet, qui peut être assumée par écrit ; « l'alarme explique ce qui manque » : elle s'ouvre sur le parent, au moment de créer l'enfant.
+
+> **En situation.** Arnaud veut créer le spécialisé « Laine soufflée ou laine déroulée ? » sous l'intermédiaire « Isolation des combles », qui n'a encore que son plan. Dans l'arbre, la section « Choisir son isolant » est bien là, mais son bouton est grisé : « Validez d'abord le premier jet de « Isolation des combles » ». Il ouvre sa rédaction ; à la fin du premier jet, la porte relève une phrase restée en anglais (🔴) et le bandeau affiche « Premier jet pas encore accepté ». Il corrige la phrase, clique « Valider le premier jet » : l'étape est posée. Il peut maintenant créer le spécialisé depuis une section de l'intermédiaire.
+
+→ Conception : [DESIGN-CER-PARENT-WRITTEN-GATE](./design-registry.md#design-cer-parent-written-gate)
+
+---
+
+#### FR-CER-CHILD-FROM-PILLAR-H2 — Chaque enfant naît d'une section de son parent
+
+Le pilier 1013 traitait en détail, dans ses propres chapitres, les sujets que ses enfants devaient développer : deux pages sur le même sujet se concurrencent dans Google (cannibalisation), et aucune ne renvoyait vers l'autre. Chaque enfant naît désormais d'une section (un chapitre H2) de son parent. Dans le parent, cette section devient un résumé qui annonce l'enfant ; l'enfant, lui, sait ce que la section dit déjà et la développe sans la répéter.
+
+**Critères d'acceptation**
+- On crée un enfant à partir d'une section de son parent : un chapitre de son texte (hors introduction, conclusion et FAQ) ou, tant que le parent n'a pas de texte, un chapitre de sa structure.
+- Une section ne donne qu'un enfant. Une section déjà prise, ou que le parent n'a pas, est refusée (⛔).
+- L'enfant connaît la section qui l'annonce et ce qu'elle en dit : la proposition de ses mots-clés, sa structure et son premier jet la reçoivent (cf. `FR-INFRA-COCOON-CONTEXT`).
+- Dans le parent, chaque section dont est né un enfant se résume en 150 à 250 mots et y renvoie. La passe d'enrichissement « Résumer » le propose, section par section (cf. `FR-RED-ENRICH-PASSES`).
+- À la publication du parent, une telle section qui dépasse 250 mots est un risque 🔴 (elle développe ce que l'enfant doit dire) ; une telle section disparue du parent est une attention 🟠 (le lecteur ne trouve plus le chemin vers l'enfant) (cf. `FR-RED-PUBLISH-GATE`).
+- Le lien entre le parent et chacun de ses enfants se pose à la main, avec l'aide de l'outil (cf. `FR-RED-LINKING-MANUAL`).
+
+**Limites connues**
+- Une section se reconnaît à son titre (casse, espaces et ponctuation finale ignorés) : renommer ce chapitre dans le parent la fait « disparaître » (🟠 à la publication), et l'enfant garde l'ancien titre.
+- La publication ne contrôle que le plafond de 250 mots ; le minimum de 150 mots ne se vérifie que sur la proposition de la passe « Résumer ».
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C7. **Amendée à la livraison :** la règle vaut pour tout parent, pas seulement le pilier (un intermédiaire donne ses spécialisés de la même façon) ; le résumé est proposé par une passe d'enrichissement et contrôlé à la publication ; le lien qui renvoie vers l'enfant se pose à la main.
+
+> **En situation.** Le H2 « Audit de site » du pilier devient l'intermédiaire « Auditer son site web ». Quand Arnaud en rédige le premier jet, l'IA sait ce que le pilier en dit déjà et va plus loin sans le répéter. De retour sur le pilier, il lance la passe « Résumer » : le chapitre « Audit de site », 640 mots et trois sous-parties, devient un résumé de 200 mots qui invite à lire « Auditer son site web ». S'il avait publié le pilier sans l'accepter, la porte lui aurait signalé une section trop longue (🔴).
+
+→ Conception : [DESIGN-CER-CHILD-FROM-PILLAR-H2](./design-registry.md#design-cer-child-from-pillar-h2)
+
+---
+
+#### FR-CER-KEYWORD-REAL-DATA — Le mot-clé d'un nouvel article se choisit sur des données réelles
+
+L'IA du Cerveau a donné au pilier 1013 un mot-clé recopié de l'exemple de sa consigne, sans volume ni intention mesurés. Pour un nouvel article, l'IA propose désormais plusieurs candidats, l'outil les mesure, et l'utilisateur choisit sur ces mesures.
+
+**Critères d'acceptation**
+- Pour le pilier d'un cocon vide, ou pour une section libre d'un parent rédigé, l'utilisateur demande des candidats. L'IA en propose 3 à 5, chacun avec un titre d'article qui le contient, une raison, la difficulté du lecteur qu'il règle et le type de réponse que l'article devra apporter — son intention éditoriale : expliquer, comparer avant un achat, pousser à l'action, ou viser une marque ; elle reçoit l'état du cocon, sa stratégie, la section du parent et ce qu'elle en dit, et les règles du type d'article.
+- L'article créé reçoit l'intention éditoriale de son candidat ; celle d'une proposition de même titre sur la carte du cocon, si elle existe, l'emporte. C'est cette intention que le Moteur compare ensuite à celle de Google (cf. `FR-CAP-LOCK-GATE`, `FR-CAP-RELEVANCE-INTENT-SIGNAL`). Une intention que l'IA formule hors des quatre valeurs attendues est laissée vide, sans écarter le candidat.
+- Aucun candidat ne reprend le mot-clé d'un article du cocon ni celui d'un autre candidat.
+- Chaque candidat est mesuré avant d'être montré : volume, difficulté, coût par clic, intention de recherche, et les trois premiers résultats de Google (titre, site). L'outil relit d'abord ses mesures de moins de 7 jours et ne paie que ce qui manque, en une seule demande groupée pour les volumes.
+- Une mesure qui échoue reste absente (« — ») : jamais un zéro inventé. À l'écran, un candidat qui n'a pas pu être mesuré est marqué « Non mesuré » et ne peut pas être choisi ; rien n'est choisi d'office, et une aide explique comment lire le volume, la difficulté, l'intention et les premiers résultats.
+- Mesurer un candidat ne tient pas lieu d'analyse des concurrents : les premiers résultats relevés pour le Cerveau sont gardés à part, et le Moteur analyse ensuite le mot-clé choisi normalement, pages concurrentes comprises (cf. `NFR-INT-SERP-ONCE`).
+- En mode simulé, les candidats sont mesurés comme en réel, par le bac à sable de DataForSEO (cf. `FR-EXT-DATAFORSEO-SANDBOX`).
+- Demander des candidats est payant : c'est toujours un clic de l'utilisateur. Ce qui empêcherait de créer l'article (ordre du cocon, parent pas rédigé, section inconnue ou déjà prise) se dit avant l'appel.
+- Aucun mot-clé n'est enregistré sur un article sans avoir été mesuré : la création refuse un mot-clé que l'outil n'a jamais mesuré.
+- Le mode automatique ne pose aucun mot-clé à la création : le Moteur le mesure, puis le verrouille comme capitaine.
+
+**Limites connues**
+- La nature des résultats (guides, agences, boutiques) n'est pas qualifiée par l'outil : l'utilisateur la lit dans les trois premiers résultats.
+- « Mesuré » veut dire « présent dans les mesures de l'outil », quel que soit leur âge : la création accepte un mot-clé mesuré il y a longtemps.
+- L'intention éditoriale proposée n'est pas affichée à côté du candidat (l'écran montre l'intention de recherche mesurée chez Google) : l'utilisateur ne la voit pas au moment de choisir.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C7. **Amendée à la livraison :** la « nature de la SERP » est donnée par ses trois premiers résultats, sans qualification ; les candidats sont proposés pour le pilier d'un cocon vide comme pour un enfant. **Corrigé à la livraison (2026-09-25)** : en mode simulé, aucun candidat n'était mesuré (le bac à sable répond par des mots-clés factices), donc aucun article ne pouvait naître ; et le relevé des premiers résultats passait pour une analyse des concurrents, si bien que le Moteur ne lisait plus les pages concurrentes du mot-clé choisi pendant 7 jours. **Amendée le 2026-09-25 (checklist K9, commit `f2ec990`)** : chaque candidat porte l'intention éditoriale attendue, que l'article reçoit à sa création. Sans elle, un article né du constructeur n'avait d'intention que si la carte en proposait une de même titre : pour un intermédiaire ou un spécialisé, la porte du capitaine ne jugeait plus l'écart d'intention, et le signal d'intention du Score Pertinence restait neutre.
+
+> **En situation.** Pour la section « Audit de site » du pilier, Arnaud demande des candidats. Trois s'affichent, mesurés : « audit site web » (1 300 recherches par mois, trois agences en tête), « audit seo gratuit » (880, trois outils en ligne), « comment faire un audit de site » (140, trois guides). Il choisit le dernier : Google y montre des guides, le format de son article. Un quatrième candidat, « audit seo », n'apparaît pas : c'est déjà le mot-clé d'un article du cocon.
+
+→ Conception : [DESIGN-CER-KEYWORD-REAL-DATA](./design-registry.md#design-cer-keyword-real-data)
+
+---
+
+#### FR-LEX-PRECHECK-PERSISTE — Ce que l'écran coche est réellement retenu
+
+Dans le Lexique, une case cochée doit valoir décision enregistrée — sans quoi l'utilisateur croit son Lexique validé alors que rien n'est retenu. Et une décision suppose que quelqu'un ait choisi : plus aucun terme n'arrive coché d'office, c'est l'utilisateur qui retient ses termes (cf. `FR-LEX-METIER-ONLY`), et chacun de ses gestes est enregistré aussitôt.
+
+**Critères d'acceptation**
+- Aucun terme n'arrive coché, ni après l'extraction ni après l'analyse de l'IA : l'écran ne montre cochés que les termes déjà enregistrés.
+- Ce que l'utilisateur coche ou décoche est enregistré aussitôt, y compris un terme ajouté depuis le panneau d'aide.
 - Le compteur affiché (« N termes sélectionnés ») correspond exactement à ce qui est enregistré.
-- L'utilisateur peut retirer n'importe quel terme pré-coché ; ce retrait est également enregistré.
-- L'étape est validée dès qu'au moins un terme est retenu, sans qu'il faille décocher puis recocher.
+- L'écran suit toujours le lexique enregistré, quel que soit le chemin par lequel la liste revient (extraction, rechargement de la page, onglet d'une exploration passée) : un terme enregistré s'affiche coché, et cliquer un terme coché le décoche et le retire — jamais l'inverse.
+- L'étape « Lexique validé » est accordée quand l'utilisateur a retenu au moins un terme **et** que la porte du lexique passe (cf. `FR-LEX-METIER-ONLY`), sans qu'il faille décocher puis recocher.
 
-**Statut** : active. **Depuis** : 2026-09-23.
+**Statut** : active. **Depuis** : 2026-09-23. **Amendée le 2026-09-25** (épopée qualité SEO, C3, checklist M11) : le critère « Les termes pré-cochés sont enregistrés comme retenus, sans geste supplémentaire » est remplacé. Le pré-cochage des termes présents chez au moins 70 % des concurrents, enregistré d'office depuis le 2026-09-23, validait l'étape sans que personne ait choisi — mots vides compris (« être », « votre »). Désormais rien n'est coché d'office, chaque geste est enregistré, et l'étape passe par la porte du lexique. Le même jour, un défaut plus ancien est corrigé : au rechargement, les termes enregistrés s'affichaient décochés, et cliquer l'un d'eux le retirait de la base.
 
-> **En situation.** L'utilisateur extrait son Lexique : 38 termes obligatoires apparaissent, tous cochés, et l'écran annonce « 38 termes sélectionnés ». Il passe à la suite, satisfait. Avant cette règle, la base n'en connaissait aucun : l'étape restait invalidée, le passage en Rédaction fermé, et rien n'expliquait pourquoi. Le seul moyen de débloquer était de décocher puis recocher un terme au hasard.
+> **En situation.** L'utilisateur extrait son Lexique : 38 termes obligatoires s'affichent, aucun n'est coché, et l'écran annonce « 0 terme sélectionné ». Il coche « pare-vapeur », « laine » et « soufflée » : le compteur passe à 3, les trois termes sont enregistrés, et l'étape « Lexique validé » est accordée. Il décoche « soufflée » : le compteur revient à 2, la base aussi. Le lendemain, il rouvre l'article : « pare-vapeur » et « laine » sont cochés, le compteur affiche 2. Avant le 2026-09-23, les cases cochées d'office n'étaient pas enregistrées et l'étape restait bloquée sans explication ; du 23 au 25 septembre, elles l'étaient, et l'étape se validait toute seule.
 
 → Conception : [DESIGN-LEX-PRECHECK-PERSISTE](./design-registry.md#design-lex-precheck-persiste)
+
+---
+
+#### FR-CER-CREATION-HONNETE — Un article annoncé créé existe vraiment, et un refus s'explique
+
+Quand l'utilisateur accepte un article proposé, l'écran ne doit montrer une coche « créé » que si l'article existe réellement en base, et le montrer dès qu'il existe. Si une partie de la création est refusée (adresse déjà prise, mot-clé déjà visé par un autre cocon), l'utilisateur lit pourquoi, dans ses mots, avec la marche à suivre.
+
+**Critères d'acceptation**
+- Un article dont l'adresse (slug) est déjà prise n'est pas annoncé créé ; le message nomme le titre, l'adresse, et invite à changer le slug.
+- Un article créé en base est annoncé créé, même si l'ajout de son mot-clé au pool du cocon est refusé ensuite.
+- Un mot-clé refusé parce qu'un autre cocon le vise déjà déclenche un avertissement qui nomme ce cocon : deux cocons sur le même mot-clé se font concurrence.
+
+**Statut :** active. **Depuis :** 2026-09-23 (slug déjà pris). **Durci :** 2026-09-24 (mot-clé refusé). **Source :** parcours réel, épopée qualité SEO (checklist K1). **Précisée le 2026-09-25 (C7)** : la création se fait un article à la fois (cf. `FR-CER-COCOON-PROGRESSIVE`) ; ses nouveaux refus — ordre du cocon, section déjà prise, mot-clé jamais mesuré — s'expliquent de la même façon, et un parent pas encore rédigé ouvre l'alarme de sa porte du premier jet au lieu d'un simple message (cf. `FR-CER-PARENT-WRITTEN-GATE`). Un article créé depuis le constructeur est annoncé créé même si son mot-clé est refusé par le pool, ou si la carte du cocon n'a pas pu être enregistrée : l'avertissement dit alors ce qui manque. Le retrait d'un article est tenu au même soin : un refus du serveur (des enfants sont nés de ses sections) est dit, et la carte garde l'article au lieu de le faire disparaître en silence.
+
+> **En situation.** Arnaud accepte le pilier « Propulser la croissance digitale des entreprises toulousaines ». L'article est créé, mais son mot-clé est déjà utilisé par le cocon « Croissance digitale Toulouse ». L'article passe en « créé », et un avertissement lui dit que son mot-clé n'a pas rejoint le pool : « Le mot-clé « stratégie digitale entreprises toulouse » est déjà utilisé dans le cocon « Croissance digitale Toulouse » : deux cocons qui visent le même mot-clé se font concurrence. Choisissez-en un autre au Moteur. » Avant, rien ne s'affichait, et un second clic tombait sur « adresse déjà prise ».
+
+→ Conception : [DESIGN-CER-CREATION-HONNETE](./design-registry.md#design-cer-creation-honnete)
+
+---
+
+#### FR-CER-TYPE-TOLERANT — Le niveau d'un article est compris quel que soit son format
+
+Le niveau d'un article (Pilier, Intermédiaire, Spécialisé) circule entre l'IA, l'écran, la base et les consignes d'IA sous plusieurs formats : « Pilier » ou « pilier », avec ou sans accent. L'outil le comprend dans tous ces formats, et chaque étape reçoit les règles du bon niveau. Il ne retombe jamais en silence sur un niveau par défaut.
+
+**Critères d'acceptation**
+- Une proposition de l'IA écrite « Pilier », « pilier » ou « PILIER » donne un article de niveau Pilier.
+- Ajouter un article à un cocon transmet à l'IA les règles du niveau demandé (localisation obligatoire pour un pilier, etc.), quel que soit le format du niveau envoyé par l'écran.
+- La consigne libre de l'utilisateur est transmise telle quelle, même si elle contient des caractères spéciaux (`$1`, `$&`).
+- Un niveau inconnu est refusé explicitement plutôt que remplacé.
+
+**Statut :** active. **Depuis :** 2026-09-23 (lecture des propositions). **Durci :** 2026-09-24 (ajout d'un article). **Source :** parcours réel, épopée qualité SEO (checklist K3, K4).
+
+> **En situation.** Arnaud clique « + Ajouter un pilier » et précise « Parler des artisans du bâtiment ». L'IA reçoit les règles propres au pilier et sa consigne mot pour mot. Avant, l'écran envoyait « pilier » en minuscules : toutes les règles de niveau étaient retirées, et le repère `{{userInput}}` partait brut à l'IA.
+
+→ Conception : [DESIGN-CER-TYPE-TOLERANT](./design-registry.md#design-cer-type-tolerant)
 
 ---
 
@@ -409,6 +581,9 @@ En plus de la stratégie (Cible/Douleur/Angle/…), l'utilisateur peut attacher 
 - Le micro-contexte est optionnel : un article sans micro-contexte se génère normalement avec les valeurs par défaut.
 - Quand le micro-contexte est renseigné, l'IA Rédaction (brief, sommaire, sections) respecte les directives indiquées.
 - Modifier le micro-contexte n'invalide pas les générations déjà faites — c'est l'utilisateur qui décide de regénérer.
+- L'angle, le ton et les consignes arrivent jusqu'au sommaire, pas seulement jusqu'à la rédaction.
+
+**Statut :** durci le 2026-09-24. **Pourquoi :** le micro-contexte était transmis au sommaire mais son prompt n'avait pas d'emplacement pour le recevoir (épopée qualité SEO, R2).
 
 > **En situation.** Pour l'article « Frais réels ou forfait fiscal », l'utilisateur ajoute un micro-contexte : angle = « comparatif chiffré », ton = « didactique, peu technique », directives = « donner un exemple à 30k€ et un à 60k€ », cible = 1800 mots. Quand il lancera la génération, l'IA produira un article qui colle exactement à cette demande — sans qu'il ait à répéter ces consignes dans un prompt à chaque section.
 
@@ -424,7 +599,11 @@ Pour aider l'utilisateur à fixer une longueur d'article réaliste et compétiti
 - L'utilisateur peut demander une recommandation à tout moment, à partir du moment où un mot-clé est verrouillé.
 - La réponse contient une longueur finale recommandée et un détail expliquant les 3 signaux (fourchette par type, moyenne concurrents, suggestion IA).
 - L'utilisateur peut accepter la recommandation ou saisir une autre valeur.
-- La longueur retenue alimente le micro-contexte (cf. `FR-CER-MICRO-CONTEXT`) et drive l'allocation de tokens par section côté Rédaction.
+- La longueur retenue alimente le micro-contexte (cf. `FR-CER-MICRO-CONTEXT`) et fixe, côté Rédaction, la part de chaque chapitre du premier jet et la longueur que sa porte vérifie (cf. `FR-RED-DRAFT-SINGLE-PASS` ; libellé mis à jour le 2026-09-25, C5a).
+- La recommandation tient compte de la structure validée au Moteur (nombre et profondeur des H2/H3).
+- Valider la structure (cf. `FR-HN-TAB`) demande d'elle-même une recommandation : elle devient la longueur de l'article si l'utilisateur n'en a choisi aucune, et une valeur déjà choisie est gardée. La pile d'activité affiche la longueur conseillée.
+
+**Statut :** durci le 2026-09-24. **Pourquoi :** le sommaire, stocké au format du Moteur, n'était jamais lu : la longueur était conseillée sans lui (épopée qualité SEO, M9). **Amendée le 2026-09-25 (C6)** : la recommandation automatique part à la validation de la structure, et non plus au verrouillage du premier lieutenant.
 
 > **En situation.** L'utilisateur hésite sur la longueur de « Indemnité rupture conventionnelle 2026 ». Il clique sur « Recommander ». L'app lui retourne : fourchette Intermédiaire 1200-2500, moyenne des top 10 = 2100 mots, suggestion IA = 2200 mots vu la complexité (formules de calcul + jurisprudence). Recommandation finale : **2100 mots**, avec le détail visible. Il accepte ; ces 2100 mots seront ensuite distribués entre les sections lors de la génération.
 
@@ -480,6 +659,9 @@ Quand l'IA Cerveau propose une liste d'articles pour structurer un cocon, elle *
 - Pour chaque article généré par l'IA dans un cocon, l'app reçoit une des 4 valeurs d'intention éditoriale (ou rien si l'IA ne l'a pas inférée — rétro-compatibilité).
 - La valeur est persistée à la création de l'article.
 - L'inférence se fait dans le même appel IA que les autres métadonnées article — pas de surcoût.
+- Elle vaut aussi pour les mots-clés candidats d'un nouvel article : chaque candidat porte son intention éditoriale, dans le même appel, et l'article créé depuis le constructeur du cocon la reçoit (cf. `FR-CER-KEYWORD-REAL-DATA`).
+
+**Statut :** active. **Amendée le 2026-09-25 (épopée qualité SEO, checklist K9)** : depuis le cocon né du pilier (C7), les articles ne naissent plus de la proposition de plan mais du constructeur, dont les candidats ne portaient pas d'intention ; ils en portent une.
 
 > **En situation.** L'utilisateur génère un cocon « Création d'entreprise » avec 15 articles. Pour « Comparatif SARL vs SAS », l'IA infère *commercial* ; pour « Guide création SARL pas à pas », elle infère *informational*. Cette information est utilisée plus tard côté Moteur pour signaler une éventuelle incohérence entre l'intention attendue et l'intention réelle de la SERP du mot-clé.
 
@@ -526,17 +708,19 @@ L'utilisateur parcourt son contenu via une hiérarchie à 3 niveaux : **silos** 
 Pour chaque article listé dans le dashboard, l'utilisateur voit un indicateur visuel d'avancement sous forme de points (●/○) à côté du nom de l'article. Chaque point représente une étape attendue du workflow Moteur. Au premier coup d'œil, l'utilisateur sait combien d'étapes restent à franchir sans avoir à ouvrir l'article.
 
 **Critères d'acceptation**
-- Chaque carte article affiche une suite de dots, un par étape Moteur attendue.
+- Chaque article listé affiche une suite de dots, un par étape Moteur attendue : six, en deux groupes — Explorer (Discovery, Radar) puis Valider (Capitaine, Lieutenants, Structure, Lexique). Le nom de l'étape s'affiche au survol.
 - Un dot rempli (●) signale une étape franchie, un dot vide (○) une étape restante.
 - Le franchissement d'une étape (côté Moteur, dans une session active) met à jour le dot correspondant sans recharger la page.
 - Le décochage d'une étape met à jour le dot dans le même sens.
 
-> **En situation.** Dans le cocon « Rupture conventionnelle », l'utilisateur voit 5 articles listés. À côté de chaque titre, une rangée de dots :
-> - « Indemnité rupture conventionnelle 2026 » → `● ● ● ● ●` (prêt à rédiger)
-> - « Calcul indemnité rupture conventionnelle » → `● ● ● ○ ○` (Lieutenants et Lexique restent à faire)
-> - « Refus rupture conventionnelle par l'employeur » → `● ○ ○ ○ ○` (juste Discovery)
+**Statut :** active. **Amendée le 2026-09-25 (C6)** : un sixième dot, « Structure », entre Lieutenants et Lexique (cf. `FR-HN-TAB`). **Précisé le même jour, le code fait foi** : les dots s'affichent dans les listes d'articles en haut du Moteur, pas sur les cartes du tableau de bord, qui n'en montrent aucun.
+
+> **En situation.** Dans le cocon « Rupture conventionnelle », l'utilisateur voit 5 articles listés en haut du Moteur. À côté de chaque titre, une rangée de dots :
+> - « Indemnité rupture conventionnelle 2026 » → `● ●  ● ● ● ●` (prêt à rédiger)
+> - « Calcul indemnité rupture conventionnelle » → `● ●  ● ● ○ ○` (Structure et Lexique restent à faire)
+> - « Refus rupture conventionnelle par l'employeur » → `● ○  ○ ○ ○ ○` (juste Discovery)
 >
-> D'un coup d'œil, l'utilisateur sait où reprendre sans ouvrir un seul article. Quand il verrouille un Capitaine pendant sa session, le 3ᵉ dot de l'article concerné passe de `○` à `●` immédiatement dans la liste affichée à l'arrière-plan — pas besoin de revenir au dashboard et recharger.
+> D'un coup d'œil, l'utilisateur sait où reprendre sans ouvrir un seul article. Quand il verrouille un Capitaine pendant sa session, le 3ᵉ dot de l'article concerné passe de `○` à `●` immédiatement dans la liste — pas besoin de recharger.
 
 → Conception : [DESIGN-DASH-PROGRESS](./design-registry.md#design-dash-progress)
 
@@ -561,14 +745,17 @@ La landing page d'un cocon expose les **3 grandes phases de production** : **Cer
 
 #### FR-MOT-PHASES — Trois phases visuelles Explorer / Valider / Finaliser
 
-Quand l'utilisateur entre dans le Moteur d'un article, il voit ses 6 onglets de travail regroupés en **3 phases visuelles** qui racontent la progression : **① Explorer** (chercher des mots-clés candidats), **② Valider** (décider lesquels garder), **③ Finaliser** (vérifier que tout est prêt avant la Rédaction). Chaque phase est une étape mentale claire, pas une porte qui se ferme.
+Quand l'utilisateur entre dans le Moteur d'un article, il voit ses 7 onglets de travail regroupés en **3 phases visuelles** qui racontent la progression : **① Explorer** (chercher des mots-clés candidats), **② Valider** (décider lesquels garder, puis bâtir le plan de l'article), **③ Finaliser** (vérifier que tout est prêt avant la Rédaction). Chaque phase est une étape mentale claire, pas une porte qui se ferme.
 
 **Critères d'acceptation**
 - La barre de navigation du Moteur affiche 3 groupes étiquetés « Générer », « Valider », « Finaliser ».
-- Le groupe « Générer » contient Discovery + Radar ; « Valider » contient Capitaine + Lieutenants + Lexique ; « Finaliser » contient Finalisation.
+- Le groupe « Générer » contient Discovery + Radar ; « Valider » contient Capitaine + Lieutenants + Structure + Lexique, dans cet ordre ; « Finaliser » contient Finalisation.
 - L'utilisateur peut toujours voir dans quelle phase il se trouve actuellement, même quand un onglet est ouvert.
+- En ouvrant un article, le Moteur se place sur le premier onglet utile d'après les étapes déjà franchies : Capitaine, puis Lieutenants une fois le Capitaine verrouillé, Structure une fois les Lieutenants validés, Lexique une fois la Structure validée — jamais d'office sur Finalisation.
 
-> **En situation.** Mardi après-midi, l'utilisateur ouvre l'article « Indemnité rupture conventionnelle 2026 » dans le Moteur. En haut, il voit la rangée d'onglets organisée en 3 groupes numérotés. Le ① « Générer » regroupe Discovery et Radar : c'est là qu'il va aller chercher des idées de mots-clés. Le ② « Valider » regroupe Capitaine / Lieutenants / Lexique : c'est là qu'il choisira. Le ③ « Finaliser » contient une seule étape de vérification avant de passer à la Rédaction. Sans lire la doc, il comprend la séquence en 5 secondes — il sait qu'il va commencer à gauche et finir à droite.
+**Statut :** active. **Amendée le 2026-09-25 (C6)** : l'onglet Structure s'insère entre Lieutenants et Lexique (cf. `FR-HN-TAB`) ; le premier onglet utile en tient compte.
+
+> **En situation.** Mardi après-midi, l'utilisateur ouvre l'article « Indemnité rupture conventionnelle 2026 » dans le Moteur. En haut, il voit la rangée d'onglets organisée en 3 groupes numérotés. Le ① « Générer » regroupe Discovery et Radar : c'est là qu'il va aller chercher des idées de mots-clés. Le ② « Valider » regroupe Capitaine / Lieutenants / Structure / Lexique : c'est là qu'il choisira ses mots-clés et le plan de l'article. Le ③ « Finaliser » contient une seule étape de vérification avant de passer à la Rédaction. Sans lire la doc, il comprend la séquence en 5 secondes — il sait qu'il va commencer à gauche et finir à droite.
 
 → Conception : [DESIGN-MOT-PHASES](./design-registry.md#design-mot-phases)
 
@@ -591,15 +778,17 @@ L'utilisateur peut cliquer **librement** sur n'importe quel onglet du Moteur, da
 
 Si la navigation entre onglets est libre, l'app applique un **verrouillage doux** sur les écritures (actions qui figent un choix). Concrètement, **3 verrous** dérivent de l'état d'avancement de l'article :
 
-1. **Tant que le Capitaine n'est pas verrouillé**, l'utilisateur ne peut pas extraire un Lexique. L'onglet reste visible, le bouton d'extraction est désactivé avec un message explicite.
+1. **Tant que le Capitaine n'est pas verrouillé**, l'utilisateur ne peut pas extraire un Lexique. L'onglet reste visible, le bouton d'extraction est désactivé avec un message explicite. De même, **tant qu'aucun Lieutenant n'est retenu**, l'onglet Structure invite à en retenir un et ne propose aucune structure (cf. `FR-HN-TAB`).
 2. **Tant que l'article a déjà des mots-clés validés au niveau cocon** (étape Cerveau aboutie), les onglets Discovery / Radar deviennent verrouillés visuellement — la décision est faite, pas la peine d'y retourner.
-3. **Tant que les 3 verrous Phase ② (Capitaine + Lieutenants + Lexique) ne sont pas tous posés**, le bouton « Continuer vers la Rédaction » reste désactivé, avec un tooltip qui liste précisément les étapes manquantes.
+3. **Tant que les 4 verrous Phase ② (Capitaine + Lieutenants + Structure + Lexique) ne sont pas tous posés**, le bouton « Continuer vers la Rédaction » reste désactivé, avec un tooltip qui liste précisément les étapes manquantes (par exemple « Structure à valider »).
 
 **Critères d'acceptation**
 - L'utilisateur peut toujours *ouvrir* un onglet, même si une condition d'écriture n'est pas remplie.
 - Quand un bouton d'écriture est désactivé pour cause de verrou, il porte un libellé ou un tooltip qui explique *pourquoi* (ex. « Capitaine à verrouiller d'abord »).
 - Quand l'utilisateur pose la dernière étape manquante, les boutons précédemment désactivés s'activent dans le même tick — pas besoin de rafraîchir la page.
 - **Toutes** les portes vers la Rédaction obéissent à cette règle, y compris le bouton « Aller à la Rédaction » du récapitulatif Finalisation — deux chemins vers la même action ne peuvent pas avoir deux règles. Et l'écran n'annonce jamais « Prêt pour la Rédaction » au-dessus de sections encore vides.
+
+**Statut :** active. **Amendée le 2026-09-25 (C6)** : quatre verrous au lieu de trois — la structure validée rejoint Capitaine, Lieutenants et Lexique.
 
 > **En situation.** L'utilisateur arrive sur l'article « Refus rupture conventionnelle par l'employeur ». Il clique sur Lexique pour voir ce qu'il y a — le panneau s'ouvre normalement mais le gros bouton « Extraire le lexique » est grisé, avec « Verrouille d'abord un Capitaine » écrit dessous. Il file sur l'onglet Capitaine, sélectionne et verrouille « refus rupture conventionnelle employeur ». Il revient sur Lexique : le bouton est devenu actif. À aucun moment l'app ne l'a empêché de *regarder*, mais elle l'a empêché de *commettre une bêtise* — il aurait extrait un lexique sur un Capitaine vide.
 
@@ -631,7 +820,9 @@ En haut du Moteur, deux listes repliables segmentent les articles du cocon coura
 - Un article *en cours de travail Moteur* (déjà promu mais pas encore rédigé) n'apparaît dans aucune des deux listes — il vit dans la liste principale de sélection.
 - Le contrat est garanti côté serveur, pas via un filtre côté affichage — impossible pour un autre écran de l'app de l'enfreindre par méprise.
 
-**Statut** : active (strict). **Depuis** : 2026-05-11.
+- La phase d'un article avance avec son travail réel : il entre en rédaction dès que du contenu est enregistré, et passe en « publié » à la publication. Elle ne recule jamais.
+
+**Statut** : active (strict). **Depuis** : 2026-05-11. **Durci :** 2026-09-24 (la phase n'avançait jamais : la liste « Articles publiés » restait vide ; épopée qualité SEO, P2).
 
 > **En situation.** Bug rencontré le 11 mai : l'utilisateur a généré 13 articles via le Cerveau. Sans cette règle, les 13 apparaissaient à la fois dans « Articles suggérés » (parce que la stratégie les compte comme propositions) **et** dans « Articles publiés » (parce qu'ils ont été insérés en base avec un statut par défaut). Confusion totale. Après application de cette règle, les 13 apparaissent uniquement dans « Articles suggérés » — la section « Articles publiés » reste vide tant qu'aucun article n'a été *réellement* promu en rédaction. La liste reflète la réalité du pipeline.
 
@@ -677,23 +868,26 @@ L'objectif est de **ne pas dupliquer** un même composant entre l'écran Moteur 
 
 ---
 
-#### FR-MOT-CHECKS — Cinq étapes Moteur tracées dans la progression de l'article
+#### FR-MOT-CHECKS — Six étapes Moteur tracées dans la progression de l'article
 
-Le Moteur écrit automatiquement **5 marqueurs de progression** dans l'avancement de l'article au fil du travail utilisateur : **Discovery effectué**, **Radar effectué**, **Capitaine verrouillé**, **Lieutenants verrouillés**, **Lexique validé**. Ces marqueurs alimentent les dots de progression du dashboard, le gating des étapes suivantes et le bandeau de transition vers la Rédaction.
+Le Moteur écrit automatiquement **6 marqueurs de progression** dans l'avancement de l'article au fil du travail utilisateur : **Discovery effectué**, **Radar effectué**, **Capitaine verrouillé**, **Lieutenants verrouillés**, **Structure validée**, **Lexique validé**. Ces marqueurs alimentent les dots de progression, le gating des étapes suivantes et le bandeau de transition vers la Rédaction.
 
 **Critères d'acceptation**
 - Chaque action utilisateur qui termine une étape Moteur (verrouiller, valider, scanner) déclenche l'écriture du marqueur correspondant côté serveur.
-- Le retrait d'une étape (déverrouiller un Capitaine, par exemple) retire le marqueur — l'utilisateur peut revenir en arrière.
+- Les étapes Capitaine, Lieutenants, Structure et Lexique ne sont écrites que si leur porte passe (cf. `FR-INFRA-VERIFIER-SHARED`) ; Discovery et Radar n'ont pas de porte.
+- Le retrait d'une étape (déverrouiller un Capitaine, enregistrer une structure modifiée après sa validation, par exemple) retire le marqueur — l'utilisateur peut revenir en arrière.
 - Le Moteur ne pose **pas** de marqueur « Finalisation » — l'onglet Finalisation est en lecture seule, il ne produit aucun checkpoint.
 
-> **En situation.** Pendant sa session Moteur sur l'article « Indemnité rupture conventionnelle 2026 », l'utilisateur verrouille son Capitaine vers 14h32. À 14h33 il revient sur le dashboard pour aller chercher un autre cocon — le 3ᵉ dot de progression de l'article est rempli, sans qu'il ait eu à faire quoi que ce soit. À 14h50 il revient, déverrouille le Capitaine pour en tester un autre : le dot redevient vide. La progression suit le geste exact, ni plus ni moins.
+**Statut :** active. **Amendée le 2026-09-25 (C6)** : sixième étape, « Structure validée », posée par l'onglet Structure et gardée par la porte de la structure (cf. `FR-HN-TAB`, `FR-HN-LOCK-GATE`). Les articles dont les lieutenants étaient validés avant C6 n'ont pas cette étape : une réconciliation l'accorde à ceux dont la structure passe la porte. **Précisée le 2026-09-25 (C7)** : la progression de l'article porte aussi une étape de la Rédaction, « Premier jet accepté » (cf. `FR-CER-PARENT-WRITTEN-GATE`) ; elle n'est pas une étape du Moteur et n'a pas de dot.
+
+> **En situation.** Pendant sa session Moteur sur l'article « Indemnité rupture conventionnelle 2026 », l'utilisateur verrouille son Capitaine vers 14h32 : le 3ᵉ dot de progression de l'article se remplit, sans qu'il ait eu à faire quoi que ce soit. À 14h50, il déverrouille le Capitaine pour en tester un autre : le dot redevient vide. Plus tard, il valide la structure de l'article : le 5ᵉ dot, « Structure », se remplit. La progression suit le geste exact, ni plus ni moins.
 
 → Conception : [DESIGN-MOT-CHECKS](./design-registry.md#design-mot-checks)
 
 ---
 
 #### FR-MOT-CHECKS-CONSTANTS — Catalogue strict des étapes de progression
-Les noms des étapes de progression sont définis dans **un catalogue unique** côté code. Chaque nom suit un format strict : préfixe `moteur:` suivi de l'action en minuscules. Aucun nom hors catalogue n'est accepté côté serveur — une tentative d'écriture avec un nom non conforme est rejetée. (Les préfixes `cerveau:` et `redaction:` historiques ne sont plus utilisés depuis 2026-05-13, cf. DRIFT-002.)
+Les noms des étapes de progression sont définis dans **un catalogue unique** côté code. Chaque nom suit un format strict : préfixe `moteur:` suivi de l'action en minuscules, avec une seule exception depuis le 2026-09-25, l'étape de la Rédaction `redaction:draft_accepted` (« Premier jet accepté », cf. `FR-CER-PARENT-WRITTEN-GATE`). Aucun nom hors catalogue n'est accepté côté serveur — une tentative d'écriture avec un nom non conforme est rejetée. (Le préfixe `cerveau:` et les cinq anciennes étapes `redaction:` ne sont plus utilisés depuis 2026-05-13, cf. DRIFT-002.)
 
 L'objectif utilisateur : **garantir que les dots de progression et les verrous Moteur lisent et écrivent toujours le même nom**, sans risque qu'une string en doublon se balade et fasse mentir l'affichage (« dot vert mais condition non remplie »).
 
@@ -702,7 +896,7 @@ L'objectif utilisateur : **garantir que les dots de progression et les verrous M
 - Aucune string littérale n'est dispersée dans le code — tout passe par les constantes définies une seule fois.
 - Un test automatique vérifie qu'aucun fichier source de l'app ne contient de nom legacy ou écrit à la main.
 
-**Statut** : active (strict). **Depuis** : prescrit dès origine, renforcé 2026-05-08.
+**Statut** : active (strict). **Depuis** : prescrit dès origine, renforcé 2026-05-08. **Amendée le 2026-09-25 (C7)** : le format accepte, en plus des étapes `moteur:*`, la seule étape `redaction:draft_accepted` ; toute autre étape `redaction:*` ou `cerveau:*` reste refusée à l'écriture.
 
 > **En situation.** En mai 2026 un bug visuel surgit : des dots Moteur restaient vides alors que l'utilisateur avait verrouillé son Capitaine, et inversement des dots apparaissaient verts sans action récente. Cause : deux noms cohabitaient en base — l'historique sans préfixe (`capitaine_locked`) et le nouveau préfixé (`moteur:capitaine_locked`). Le code écrivait dans l'un, lisait dans l'autre. La règle a été durcie : un seul format autorisé, un test garde-fou qui scanne tout le code, une migration cleanup sur les articles existants. Plus jamais ce bug.
 
@@ -710,16 +904,18 @@ L'objectif utilisateur : **garantir que les dots de progression et les verrous M
 
 ---
 
-#### FR-MOT-PHASE-TRANSITION — Bandeau d'invitation au passage de phase
+#### FR-MOT-PHASE-TRANSITION — Invitation à passer à l'onglet suivant
 
-Quand une phase du Moteur est terminée (toutes les étapes nécessaires posées), un **bandeau d'invitation** apparaît en haut de l'onglet courant pour proposer à l'utilisateur de passer à la phase suivante. Le bandeau est une suggestion — l'utilisateur peut l'ignorer et continuer à travailler dans la phase actuelle, ou cliquer pour basculer.
+En bas de chaque onglet du Moteur, un bouton **« Continuer vers {onglet suivant} »** propose l'étape d'après. Sur le dernier onglet, il devient « Continuer vers la Rédaction ». C'est une invitation : l'utilisateur la suit quand il est prêt, ou navigue à la main.
+
+> *Amendée le 2026-09-25 (épopée qualité SEO, D6).* La version précédente décrivait un bandeau en haut de l'onglet, qui apparaissait quand une phase était complète. Ce bandeau n'était plus affiché depuis le Sprint 16, où le bouton du bas l'a remplacé. Son composant, resté orphelin, a été supprimé.
 
 **Critères d'acceptation**
-- Le bandeau apparaît dès qu'une phase devient « complète » par rapport à ses étapes obligatoires.
-- Le bandeau peut être ignoré : l'utilisateur reste sur l'onglet courant tant qu'il n'a pas cliqué dessus.
+- Le bouton nomme l'onglet suivant, dans l'ordre des onglets du Moteur.
 - Il n'y a **jamais** de redirection automatique — c'est toujours l'utilisateur qui décide.
+- Sur le dernier onglet, le passage à la Rédaction suit ses propres conditions (FR-FIN-LINK-REDACTION : bouton désactivé tant que des verrous manquent, avec la liste de ce qui manque).
 
-> **En situation.** L'utilisateur finit de verrouiller ses 4 Lieutenants dans l'onglet Lieutenants. Un bandeau pastel apparaît en haut : « Lieutenants verrouillés. Passer au Lexique ? ». Il a fini sa pause café, il clique. Une autre fois il fait la même action mais veut d'abord re-vérifier sa liste avant de continuer — il ignore le bandeau, reste sur l'onglet, le bandeau ne disparaît pas et ne le harcèle pas non plus. Quand il est prêt il clique, ou il navigue à la main vers Lexique.
+> **En situation.** L'utilisateur finit de verrouiller ses Lieutenants. En bas de l'onglet, le bouton dit « Continuer vers Structure → ». Il veut d'abord relire sa liste : rien ne bouge tant qu'il n'a pas cliqué. Quand il est prêt, il clique, ou il choisit un autre onglet dans la barre de navigation.
 
 → Conception : [DESIGN-MOT-PHASE-TRANSITION](./design-registry.md#design-mot-phase-transition)
 
@@ -734,7 +930,9 @@ L'app ne déclenche **jamais** d'action automatique (appel IA, recherche externe
 - Chaque action coûteuse est derrière un bouton libellé clairement (« Lancer le scan », « Demander à l'IA », « Extraire le Lexique »…).
 - L'app peut afficher des informations *déjà en base* automatiquement, mais ne va pas re-chercher des données nouvelles sans demande explicite.
 
-> **En situation.** L'utilisateur clique successivement sur Discovery, Radar, Capitaine, Lieutenants, Lexique, Finalisation pour faire le tour de l'article. Aucun appel DataForSEO ou Anthropic ne part — son compte n'est pas débité, son écran ne fige pas sur des loaders. Quand il revient sur Capitaine et clique sur « Analyser ce mot-clé », là l'IA est appelée — mais c'est lui qui l'a décidé. Confort total : il sait que naviguer dans l'app ne lui coûte rien.
+*(2026-09-25, C6)* L'onglet Structure relisait l'analyse des concurrents du capitaine dès son ouverture, et la refaisait — payante — au-delà de 7 jours. Corrigé : à l'ouverture, il ne lit que la base, même ancienne ; l'analyse ne part qu'avec « Générer la structure » (cf. `FR-HN-TAB`).
+
+> **En situation.** L'utilisateur clique successivement sur Discovery, Radar, Capitaine, Lieutenants, Structure, Lexique, Finalisation pour faire le tour de l'article. Aucun appel DataForSEO ou Anthropic ne part — son compte n'est pas débité, son écran ne fige pas sur des loaders. Quand il revient sur Capitaine et clique sur « Analyser ce mot-clé », là l'IA est appelée — mais c'est lui qui l'a décidé. Confort total : il sait que naviguer dans l'app ne lui coûte rien.
 
 → Conception : [DESIGN-MOT-NO-AUTO-ACTION](./design-registry.md#design-mot-no-auto-action)
 
@@ -807,11 +1005,12 @@ De la même manière que la douleur de l'article (FR-MOT-PAINPOINT-INJECTION), l
 ---
 
 #### FR-MOT-CROSS-TAB-PAYLOAD — Continuité des données entre onglets
-Les 6 onglets du Moteur sont conçus pour **passer le relais** : ce que l'utilisateur a sélectionné dans un onglet alimente le suivant automatiquement, sans qu'il ait à recopier ou re-saisir.
+Les 7 onglets du Moteur sont conçus pour **passer le relais** : ce que l'utilisateur a sélectionné dans un onglet alimente le suivant automatiquement, sans qu'il ait à recopier ou re-saisir.
 
 - Les mots-clés sélectionnés dans **Discovery** sont envoyés au **Radar** quand l'utilisateur clique sur « Envoyer au Radar ».
 - Les cartes retenues dans **Radar** sont envoyées au **Capitaine** quand il clique sur « Envoyer au Capitaine ».
 - Les root keywords définis dans **Capitaine** sont propagés aux **Lieutenants** quand il clique sur « Envoyer aux Lieutenants ».
+- Les Lieutenants retenus nourrissent l'onglet **Structure**, qui les rappelle et en tire le plan de l'article (depuis C6, 2026-09-25).
 - La sélection Lieutenants nourrit la phase **Lexique**.
 
 À chaque passage, l'utilisateur clique un bouton explicite — aucune transition n'est automatique au seul fait d'ouvrir un onglet (cf. FR-MOT-NO-AUTO-ACTION).
@@ -903,7 +1102,7 @@ L'objectif : éviter les **« dots verts mensongers »** dans le dashboard, qui 
 - Si les données et le marqueur sont déjà cohérents, la réconciliation est silencieuse (aucun aller-retour réseau).
 - La réconciliation passe par les endpoints existants — pas de mutation directe en base depuis le navigateur.
 
-**Statut** : active. **Depuis** : 2026-05-08.
+**Statut** : active. **Depuis** : 2026-05-08. **Précisé le 2026-09-25 (C6)** : l'onglet Structure ne réconcilie pas à l'ouverture ; son étape ne change qu'à la validation, ou quand une structure modifiée est enregistrée. Une structure ne peut pas être vidée depuis l'écran.
 
 > **En situation.** Bug rencontré début mai : l'utilisateur avait verrouillé un Capitaine `K1`, puis l'avait changé pour `K2` mais via un chemin qui n'avait pas correctement nettoyé l'ancien marqueur, ni reposé le nouveau. Le dashboard affichait le 3ᵉ dot vert (Capitaine OK) mais les onglets aval refusaient de fonctionner (« Capitaine non verrouillé »). Incohérence visible. Après application de cette règle, à la ré-ouverture de l'onglet Capitaine, l'app vérifie : Capitaine effectif = `K2`, marqueur retiré pour `K1` puis reposé pour l'état courant. Dot vert *vrai*.
 
@@ -1009,14 +1208,16 @@ Côté API, le mot **« scan »** désigne l'exploration d'un mot-clé (récupé
 
 #### FR-MOT-WORKFLOW-GATING-DUAL — Règle de gating à double condition pour Capitaine et Lieutenants *(déplacée depuis §8.6 le 2026-05-12)*
 
-Les étapes Moteur « Capitaine verrouillé » et « Lieutenants verrouillés » ne se valident qu'à **double condition** : le verrouillage de la décision utilisateur ET la livraison de l'artefact dérivé attendu par la Rédaction. Pour Lieutenants notamment, cocher un Lieutenant ne suffit pas — il faut aussi que la structure Hn de l'article soit non-vide. Sans cette double condition, l'étape ne se valide pas et la transition vers la Rédaction reste bloquée.
+Les étapes Moteur « Capitaine verrouillé » et « Lieutenants verrouillés » ne se valident qu'à **double condition** : la décision de l'utilisateur est enregistrée ET la porte de l'étape passe (cf. `FR-CAP-LOCK-GATE`, `FR-LIE-LOCK-GATE`). Pour Lieutenants, cocher un Lieutenant suffit à demander l'étape ; la structure H1/H2/H3 n'en fait plus partie : elle a son onglet et son étape (cf. `FR-HN-TAB`). Sans cette double condition, l'étape ne se valide pas et la transition vers la Rédaction reste bloquée.
 
 **Critères d'acceptation**
-- L'étape « Lieutenants verrouillés » est posée seulement si au moins un Lieutenant a un statut verrouillé **et** que la structure Hn de l'article est renseignée.
-- Décocher tous les Lieutenants ou effacer la structure Hn retire l'étape automatiquement.
-- À l'ouverture de l'onglet, si la base contient l'étape mais qu'une des deux conditions n'est plus vraie, l'app la retire (réconciliation défensive — cf. `FR-MOT-CHECK-RECONCILIATION`).
+- L'étape « Lieutenants verrouillés » est demandée dès qu'au moins un Lieutenant est verrouillé, et accordée si la porte des lieutenants passe.
+- Décocher tous les Lieutenants retire l'étape automatiquement.
+- À l'ouverture de l'onglet, si la base contient l'étape mais qu'aucun Lieutenant n'est plus verrouillé, l'app la retire (réconciliation défensive — cf. `FR-MOT-CHECK-RECONCILIATION`).
 
-> **En situation.** L'utilisateur coche son premier Lieutenant — l'étape ne passe pas encore au vert dans le récap, parce que la structure Hn est encore vide. Il déclenche la recommandation IA structure Hn, la valide. Au moment où la structure devient non-vide, le 4ᵉ dot Moteur passe à `●`. Le check ne ment jamais sur ce qui est réellement disponible pour la Rédaction.
+**Statut :** active. **Amendée le 2026-09-25 (C6, checklist M7)** : la structure Hn n'est plus une condition de l'étape « Lieutenants verrouillés ». Elle naissait dans l'onglet Lieutenants avant même le choix des lieutenants, et une seule case cochée suffisait alors à valider l'étape.
+
+> **En situation.** L'utilisateur coche son premier Lieutenant pour un article spécialisé — la porte vérifie aussitôt, et le 4ᵉ dot Moteur passe à `●`. Il ouvre ensuite l'onglet Structure : c'est là que le plan de l'article naît des lieutenants qu'il vient de retenir. Le check ne ment jamais sur ce qui est réellement décidé.
 
 → Conception : [DESIGN-MOT-WORKFLOW-GATING-DUAL](./design-registry.md#design-mot-workflow-gating-dual)
 
@@ -1042,7 +1243,7 @@ Les composants UI du Moteur qui affichent des données vivantes (mot-clé Capita
 
 **Critères d'acceptation**
 - Un changement de mot-clé Capitaine se reflète immédiatement dans le récap Moteur et l'en-tête du Lexique, sans reload de page.
-- Un changement d'étape Moteur (Discovery / Radar / Capitaine / Lieutenants / Lexique) se reflète immédiatement sur les dots de progression du dashboard et du tree, sans reload.
+- Un changement d'étape Moteur (Discovery / Radar / Capitaine / Lieutenants / Structure / Lexique) se reflète immédiatement sur les dots de progression du tree, sans reload.
 - Un switch d'article propre, sans bleed-through (l'article B n'affiche jamais le Capitaine de l'article A).
 
 > **En situation.** L'utilisateur verrouille « keyword X » au Capitaine. Dans la même seconde, le bandeau de récap en haut affiche « X », le titre du panneau Lexique affiche « X », le dot Moteur 3 passe à `●`. Aucune action manuelle, aucun reload — la réactivité du store fait le travail.
@@ -1588,6 +1789,9 @@ L'utilisateur peut basculer l'affichage entre les deux scores pour analyser la m
 - Chaque carte affiche les deux scores séparés (pas un score moyen).
 - Le toggle Marché / Pertinence change l'angle de tri et d'affichage sans relancer le scan.
 - Quand un score Pertinence n'est pas calculable (cf. `FR-CAP-RELEVANCE-UNAVAILABLE-REASON`), il s'affiche `—` au lieu d'un zéro.
+- L'intention de recherche de Google entre dans le Score Marché d'un mot-clé dès son scan, qu'elle vienne d'une mesure neuve ou des mesures déjà en base.
+
+**Statut :** active. **Amendée le 2026-09-25 (épopée qualité SEO, checklist M2)** : au scan, l'intention comptait toujours comme inconnue dans le Score Marché ; elle y entre désormais (cf. `FR-CAP-RELEVANCE-INTENT-SIGNAL` pour le Score Pertinence).
 
 > **En situation.** L'utilisateur a 6 candidats Capitaine. Vu par le Score Marché, « rupture conventionnelle wikipedia » sort 4ᵉ (volume correct). Vu par le Score Pertinence sur sa douleur précise, ce mot-clé tombe à la 6ᵉ place (sémantique distante de la douleur). Le bon Capitaine n'est plus le même selon l'angle — bascule rapide, choix éclairé.
 
@@ -1641,7 +1845,13 @@ Un article a **exactement zéro ou un** mot-clé Capitaine verrouillé. Verrouil
 
 ---
 
-#### FR-CAP-VERDICT-INFORMATIVE — Verdict GO / NO-GO purement informatif
+#### FR-CAP-VERDICT-INFORMATIVE — Verdict GO / NO-GO purement informatif *(superseded 2026-09-25 par FR-CAP-LOCK-GATE)*
+
+> **Statut :** superseded. **Depuis :** 2026-09-25. **Remplacée par :** `FR-CAP-LOCK-GATE`. **Source :** épopée qualité SEO, chantier C2.
+>
+> **Ce qui change.** Le verdict reste affiché sur chaque carte et le bouton « Verrouiller » reste actif, mais le verdict n'est plus *purement* informatif : verrouiller un mot-clé NO-GO, jamais mesuré, sans volume ou dont la SERP contredit l'intention de l'article passe désormais par la **porte du capitaine**, qui ouvre l'alarme graduée. L'utilisateur garde la main — il peut passer outre en choisissant une catégorie et en écrivant sa raison (dérogation motivée, cf. `FR-INFRA-GATE-WAIVER`) — mais il ne passe plus sans avoir vu le risque. **Pourquoi :** le pilier 1013 a été verrouillé sur un mot-clé sans volume mesuré, que Google ne suggérait pas et dont la SERP ne montrait que des agences : rien n'a alerté.
+>
+> Le texte ci-dessous est conservé pour l'historique.
 
 Chaque mot-clé Capitaine affiche un **verdict synthétique** (GO vert / ORANGE / NO-GO rouge / GRAY si données insuffisantes) calculé à partir des KPI marché et de la douleur. Ce verdict est **purement informatif** : l'utilisateur peut toujours verrouiller un mot-clé, même si le verdict est NO-GO. Le verdict aide à décider, il ne décide pas à la place de l'utilisateur.
 
@@ -1658,9 +1868,33 @@ Chaque mot-clé Capitaine affiche un **verdict synthétique** (GO vert / ORANGE 
 
 #### FR-CAP-VERDICT-GATING — *(deprecated 2026-04-28)*
 
-**Statut : deprecated.** Historiquement, le bouton « Valider Capitaine » était désactivé tant que le verdict n'était pas GO. Cette logique a été retirée le 2026-04-28 — remplacée par `FR-CAP-VERDICT-INFORMATIVE` qui rend le verdict purement informatif. L'utilisateur a désormais toujours la main, peu importe le verdict.
+**Statut : deprecated.** Historiquement, le bouton « Valider Capitaine » était désactivé tant que le verdict n'était pas GO. Cette logique a été retirée le 2026-04-28 — remplacée par `FR-CAP-VERDICT-INFORMATIVE` qui rend le verdict purement informatif. L'utilisateur a désormais toujours la main, peu importe le verdict. *(`FR-CAP-VERDICT-INFORMATIVE` est elle-même remplacée le 2026-09-25 par `FR-CAP-LOCK-GATE` : on ne revient pas au bouton grisé — le verrou reste possible, mais un choix risqué s'assume par écrit.)*
 
 → Conception : [DESIGN-CAP-VERDICT-GATING](./design-registry.md#design-cap-verdict-gating)
+
+---
+
+#### FR-CAP-LOCK-GATE — Verrouiller un capitaine risqué déclenche l'alarme
+
+Choisir le capitaine engage tout l'article : les lieutenants, le lexique, la structure et la rédaction partent de lui. Le verdict GO / NO-GO aidait à décider mais n'arrêtait personne. Désormais, le verrouillage passe par une **porte** : si le mot-clé est risqué, l'alarme graduée (cf. `FR-INFRA-GATE-WAIVER`) explique le risque en clair et propose d'autres candidats déjà mesurés. L'utilisateur revient corriger, ou passe outre en écrivant pourquoi.
+
+**Critères d'acceptation**
+- 🔴 Le volume de recherche du mot-clé est inconnu (jamais mesuré) ou nul.
+- 🔴 Le verdict du mot-clé est NO-GO.
+- 🔴 Google traite la requête comme commerciale ou transactionnelle (pages de service, comparatifs) alors que l'article vise une intention informationnelle (un guide). Tout autre écart entre l'intention de la SERP et celle de l'article donne 🟠.
+- L'intention attendue est celle précisée au Cerveau ; à défaut, un pilier est traité comme un guide (informationnel). Quand l'intention de la SERP est inconnue, aucune alerte d'intention n'est levée : l'outil ne devine pas.
+- 🟠 Google ne suggère pas la requête quand on commence à la taper (autocomplétion vide).
+- L'alarme propose à la place les autres candidats explorés pour cet article qui ont un volume mesuré, du plus recherché au moins recherché (cinq au plus).
+- La porte est vérifiée **avant** tout changement : si l'utilisateur revient corriger, rien n'est verrouillé ni enregistré, l'étape « Capitaine verrouillé » n'est pas validée, et le capitaine précédent reste verrouillé.
+- Si la vérification est impossible (serveur injoignable), le mot-clé n'est pas verrouillé et un message le dit.
+- L'étape « Capitaine verrouillé » n'est accordée que si le capitaine a bien été enregistré et que la porte passe, d'emblée ou après dérogation. Le serveur la refuse sinon, d'où que vienne la demande (écran, outil automatique, appel direct).
+- Explorer un nouveau candidat ne fait pas tomber une dérogation posée sur le capitaine choisi ; changer de capitaine, si.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-CAP-VERDICT-INFORMATIVE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C2.
+
+> **En situation.** Pour son pilier, l'utilisateur clique « Verrouiller » sur « stratégie digitale entreprises Toulouse » : volume jamais mesuré, aucune suggestion Google, et une SERP de neuf agences sur neuf. L'alarme « Avant de verrouiller le capitaine » affiche deux points 🔴 — « Aucun volume de recherche mesuré », et « Google traite cette requête comme commerciale, alors que l'article vise une intention informationnelle : Google classe des pages de service, pas des guides » — et un point 🟠 sur l'autocomplétion vide. En dessous, « À la place : » liste les candidats qu'il avait déjà explorés, avec leur volume. Il clique « Revenir corriger » : son ancien capitaine reste verrouillé, rien n'a bougé, et il verrouille l'un des candidats proposés.
+
+→ Conception : [DESIGN-CAP-LOCK-GATE](./design-registry.md#design-cap-lock-gate)
 
 ---
 
@@ -1671,7 +1905,7 @@ Quand un mot-clé n'a **aucun signal marché vert** (volume nul, autocomplete vi
 **Critères d'acceptation**
 - Si les 6 KPI marché sont tous au rouge (ou vides), le verdict est forcé à NO-GO.
 - Le tooltip explique « aucun signal détecté — ce mot-clé n'apparaît pas dans la donnée marché ».
-- L'utilisateur reste libre de verrouiller (cf. `FR-CAP-VERDICT-INFORMATIVE`).
+- L'utilisateur reste libre de verrouiller, mais pas sans le voir : un NO-GO déclenche l'alarme 🔴 de la porte du capitaine, qu'il franchit en écrivant pourquoi (cf. `FR-CAP-LOCK-GATE`, qui remplace `FR-CAP-VERDICT-INFORMATIVE` depuis le 2026-09-25).
 
 > **En situation.** L'utilisateur teste un mot-clé très niche jamais cherché sur Google : « comment refuser indemnité supra légale rupture conventionnelle senior 2026 ». La carte affiche NO-GO automatique avec « aucun signal détecté ». Il comprend tout de suite que ce mot-clé n'a pas de marché — il l'écarte sans hésiter.
 
@@ -1718,6 +1952,9 @@ Au moment où l'utilisateur verrouille un mot-clé Capitaine pour un article, l'
 - L'étape `moteur:capitaine_locked` est posée dès qu'un Capitaine est verrouillé sur l'article.
 - L'étape est retirée si l'utilisateur déverrouille (le Capitaine repasse à vide).
 - À l'ouverture de l'onglet, l'étape est réconciliée avec l'état réel (cf. `FR-MOT-CHECK-RECONCILIATION`).
+- L'étape n'est posée que si la porte du capitaine passe, d'emblée ou après dérogation (cf. `FR-CAP-LOCK-GATE`).
+
+**Statut :** amendée le 2026-09-25 (porte du capitaine, épopée qualité SEO C2).
 
 > **En situation.** L'utilisateur clique « Verrouiller » sur « calcul indemnité rupture conventionnelle 2026 ». Le 3ᵉ dot de progression de l'article passe de `○` à `●` au dashboard. Aucune autre action.
 
@@ -1797,6 +2034,11 @@ Le Score Pertinence intègre un **signal d'alignement entre l'intent dominant de
 - Match → bonus appliqué à la composante intent du score.
 - Mismatch → malus appliqué.
 - Intent attendu absent → signal neutralisé (50/100), pas de pénalité.
+- L'intention SERP est retrouvée quelle que soit la casse du mot-clé (« Toulouse » comme « toulouse »).
+- Le signal est le même au scan d'un mot-clé et à la réouverture de l'article : même intention SERP (mesurée à l'instant, ou relue dans les mesures déjà en base), même intention attendue de l'article. Un mot-clé ne change pas de Score Pertinence parce qu'on a rouvert l'article.
+- L'intention attendue vient de l'article, qu'elle ait été posée par l'IA du Cerveau, corrigée par l'utilisateur ou proposée avec le mot-clé candidat qui a fait naître l'article (cf. `FR-CER-KEYWORD-REAL-DATA`).
+
+**Statut :** active. **Durcie le 2026-09-24** (casse du mot-clé, épopée qualité SEO, M1). **Amendée le 2026-09-25 (checklist M2, commit `9d53c3f`)** : au scan, le signal restait neutre — l'intention attendue de l'article n'était pas lue, et l'intention SERP n'était pas transmise — alors que la réouverture de l'article le calculait : deux scores pour le même mot-clé. **Et (checklist K9, commit `f2ec990`)** : un article né du constructeur du cocon a désormais une intention attendue ; sans elle, le signal y restait neutre.
 
 > **En situation.** L'utilisateur a renseigné « intent commercial » côté Cerveau pour son article rupture conventionnelle. Sur sa liste Capitaine, le mot-clé « comprendre la rupture conventionnelle » (intent SERP informational) reçoit un léger malus Pertinence : signal de désalignement. À l'inverse, « simulateur indemnité rupture conventionnelle » (intent commercial) reçoit un bonus.
 
@@ -1913,7 +2155,7 @@ Voici les FRs qui appartenaient historiquement à §8.6 mais qui ont rejoint leu
 
 ### 8.7 — Moteur — Lieutenants (FR-LIE)
 
-> **Rôle de l'onglet.** Une fois le Capitaine verrouillé, l'utilisateur entre dans Lieutenants pour identifier les **mots-clés secondaires qui structureront ses H2/H3**. L'onglet aspire les pages top 10 Google de son Capitaine, en extrait les titres des concurrents, les questions People Also Ask et les regroupements thématiques, puis demande à l'IA de proposer une sélection cohérente que l'utilisateur valide en cochant.
+> **Rôle de l'onglet.** Une fois le Capitaine verrouillé, l'utilisateur entre dans Lieutenants pour identifier les **mots-clés secondaires qui structureront ses H2/H3**. L'onglet aspire les pages top 10 Google de son Capitaine, en extrait les titres des concurrents, les questions People Also Ask et les regroupements thématiques, puis demande à l'IA de proposer une sélection cohérente que l'utilisateur valide en cochant. Le plan de l'article (H1, H2, H3) ne se construit plus ici : il naît des lieutenants retenus, dans l'onglet suivant, Structure (§8.7.bis, depuis le 2026-09-25).
 
 #### FR-LIE-SERP-ANALYZE — Aspiration des pages top 10 sur le mot-clé Capitaine
 
@@ -1939,6 +2181,9 @@ Une fois la SERP analysée, l'app extrait les titres H1/H2/H3 de chaque page con
 - Pour chaque titre extrait, l'app affiche son niveau (H1, H2, H3), son texte et le pourcentage de concurrents qui le portent.
 - Les titres très fréquents (≥ 50 % des concurrents) sont visuellement mis en avant.
 - L'utilisateur peut filtrer la vue par niveau (H1 / H2 / H3).
+- Depuis le 2026-09-25 (C6), cette récurrence s'affiche dans l'onglet **Structure** (section « Structure Hn concurrents »), là où elle sert à bâtir le plan ; l'onglet Lieutenants la calcule toujours pour nourrir la proposition de lieutenants de l'IA, sans l'afficher. Seuls les titres vus sur au moins deux pages sont transmis à l'IA.
+
+**Statut :** active. **Amendée le 2026-09-25 (C6)** : l'affichage de la récurrence passe de l'onglet Lieutenants à l'onglet Structure (cf. `FR-HN-TAB`).
 
 > **En situation.** Sur la SERP top 10 du Capitaine rupture conventionnelle, le consultant voit que « Comment calculer l'indemnité ? » apparaît dans 8 articles sur 10, alors que « Le rôle du conseiller du salarié » n'est porté que par 2 articles. Il décide de traiter la première en H2 incontournable et d'utiliser la seconde comme angle différenciant.
 
@@ -1953,8 +2198,10 @@ Une fois la SERP analysée, l'app extrait les titres H1/H2/H3 de chaque page con
 **Critères d'acceptation**
 - L'utilisateur déclenche la proposition depuis un panel IA dédié.
 - Le panel streame la réflexion IA en direct.
-- La sortie contient des Lieutenants retenus, des Lieutenants éliminés (avec raison), une structure Hn cohérente et des insights de content gap.
+- La sortie contient des Lieutenants retenus, des Lieutenants éliminés (avec raison) et des insights de content gap. Elle ne propose plus de structure Hn : le plan naît ensuite des seuls lieutenants que l'utilisateur retient (cf. `FR-HN-TAB`).
 - Le nombre de propositions retenues est plafonné selon le niveau de l'article.
+
+**Statut :** active. **Amendée le 2026-09-25 (C6, checklist M7)** : la structure Hn sort de la proposition. Elle était produite avec les candidats, avant tout choix de l'utilisateur.
 
 > **En situation.** Le consultant clique « Proposer des Lieutenants » dans le panel IA. Sur l'article Intermédiaire rupture conventionnelle, l'IA propose 5 Lieutenants en streaming : « calcul plafond indemnité », « ancienneté rupture conventionnelle », « simulation indemnité », « rupture conventionnelle CDD », « indemnité supra-légale ». Pour chacun : un score, un niveau Hn suggéré (H2 ou H3), une raison.
 
@@ -1977,13 +2224,20 @@ Pour éviter qu'un article généraliste se positionne sur des requêtes locales
 
 ---
 
-#### FR-LIE-HN-STRUCTURE — L'IA recommande une structure Hn pour l'article
+#### FR-LIE-HN-STRUCTURE — L'IA recommande une structure Hn pour l'article *(superseded 2026-09-25 par FR-HN-TAB)*
+
+> **Statut :** superseded. **Depuis :** 2026-09-25. **Remplacée par :** `FR-HN-TAB` (et sa porte, `FR-HN-LOCK-GATE`). **Source :** épopée qualité SEO, chantier C6 (checklist M7).
+>
+> **Ce qui change.** La structure ne se construit plus dans l'onglet Lieutenants. Elle y naissait avec la proposition de lieutenants, avant que l'utilisateur ait choisi lesquels garder, et une seule case cochée validait l'étape. Elle a désormais son onglet, **Structure**, entre Lieutenants et Lexique : proposée à partir des seuls lieutenants retenus et des autres articles du cocon, validée par sa propre étape, jugée par une porte. Restent en place : la proposition par l'IA sur demande, la régénération qui garde les titres verrouillés, les seuls titres vus sur au moins deux pages concurrentes, et le format — une liste de titres H1, H2, H3, pas un texte libre (la sortie « markdown » décrite ci-dessous n'était déjà plus celle du code).
+>
+> Le texte ci-dessous est conservé pour l'historique.
 
 À partir de la sélection de Lieutenants retenue, l'utilisateur peut demander à l'IA une **structure de plan Hn** : H1 (l'article lui-même), puis H2 et H3 organisés selon une logique cohérente (introduction → développement → cas particuliers → conclusion). La recommandation est texte libre — pas une liste rigide — pour laisser à l'utilisateur le soin d'arbitrer.
 
 **Critères d'acceptation**
 - L'utilisateur déclenche la recommandation depuis un bouton dédié dans le panel IA.
 - La sortie est une recommandation textuelle (markdown) avec H1, H2 et H3 organisés.
+- Seuls les titres réellement récurrents chez les concurrents (vus sur au moins deux pages) nourrissent la proposition ; un titre vu une seule fois (menu, pied de page) est ignoré.
 - L'utilisateur peut régénérer s'il n'est pas satisfait.
 
 > **En situation.** Le consultant a verrouillé 5 Lieutenants pour son article rupture conventionnelle. Il clique « Recommander une structure Hn » : l'IA propose un plan en 6 H2 (« Comprendre la rupture conventionnelle », « Comment calculer son indemnité », « Les cas particuliers : ancienneté, CDD, senior », « Simulateur pratique », « Erreurs à éviter », « FAQ »). Il garde la structure, ajuste un titre, et peut maintenant rédiger.
@@ -1994,12 +2248,14 @@ Pour éviter qu'un article généraliste se positionne sur des requêtes locales
 
 #### FR-LIE-SECTIONS-FOLDABLE — Sections dépliables pour ne pas surcharger l'écran
 
-L'onglet Lieutenants regroupe trois sections d'aide en lecture (Hn concurrents, PAA niveau 2, regroupements Cerveau), chacune dépliable. Par défaut elles sont repliées pour ne pas surcharger l'écran. L'utilisateur déplie celle dont il a besoin au moment où il en a besoin.
+L'onglet Lieutenants regroupe des sections d'aide en lecture, chacune dépliable : depuis le 2026-09-25, deux (PAA, regroupements issus de Discovery) ; la troisième, les titres des concurrents, a rejoint l'onglet Structure (cf. `FR-HN-TAB`). Par défaut elles sont repliées pour ne pas surcharger l'écran. L'utilisateur déplie celle dont il a besoin au moment où il en a besoin.
 
 **Critères d'acceptation**
-- Trois sections sont visibles dans le panneau d'analyse SERP : titres concurrents, PAA niveau 2, groupes croisés (provenant du Cerveau).
+- Deux sections sont visibles dans le panneau d'analyse SERP : « Sources IA : questions Google (PAA) » et « Sources IA : clusters Discovery ». La section des titres concurrents (« Structure Hn concurrents ») est dans l'onglet Structure.
 - Chaque section est repliée par défaut, dépliable par clic sur son chevron.
 - Une section dépliée charge son contenu uniquement à ce moment (lazy load).
+
+**Statut :** active. **Amendée le 2026-09-25 (C6)** : trois sections deviennent deux ; les titres concurrents suivent la structure dans son onglet.
 
 > **En situation.** Le consultant cherche à savoir si les concurrents répondent à « Comment refuser une rupture conventionnelle ? ». Il déplie la section « PAA niveau 2 », trouve sa réponse, replie la section et passe à la suivante. L'écran ne devient jamais surchargé.
 
@@ -2054,27 +2310,57 @@ Le curseur qui contrôle le nombre de pages SERP analysées est **intelligent** 
 
 #### FR-LIE-CHECK — Étape Moteur « Lieutenants verrouillés » posée automatiquement
 
-Quand l'utilisateur a coché au moins un Lieutenant **et** que la structure Hn de l'article est non-vide, l'étape Moteur « Lieutenants verrouillés » est posée automatiquement. La double condition garantit que l'étape ne se valide pas tant que la Rédaction n'a pas l'info dont elle a besoin (= la structure Hn).
+Dès que l'utilisateur a coché au moins un Lieutenant, l'étape Moteur « Lieutenants verrouillés » est demandée automatiquement, et accordée si la porte des lieutenants passe. La structure de l'article n'en fait plus partie : elle se construit ensuite, à partir des lieutenants retenus, dans l'onglet Structure, qui a sa propre étape (cf. `FR-HN-TAB`).
 
 **Critères d'acceptation**
-- L'étape `moteur:lieutenants_locked` est posée dès que **les deux conditions** sont remplies (≥ 1 Lieutenant verrouillé + structure Hn non vide).
-- Si l'utilisateur décoche tous les Lieutenants ou efface la structure Hn, l'étape est retirée automatiquement.
-- À l'ouverture de l'onglet, si la base contient une étape franchie mais qu'une des deux conditions n'est plus vraie, l'app retire l'étape (réconciliation défensive).
+- L'étape `moteur:lieutenants_locked` est demandée dès qu'**un** Lieutenant est verrouillé ; elle n'est posée que si la porte des lieutenants passe (cf. `FR-LIE-LOCK-GATE`).
+- Si l'utilisateur décoche tous les Lieutenants, l'étape est retirée automatiquement.
+- À l'ouverture de l'onglet, si la base contient l'étape mais qu'aucun Lieutenant n'est plus verrouillé, l'app la retire (réconciliation défensive) ; si un Lieutenant est verrouillé mais que l'étape manque, la porte est consultée.
+- Aucune structure n'est exigée, et aucune n'est enregistrée par cet onglet : verrouiller un lieutenant n'écrit ni sommaire ni longueur conseillée (ils partent à la validation de la structure).
 
-> **En situation.** Le consultant verrouille son 1ᵉʳ Lieutenant : l'étape ne s'inscrit pas tout de suite — la structure Hn est encore vide. Il déclenche la recommandation IA structure Hn, l'IA propose un plan, il valide. Au moment où la structure Hn devient non-vide, le 4ᵉ dot de l'article passe de `○` à `●` au dashboard.
+**Statut :** amendée le 2026-09-25 (porte des lieutenants, épopée qualité SEO C2). **Amendée le 2026-09-25 (C6, checklist M7)** : un lieutenant verrouillé suffit à demander l'étape — la condition « structure Hn non vide » est retirée. Elle rendait l'étape dépendante d'une structure produite avant tout choix de lieutenant.
+
+> **En situation.** Le consultant verrouille son 1ᵉʳ Lieutenant sur un article spécialisé : la porte vérifie, et le 4ᵉ dot de l'article passe de `○` à `●`. Il passe à l'onglet Structure pour bâtir le plan à partir de ce lieutenant ; le 5ᵉ dot se remplira quand il validera la structure.
 
 → Conception : [DESIGN-LIE-CHECK](./design-registry.md#design-lie-check)
 
 ---
 
-#### FR-LIE-AI-FRONTIER — Frontière visuelle stricte entre données utilisateur et suggestions IA
+#### FR-LIE-LOCK-GATE — Des lieutenants en nombre suffisant et sans cannibalisation
 
-Sur l'onglet Lieutenants, deux zones cohabitent : les **données validées par l'utilisateur** (cards Lieutenants verrouillés, cards éliminés, structure Hn) et la **coque Suggestions IA** (propositions non encore actées). Ces deux zones doivent rester **visuellement distinctes** — la frontière est un invariant UX. L'utilisateur doit savoir à tout moment si ce qu'il regarde est une décision sienne ou une proposition à valider.
+Les lieutenants donnent à l'article sa couverture des recherches voisines. Trop peu, et l'article ne se positionne que sur son capitaine. Un lieutenant qui est déjà le mot-clé principal d'un autre article du cocon, et les deux pages se font concurrence dans Google (cannibalisation). La validation de l'étape « Lieutenants verrouillés » passe donc par une **porte**. Pour ne pas interrompre l'utilisateur à chaque case cochée, la vérification est **silencieuse** : tant que la porte retient l'étape, un bandeau le dit, et l'alarme graduée (cf. `FR-INFRA-GATE-WAIVER`) ne s'ouvre qu'à sa demande.
 
 **Critères d'acceptation**
-- Les containers « Lieutenants verrouillés » et « Structure Hn validée » sont rendus en dehors de la coque IA.
+- 🔴 Moins de lieutenants que le minimum du type d'article : 3 pour un pilier, 2 pour un intermédiaire, 1 pour un spécialisé. Ce minimum est distinct de la fourchette conseillée par le compteur (cf. `FR-LIE-CHECKBOX-COUNT`).
+- 🔴 Un lieutenant est le capitaine d'un autre article du cocon.
+- 🟠 Un lieutenant est aussi lieutenant d'un autre article du cocon : c'est courant, il suffit de l'aborder sous un autre angle.
+- 🟠 Un lieutenant est identique au capitaine de l'article.
+- Chaque lieutenant en conflit se déroge séparément : une raison donnée pour l'un ne couvre pas les autres.
+- Les lieutenants cochés sont enregistrés avant la vérification : la porte juge ce qui est sauvegardé, pas seulement ce que montre l'écran.
+- Tant que la porte refuse, l'étape n'est pas accordée et un bandeau « Étape non validée » donne la première raison, avec un bouton « Voir pourquoi / décider » qui ouvre l'alarme.
+- Ajouter ou retirer un lieutenant relance la vérification : l'étape est accordée dès que la porte passe, et retirée si elle refuse après un changement. Cela vaut aussi quand l'étape était déjà accordée à l'ouverture de l'onglet.
+- Une case cochée (ou décochée) pendant qu'une vérification est en cours n'est pas perdue : la vérification reprend sur les lieutenants à jour, jusqu'à ce qu'ils ne changent plus. Il n'y a jamais deux vérifications à la fois, et l'étape n'est jamais demandée deux fois.
+- La condition de `FR-LIE-CHECK` (au moins un lieutenant verrouillé) reste nécessaire : la porte s'y ajoute.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C2. **Amendée le 2026-09-25 (C6, checklist M7)** : la structure Hn n'est plus une condition de l'étape ; comme l'étape se demande dès la première case, deux défauts sont devenus visibles et sont corrigés — une case cochée pendant la vérification de la première était ignorée (un intermédiaire restait retenu à « 1 lieutenant » avec deux cases cochées), et un changement de lieutenants ne relançait pas la porte quand l'étape était déjà accordée à l'ouverture de l'onglet.
+
+> **En situation.** L'utilisateur coche un seul lieutenant pour son pilier. Le dot ne passe pas au vert ; un bandeau s'affiche : « Étape non validée. 1 lieutenant pour un article Pilier : le minimum conseillé est 3. » Il coche deux autres lieutenants : la vérification repart d'elle-même, le bandeau disparaît et l'étape est accordée. Plus tard, il ajoute « audit site web », qui est déjà le capitaine de l'intermédiaire « Auditer son site » : l'étape est retirée, et le bandeau signale que les deux pages se feraient concurrence. Il décoche ce lieutenant, et l'étape revient.
+
+→ Conception : [DESIGN-LIE-LOCK-GATE](./design-registry.md#design-lie-lock-gate)
+
+---
+
+#### FR-LIE-AI-FRONTIER — Frontière visuelle stricte entre données utilisateur et suggestions IA
+
+Sur l'onglet Lieutenants, deux zones cohabitent : les **données validées par l'utilisateur** (cards Lieutenants verrouillés, cards éliminés) et la **coque Suggestions IA** (propositions non encore actées). Ces deux zones doivent rester **visuellement distinctes** — la frontière est un invariant UX. L'utilisateur doit savoir à tout moment si ce qu'il regarde est une décision sienne ou une proposition à valider.
+
+**Critères d'acceptation**
+- Le container « Lieutenants verrouillés » est rendu en dehors de la coque IA.
+- La structure Hn n'est plus affichée dans cet onglet : elle a le sien (cf. `FR-HN-TAB`). Un test architectural échoue si elle y revient.
 - Aucun refactor visuel ne doit absorber ces containers dans la coque IA (test architectural permanent).
 - La couleur, l'indentation ou l'encadrement signalent clairement la distinction.
+
+**Statut :** active. **Amendée le 2026-09-25 (C6)** : le container « Structure Hn validée » quitte l'onglet Lieutenants pour l'onglet Structure.
 
 > **En situation.** Une refonte plus tard, un nouveau développeur veut « simplifier » l'écran en mettant tout dans un seul panneau IA. Le test architectural échoue immédiatement et pointe vers cette FR — la régression est bloquée avant d'arriver en prod. Le consultant continue de distinguer ses choix des propositions IA.
 
@@ -2099,14 +2385,14 @@ L'analyse Lieutenants utilise un service backend dédié qui se concentre unique
 
 #### FR-LIE-CHECKBOX-LOCK-IMMEDIATE — Cocher un Lieutenant le verrouille immédiatement *(déplacée depuis §8.6 le 2026-05-12)*
 
-Cocher la case d'un Lieutenant **verrouille immédiatement ce Lieutenant en base** — pas de bouton « Verrouiller la sélection » à cliquer ensuite. Décocher la case déverrouille instantanément. Cocher plusieurs Lieutenants successivement laisse toutes les checkboxes cliquables — il n'y a pas de mode « panneau verrouillé » qui bloquerait l'utilisateur. Toutes les autres actions (Refresh SERP, Régénérer IA, Sauvegarder structure Hn) restent disponibles en permanence, quel que soit le nombre de Lieutenants verrouillés.
+Cocher la case d'un Lieutenant **verrouille immédiatement ce Lieutenant en base** — pas de bouton « Verrouiller la sélection » à cliquer ensuite. Décocher la case déverrouille instantanément. Cocher plusieurs Lieutenants successivement laisse toutes les checkboxes cliquables — il n'y a pas de mode « panneau verrouillé » qui bloquerait l'utilisateur. Toutes les autres actions (Refresh SERP, Régénérer IA) restent disponibles en permanence, quel que soit le nombre de Lieutenants verrouillés. (La sauvegarde de la structure Hn a quitté cet onglet pour l'onglet Structure, cf. `FR-HN-TAB`.)
 
 **Critères d'acceptation**
 - Cocher 1 Lieutenant ne désactive jamais les autres checkboxes.
 - Le bouton « Refresh SERP » reste cliquable même quand plusieurs Lieutenants sont verrouillés.
 - Le bouton « Régénérer IA » reste cliquable même quand plusieurs Lieutenants sont verrouillés.
 - Aucun badge « Panneau verrouillé » n'apparaît dans le DOM.
-- La règle de gating de l'étape « Lieutenants verrouillés » suit `FR-MOT-WORKFLOW-GATING-DUAL` (cocher seul ne suffit pas — il faut aussi la structure Hn renseignée).
+- La règle de gating de l'étape « Lieutenants verrouillés » suit `FR-MOT-WORKFLOW-GATING-DUAL` : cocher un Lieutenant demande l'étape, la porte des lieutenants l'accorde ou la retient (depuis C6, 2026-09-25, la structure Hn n'est plus exigée).
 
 > **En situation.** L'utilisateur coche son 1ᵉʳ Lieutenant à 10h00. À 10h02, il en coche un 2ᵉ. Pendant ces deux gestes, les autres cases restent cliquables, le bouton Refresh SERP reste actif. À 10h05, il décide de régénérer la proposition IA — le bouton est actif aussi. Il n'a jamais besoin de « tout déverrouiller » avant d'agir.
 
@@ -2114,13 +2400,80 @@ Cocher la case d'un Lieutenant **verrouille immédiatement ce Lieutenant en base
 
 ---
 
+### 8.7.bis — Moteur — Structure (FR-HN)
+
+> **Rôle de l'onglet.** Entre Lieutenants et Lexique, l'onglet **Structure** bâtit le plan de l'article : son titre (H1), ses chapitres (H2) et leurs sous-parties (H3). Ce plan devient le sommaire de la rédaction : un défaut ici se retrouve dans le texte. Le pilier 1013 en est la preuve : un H1 sans son mot-clé, douze chapitres pour un pilier qui en compte six à huit. Onglet ouvert le 2026-09-25 (épopée qualité SEO, chantier C6).
+
+#### FR-HN-TAB — La structure de l'article a son propre onglet
+
+Elle remplace `FR-LIE-HN-STRUCTURE`. La structure naissait dans l'onglet Lieutenants, en même temps que la proposition de lieutenants, avant que l'utilisateur ait choisi lesquels garder ; une seule case cochée validait ensuite l'étape. Elle se construit désormais **après** le choix des lieutenants, dans son onglet, et sa validation est une étape du Moteur, jugée par une porte (cf. `FR-HN-LOCK-GATE`).
+
+**Critères d'acceptation**
+- L'ordre des onglets de la phase « Valider » est : Capitaine → Lieutenants → Structure → Lexique.
+- L'onglet rappelle les lieutenants retenus. Sans lieutenant retenu, il invite à en retenir un dans l'onglet Lieutenants, et aucune structure ne peut être demandée.
+- La structure est proposée par l'IA à la demande, à partir de trois sources : les seuls lieutenants retenus, les titres qui reviennent chez les concurrents du capitaine (vus sur au moins deux pages) et les autres articles du cocon — un chapitre résume le sujet d'un article qui le traite déjà, au lieu de le creuser.
+- Le H1 proposé contient le capitaine en entier. L'IA n'écrit ni introduction ni conclusion : le sommaire les ajoute.
+- L'utilisateur verrouille (🔒) les titres qu'il veut garder et redemande une proposition : les titres verrouillés y reviennent tels quels. La récurrence des titres concurrents reste consultable dans une section repliable. La structure peut être enregistrée sans être validée.
+- « Valider la structure » l'enregistre, en fait le sommaire de la Rédaction, fait recalculer la longueur conseillée (écrite seulement si l'utilisateur n'en a choisi aucune, cf. `FR-CER-WORD-COUNT-RECOMMEND`), puis demande l'étape « Structure validée », que la porte accorde ou retient. Si la structure ou le sommaire ne peuvent pas être enregistrés, l'étape n'est pas demandée et l'écran le dit.
+- Un sommaire retouché dans la Rédaction depuis la dernière structure validée n'est remplacé qu'avec l'accord de l'utilisateur ; s'il refuse, son sommaire est gardé et la structure est validée quand même.
+- Ouvrir l'onglet n'affiche que l'analyse des concurrents déjà en base, même ancienne ; s'il n'y en a pas, l'écran le dit, et l'analyse (payante) ne part qu'avec « Générer la structure » (cf. `FR-MOT-NO-AUTO-ACTION`).
+- Retirer l'étape Capitaine ou Lieutenants retire aussi l'étape « Structure validée », de même qu'ajouter ou retirer un lieutenant retenu quand la structure est déjà validée : la structure a été bâtie sur eux et se revalide dans son onglet.
+- Le sommaire tiré de la structure commence par son H1 — ni rétrogradé en H2 ni remplacé par le titre de l'article — et compte une seule introduction et une seule conclusion, même si la structure en portait déjà une (cf. `FR-RED-OUTLINE`).
+- Une structure validée puis modifiée l'annonce (« La structure a changé depuis sa validation ») ; enregistrée, elle perd son étape, qu'il faut redemander.
+- Enregistrer les lieutenants ou le lexique ne touche plus la structure enregistrée.
+- Le mode automatique suit le même chemin : après les lieutenants, il demande une structure, l'enregistre, demande l'étape à la même porte et en tire le sommaire de la rédaction. Une reprise relit la structure enregistrée ; le Moteur n'est sauté que si la structure et le lexique sont validés.
+- Les articles dont les lieutenants avaient été validés avant l'arrivée de l'onglet n'ont pas l'étape « Structure validée » : leur Finalisation reste fermée. Une réconciliation, en simulation par défaut, les liste et n'accorde l'étape qu'à ceux dont la structure passe la porte.
+
+**Limites connues**
+- Les titres ne se retouchent pas à la main dans l'onglet : on garde (🔒) ou on redemande. La retouche fine se fait dans le sommaire de la Rédaction.
+- Changer de capitaine sans retirer son étape (remplacer directement le mot-clé verrouillé) ne retire pas l'étape « Structure validée » : la publication, qui rejoue la porte, voit alors un H1 sans le nouveau capitaine.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-LIE-HN-STRUCTURE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C6 (checklist M7). **Amendée à la livraison :** « le H1 proposé est conservé jusqu'à la rédaction » devient une règle du sommaire (le H1 de la structure en tête, jamais doublé) ; l'IA n'écrit plus d'introduction ni de conclusion, et le sommaire ne les double plus ; la validation s'ajoute à l'enregistrement ; plus aucune structure ne s'efface en silence ; le mode automatique et les articles déjà avancés suivent. **Complétée aux défauts de clôture de C6 (2026-09-25)** : plus d'analyse payante à l'ouverture de l'onglet, cascade des étapes Capitaine / Lieutenants → Structure, sommaire refusé = validation arrêtée, sommaire retouché gardé sur demande. **Amendée le 2026-09-25 (C7)** : « les autres articles du cocon » deviennent l'état complet du cocon (cf. `FR-INFRA-COCOON-CONTEXT`) — l'IA sait aussi quelles sections de l'article ont déjà leur propre article, et, pour un enfant, ce que la section de son parent dit déjà de lui.
+
+> **En situation.** Arnaud verrouille 4 lieutenants pour son pilier « création site internet », puis ouvre Structure : les 4 lieutenants sont rappelés en tête. Il demande une structure : le H1 contient « création site internet », les H2 reprennent ses lieutenants et les titres qui reviennent chez les concurrents, sans introduction ni conclusion. Le chapitre sur l'audit se contente d'annoncer le sujet : l'article « Auditer son site » existe déjà dans le cocon. Il verrouille deux titres qu'il aime, redemande une proposition, la garde et clique « Valider la structure ». Le cinquième dot se remplit ; dans la Rédaction, le sommaire l'attend : son H1, une introduction, ses chapitres, une conclusion.
+
+→ Conception : [DESIGN-HN-TAB](./design-registry.md#design-hn-tab)
+
+---
+
+#### FR-HN-LOCK-GATE — Une structure conforme au type d'article
+
+Valider la structure passe par une **porte** : le serveur juge la structure enregistrée avant d'accorder l'étape, et l'alarme graduée montre chaque point (cf. `FR-INFRA-GATE-WAIVER`). Les règles du type d'article viennent de la source unique (cf. `FR-INFRA-TYPE-RULES-SSOT`).
+
+**Critères d'acceptation**
+- 🔴 Aucune structure n'est enregistrée : l'article a été rédigé sans passer par l'onglet Structure (article d'avant l'onglet, sommaire écrit à la Rédaction). L'utilisateur peut l'assumer, notamment à la publication, qui rejoue cette porte.
+- ⛔ La structure a des titres mais aucun chapitre (H2), n'a pas de titre H1, contient un titre vide, ou une sous-partie (H3) sans chapitre au-dessus. Ces défauts ne se dérogent pas.
+- 🔴 Le H1 ne contient pas le capitaine **en entier** (tous ses mots, variantes grammaticales admises). Même niveau qu'au premier jet et à la publication : un titre peut reformuler le mot-clé, et l'utilisateur peut l'assumer par écrit.
+- 🔴 Le nombre de **H2 de fond** sort des règles du type : 6 à 8 pour un pilier, 4 à 6 pour un intermédiaire, 3 à 5 pour un spécialisé. Les H2 de fond sont les chapitres hors introduction et conclusion, que le sommaire ajoute toujours. Le message dit s'il y a trop de chapitres (l'article s'étale et empiète sur les autres articles du cocon) ou trop peu (il ne couvre pas les questions du lecteur).
+- 🔴 Trop de chapitres citent la ville du client : 2 au plus pour un pilier, aucun pour un intermédiaire ou un spécialisé.
+- 🔴 Pour un pilier, un chapitre dont le titre contient le mot-clé principal d'un autre article du cocon **et** qui le développe en sous-parties (H3) : deux pages creuseraient le même sujet. L'alarme propose de garder ce chapitre sans sous-parties — un résumé de 150 à 250 mots et un lien vers l'article. S'il le recoupe sans le développer : 🟠 (« résumez-le et liez-le »).
+- 🟠 Un lieutenant retenu n'apparaît dans aucun titre, chapitre ou sous-partie (les trois quarts de ses mots suffisent).
+- 🟠 Un chapitre « Introduction » ou « Conclusion » écrit dans la structure : le sommaire en ajoute déjà un, il ferait doublon.
+- 🟠 Plus de sous-parties sous un chapitre que le type n'en admet (3).
+- Chaque lieutenant absent et chaque article recoupé se déroge séparément.
+- Une dérogation tombe si la structure, le type, le capitaine, les lieutenants retenus, la ville du client ou les articles du cocon qu'elle recoupe changent. Un article du cocon sans rapport, créé plus tard, ne la fait pas tomber.
+- La porte est rejouée à la publication (cf. `FR-RED-PUBLISH-GATE`) ; le mode automatique s'arrête sur un refus, sans jamais déroger.
+
+**Limites connues**
+- Le recoupement avec un autre article du cocon ne se juge que pour un pilier, et seulement quand le titre du chapitre contient le mot-clé principal de cet article en entier : un chapitre qui traite le même sujet avec d'autres mots passe inaperçu.
+- La ville comptée est celle de la zone du client (« Toulouse, Occitanie » → Toulouse) ; une autre ville citée n'est pas comptée.
+- Une introduction ou une conclusion n'est reconnue qu'à ses premiers mots (« Introduction », « Conclusion », « En conclusion », « Pour conclure », « Pour finir », « En résumé ») : « Le mot de la fin » compte comme un chapitre de fond, et le sommaire ajoute quand même sa conclusion.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C6. **Amendée à la livraison :** le H1 sans capitaine est 🔴 et non ⛔ (seul un H1 absent est ⛔), comme au premier jet (cf. `FR-RED-DRAFT-SINGLE-PASS`) et à la publication ; le nombre de H2 compte les « H2 de fond » ; le recoupement d'un pilier avec un article du cocon n'est 🔴 que s'il le développe en H3, sinon 🟠 ; s'ajoutent les défauts techniques (structure sans H2, titre vide, H3 orphelin), la ville trop citée, le lieutenant absent des titres, l'introduction ou la conclusion écrites et l'excès de H3. **Aux défauts de clôture de C6 :** une structure absente est 🔴 et non ⛔ — sinon un article rédigé sans l'onglet Structure ne pouvait plus être publié.
+
+> **En situation.** La structure du pilier 1013, repassée à la porte, est retenue : son H1 « Propulser la croissance digitale des entreprises toulousaines : le guide complet 2026 » ne contient pas le capitaine en entier (🔴), et elle compte 12 H2 de fond pour un pilier qui en demande 6 à 8 (🔴, « l'article s'étale »). Sur un autre pilier, le chapitre « Audit de site » et ses trois sous-parties sont signalés : « Audit de site » est déjà un article du cocon (🔴) ; l'alarme propose de garder ce chapitre en résumé. Arnaud déverrouille ce chapitre et redemande une proposition : il revient sans sous-parties. Il ne reste qu'un 🟠 (« résumez-le et liez-le »), qu'il lit avant de valider.
+
+→ Conception : [DESIGN-HN-LOCK-GATE](./design-registry.md#design-hn-lock-gate)
+
+---
+
 ### 8.8 — Moteur — Lexique (FR-LEX)
 
-> **Rôle de l'onglet.** Le Lexique est la dernière étape Phase ② du Moteur. L'utilisateur arrive ici avec un Capitaine et des Lieutenants verrouillés. L'app extrait des contenus concurrents top 10 les **termes les plus utilisés** statistiquement, les répartit en trois niveaux (Obligatoires / Différenciateurs / Optionnels), et l'utilisateur valide ceux qu'il veut absolument retrouver dans son article. Cette liste est ensuite injectée dans les prompts de Rédaction pour guider l'écriture.
+> **Rôle de l'onglet.** Le Lexique est la dernière étape Phase ② du Moteur. L'utilisateur arrive ici avec un Capitaine et des Lieutenants verrouillés, et une structure validée. L'app extrait des contenus concurrents top 10 les **termes les plus utilisés** statistiquement, les répartit en trois niveaux (Obligatoires / Différenciateurs / Optionnels), et l'utilisateur valide ceux qu'il veut absolument retrouver dans son article. Cette liste est ensuite injectée dans les prompts de Rédaction pour guider l'écriture.
 
 #### FR-LEX-TFIDF — Extraction statistique des termes utilisés par les concurrents
 
-L'app analyse le contenu textuel des pages top 10 Google du Capitaine et **mesure la fréquence d'apparition de chaque terme** : un terme présent chez ≥ 70 % des concurrents est marqué **Obligatoire**, entre 30 et 70 % **Différenciateur**, sous 30 % **Optionnel**. Les mots-outils du français (les, des, pour, sur, par…) sont ignorés. L'utilisateur voit une liste triée par densité, plafonnée à 50 termes par niveau pour rester lisible. Le calcul réutilise les contenus déjà scrapés pour Lieutenants — aucun nouvel appel API.
+L'app analyse le contenu textuel des pages top 10 Google du Capitaine et **mesure la fréquence d'apparition de chaque terme** : un terme présent chez ≥ 70 % des concurrents est marqué **Obligatoire**, entre 30 et 70 % **Différenciateur**, sous 30 % **Optionnel**. Les mots-outils du français (les, des, pour, sur, par…) et le décor des pages (menus, bandeaux cookies…) sont ignorés (cf. `FR-LEX-METIER-ONLY`). L'utilisateur voit une liste triée par densité, plafonnée à 50 termes par niveau pour rester lisible. Le calcul réutilise les contenus déjà scrapés pour Lieutenants — aucun nouvel appel API.
 
 **Critères d'acceptation**
 - L'app produit trois listes (Obligatoires, Différenciateurs, Optionnels) avec des termes triés par densité descendante.
@@ -2131,6 +2484,35 @@ L'app analyse le contenu textuel des pages top 10 Google du Capitaine et **mesur
 > **En situation.** Sur l'article rupture conventionnelle, l'utilisateur clique « Extraire le Lexique ». 2 secondes plus tard : section **Obligatoires** (24 termes — « indemnité », « salaire », « calcul », « brut », « net »…), section **Différenciateurs** (18 termes — « plafond », « ancienneté », « senior », « cdd »…), section **Optionnels** (35 termes). Il voit en un coup d'œil le vocabulaire que les top 10 Google considèrent incontournable.
 
 → Conception : [DESIGN-LEX-TFIDF](./design-registry.md#design-lex-tfidf)
+
+---
+
+#### FR-LEX-METIER-ONLY — Le lexique ne contient que des mots du métier
+
+Le lexique dit à la rédaction quels mots du métier l'article doit employer. Celui du pilier 1013 (2026-09-24) contenait « vos », « nos », « être » : des mots que toute page emploie, qui n'apprennent rien à la rédaction et gonflent la couverture du lexique dans le score SEO. Ils passaient par trois fuites : une liste de mots vides incomplète, qui ne reconnaissait pas « être » écrit avec son accent ; des pages concurrentes analysées avec leurs menus, leurs pieds de page et leurs bandeaux cookies ; et un pré-cochage qui validait l'étape sans que personne ait choisi. Désormais le lexique proposé ne garde que le vocabulaire du métier, aucun terme n'est retenu d'office, et la validation passe par une **porte** (cf. `FR-INFRA-GATE-WAIVER`).
+
+**Critères d'acceptation**
+- Aucun mot vide parmi les termes proposés — articles, pronoms, possessifs, prépositions, adverbes, verbes génériques comme « être », « voir » ou « permet » —, qu'il soit écrit avec ou sans accent. Ni nombre, ni mot de moins de trois lettres.
+- Les mots du décor des pages (cookies, consentement, mentions légales, confidentialité, newsletter, connexion, panier, réseaux sociaux, « cliquez »…) ne sont pas proposés.
+- Un terme de plusieurs mots n'est générique que si tous ses mots le sont : « vos cookies » l'est, « vos combles » non.
+- Les mots ambigus, qui sont du métier pour certains sites (« site », « blog », « article », « recherche »), restent proposés.
+- Seul le contenu principal des pages concurrentes compte : leurs menus, en-têtes, pieds de page, encarts, formulaires et bandeaux de cookies ou d'inscription sont écartés. Dans un article, le titre est gardé.
+- Aucun terme n'est coché d'office, ni après l'extraction ni après l'analyse de l'IA : l'IA signale les termes qu'elle recommande, l'utilisateur choisit (cf. `FR-LEX-PRECHECK-PERSISTE`).
+- Une exploration enregistrée avant cette règle se relit sous la même règle : ses mots génériques ne s'affichent plus, ni parmi les termes extraits, ni parmi les termes que l'IA recommande ou juge manquants.
+- 🔴 Un lexique vide retient l'étape « Lexique validé » : la rédaction n'aurait aucun vocabulaire métier à couvrir. L'utilisateur peut l'assumer en écrivant pourquoi (un article très court, par exemple).
+- 🔴 Un terme générique retenu (mot vide ou décor de page) retient l'étape. Une alerte par terme : chacun se déroge séparément.
+- La porte est revérifiée à chaque changement du lexique, une fois le changement enregistré, sans interrompre l'utilisateur : tant qu'elle retient l'étape, un bandeau « Étape non validée » donne la première raison, et un bouton « Voir pourquoi / décider » ouvre l'alarme graduée. Un terme générique coché après coup retire l'étape ; le décocher la rend.
+- Si la vérification est impossible (serveur injoignable), l'étape est demandée quand même : le serveur tranche, et l'alarme s'ouvre s'il refuse.
+- La porte juge le lexique enregistré, qu'elle soit sollicitée par l'écran, par l'outil automatique ou par un appel direct au serveur.
+- La porte est rejouée à la publication (cf. `FR-RED-PUBLISH-GATE`) : un terme générique encore présent, ou un lexique vide, y revient en 🔴 tant qu'aucune dérogation ne le couvre.
+- Le mode automatique ne retient jamais un terme que la porte refuserait.
+- Le lexique modifié depuis la Rédaction passe par le même filtre : un terme générique ajouté à la main est refusé, et l'écran dit pourquoi ; les termes génériques d'une suggestion de l'IA en sont écartés, et l'écran dit lesquels. La Rédaction n'a pas d'étape « Lexique validé » : c'est la publication qui rejoue la porte.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C3 (checklist M4, M5, M11). **Amendée le 2026-09-25** (C4, checklist M15) : le lexique modifié depuis la Rédaction passe aussi par le filtre des mots génériques. **Amendée le 2026-09-25 (checklist M16, commit `e490437`)** : les explorations enregistrées avant la règle sont filtrées à la relecture ; elles réaffichaient « être » ou « cookies » à chaque visite.
+
+> **En situation.** Sur « isolation combles perdus », l'utilisateur extrait son lexique. La liste propose « laine », « soufflée », « pare-vapeur », « combles »… — des mots isolés : « laine soufflée » n'y figure pas d'un seul tenant — et jamais « vos », « nos », « être » ni « cookies », même si toutes les pages concurrentes les emploient. Aucune case n'est cochée ; un badge signale les termes que l'IA recommande. Il coche « pare-vapeur », « laine » et « soufflée » : l'étape « Lexique validé » est accordée. Il rouvre l'onglet d'une ancienne exploration, enregistrée avant la règle : « être » et « cookies » n'y figurent plus. Si un mot générique restait malgré tout dans le lexique retenu — un terme retenu avant la règle, par exemple —, le prochain changement du lexique le verrait : l'étape serait retirée, avec un bandeau « Étape non validée. « être » n'est pas un mot du métier. », jusqu'à ce qu'il le décoche. Sur un article rédigé sans lexique, la publication s'arrête sur 🔴 « Aucun terme retenu : le lexique est vide. » ; il revient choisir ses termes, ou assume en écrivant pourquoi. Plus tard, dans la Rédaction, il tape « vos » dans la section « Mots-clés » : le terme n'est pas ajouté, et un message explique que c'est un mot générique.
+
+→ Conception : [DESIGN-LEX-METIER-ONLY](./design-registry.md#design-lex-metier-only)
 
 ---
 
@@ -2152,15 +2534,17 @@ L'utilisateur peut trier chaque liste de trois manières : **A-Z** (recherche d'
 
 #### FR-LEX-SELECT — Cases à cocher individuelles, persistance immédiate
 
-L'utilisateur sélectionne les termes qu'il veut **absolument retrouver dans son article** en cochant une case par terme. Les termes du niveau **Obligatoire** sont pré-cochés au premier affichage (heuristique : si la majorité des concurrents l'utilise, l'utilisateur le veut probablement aussi). Chaque cochage/décochage est sauvegardé immédiatement — pas de bouton « Enregistrer ».
+L'utilisateur sélectionne les termes qu'il veut **absolument retrouver dans son article** en cochant une case par terme. Aucun terme n'est coché d'office, pas même les **Obligatoires** : qu'un mot soit employé par la majorité des concurrents ne dit pas que l'article en a besoin (cf. `FR-LEX-METIER-ONLY`). Chaque cochage/décochage est sauvegardé immédiatement — pas de bouton « Enregistrer ».
 
 **Critères d'acceptation**
 - Chaque terme affiche une case à cocher individuelle.
-- Les termes du niveau Obligatoire sont pré-cochés à la première affichage.
+- Au premier affichage, aucune case n'est cochée, quel que soit le niveau du terme.
 - Le clic sur une case enregistre le changement aussitôt en base.
 - Recharger la page retrouve les choix exactement.
 
-> **En situation.** Le consultant ouvre l'onglet Lexique : les 24 Obligatoires sont déjà cochés. Il décoche 3 termes qu'il juge déplacés (« licenciement » par exemple, car son article ne parle pas du licenciement), puis coche 7 Différenciateurs et 4 Optionnels qu'il veut introduire. Il ferme l'onglet, va boire un café, revient — ses 32 cases cochées sont intactes.
+**Statut :** amendée le 2026-09-25 (fin du pré-cochage des Obligatoires, épopée qualité SEO C3).
+
+> **En situation.** Le consultant ouvre l'onglet Lexique : aucune case n'est cochée. Il coche 21 des 24 Obligatoires — il laisse de côté « licenciement », son article n'en parle pas —, puis 7 Différenciateurs et 4 Optionnels qu'il veut introduire. Il ferme l'onglet, va boire un café, revient — ses 32 cases cochées sont intactes.
 
 → Conception : [DESIGN-LEX-SELECT](./design-registry.md#design-lex-select)
 
@@ -2191,6 +2575,9 @@ En complément du Lexique du Capitaine, l'utilisateur peut **tester librement un
 - L'app extrait le Lexique de ce mot-clé et l'affiche dans un nouvel onglet.
 - L'utilisateur peut basculer entre les onglets sans perdre l'état des cases cochées.
 - Plusieurs explorations peuvent coexister par article.
+- Avoir déjà retenu des termes ne ferme pas « Tester un mot-clé » : le champ et le bouton « Extraire » restent actifs ; seule une extraction en cours les grise.
+
+**Statut :** active. **Corrigé le 2026-09-25 (épopée qualité SEO, révélé par le tri des tests ignorés, checklist T2 ; commit `20e4aa9`)** : le champ et « Extraire » se grisaient dès qu'un terme du lexique était retenu — on ne pouvait plus tester un autre mot-clé après avoir coché.
 
 > **En situation.** Le consultant a validé le Lexique du Capitaine « calcul indemnité rupture conventionnelle 2026 ». Curieux, il teste aussi « rupture conventionnelle CDD » (son Lieutenant). Surprise : 8 termes apparaissent en Obligatoires qui n'étaient même pas dans le Lexique du Capitaine (« précarité », « 10% », « bareme »…). Il en intègre 4 dans son brief.
 
@@ -2200,12 +2587,16 @@ En complément du Lexique du Capitaine, l'utilisateur peut **tester librement un
 
 #### FR-LEX-CHECK — Étape Moteur « Lexique validé » posée quand au moins un terme est coché
 
-L'étape Moteur « Lexique validé » est posée automatiquement dès que l'utilisateur a au moins un terme coché dans le Lexique. Décocher le dernier terme retire l'étape. La règle est simple : pas de seuil minimal de termes, juste la preuve d'une intention de validation. Au mount de l'onglet, une réconciliation défensive corrige les éventuelles incohérences (étape posée en base mais aucun terme coché, ou inversement).
+L'étape Moteur « Lexique validé » est posée automatiquement dès que l'utilisateur a au moins un terme coché dans le Lexique, à condition que la porte du lexique passe (cf. `FR-LEX-METIER-ONLY`). Décocher le dernier terme retire l'étape. La règle est simple : pas de seuil minimal de termes, juste la preuve d'une intention de validation. Au mount de l'onglet, une réconciliation défensive corrige les éventuelles incohérences (étape posée en base mais aucun terme coché, ou inversement).
 
 **Critères d'acceptation**
 - L'étape `moteur:lexique_validated` est posée dès qu'un terme est coché.
 - Décocher tous les termes retire l'étape automatiquement.
 - À l'ouverture, si la base contient l'étape mais aucun terme coché, l'app la retire ; et inversement.
+- L'étape n'est posée que si la porte du lexique passe, d'emblée ou après dérogation (cf. `FR-LEX-METIER-ONLY`) ; sinon la progression ne bouge pas, un bandeau « Étape non validée » le dit et l'alarme graduée s'ouvre à la demande.
+- La porte est revérifiée à chaque changement du lexique : un terme générique ajouté retire l'étape, qui revient quand la porte passe de nouveau.
+
+**Statut :** amendée le 2026-09-25 (porte du lexique, épopée qualité SEO C3).
 
 > **En situation.** Le consultant coche son 1ᵉʳ terme du Lexique : le 5ᵉ dot du dashboard passe de `○` à `●`. Plus tard il décoche tous ses termes pour repartir de zéro : le dot revient à `○`. Il recoche : `●`. La cohérence est garantie sans qu'il ait à se soucier de quoi que ce soit.
 
@@ -2275,96 +2666,19 @@ Deux gestes distincts cohabitent dans le Lexique : **explorer** des Lexiques de 
 
 → Conception : [DESIGN-LEX-LECTURE-VS-VERROUILLAGE](./design-registry.md#design-lex-lecture-vs-verrouillage)
 
-#### FR-LEX-PRECHECK-SERP
-**UX pré-check SERP au mount du Lexique** *(actif 2026-05-09 — Stories E1-S1+S2+S3 chantier 3)*. Au mount du `LexiquePanel`, un endpoint léger `GET /api/keywords/:keyword/serp/exists` répond `{ exists: boolean, scrapedAt: timestamp | null }` sans charger le JSONB entier ni les scrapes.
-
-**Comportement UI** :
-- `exists: true` → bouton « Extraire le Lexique » actif immédiatement.
-- `exists: false` → message explicite *« Le scrape SERP n'est pas encore disponible pour ce mot-clé »* + CTA *« Lancer l'analyse SERP (consomme ~$0.003 DataForSEO) »* avec confirmation modale.
-- Plus de **404 dans la console** : c'est un état attendu, pas une erreur technique.
-
-**Contrats techniques** *(implémentés)* :
-- Service `hasSerpScrape(keyword, lang, country)` dans `server/services/keyword/keyword-serp.service.ts`. SQL `MAX(scraped_at) FROM keyword_serp_scrapes` (sub-ms).
-- Composable `useSerpExistsCheck(keyword: Ref<string|null>)` dans `src/composables/lexique/useSerpExistsCheck.ts`. Watch immediate + refetch().
-- Modale `<ConfirmModal>` réutilisable dans `src/components/shared/ConfirmModal.vue`.
-- POST `/serp/tfidf` accepte un body `triggerScrapeIfMissing: boolean` (default false → compat 404 verbatim AC.C1.1/C2.2). Honoré par `analyzeLexique` (chantier 2 livré).
-
-**Critères d'acceptation testables** :
-- AC.LEX-PRECHECK.1 : Endpoint `GET /api/keywords/:keyword/serp/exists` répond `{ exists: false, scrapedAt: null }` pour un keyword jamais scrapé. 200 OK, pas 404. Validation 400 si keyword vide ou >200 chars. *(test : `tests/integration/keywords-serp-exists.test.ts`)*
-- AC.LEX-PRECHECK.2 : Endpoint répond `{ exists: true, scrapedAt: '2026-05-...' }` pour un keyword déjà scrapé. *(test : idem)*
-- AC.LEX-PRECHECK.3 : Au mount du LexiquePanel, ce GET est appelé une fois ; selon la réponse, le bouton « Extraire » est visible ou remplacé par le CTA « Lancer l'analyse SERP ». *(test : `tests/unit/components/moteur/LexiquePanel.precheck.test.ts`)*
-- AC.LEX-PRECHECK.4 : Le clic sur « Lancer l'analyse SERP » ouvre `<ConfirmModal>`. Confirmation → POST `/serp/tfidf` appelé avec `triggerScrapeIfMissing: true` (1 seul appel) → refetch `useSerpExistsCheck` pour repasser à l'état nominal. *(test : idem)*
-- AC.LEX-PRECHECK.5 : Aucun appel direct à `POST /api/serp/tfidf` qui aboutirait à un 404 (la logique pré-check empêche ce cas — watcher auto-restore gated par `serpExists !== false`). *(test : idem, mock count = 0)*
-
-**Statut :** **active** *(implémenté 2026-05-09 — Story E1 chantier 3)*. **Depuis :** 2026-05-09. **Source :** plan-chantier-3-ux-lexique.
-**Voir aussi :** FR-LEX-SCRAPE-DEDIE, FR-LEX-MULTI-KEYWORD-TABS.
-
-#### FR-LEX-MULTI-KEYWORD-TABS
-**Système d'onglets par `source_keyword` dans le container Lexique** *(actif 2026-05-09 — Stories E2-S1+S2+S3 chantier 3)*. Le container Lexique affiche un système d'onglets, **un onglet par `source_keyword` exploré pour l'article courant** (lus depuis `lexique_explorations`).
-
-**Comportement** :
-- Le label de chaque onglet = `source_keyword` brut (ex. `creation site web entreprises`, `creation site Toulouse`). **Pas de transformation côté UI** (cohérence affichage/calcul §2.0 CLAUDE.md : `tab.id === tab.label === entry.sourceKeyword`).
-- L'onglet actif affiche le `tfidfResult` correspondant + ses recommandations IA, sans refetch DB.
-- Un onglet « + Tester un mot-clé » (ou « Tester un mot-clé » s'il n'y a aucune exploration) ouvre le champ libre existant (`extractCustomKeyword`).
-- Le composant utilise `<TabBar>` partagé (`src/components/shared/TabBar.vue`, ARIA-compliant role="tablist"/role="tab"/aria-selected).
-
-**Contrats techniques** *(implémentés)* :
-- Composant pur `<TabBar>` réutilisable : props `{ tabs: TabItem[], activeId: string, ariaLabel? }`, emit `update:activeId`, support `disabled`.
-- Composant `LexiqueCustomKeywordInput.vue` (renommage de `LexiqueMultiKeywordPanel.vue`) — saisie libre uniquement (la liste d'explorations est portée par `<TabBar>` côté parent).
-- LexiquePanel : computed `lexiqueTabs`, `displayedTabId` (matching strict, pas de lowercase), handler `onSelectTab`. `extractCustomKeyword` appelle `mergeFromDb` après succès → nouvel onglet apparaît automatiquement.
-
-**Critères d'acceptation testables** :
-- AC.LEX-TABS.1 : Article avec 3 `lexique_explorations` → 3 onglets + 1 onglet « + Tester un mot-clé » (4 boutons `role="tab"`). *(test : `tests/unit/components/moteur/LexiquePanel.tabs.test.ts`)*
-- AC.LEX-TABS.2 : Cliquer sur un onglet change le `tfidfResult` affiché sans refetch DB (`apiGet('/articles/:id/explorations')` count stable). *(test : idem + `lexique-extraction.gaps`)*
-- AC.LEX-TABS.3 : Extraction d'un keyword vierge → nouvel onglet via `mergeFromDb` post-fetch + sélection automatique (matching strict `activeSourceKeyword === entry.sourceKeyword`). *(test : `lexique-extraction.gaps`)*
-- AC.LEX-TABS.4 : Article sans aucune exploration → 1 seul onglet « Tester un mot-clé ». *(test : `LexiquePanel.tabs.test.ts` + `lexique-extraction.gaps`)*
-- AC.LEX-TABS.5 : Test architectural — `LexiquePanel.vue` importe `TabBar` depuis `@/components/shared/`, `<TabBar>` reste pur (aucun import métier Lexique). *(test : `tests/unit/architecture/lexique-tabbar.test.ts`)*
-
-**Statut :** **active** *(implémenté 2026-05-09 — Story E2 chantier 3)*. **Depuis :** 2026-05-09. **Source :** plan-chantier-3-ux-lexique.
-**Voir aussi :** FR-LEX-MULTI-KEYWORD (existant, étendu), FR-LEX-LECTURE-VS-VERROUILLAGE.
-
-#### FR-LEX-LECTURE-VS-VERROUILLAGE
-**Séparation stricte des responsabilités lecture vs verrouillage** *(actif 2026-05-09 — Stories E3-S1+S2+S3 chantier 3)*. Deux familles de fonctions strictement séparées via deux composables Vue dédiés :
-
-**Famille LECTURE** — `src/composables/lexique/useLexiqueExplorations.ts` :
-- `pastExplorations`, `activeSourceKeyword`, `tfidfResult`, `iaRecommendations` (refs propres au composable).
-- `hydrateFromDb()` / `mergeFromDb()` — GET `/articles/:id/explorations` (lecture seule).
-- `selectExploration(sourceKeyword)` — switch onglet pur (lit le cache, 0 fetch).
-- `addExploration(entry)` — push local post-extractCustomKeyword.
-- `reset()` — purge cache sur switch d'article.
-- **Aucune mutation** de `article_keywords.lexique`. Aucun import de `article-keywords.store`. Le seul import depuis `api.service` est `apiGet`.
-
-**Famille VERROUILLAGE** — `src/composables/lexique/useLexiqueLocking.ts` :
-- `lockedTerms` (proxy lecture `store.keywords.lexique`), `isLocked` (computed length>0).
-- `toggleTerm(term)` — délègue à `articleKeywordsStore.add/removeLexiqueTerm` puis `saveDecisions(id)` → 1 PUT `/articles/:id/keywords` par toggle.
-- **Aucune lecture** de `lexique_explorations`. Aucun appel `apiGet('/explorations')`.
-
-**Watcher gating workflow isolé** — `LexiquePanel.vue` conserve le watcher `isLocked` qui émet `check-completed`/`check-removed` `MOTEUR_LEXIQUE_VALIDATED`. C'est de la propagation de check workflow (orchestration MoteurView ↔ LexiquePanel), distincte des deux familles LECTURE/VERROUILLAGE (AC.LEX-SEP.4).
-
-**Critères d'acceptation testables** :
-- AC.LEX-SEP.1 : Test unitaire — appels aux fonctions LECTURE déclenchent **0 PUT** vers `/articles/:id/keywords`. *(test : `tests/unit/composables/lexique/useLexiqueExplorations.test.ts`, 5 verts)*
-- AC.LEX-SEP.2 : Test unitaire — appels aux fonctions VERROUILLAGE déclenchent **0 GET** vers `/articles/:id/explorations`. *(test : `tests/unit/composables/lexique/useLexiqueLocking.test.ts`, 4 verts)*
-- AC.LEX-SEP.3 : Test architectural (grep code, commentaires ignorés) — useLexiqueExplorations.ts n'importe que `apiGet` et n'appelle aucune fonction VERROUILLAGE ; useLexiqueLocking.ts n'utilise jamais `hydrateFromDb`/`mergeFromDb`/`pastExplorations`/`/explorations`. *(test : `tests/unit/architecture/lexique-separation.test.ts`, 4 verts)*
-- AC.LEX-SEP.4 : Test architectural — le watcher `isLocked` + emit `MOTEUR_LEXIQUE_VALIDATED` est présent dans LexiquePanel.vue mais absent des deux composables. *(test : `tests/unit/architecture/lexique-watcher-isolated.test.ts`, 3 verts)*
-
-**Métriques refacto** :
-- LexiquePanel.vue `<script>` : 497 → 299 lignes (-40 %).
-- 9 stories livrées sur 1 branche unique `feat/chantier-3-ux-lexique`.
-
-**Statut :** **active** *(implémenté 2026-05-09 — Story E3 chantier 3)*. **Depuis :** 2026-05-09. **Source :** plan-chantier-3-ux-lexique.
-**Voir aussi :** FR-LEX-CHECKBOX-LOCK-IMMEDIATE, FR-LEX-MULTI-KEYWORD-TABS.
-
 ---
 
 #### FR-LEX-CHECKBOX-LOCK-IMMEDIATE — Cocher un terme du Lexique l'ajoute immédiatement à la sélection *(déplacée depuis §8.6 le 2026-05-12)*
 
-Cocher la case d'un terme TF-IDF **l'ajoute immédiatement** à la sélection du Lexique de l'article — pas de bouton « Verrouiller le Lexique » à cliquer après. Décocher la case retire le terme aussitôt. L'étape Moteur « Lexique validé » suit automatiquement : elle est posée dès que la sélection contient au moins un terme, retirée dès qu'elle redevient vide.
+Cocher la case d'un terme TF-IDF **l'ajoute immédiatement** à la sélection du Lexique de l'article — pas de bouton « Verrouiller le Lexique » à cliquer après. Décocher la case retire le terme aussitôt. L'étape Moteur « Lexique validé » suit automatiquement : elle est posée dès que la sélection contient au moins un terme et que la porte du lexique passe (cf. `FR-LEX-METIER-ONLY`), retirée dès qu'elle redevient vide ou que la porte la refuse.
 
 **Critères d'acceptation**
 - Cocher une case ajoute le terme à `keywords.lexique` immédiatement.
 - Décocher la case retire le terme immédiatement.
-- L'étape `moteur:lexique_validated` apparaît dès le premier terme coché et disparaît si l'utilisateur décoche tous les termes.
+- L'étape `moteur:lexique_validated` apparaît quand la porte du lexique passe ; elle disparaît si l'utilisateur décoche tous les termes ou si un terme générique arrive dans la sélection.
 - Aucun bouton « Verrouiller le Lexique » global n'existe dans le panneau.
+
+**Statut :** amendée le 2026-09-25 (porte du lexique, épopée qualité SEO C3).
 
 > **En situation.** L'utilisateur parcourt la liste TF-IDF de son Lexique. Il coche les 12 termes Obligatoires que les concurrents partagent tous, le 4ᵉ dot du dashboard passe à `●`. Puis il coche un Différenciateur, décoche un Obligatoire qu'il juge déplacé — la sélection s'ajuste à chaque clic, sans validation explicite.
 
@@ -2374,19 +2688,22 @@ Cocher la case d'un terme TF-IDF **l'ajoute immédiatement** à la sélection du
 
 ### 8.9 — Moteur — Finalisation (FR-FIN)
 
-#### FR-FIN-RECAP — Récapitulatif lecture seule des trois verrouillages Phase ②
+#### FR-FIN-RECAP — Récapitulatif lecture seule des quatre verrouillages Phase ②
 
-Au moment de quitter le Moteur pour passer à la rédaction, l'utilisateur a besoin d'un dernier coup d'œil sur les décisions qu'il vient de prendre : quel mot-clé Capitaine il a verrouillé, quels Lieutenants il a retenus (et à quel niveau Hn), quels termes de lexique il a validés. L'onglet **Finalisation** affiche ce récapitulatif en lecture seule, organisé en trois sections repliables (Capitaine, Lieutenants, Lexique). Aucune modification possible depuis cet onglet — pour corriger, l'utilisateur revient à l'onglet concerné (Capitaine / Lieutenants / Lexique). L'onglet Finalisation est toujours navigable, mais son contenu n'a de sens que lorsque les trois verrous Phase ② sont posés.
+Au moment de quitter le Moteur pour passer à la rédaction, l'utilisateur a besoin d'un dernier coup d'œil sur les décisions qu'il vient de prendre : quel mot-clé Capitaine il a verrouillé, quels Lieutenants il a retenus (et à quel niveau Hn), quelle structure il a validée, quels termes de lexique il a validés. L'onglet **Finalisation** affiche ce récapitulatif en lecture seule, organisé en quatre sections repliables (Capitaine, Lieutenants, Structure, Lexique). Aucune modification possible depuis cet onglet — pour corriger, l'utilisateur revient à l'onglet concerné. L'onglet Finalisation est toujours navigable, mais son contenu n'a de sens que lorsque les quatre verrous Phase ② sont posés.
 
 **Critères d'acceptation**
 - L'onglet Finalisation affiche le mot-clé Capitaine verrouillé sur l'article courant.
 - L'onglet Finalisation liste les Lieutenants verrouillés avec leur niveau Hn et, si disponible, le raisonnement IA associé.
+- L'onglet Finalisation affiche la structure enregistrée — H1, H2 et H3 dans l'ordre de lecture, les H3 en retrait — et son nombre de H2 dans le titre de la section.
 - L'onglet Finalisation liste l'ensemble des termes du lexique validés.
-- Les trois sections sont repliables/dépliables individuellement, ouvertes par défaut.
+- Les quatre sections sont repliables/dépliables individuellement, ouvertes par défaut.
 - Aucun bouton, champ ou contrôle ne permet d'éditer une valeur depuis cet onglet — seuls le repli/déploiement des sections et le bouton de navigation vers la rédaction sont actionnables.
-- Si une catégorie est vide (par exemple aucun Lieutenant verrouillé), un message neutre l'indique au lieu de masquer la section.
+- Si une catégorie est vide (par exemple aucun Lieutenant verrouillé, ou aucune structure), un message neutre l'indique au lieu de masquer la section.
 
-> **En situation.** Vendredi en fin de journée, l'utilisateur a passé l'après-midi sur l'article « Calcul indemnité rupture conventionnelle ». Il a verrouillé son Capitaine (« calcul indemnité rupture conventionnelle 2026 »), retenu 4 Lieutenants (« indemnité légale », « ancienneté », « plafond », « simulation »), et validé une vingtaine de termes de lexique. Avant de lancer la rédaction lundi matin, il bascule sur l'onglet Finalisation et déroule les trois sections : tout est là, propre, à plat — pas besoin de re-cliquer dans Capitaine puis Lieutenants puis Lexique pour vérifier. Il voit aussi que son Lieutenant « plafond » est annoté H3 alors qu'il pensait H2 — il revient sur l'onglet Lieutenants en un clic pour ajuster, puis retourne à Finalisation. Confiance restaurée, il peut partir pour le week-end.
+**Statut :** active. **Amendée le 2026-09-25 (C6)** : une section « Structure » entre Lieutenants et Lexique (cf. `FR-HN-TAB`).
+
+> **En situation.** Vendredi en fin de journée, l'utilisateur a passé l'après-midi sur l'article « Calcul indemnité rupture conventionnelle ». Il a verrouillé son Capitaine (« calcul indemnité rupture conventionnelle 2026 »), retenu 4 Lieutenants (« indemnité légale », « ancienneté », « plafond », « simulation »), validé une structure en 5 H2 et une vingtaine de termes de lexique. Avant de lancer la rédaction lundi matin, il bascule sur l'onglet Finalisation et déroule les quatre sections : tout est là, propre, à plat — pas besoin de re-cliquer dans chaque onglet pour vérifier. Il voit aussi que son Lieutenant « plafond » est annoté H3 alors qu'il pensait H2 — il revient sur l'onglet Lieutenants en un clic pour ajuster, puis retourne à Finalisation. Confiance restaurée, il peut partir pour le week-end.
 
 → Conception : [DESIGN-FIN-RECAP](./design-registry.md#design-fin-recap)
 
@@ -2394,16 +2711,18 @@ Au moment de quitter le Moteur pour passer à la rédaction, l'utilisateur a bes
 
 #### FR-FIN-LINK-REDACTION — Bouton de transition vers la Rédaction
 
-Une fois les trois verrouillages Phase ② posés, l'utilisateur dispose d'un bouton explicite **« Aller à la Rédaction »** qui le bascule sur la vue de production éditoriale de l'article. Tant que l'un des trois verrous manque, le bouton de transition global (en pied de page du Moteur) reste désactivé et son tooltip énumère les étapes restantes, pour que l'utilisateur sache immédiatement quoi faire et où aller.
+Une fois les quatre verrouillages Phase ② posés, l'utilisateur dispose d'un bouton explicite **« Aller à la Rédaction »** qui le bascule sur la vue de production éditoriale de l'article. Tant que l'un des quatre verrous manque, le bouton de transition global (en pied de page du Moteur) reste désactivé et son tooltip énumère les étapes restantes, pour que l'utilisateur sache immédiatement quoi faire et où aller.
 
 **Critères d'acceptation**
 - Un bouton « Aller à la Rédaction » est présent sur l'onglet Finalisation.
-- En pied de page du Moteur, le bouton « Continuer vers la Rédaction » est désactivé tant que l'un des trois verrous (Capitaine, Lieutenants, Lexique) n'est pas posé.
-- Quand le bouton est désactivé, son tooltip natif liste les étapes manquantes (par exemple : « Étapes restantes : Capitaine à verrouiller, Lexique à valider »).
+- En pied de page du Moteur, le bouton « Continuer vers la Rédaction » est désactivé tant que l'un des quatre verrous (Capitaine, Lieutenants, Structure, Lexique) n'est pas posé.
+- Quand le bouton est désactivé, son tooltip natif liste les étapes manquantes (par exemple : « Étapes restantes : Structure à valider, Lexique à valider »).
 - Le clic sur le bouton actif emmène l'utilisateur sur l'écran de Rédaction de l'article courant, dans le même cocon — sans perte de contexte.
 - Si l'utilisateur revient au Moteur depuis la Rédaction, l'onglet Finalisation est de nouveau immédiatement utilisable, les verrouillages persistent.
 
-> **En situation.** Lundi matin, l'utilisateur reprend l'article « Calcul indemnité rupture conventionnelle ». Il rouvre l'onglet Finalisation, le récap est intact (les trois verrous ont survécu au week-end), et le bouton « Aller à la Rédaction » est cliquable. Un clic, il atterrit sur l'éditeur de l'article. Le pied de page du Moteur affichait déjà ce même bouton, mais il avait préféré passer par l'onglet Finalisation pour vérifier le récap avant. Sur un autre article du même cocon où il n'a verrouillé que le Capitaine, le bouton de pied de page reste grisé avec le tooltip « Étapes restantes : Lieutenants à verrouiller, Lexique à valider » — pas de mystère sur ce qu'il lui reste à faire.
+**Statut :** active. **Amendée le 2026-09-25 (C6)** : quatre verrous, « Structure à valider » dans la liste des étapes restantes (cf. `FR-HN-TAB`).
+
+> **En situation.** Lundi matin, l'utilisateur reprend l'article « Calcul indemnité rupture conventionnelle ». Il rouvre l'onglet Finalisation, le récap est intact (les quatre verrous ont survécu au week-end), et le bouton « Aller à la Rédaction » est cliquable. Un clic, il atterrit sur l'éditeur de l'article. Le pied de page du Moteur affichait déjà ce même bouton, mais il avait préféré passer par l'onglet Finalisation pour vérifier le récap avant. Sur un autre article du même cocon où il n'a verrouillé que le Capitaine, le bouton de pied de page reste grisé avec le tooltip « Étapes restantes : Lieutenants à verrouiller, Structure à valider, Lexique à valider » — pas de mystère sur ce qu'il lui reste à faire.
 
 → Conception : [DESIGN-FIN-LINK-REDACTION](./design-registry.md#design-fin-link-redaction)
 
@@ -2411,15 +2730,17 @@ Une fois les trois verrouillages Phase ② posés, l'utilisateur dispose d'un bo
 
 #### FR-FIN-CHECK — Pas de check workflow dédié à la Finalisation
 
-Le Moteur compte **exactement cinq étapes traçables** : Discovery, Radar (Phase ① Explorer), Capitaine, Lieutenants, Lexique (Phase ② Valider). L'onglet Finalisation est un onglet de **synthèse**, pas une étape de production : il ne consomme et ne produit aucune décision nouvelle, il n'a donc pas de check workflow dédié. L'« avancement » de la Finalisation est entièrement déduit des trois checks Phase ② : si les trois sont posés, l'utilisateur est prêt à passer à la rédaction ; sinon, le récap est incomplet et le bouton de transition reste désactivé.
+Le Moteur compte **exactement six étapes traçables** : Discovery, Radar (Phase ① Explorer), Capitaine, Lieutenants, Structure, Lexique (Phase ② Valider). L'onglet Finalisation est un onglet de **synthèse**, pas une étape de production : il ne consomme et ne produit aucune décision nouvelle, il n'a donc pas de check workflow dédié. L'« avancement » de la Finalisation est entièrement déduit des quatre checks Phase ② : si les quatre sont posés, l'utilisateur est prêt à passer à la rédaction ; sinon, le récap est incomplet et le bouton de transition reste désactivé.
 
 **Critères d'acceptation**
 - Aucune action sur l'onglet Finalisation n'inscrit ou ne retire de check dans la progression de l'article.
-- L'état « prêt pour la rédaction » est strictement équivalent à : *Capitaine verrouillé* ET *Lieutenants verrouillés* ET *Lexique validé*.
+- L'état « prêt pour la rédaction » est strictement équivalent à : *Capitaine verrouillé* ET *Lieutenants verrouillés* ET *Structure validée* ET *Lexique validé*.
 - L'onglet Finalisation peut être consulté à tout moment, indépendamment de l'état des verrous Phase ② — il informera juste de l'incomplet plutôt que de bloquer l'accès.
 - Le bouton « Aller à la Rédaction » dans l'onglet et le bouton « Continuer vers la Rédaction » en pied de page utilisent **la même règle de déverrouillage** — ils ne peuvent pas être dans un état contradictoire.
 
-> **En situation.** L'utilisateur revoit son tableau de progression depuis le dashboard : sur la carte d'un article, il voit 5 dots possibles, pas 6. C'est cohérent avec le Moteur : il n'y a pas d'étape « Finalisation » à valider en tant que telle, juste une transition entre la phase de validation des mots-clés et la phase d'écriture. Quand il finit son Lexique, le 5ᵉ dot se remplit et, dans le même instant, le bouton « Continuer vers la Rédaction » bascule de grisé à actif — sans qu'il ait à passer par l'onglet Finalisation pour cocher quoi que ce soit.
+**Statut :** active. **Amendée le 2026-09-25 (C6)** : six étapes au lieu de cinq, quatre verrous Phase ② au lieu de trois — « Structure validée » s'ajoute (cf. `FR-HN-TAB`, `FR-MOT-CHECKS`) ; toujours aucune étape « Finalisation ».
+
+> **En situation.** L'utilisateur regarde la progression d'un article dans la liste en haut du Moteur : il voit 6 dots possibles, pas 7. C'est cohérent avec le Moteur : il n'y a pas d'étape « Finalisation » à valider en tant que telle, juste une transition entre la phase de validation et la phase d'écriture. Quand il finit son Lexique, le 6ᵉ dot se remplit et, dans le même instant, le bouton « Continuer vers la Rédaction » bascule de grisé à actif — sans qu'il ait à passer par l'onglet Finalisation pour cocher quoi que ce soit.
 
 → Conception : [DESIGN-FIN-CHECK](./design-registry.md#design-fin-check)
 
@@ -2437,6 +2758,9 @@ Avant de demander à l'IA d'écrire son article, l'utilisateur peut lancer une *
 - L'analyse intègre le mot-clé Capitaine, les Lieutenants, le Lexique, le sommaire Hn validés au Moteur, plus les questions People-Also-Ask remontées par la SERP et les autres articles du cocon.
 - Le bouton « Relancer l'analyse » est disponible une fois la première génération terminée — il permet de redemander une analyse fraîche si l'utilisateur a modifié quelque chose en amont.
 - Si l'analyse n'a jamais été lancée, le panneau affiche un message d'invitation explicite et non un bloc vide.
+- Les données de Google que reçoit la Rédaction — questions People-Also-Ask, premiers résultats, mots-clés associés — portent sur le mot-clé **de l'article** : son capitaine verrouillé, à défaut le mot-clé suggéré à sa création. Jamais sur le mot-clé pilier du cocon : un intermédiaire est préparé avec ses propres questions, pas avec celles de son pilier. Elles servent à l'analyse du brief, au sommaire quand il est généré, à l'onglet « SERP Data » du panneau SEO et au score SEO. Un article sans mot-clé n'en reçoit aucune, plutôt que celles d'un autre article.
+
+**Statut :** active. **Amendée le 2026-09-25 (épopée qualité SEO, checklist R13, commit `1227eb0`)** : ces données portaient sur le mot-clé pilier du cocon quel que soit l'article, et un cocon sans mot-clé pilier n'en recevait aucune.
 
 > **En situation.** Mardi matin, l'utilisateur ouvre l'article « Calcul indemnité rupture conventionnelle 2026 » pour le rédiger. Il vient juste de finir le Moteur la veille (Capitaine + Lieutenants + Lexique verrouillés) et n'a pas encore une vision claire du plan. Il clique sur « Lancer l'analyse » dans le panneau IA Brief. En quinze secondes, l'IA déroule à l'écran : *« L'intention dominante est transactionnelle (l'utilisateur cherche à calculer son indemnité) — placez un simulateur ou un tableau de seuils en H2 #2... Risque de cannibalisation avec votre article "Indemnité légale de licenciement" : différenciez sur le contexte rupture conventionnelle... »*. Il lit, prend deux notes, et se sent prêt à attaquer le sommaire.
 
@@ -2449,12 +2773,16 @@ Avant de demander à l'IA d'écrire son article, l'utilisateur peut lancer une *
 Une fois le brief consolidé, l'utilisateur déclenche la **génération du sommaire** : l'IA propose une liste structurée de titres (H1 unique pour l'article, suite de H2 et H3 organisés en sections logiques). Chaque section porte une intention pédagogique courte (annotation indicative : *« reformuler la promesse »*, *« répondre à une PAA »*, *« content valeur »*). L'utilisateur voit le sommaire apparaître progressivement à l'écran ; à la fin, il peut le valider tel quel ou le retravailler manuellement (réordonner, éditer un titre, supprimer une section) — toute modification est rétractable via Annuler / Rétablir.
 
 **Critères d'acceptation**
-- Le sommaire propose un H1 (titre de l'article), suivi obligatoirement d'une section Introduction et d'une section Conclusion, et un ensemble de H2 / H3 entre les deux.
+- Le sommaire propose un H1, suivi obligatoirement d'une section Introduction et d'une section Conclusion, et un ensemble de H2 / H3 entre les deux. Le nombre de chapitres suit les règles du type, qui comptent les **H2 de fond** : l'introduction et la conclusion s'y ajoutent (cf. `FR-INFRA-TYPE-RULES-SSOT`).
+- Quand la structure a été validée au Moteur (cf. `FR-HN-TAB`), le sommaire en est tiré tel quel, sans appel à l'IA : son H1, une introduction, ses chapitres et sous-parties dans l'ordre, une conclusion. Si la structure porte déjà un chapitre d'introduction ou de conclusion, le sommaire ne l'ajoute pas une seconde fois.
+- Le H1 est celui de la structure validée au Moteur (il porte le mot-clé capitaine) ; à défaut, le titre de l'article. Il n'apparaît qu'une fois : jamais recopié en H2.
 - Les titres H4 et au-delà ne sont pas générés (l'outil restreint le sommaire aux niveaux 1-3).
 - Pendant la génération, l'utilisateur voit le sommaire se construire progressivement ; il peut interrompre s'il n'en veut plus.
 - Une fois le sommaire généré, l'utilisateur peut éditer un titre, réordonner les sections par glisser-déposer, supprimer une section ou en ajouter une vide.
 - Les boutons Annuler / Rétablir sont actifs après toute modification et restaurent l'état précédent du sommaire.
 - Le sommaire validé est persisté et survit à un rechargement de page.
+
+**Statut :** active. **Durcie le 2026-09-24** (le H1 du Moteur n'est plus rétrogradé, épopée qualité SEO, M8). **Amendée le 2026-09-25 (C6)** : le sommaire vient de la structure validée dans l'onglet Structure (et non plus du verrouillage des lieutenants) ; introduction et conclusion n'y sont plus doublées ; les règles du type comptent les H2 de fond.
 
 > **En situation.** L'utilisateur clique sur « Générer le sommaire ». L'IA propose : H1 *« Calcul indemnité rupture conventionnelle 2026 »*, H2 *Introduction*, H2 *« Quelle indemnité minimale ? »*, H3 *« Formule légale »*, H3 *« Cas des longues anciennetés »*, H2 *« Simuler son indemnité »*, H2 *« Cas pratiques »*, H2 *Conclusion*. Il trouve que la section *« Cas des longues anciennetés »* est trop spécialisée pour la position H3 — il la promeut en H2 d'un clic. Puis il valide le sommaire ; la liste se fige et le bouton « Générer l'article » devient actionnable.
 
@@ -2462,7 +2790,13 @@ Une fois le brief consolidé, l'utilisateur déclenche la **génération du somm
 
 ---
 
-#### FR-RED-ARTICLE — Génération de l'article section par section
+#### FR-RED-ARTICLE — Génération de l'article section par section *(superseded 2026-09-25 par FR-RED-DRAFT-SINGLE-PASS)*
+
+> **Statut :** superseded. **Depuis :** 2026-09-25. **Remplacée par :** `FR-RED-DRAFT-SINGLE-PASS`. **Source :** épopée qualité SEO, chantier C5 (premier temps, C5a).
+>
+> **Ce qui change.** L'article n'est plus écrit un chapitre après l'autre, par autant d'appels à l'IA qui ne voyaient chacun que la fin du précédent : un **premier jet** est rédigé en un seul appel, qui voit tout le plan (cf. `FR-RED-DRAFT-SINGLE-PASS`). Restent en place : le bouton « Générer l'article » réservé à un sommaire valide, la progression chapitre par chapitre, le texte qui apparaît au fil de l'écriture, la sauvegarde avant la méta, la stratégie du cocon transmise, les modèles d'IA enregistrés dans l'ordre. Disparaissent : la case « Recherche web » (le premier jet n'en a pas ; les sources viendront d'une passe dédiée), l'attente propre à la rédaction quand l'IA est saturée (remplacée par les réessais et la bascule de fournisseur communs à toutes les générations, cf. `FR-EXT-AI-FALLBACK`) et la pause de 15 secondes entre deux sections (cf. `NFR-PERF-INTER-SECTION-DELAY`). **Pourquoi :** le pilier 1013 a été écrit en 15 appels, la recherche web imposée : 15 601 mots, une conclusion par section, des phrases en anglais, des chiffres de 2024 sans source.
+>
+> Le texte ci-dessous est conservé pour l'historique.
 
 À partir du sommaire validé, l'utilisateur lance la **génération de l'article entier**. L'IA n'écrit pas l'article d'un seul bloc : elle traite chaque grande section H2 indépendamment, ce qui permet à l'utilisateur de voir l'article se construire progressivement (introduction d'abord, puis chaque chapitre, enfin la conclusion). Une barre de progression indique à tout moment quelle section est en cours et combien il en reste. La répartition de la longueur cible entre les sections est calculée automatiquement (l'introduction et la conclusion plus courtes, les sections corps plus denses). Si l'IA est temporairement saturée par trop de requêtes, l'outil attend automatiquement quelques secondes et réessaye sans que l'utilisateur ait à intervenir.
 
@@ -2474,10 +2808,199 @@ Une fois le brief consolidé, l'utilisateur déclenche la **génération du somm
 - Si une section échoue parce que l'IA est saturée, l'outil réessaye automatiquement plusieurs fois avant d'abandonner et de signaler l'erreur — l'utilisateur n'a pas à relancer manuellement.
 - Une option « activer / désactiver la recherche web » permet à l'IA d'aller chercher des sources actualisées si l'utilisateur le souhaite (option session, pas par défaut sur tous les articles).
 - L'article généré est immédiatement sauvegardé après production, pour ne rien perdre en cas de panne du module Méta qui suit.
+- La rédaction reçoit la stratégie validée du cocon (cible, douleur, angle, promesse, appel à l'action) quand l'article n'a pas de stratégie propre.
+- On sait quel modèle d'IA a écrit l'article : tous les modèles utilisés sont enregistrés, dans l'ordre.
+
+**Statut :** durci le 2026-09-24. **Pourquoi :** le pilier 1013 a été rédigé sans la stratégie du cocon, et seul le modèle de la dernière section était enregistré (épopée qualité SEO, R5, R8).
 
 > **En situation.** L'utilisateur clique sur « Générer l'article » à 10h12 sur son article de 2 200 mots. La barre de progression affiche *« 1/6 — Introduction »*, le texte commence à apparaître à l'écran. À 10h13 elle bascule sur *« 2/6 — Quelle indemnité minimale ? »*. À 10h14, une section met plus de temps — il voit dans la console *« attente avant réessai (saturation IA) »* puis la génération reprend automatiquement. À 10h17, l'article est complet, l'éditeur affiche les 6 sections enchaînées et propres, le contenu est déjà sauvegardé.
 
 → Conception : [DESIGN-RED-ARTICLE](./design-registry.md#design-red-article)
+
+---
+
+#### FR-RED-DRAFT-SINGLE-PASS — Le premier jet s'écrit d'un seul tenant
+
+Le pilier 1013 (2026-09-24) avait été rédigé en 15 appels à l'IA, un par chapitre : chacun ne voyait que les dernières lignes du précédent, visait sa part de longueur sans savoir où en était le reste et concluait pour son compte. Résultat : 15 601 mots, six fois la cible, une conclusion par section, des paragraphes recopiés d'un chapitre à l'autre. Désormais l'article naît d'un **premier jet** écrit d'un seul tenant : l'IA reçoit une seule fois tout le plan, la part de chaque chapitre, la stratégie, les mots-clés et les règles du type d'article. Ce premier jet est jugé dès sa rédaction, avant les passes d'enrichissement (sources, exemples, tableaux, images, FAQ) qui le complètent ensuite (cf. `FR-RED-ENRICH-PASSES`).
+
+**Critères d'acceptation**
+- L'article est rédigé en un seul appel à l'IA, qui reçoit tout le sommaire validé (chapitres, sous-titres et leurs intentions), la longueur visée et la part de chaque chapitre, la stratégie de l'article (à défaut, celle du cocon), les mots-clés, les règles du type d'article (cf. `FR-INFRA-TYPE-RULES-SSOT`) et, depuis C7, l'état du cocon (cf. `FR-INFRA-COCOON-CONTEXT`) : un chapitre dont le sujet a son propre article le résume et y renvoie, et un enfant développe ce que la section de son parent annonce sans la répéter.
+- La longueur visée est celle que l'utilisateur a choisie pour l'article, sinon la recommandation du brief, sinon celle de son type : la même que la barre de mots affiche (cf. `FR-RED-WORD-COUNT-TARGET`). L'introduction en reçoit environ 15 %, la conclusion 10 %, les autres chapitres se partagent le reste à parts égales ; le chapeau placé sous le titre compte dans le premier chapitre.
+- Le premier jet n'a pas de recherche web : il n'invente aucun chiffre et pose « à sourcer » ceux qui seraient utiles (cf. `FR-RED-DRAFT-TO-SOURCE`).
+- La progression reste visible chapitre par chapitre (titre du chapitre en cours, rang / total) et le texte apparaît au fil de l'écriture. Il n'y a plus d'attente entre deux chapitres.
+- Le texte déjà écrit est enregistré au fil des chapitres, sans attendre la fin : un onglet fermé ou une connexion perdue ne fait pas tout perdre. Le texte final, nettoyé, remplace ces enregistrements ; la méta est générée ensuite.
+- Si la réponse de l'IA est coupée parce qu'elle a atteint sa longueur maximale, la rédaction reprend au début du chapitre interrompu, qu'elle réécrit en entier sans refaire les précédents ; deux reprises au plus.
+- Si l'IA est saturée ou indisponible avant d'écrire, l'outil réessaie, puis passe au fournisseur suivant (cf. `FR-EXT-AI-FALLBACK`). Une panne en cours d'écriture arrête le premier jet avec un message ; ce qui a déjà été enregistré au fil reste en base.
+- On sait quel modèle a écrit le premier jet : chaque modèle utilisé, reprises comprises, figure dans la pile d'activité avec le coût, dans l'ordre d'apparition.
+- Une fois le premier jet et sa méta enregistrés, l'étape « Premier jet accepté » est demandée à la porte « accepter le premier jet ». Si elle ne passe pas, l'alarme graduée s'ouvre (cf. `FR-INFRA-GATE-WAIVER`) : l'utilisateur corrige ou assume par écrit. Le texte reste enregistré et les passes d'enrichissement restent ouvertes ; sans l'étape, seuls les articles enfants ne peuvent pas naître (cf. `FR-CER-PARENT-WRITTEN-GATE`). Un bandeau, dans les deux vues, dit si le premier jet est accepté et permet de redemander l'étape.
+- La porte signale :
+  - ⛔ un texte vide, un bloc coupé en pleine phrase, du texte hors paragraphe, l'IA qui parle d'elle-même, du Markdown resté dans le texte, une balise interdite, un titre vide, un saut de niveau de titre, plusieurs H1, ou l'absence de H1 ;
+  - 🔴 un H1 qui ne contient pas le capitaine en entier ;
+  - 🔴 une introduction qui ne reprend pas au moins les trois quarts des mots du capitaine ;
+  - 🔴 une longueur totale qui s'écarte de plus de 15 % de la cible, dans un sens ou dans l'autre ;
+  - 🔴 un chapitre sous la moitié ou au-delà d'une fois et demie de sa part, nommé dans l'alerte ;
+  - 🔴 chaque phrase où l'anglais domine, chaque paragraphe qui en répète un autre, chaque chiffre sans source (cf. `FR-RED-DRAFT-TO-SOURCE`) et chaque preuve sociale invérifiable (« nous avons accompagné plus de 200 PME ») : une alerte par occurrence, dérogée séparément.
+- La porte n'est pas rejouée à la publication : sa règle de longueur n'a plus de sens une fois l'article enrichi. La publication rejuge elle-même la langue, les répétitions et les chiffres sans source (cf. `FR-RED-PUBLISH-GATE`).
+
+**Limites connues**
+- ~~La porte n'est consultée qu'une fois, juste après la rédaction : aucun geste ne la relance après correction ; ni par le mode automatique.~~ Soldé par C7 (2026-09-25) : le bouton « Valider le premier jet » du bandeau la redemande, et le mode automatique demande l'étape (il s'arrête sur un refus). Reste : quand la génération de la méta échoue, l'étape n'est pas demandée d'elle-même (le texte est enregistré, le bandeau permet de la demander).
+- La longueur visée est retenue pour l'article quand l'utilisateur n'en avait choisi aucune, et la porte mesure contre elle ; depuis le 2026-09-25 (C5b), la barre de mots, l'écart, la réduction et le score SEO lisent la même, et l'écran la garde dès la fin du premier jet, même si la recommandation de l'IA change ensuite (épopée qualité SEO, checklist R16 et R24, soldées).
+- ~~Passer la porte ne débloque encore aucune étape.~~ Soldé par C7 : passer la porte accorde l'étape « Premier jet accepté », qui fait de l'article un parent rédigé (cf. `FR-CER-PARENT-WRITTEN-GATE`).
+- Pendant une reprise après coupure, le texte qui défile à l'écran, et ce qui est enregistré au fil, garde le début du chapitre interrompu avant sa réécriture ; seul le texte final est propre.
+- Les dérogations posées au premier jet ne sont pas réaffichées à la publication ; l'audit du projet (`npm run verify`) les liste avec les autres.
+- ~~La rédaction fusionne les paragraphes qui se suivent en un seul, séparés par des retours à la ligne : la structure du texte s'en trouve appauvrie (épopée qualité SEO, checklist R14).~~ Soldé le 2026-09-25 (checklist R14, commit `3238a5f`) : les paragraphes restent des paragraphes — dans le premier jet, à l'affichage du texte au fil et à l'ouverture de l'éditeur. Un article rédigé avant garde ses paragraphes fusionnés tant qu'on ne les sépare pas à la main ; la détection des paragraphes répétés sait toujours les lire.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-RED-ARTICLE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C5a. **Amendée à la livraison :** un H1 sans le capitaine est 🔴 et non ⛔ (un titre peut intégrer le mot-clé sans le reprendre mot pour mot, comme à la publication) ; seul un H1 absent est ⛔. La sauvegarde au fil reste faite par l'écran, pas par le serveur. **Amendée le 2026-09-25 (C5b)** : la longueur visée est aussi celle de l'écran (R16 soldée), qui la garde dès la fin du premier jet (R24 soldée). **Amendée le 2026-09-25 (C7)** : la porte n'est plus seulement consultée, elle accorde l'étape « Premier jet accepté », redemandable par un bandeau et demandée aussi par le mode automatique ; l'IA reçoit l'état du cocon. **Amendée le 2026-09-25 (checklist R14)** : les paragraphes du premier jet ne sont plus fusionnés (limite retirée).
+
+> **En situation.** L'utilisateur lance la rédaction de son pilier : 2 500 mots visés, 7 chapitres. La barre affiche « 1/7 — Introduction », puis chaque chapitre à son tour, sans les 15 secondes d'attente d'avant ; le texte arrive au fil, la méta suit. Puis l'alarme de la porte s'ouvre : le chapitre « Coûts » fait 610 mots pour environ 375 prévus (🔴), et une phrase est restée en anglais (🔴). Il clique « Revenir corriger », traduit la phrase et resserre le chapitre dans l'éditeur. S'il avait laissé la phrase anglaise, la porte de publication la lui aurait remontrée.
+
+→ Conception : [DESIGN-RED-DRAFT-SINGLE-PASS](./design-registry.md#design-red-draft-single-pass)
+
+---
+
+#### FR-RED-DRAFT-TO-SOURCE — Le premier jet n'invente aucun chiffre
+
+Le pilier 1013 avançait des chiffres « de 2024 » sans aucune source. Un chiffre inventé ruine la confiance du lecteur, et celle de Google. Le premier jet n'a pas de recherche web : il n'écrit donc aucun chiffre qu'il ne peut garantir. Là où une donnée renforcerait le propos, il pose un **marqueur « à sourcer »** qui dit quoi chercher ; une passe dédiée le remplacera par une donnée vérifiée.
+
+**Critères d'acceptation**
+- Le premier jet n'écrit ni pourcentage, ni prix, ni statistique, ni date d'étude, ni nom de source qu'il ne peut garantir. À la place, il pose un marqueur visible « [à sourcer : ce qu'il faudrait trouver] ».
+- L'outil y veille lui-même : si l'IA écrit malgré tout une phrase chiffrée sans source, le premier jet enregistré la présente comme un passage « à sourcer » — la phrase entière entre crochets, surlignée —, jamais comme un fait. Les titres, les chiffres attribués et les marqueurs déjà posés restent tels quels.
+- Dans l'éditeur, le marqueur reste surligné, y compris après une sauvegarde et un rechargement.
+- Un chiffre sans source hors marqueur déclenche 🔴, au premier jet comme à la publication. Compte comme chiffre : un pourcentage, un montant en euros, un multiplicateur (« 3 fois plus »), un nombre de millions ou de milliards. Un chiffre attribué dans sa phrase (« selon… », « d'après… », « source : ») ou placé dans un marqueur ne compte pas ; un nombre ordinaire (« 3 étapes », « en 2026 ») non plus.
+- Chaque chiffre sans source est une alerte distincte.
+- À la publication, les marqueurs restants déclenchent 🔴 (cf. `FR-RED-PUBLISH-GATE`).
+
+**Limites connues**
+- La passe Sources remplace chaque marqueur par une donnée datée avec son lien (cf. `FR-RED-ENRICH-SOURCES`, depuis le 2026-09-25) ; un marqueur qu'elle ne sait pas sourcer reste, à remplacer à la main. Les passes Exemples, Tableaux et FAQ peuvent en poser de nouveaux plutôt qu'inventer un chiffre.
+- Les chiffres sont reconnus à leur forme : une statistique écrite en toutes lettres (« la moitié des artisans ») ou une année seule n'est pas repérée.
+- Une attribution vague suffit à faire taire l'alerte (« selon les experts, 60 %… ») : l'outil ne vérifie pas la source.
+- Le filet ne vaut que pour le premier jet : un chiffre sans source ajouté ensuite, à la main ou par une passe, reste un chiffre sans source, signalé 🔴 à la publication.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5a. **Complétée le 2026-09-25 (C5b)** : la passe Sources remplace les marqueurs ; à la publication, chaque marqueur compte une fois. **Amendée le 2026-09-25 (recette réelle C8, commit `8d1bac2`)** : la consigne ne suffisait pas — le premier jet du pilier de la recette affirmait « 95 % des clients… » ; le serveur transforme désormais toute phrase chiffrée sans source du premier jet en passage « à sourcer ».
+
+> **En situation.** Dans le premier jet de son pilier, l'utilisateur lit : « Beaucoup d'artisans [à sourcer : part des artisans sans site web] n'ont pas encore de site. » Le passage est surligné, et le reste après sa sauvegarde. Plus bas, une phrase qu'il a ajoutée annonce « 76 % des clients consultent les avis avant d'appeler », sans source : à la publication, elle est signalée (🔴), comme le marqueur qu'il n'a pas encore remplacé. Si c'était l'IA qui l'avait écrite dans le premier jet, il l'aurait trouvée d'emblée entre crochets, surlignée : « [à sourcer : 76 % des clients consultent les avis avant d'appeler.] ».
+
+→ Conception : [DESIGN-RED-DRAFT-TO-SOURCE](./design-registry.md#design-red-draft-to-source)
+
+---
+
+#### FR-RED-ENRICH-PASSES — Enrichir l'article par passes successives
+
+Le premier jet est écrit d'un seul tenant, sans recherche web, sans tableau ni image (cf. `FR-RED-DRAFT-SINGLE-PASS`). Comme dans une rédaction professionnelle, il s'enrichit ensuite **par passes** : chacune propose une nouvelle version de l'article **chapitre par chapitre**, déjà vérifiée, et rien ne change dans le texte tant que l'utilisateur n'a pas accepté.
+
+**Critères d'acceptation**
+- Un panneau « Enrichir », dans les deux vues de rédaction, propose six passes : Sources (cf. `FR-RED-ENRICH-SOURCES`), Exemples, Tableaux, Images, FAQ et, depuis C7, Résumer (cf. `FR-CER-CHILD-FROM-PILLAR-H2`) ; il donne aussi la relecture de la langue (cf. `FR-RED-LANG-REVIEW`) et la réécriture d'un chapitre (cf. `FR-RED-SECTION-REWRITE`). Il n'est utilisable qu'une fois le premier jet écrit et le capitaine verrouillé.
+- L'utilisateur lance les passes une à une, dans l'ordre qu'il veut. Une passe traite ses chapitres l'un après l'autre ; la progression s'affiche (« Chapitre 2/5 — titre ») et un bouton « Arrêter » l'interrompt.
+- Chaque passe ne vise que les chapitres où elle a un sens : Exemples, Tableaux et Images travaillent le corps de l'article (ni le chapeau, ni la conclusion, ni la FAQ) ; Sources, les chapitres qui en ont besoin ; la FAQ ajoute un seul chapitre « Questions fréquentes », placé avant la conclusion (à la fin si l'article a moins de deux chapitres), et rien si l'article a déjà sa FAQ ; Résumer, les seuls chapitres dont est né un article enfant du cocon. Quand il n'y a rien à faire, le panneau le dit sans appeler l'IA (« Aucun chapitre n'a encore donné naissance à un article : rien à résumer. »).
+- Chaque passe voit l'article entier pour le contexte (jusqu'à 30 000 caractères de texte, de quoi contenir un pilier de 3 500 mots) et la stratégie de l'article — cible, douleur, angle —, à défaut celle du cocon ; elle reçoit sa propre consigne :
+  - Exemples : un exemple en situation, fictif et présenté comme tel, de 40 à 90 mots, sans aucun chiffre ;
+  - Tableaux : un tableau seulement quand le chapitre compare ou énumère, avec une ligne d'en-tête, 2 à 4 colonnes et aucun chiffre nouveau ;
+  - Images : l'emplacement d'une image, entre deux paragraphes, et son texte alternatif (8 à 16 mots) ;
+  - FAQ : autant de vraies questions que le fixe le type de l'article — 4 à 6 pour un pilier, 3 à 5 pour un intermédiaire, 3 à 4 pour un spécialisé (cf. `FR-INFRA-TYPE-RULES-SSOT`) —, au moins une avec le mot-clé principal, des réponses directes de 40 à 80 mots, sans chiffre ;
+  - Résumer : le chapitre devient un résumé de 150 à 250 mots de ce que développe l'article enfant (dont la passe reçoit le titre et le mot-clé) ; le titre du chapitre reste, ses sous-parties partent, et une dernière phrase invite à lire l'article enfant, sans poser le lien (il se pose à la main, cf. `FR-RED-LINKING-MANUAL`).
+
+  Une passe qui n'a rien d'utile à ajouter rend le chapitre inchangé ; une valeur qui manque s'écrit « à sourcer ».
+- Chaque proposition est vérifiée avant d'être montrée :
+  - ⛔ proposition vide ou coupée (l'IA s'est arrêtée avant une fin normale : longueur maximale atteinte, recherche web interrompue, arrêt de sécurité), titres du chapitre modifiés — le titre principal (H1), placé dans le chapeau, compris —, bloc ou lien posé à la main qui disparaît, tableau sans ligne d'en-tête, image sans texte alternatif, FAQ sans titre ou sans questions en sous-titres : la proposition ne peut pas être acceptée ;
+  - 🔴 lien absent des résultats de la recherche (retiré, son texte gardé), chiffre sans source ajouté, phrase non française ajoutée, question de FAQ sans point d'interrogation ;
+  - 🟠 passage « à sourcer » qui reste après la passe Sources, proposition identique au texte d'origine, FAQ dont le nombre de questions sort de la fourchette du type ;
+  - pour la passe Résumer : 🔴 résumé hors de 150 à 250 mots ; les sous-parties retirées sont attendues, et un bloc ou un lien posé à la main qui disparaît n'y est qu'une attention 🟠 (vérifier qu'il a sa place dans l'article enfant) au lieu d'un ⛔.
+- Pour chaque chapitre, l'utilisateur voit les alertes et peut comparer avant et après, puis accepte ou refuse. Accepter remplace ce seul chapitre et enregistre l'article aussitôt ; refuser ne touche à rien. « Accepter celles sans alerte » accepte d'un coup les propositions qui n'ont aucune alerte.
+- Un chapitre modifié depuis la proposition n'est jamais écrasé : la proposition passe « chapitre modifié depuis » et se relance. De même, la FAQ ne s'insère pas si le chapitre avant lequel elle devait se placer (la conclusion) a changé depuis la proposition, ni si l'article a entre-temps reçu une FAQ ; le message dit lequel des deux.
+- Une image acceptée rappelle, dans le panneau, où la fournir : dans l'éditeur, en la sélectionnant puis avec le bouton « Image », faute de quoi la publication la refuse. La rédaction guidée n'ayant pas d'éditeur, c'est là que l'utilisateur l'apprend.
+- Une image proposée n'est pas une photo : une image neutre « à fournir » tient sa place, avec le texte alternatif qui dit ce qu'elle doit montrer. Tant qu'une de ces places reste, la publication est refusée (⛔, cf. `FR-RED-PUBLISH-GATE`). Dans l'éditeur, le bouton « Image » de la barre d'outils remplace l'image sélectionnée par la vraie photo, désignée par son adresse (un fichier du site, « /… », ou une adresse web, « https://… ») ; il insère aussi une nouvelle image, dont il exige le texte alternatif (cf. `FR-RED-EDITOR-TIPTAP`).
+- L'éditeur garde les tableaux (ligne d'en-tête comprise) et les images acceptés, y compris après enregistrement et rechargement.
+- Si un chapitre échoue (IA indisponible…), l'erreur s'affiche sur ce chapitre et la passe continue avec les suivants.
+
+**Limites connues**
+- Lancer une passe remplace la liste des propositions : celles de la passe précédente qui n'ont été ni acceptées ni refusées disparaissent. Rien ne retient qu'une passe a déjà été faite : la relancer repropose les mêmes chapitres.
+- Au-delà de 30 000 caractères de texte (environ 4 500 mots), la fin de l'article n'est pas vue par les passes.
+- Les passes Exemples, Tableaux et FAQ peuvent poser de nouveaux « à sourcer » : chacun compte à la publication (🔴) jusqu'à une nouvelle passe Sources.
+- La photo se fournit par son adresse : l'éditeur n'envoie pas de fichier depuis l'ordinateur. Le bouton « Image » n'existe que dans l'éditeur, pas dans la rédaction guidée (le panneau y renvoie). Aucun tableau ne s'insère à la main.
+- Une FAQ placée à la fin de l'article (moins de deux chapitres) ne vérifie, à l'insertion, que l'absence d'une autre FAQ.
+- La passe Résumer reconnaît le chapitre d'un enfant à son titre : un chapitre renommé depuis la naissance de l'enfant n'est plus visé.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** une passe propose chapitre par chapitre (un appel par chapitre visé), pas l'article d'un bloc ; l'image proposée est une place « à fournir » que la publication refuse ; « Accepter celles sans alerte » et la protection « chapitre modifié depuis » s'ajoutent. **Amendée le 2026-09-25 (C5b, checklist R17 à R20, R22, R23)** : les limites relevées à la livraison sont levées — les passes voient l'article entier et sa stratégie ; le titre principal est protégé ; tout arrêt anormal de l'IA rend la proposition « coupée » ; le nombre de questions de FAQ suit le type, et la FAQ ne s'insère plus si la conclusion a changé ; le bouton « Image » permet de fournir la photo. **Amendée le 2026-09-25 (suites de clôture de C5b, commit `2ca3d32`)** : une image acceptée dit où la fournir ; une FAQ écartée dit pourquoi ; un article de type inconnu reçoit la fourchette de questions la plus large (3 à 6), annoncée comme telle. **Amendée le 2026-09-25 (C7)** : sixième passe, « Résumer », pour les chapitres dont est né un article enfant (cf. `FR-CER-CHILD-FROM-PILLAR-H2`) ; sa vérification tolère la perte des sous-parties et ramène la perte d'un bloc à une attention.
+
+> **En situation.** L'utilisateur ouvre « Enrichir » sur son pilier fraîchement rédigé. Il lance « Tableaux » : quatre chapitres du corps sont proposés à tour de rôle ; « Agence ou indépendant ? » reçoit un tableau à deux colonnes, les trois autres reviennent inchangés (🟠 « ne change rien »). Il compare, accepte le tableau : le chapitre est remplacé et l'article enregistré. Il lance ensuite « FAQ » : un chapitre « Questions fréquentes » est proposé avant la conclusion ; une des questions ne finit pas par un point d'interrogation (🔴). Il refuse la FAQ.
+
+→ Conception : [DESIGN-RED-ENRICH-PASSES](./design-registry.md#design-red-enrich-passes)
+
+---
+
+#### FR-RED-ENRICH-SOURCES — Des sources françaises, datées, avec leur lien
+
+Le pilier 1013 citait « la Vendée » pour un client toulousain et des chiffres « de 2024 » sans source : la recherche web partait sans lieu ni date, et les adresses des pages trouvées étaient jetées. Le premier jet pose désormais « à sourcer » là où un chiffre serait utile (cf. `FR-RED-DRAFT-TO-SOURCE`). La **passe Sources** cherche sur le web, depuis la France et la ville du client, à la date du jour, et remplace chaque marqueur par une donnée citée avec son lien. Seuls les liens réellement trouvés par la recherche restent.
+
+**Critères d'acceptation**
+- La passe Sources ne travaille que les chapitres qui portent un marqueur « à sourcer » ou un chiffre sans source ; s'il n'y en a aucun, le panneau le dit sans appeler l'IA.
+- La recherche part de France, à l'heure de Paris, et depuis la ville de la zone du client quand elle est configurée. La consigne donne la date du jour et fait préférer une source locale à une source nationale, une source française à une source étrangère (organismes publics, études reconnues, presse économique), la plus récente, toujours avec son année.
+- Chaque marqueur sourcé devient une phrase naturelle qui cite la source, son année et un lien vers la page trouvée. Sans source fiable, le marqueur reste tel quel (🟠 « un passage à sourcer reste ») : un passage à sourcer vaut mieux qu'un chiffre inventé. Un chiffre déjà présent sans source est sourcé de la même façon, ou retiré.
+- Chaque lien est comparé aux résultats réels de la recherche : un lien absent est retiré, son texte gardé, et signalé 🔴. Les liens que le chapitre citait déjà sont conservés.
+- Une recherche interrompue avant la fin rend la proposition « coupée » (⛔) : elle ne s'accepte pas ; il faut relancer la passe.
+- Les sources trouvées sont listées sous la proposition, et s'ouvrent dans un nouvel onglet.
+- Chaque proposition est acceptée ou refusée par l'utilisateur, chapitre par chapitre (cf. `FR-RED-ENRICH-PASSES`).
+- Seul Claude sait chercher et citer ses sources. Une demande avec recherche web n'est jamais confiée à Gemini ni à OpenRouter, qui rendraient un texte sans source : si Claude est indisponible (crédit épuisé, quota), la passe échoue sur ce chapitre avec le message du fournisseur ; si aucun fournisseur configuré ne sait chercher, le message dit « La recherche web exige Claude ». La même règle vaut pour les actions contextuelles « sources chiffrées » et « exemples réels ».
+- Ces deux actions cherchent comme la passe (France, heure de Paris, ville du client) ; leurs liens absents des résultats de la recherche sont retirés, texte gardé, avant d'arriver dans l'éditeur (cf. `FR-RED-CONTEXTUAL-ACTIONS`).
+
+**Limites connues**
+- L'outil garantit que le lien figure dans les résultats de la recherche, pas que la page dise ce que la phrase lui fait dire, ni que l'étude date de l'année citée.
+- Pour les actions contextuelles, un lien retiré n'est pas signalé à l'utilisateur, contrairement à la passe (🔴).
+- Mêmes limites de contexte que les autres passes : au-delà de 30 000 caractères de texte, la fin de l'article n'est pas vue.
+- En mode simulé, la recherche renvoie deux sources fictives (Insee, France Num) : rien n'est cherché.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** la passe travaille chapitre par chapitre ; un marqueur sans source trouvée est gardé (🟠) au lieu d'être forcé ; la ville vient de la zone configurée du client. **Amendée le 2026-09-25 (C5b, checklist R18, R19, R21)** : la passe reçoit l'article entier et sa stratégie ; une recherche interrompue bloque la proposition ; les actions « sources chiffrées » et « exemples réels » cherchent dans la ville du client et vérifient leurs liens.
+
+> **En situation.** L'utilisateur lance « Sources » sur son pilier : deux chapitres portent un « à sourcer », seuls ceux-là sont traités. Pour « Le budget », la proposition devient « … (selon l'Insee, 2025) », avec le lien vers la page de l'Insee ; dessous, « Sources trouvées : Insee — Le numérique dans les TPE ». Un second lien, vers un site que la recherche n'avait pas renvoyé, a été retiré (🔴). Il accepte. Le lendemain, son crédit Claude est épuisé : la passe s'arrête sur un message d'erreur au lieu d'écrire, avec Gemini, un texte sans aucune source.
+
+→ Conception : [DESIGN-RED-ENRICH-SOURCES](./design-registry.md#design-red-enrich-sources)
+
+---
+
+#### FR-RED-SECTION-REWRITE — Réécrire une section en voyant tout l'article
+
+Un chapitre trop long, trop vague, ou qui répète le voisin se corrige seul, sans relancer tout l'article. L'utilisateur choisit le chapitre et dit ce qu'il veut ; l'IA propose une réécriture qui voit l'article entier, pour ne pas répéter les autres chapitres ni conclure à leur place.
+
+**Critères d'acceptation**
+- Dans le panneau « Enrichir », l'utilisateur choisit un chapitre (le chapeau compris) et écrit une consigne de 5 à 600 caractères, par exemple « deux fois plus court » ou « plus concret, avec l'exemple d'un plombier ».
+- La réécriture voit l'article entier (jusqu'à 30 000 caractères de texte) et la stratégie de l'article, à défaut celle du cocon. Elle garde le titre du chapitre, et pour le chapeau le titre principal (H1) ; ses sous-titres peuvent changer si la consigne le demande. Elle vise la longueur actuelle à 20 % près sauf consigne contraire, conserve blocs, liens et marqueurs « à sourcer », et n'invente aucun chiffre.
+- La réécriture est une proposition, vérifiée comme celles des passes (⛔ titre du chapitre ou titre principal modifié, bloc ou lien perdu, proposition vide ou coupée ; 🔴 chiffre sans source ou phrase non française ajoutés, lien inventé retiré ; 🟠 rien de changé). Rien ne change avant « Accepter » ; accepter remplace ce seul chapitre et enregistre l'article.
+- La consigne est traitée comme du texte : elle ne peut ni changer le rôle de l'IA ni la faire sortir du chapitre.
+- La génération complète section par section n'existe plus (retirée avec le premier jet, cf. `FR-RED-DRAFT-SINGLE-PASS`).
+
+**Limites connues**
+- Mêmes limites de contexte que les passes : au-delà de 30 000 caractères de texte, la fin de l'article n'est pas vue.
+- Une seule réécriture à la fois ; lancer une passe efface la proposition de réécriture non traitée.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** la réécriture suit une consigne libre de l'utilisateur ; la génération section par section a été retirée (C5a), pas archivée. **Amendée le 2026-09-25 (C5b, checklist R17, R18)** : la réécriture reçoit l'article entier et sa stratégie ; réécrire le chapeau ne peut plus changer le titre principal.
+
+> **En situation.** Le chapitre « Coûts » est trop long. L'utilisateur le choisit et écrit « deux fois plus court, sans répéter l'audit ». La proposition garde le titre « Coûts » et ne reprend pas ce que dit déjà le chapitre « Audit », que l'IA a vu. Il compare avant et après, accepte : seul « Coûts » change, et l'article est enregistré.
+
+→ Conception : [DESIGN-RED-SECTION-REWRITE](./design-registry.md#design-red-section-rewrite)
+
+---
+
+#### FR-RED-LANG-REVIEW — Une relecture de la langue avant publication
+
+Le pilier 1013 contenait des phrases en anglais. Un texte d'IA laisse aussi passer du franglais (« leads », « call-to-action »), des accords ratés et une typographie anglaise. La **relecture de la langue** reprend l'article section par section et corrige tout cela directement, sans toucher à sa structure.
+
+**Critères d'acceptation**
+- La relecture se lance depuis le panneau « Enrichir » (« Relecture de la langue ») ou par le bouton « Humaniser » : c'est la même opération, qui retire aussi les tics d'écriture d'IA (cf. `FR-RED-HUMANIZE-SECTION`). Elle avance section par section, progression affichée, avec un bouton « Arrêter ».
+- Elle traduit les phrases en anglais ; remplace un anglicisme par son équivalent français courant (« lead » → « prospect », « feedback » → « retour ») en gardant les noms de marque et les termes sans équivalent d'usage (« SEO ») ; corrige les accords (genre, nombre, participes, conjugaisons) ; applique la typographie française (guillemets « », apostrophe ’, majuscules accentuées).
+- Elle ne touche ni aux chiffres, ni aux liens, ni aux marqueurs « à sourcer », ni à la structure : une section dont la structure changerait est rendue telle qu'elle était.
+- Le résultat s'applique directement et l'article est enregistré aussitôt ; arrêter en cours de route rend l'article d'avant.
+- Une phrase non française restante déclenche 🔴 à la publication (cf. `FR-RED-PUBLISH-GATE`).
+
+**Limites connues**
+- La relecture corrige sans dire ce qu'elle a changé : ni liste des corrections, ni comparaison avant / après, ni refus section par section.
+- À la publication, seules les phrases d'au moins six mots où l'anglais domine sont repérées : « Donc you must focus » échappe au contrôle ; le franglais et les fautes d'accord ne sont pas détectés, seulement corrigés par la relecture.
+- Contrairement aux passes, la relecture ne reçoit pas la stratégie de l'article.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** la relecture n'est pas une passe qui signale puis propose : c'est l'humanisation, dont la consigne corrige aussi la langue, appliquée directement. Le second critère de l'épopée (🔴 à la publication) était tenu depuis C5a. **Complétée le 2026-09-25 (C5b, checklist T12)** : la consigne de relecture, sa simulation et le bouton du panneau sont désormais vérifiés par des tests automatiques.
+
+> **En situation.** Le premier jet de l'utilisateur contient « Pour générer des leads, soignez votre call-to-action » et « les demandes reçu ». Il lance « Relecture de la langue » : chaque section passe à son tour, puis l'article est enregistré. Il lit désormais « Pour attirer des prospects, soignez votre appel à l'action » et « les demandes reçues » ; les titres, les liens et le marqueur « à sourcer » n'ont pas bougé.
+
+→ Conception : [DESIGN-RED-LANG-REVIEW](./design-registry.md#design-red-lang-review)
 
 ---
 
@@ -2488,14 +3011,34 @@ Après que l'article a été produit, l'IA génère automatiquement le **titre m
 **Critères d'acceptation**
 - La méta est générée automatiquement à la suite de la génération de l'article — pas de second clic à faire.
 - Le titre méta produit ne dépasse pas la longueur cible affichée par Google (~60 caractères, troncature au mot près si nécessaire).
-- La description méta ne dépasse pas la longueur cible affichée par Google (~160 caractères, troncature au mot près).
+- La description méta ne dépasse pas la longueur cible affichée par Google (~160 caractères) : elle s'arrête à la dernière phrase complète, ou au dernier mot en retirant un mot orphelin (« en », « de »), jamais sur des points de suspension.
 - Le mot-clé Capitaine apparaît dans le titre méta et dans la description quand c'est cohérent.
 - Si la méta échoue (saturation IA, erreur réseau), l'article reste sauvegardé et l'utilisateur peut relancer uniquement la méta sans avoir à régénérer tout l'article.
 - Une fois générée, la méta est éditable manuellement (champs texte modifiables dans l'éditeur).
 
+**Statut :** durci le 2026-09-24. **Pourquoi :** la description était coupée à 157 caractères puis suivie de « ... », ce que le contrôle de méta de l'outil classe lui-même en erreur (épopée qualité SEO, R4).
+
 > **En situation.** L'utilisateur voit la barre de progression terminer à 10h17. Immédiatement après, sans qu'il ait à cliquer, l'outil affiche en bas de l'éditeur : *Titre : « Calcul indemnité rupture conventionnelle : guide complet 2026 » (59/60)*, *Description : « Calculez en 2 minutes votre indemnité de rupture conventionnelle. Formule légale, simulateur, cas des longues anciennetés. À jour 2026. » (152/160)*. Il trouve que « guide complet 2026 » est faible, double-clique sur le titre et le remplace par « formule, simulateur et seuils 2026 » — le compteur passe à 64/60 et signale le dépassement.
 
 → Conception : [DESIGN-RED-META](./design-registry.md#design-red-meta)
+
+---
+
+#### FR-RED-META-CAPTAIN — La méta est construite sur le capitaine verrouillé
+
+Le titre et la description qui s'affichent dans Google doivent porter le mot-clé que l'article vise réellement : son capitaine, verrouillé au Moteur. Pas le titre de l'article, et pas le mot-clé pilier du cocon, qui pour un intermédiaire est celui d'un autre article. Il en va de même pour le sommaire et la rédaction : tous travaillent sur le même mot-clé principal.
+
+**Critères d'acceptation**
+- La génération de la méta, du sommaire et de l'article reçoit le capitaine verrouillé de l'article.
+- Un article intermédiaire ou spécialisé n'hérite jamais du mot-clé pilier de son cocon.
+- Le titre de l'article ne sert de repli que si aucun capitaine n'a encore été verrouillé.
+- La meta description n'est jamais coupée au milieu d'une phrase par des points de suspension.
+
+**Statut :** active. **Depuis :** 2026-09-24. **Source :** épopée qualité SEO (checklist R3, R4), réservée par C0 et livrée par C1.
+
+> **En situation.** Le pilier 1013 a pour capitaine « stratégie digitale entreprises Toulouse » et pour titre « Propulser la croissance digitale des entreprises toulousaines ». Sa méta avait été écrite sur le titre : « Croissance Digitale PME Toulouse : Guide Complet 2026 », sans « stratégie digitale », et sa description finissait par « …générer des clients en... ». Désormais la méta part du capitaine, et la description s'arrête à la dernière phrase complète.
+
+→ Conception : [DESIGN-RED-META-CAPTAIN](./design-registry.md#design-red-meta-captain)
 
 ---
 
@@ -2510,6 +3053,12 @@ Une fois l'article généré, l'utilisateur travaille dans un **éditeur de text
 - Toute modification déclenche une sauvegarde automatique en arrière-plan ; l'utilisateur voit un indicateur « enregistré il y a Xs ».
 - Une combinaison clavier (Ctrl+S) déclenche une sauvegarde manuelle immédiate.
 - Si la sauvegarde échoue, l'éditeur prévient l'utilisateur et garde le contenu marqué comme « non sauvegardé » jusqu'à succès.
+- Les tableaux (ligne d'en-tête comprise) et les images (avec leur texte alternatif) posés par les passes d'enrichissement restent intacts dans l'éditeur, à l'enregistrement et au rechargement (cf. `FR-RED-ENRICH-PASSES`).
+- Un bouton « Image » de la barre d'outils remplace l'image sélectionnée — une place « à fournir », par exemple — par l'adresse de la vraie photo, ou insère une nouvelle image. Dans les deux cas, il demande le texte alternatif (au remplacement, celui de l'image est proposé et se corrige). L'adresse est celle d'un fichier du site (« /… ») ou une adresse web (« https://… ») ; toute autre saisie, ou une image sans texte alternatif, n'est pas insérée, et un message dit pourquoi.
+
+**Limites connues :** aucun tableau ne s'insère encore à la main ; une image se désigne par son adresse, pas par l'envoi d'un fichier.
+
+**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C5b, checklist R10) : l'éditeur perdait tout tableau et toute image au premier affichage ; il les garde désormais. **Amendée le 2026-09-25 (C5b, checklist R20)** : bouton « Image » pour remplacer ou insérer une image. **Amendée le 2026-09-25 (suites de clôture de C5b, commit `2ca3d32`)** : le texte alternatif se relit au remplacement ; un refus s'explique.
 
 > **En situation.** L'utilisateur relit la section H2 *« Quelle indemnité minimale ? »* et trouve une formulation trop scolaire. Il sélectionne la phrase, la réécrit dans le ton de la marque. Pendant qu'il tape, le compteur de mots descend de 2 240 à 2 215. Dès qu'il arrête de taper, un petit indicateur en bas de l'éditeur passe de « modifié » à « enregistré il y a 2s ». Il continue sereinement sa relecture.
 
@@ -2528,6 +3077,9 @@ Pendant que l'utilisateur écrit ou édite son article, un **score SEO** est cal
 - Le panneau détaille la validité de la structure des titres (un seul H1, ordre des niveaux, etc.) avec un message explicite en cas d'anomalie.
 - Le panneau détaille la longueur du titre méta et de la description méta (caractères utilisés / cible).
 - Tant que l'article n'a pas de contenu, le bouton « SEO » de la toolbar est désactivé avec un libellé explicite (par exemple « Générez un article pour activer le scoring SEO »).
+- Le contrôle « capitaine dans l'adresse de la page » lit le vrai slug de l'article.
+
+**Statut :** durci le 2026-09-24. **Pourquoi :** le score recevait l'identifiant numérique de l'article (jamais fourni par les écrans) : ce contrôle valait toujours faux (épopée qualité SEO, P4).
 
 > **En situation.** L'utilisateur termine la première relecture de son article. Il ouvre le panneau SEO : score global 78/100, niveau *moyen*. En détail : densité du Capitaine *« calcul indemnité rupture conventionnelle »* à 0,4 % (cible 0,8-1,5 %) — l'IA n'a pas assez répété l'expression. Il retourne dans l'introduction, glisse le mot-clé une fois de plus, rééquilibre. Le score remonte à 84/100. Il continue avec les autres signaux.
 
@@ -2535,17 +3087,43 @@ Pendant que l'utilisateur écrit ou édite son article, un **score SEO** est cal
 
 ---
 
-#### FR-RED-CONTEXTUAL-ACTIONS — 12 actions IA contextuelles sur sélection de texte
+#### FR-RED-SEO-SCORE-PERSIST — Le score enregistré est celui affiché pour ce texte
 
-Quand l'utilisateur sélectionne un fragment de texte dans l'éditeur, une **mini-barre d'actions IA** s'affiche au-dessus de la sélection. Elle propose 12 actions courtes pour retravailler le passage sélectionné : reformuler, simplifier, convertir en liste, ajouter un exemple PME, optimiser le mot-clé, ajouter une statistique, transformer en capsule de réponse (featured snippet), transformer un titre en question, localiser, sourcer avec des chiffres frais (avec recherche web), insérer des exemples réels (avec recherche web), résumer en « ce qu'il faut retenir », ou ajouter un lien interne vers un autre article du cocon. La réécriture proposée par l'IA s'affiche au fil de l'eau ; l'utilisateur l'accepte (remplace la sélection) ou la rejette (garde l'original). L'action « lien interne » ouvre à la place une recherche d'article — pas de réécriture.
+Le score SEO et le score GEO sont calculés à l'écran pendant la rédaction (cf. `FR-RED-SEO-LIVE`), mais ils n'étaient jamais enregistrés : le pilier 1013 a été publié sans aucune trace de score. Désormais, chaque score part en base **avec le texte qu'il note**. Le calcul reste fait dans l'éditeur, parce qu'il dépend de données chargées à l'écran : le refaire ailleurs aurait produit un chiffre différent de celui que l'utilisateur voit.
+
+**Critères d'acceptation**
+- Le score enregistré est exactement celui affiché pour le texte enregistré : contenu, meta title et meta description pour le score SEO ; contenu seul pour le score GEO.
+- Un score calculé sur une autre version du texte n'est jamais enregistré. La base porte alors « inconnu », affiché « — » : jamais un chiffre faux, jamais un zéro.
+- Retoucher la méta rend le score SEO inconnu jusqu'au prochain calcul, sans toucher au score GEO.
+- Un score calculé juste après une sauvegarde, sur le texte enregistré, est enregistré aussitôt, sans attendre la sauvegarde suivante. Le même score n'est pas renvoyé deux fois.
+- À l'ouverture d'un article dans la rédaction guidée, le score recalculé sur le texte intact rejoint la base.
+- L'audit du projet (`npm run verify`) affiche les scores enregistrés de chaque article, « — » quand ils sont inconnus.
+
+**Limites connues :** dans l'éditeur libre, le score d'un article qu'on vient d'ouvrir ne rejoint la base qu'à la sauvegarde suivante. Aucun écran ne lit encore le score enregistré. La liste des articles et la porte de publication pourront s'en servir dans un chantier suivant ; en attendant, la valeur est visible dans l'audit. Le mode automatique (`npm run auto:article`) ne calcule aucun score : un article qu'il produit porte « — » en SEO comme en GEO, puisque les calculs vivent à l'écran (constaté à la recette réelle C8, 2026-09-25 ; checklist P7).
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist P1), réservée par C0, livrée par C2. **Amendée à la livraison :** l'épopée prévoyait un recalcul par le serveur ; les calculs vivent à l'écran, c'est donc le score affiché qui est enregistré avec son texte.
+
+> **En situation.** L'utilisateur voit « SEO 72 » dans l'éditeur, puis la sauvegarde automatique passe. Le soir, `npm run verify` affiche pour cet article « Scores enregistrés : SEO 72 · GEO — » : aucun score GEO n'a été calculé sur ce texte, et l'outil n'en invente pas. Le lendemain, il retouche le meta title et ferme l'onglet avant la fin du calcul : la base porte « — » pour le SEO, pas l'ancien 72, qui notait une autre méta. Quand il rouvre l'article dans la rédaction guidée, le score recalculé sur le texte intact reprend sa place.
+
+→ Conception : [DESIGN-RED-SEO-SCORE-PERSIST](./design-registry.md#design-red-seo-score-persist)
+
+---
+
+#### FR-RED-CONTEXTUAL-ACTIONS — 11 actions IA contextuelles sur sélection de texte
+
+Quand l'utilisateur sélectionne un fragment de texte dans l'éditeur, une **mini-barre d'actions IA** s'affiche au-dessus de la sélection. Elle propose 11 actions courtes pour retravailler le passage sélectionné : reformuler, simplifier, convertir en liste, ajouter un exemple PME, optimiser le mot-clé, ajouter une statistique, transformer en capsule de réponse (featured snippet), transformer un titre en question, sourcer avec des chiffres frais (avec recherche web), insérer des exemples réels (avec recherche web), résumer en « ce qu'il faut retenir », ou ajouter un lien interne vers un autre article du cocon. La réécriture proposée par l'IA s'affiche au fil de l'eau (d'un bloc pour les deux actions qui cherchent sur le web, dont les liens sont vérifiés avant l'affichage) ; l'utilisateur l'accepte (remplace la sélection) ou la rejette (garde l'original). L'action « lien interne » ouvre à la place une recherche d'article — pas de réécriture.
 
 **Critères d'acceptation**
 - Une barre d'actions apparaît au-dessus de toute sélection de texte non vide dans l'éditeur.
-- Les 12 actions disponibles sont, dans le code source : reformuler, simplifier, convertir en liste, exemple PME, optimiser mot-clé, ajouter statistique, capsule de réponse, transformer en question, localiser, sources chiffrées, exemples réels, ce qu'il faut retenir. (L'action « lien interne » s'ajoute en treizième mais bypasse le pipeline IA — elle ouvre un sélecteur d'article.)
-- Le résultat de chaque action apparaît progressivement à l'écran pendant la génération (pas de fenêtre figée).
+- Les 11 actions disponibles sont, dans le code source : reformuler, simplifier, convertir en liste, exemple PME, optimiser mot-clé, ajouter statistique, capsule de réponse, transformer en question, sources chiffrées, exemples réels, ce qu'il faut retenir. (L'action « lien interne » s'ajoute en douzième mais bypasse le pipeline IA — elle ouvre un sélecteur d'article.)
+- Le résultat de chaque action apparaît progressivement à l'écran pendant la génération (pas de fenêtre figée), sauf pour « sources chiffrées » et « exemples réels » : leur résultat arrive d'un bloc, une fois ses liens vérifiés.
 - Deux boutons permettent à l'utilisateur d'accepter (remplace la sélection par le résultat) ou de rejeter (annule, sélection conservée intacte).
-- L'action « lien interne » n'envoie pas de requête à l'IA — elle ouvre un sélecteur d'articles du même cocon ; le clic sur un article ajoute un lien sur la sélection.
-- Les actions « sources chiffrées » et « exemples réels » autorisent l'IA à consulter le web pour ramener des données fraîches (les autres actions travaillent uniquement sur le texte fourni).
+- L'action « lien interne » n'envoie pas de requête à l'IA — elle ouvre un sélecteur d'articles du même cocon ; le clic sur un article pose sur la sélection le même lien que le panneau « Maillage » (il vise l'article, pas l'adresse de sa page) et l'enregistre dans le réseau de liens du cocon, où la vue Maillage et la publication le retrouvent (cf. `FR-RED-LINKING-MANUAL`).
+- Les actions « sources chiffrées » et « exemples réels » autorisent l'IA à consulter le web pour ramener des données fraîches (les autres actions travaillent uniquement sur le texte fourni). La recherche part de France, à l'heure de Paris et, quand la zone du client est configurée, de sa ville ; seul Claude la fait : si Claude est indisponible, l'action échoue en le disant au lieu de répondre sans recherche (cf. `FR-RED-ENRICH-SOURCES`).
+- Pour ces deux actions, chaque lien du résultat est comparé aux résultats réels de la recherche : un lien absent est retiré, son texte gardé, avant d'arriver à l'écran, et le résultat dit combien de liens ont été retirés. Pendant la recherche, la connexion reste ouverte même si rien ne s'affiche, aussi longue soit-elle.
+- Une réponse coupée avant la fin (plafond atteint, recherche interrompue) n'est pas proposée : l'écran dit qu'elle a été coupée, et rien ne peut remplacer la sélection. Après une erreur, « Accepter » reste grisé.
+
+**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C4, checklist D1) : l'action « localiser » est retirée de la liste. Elle avait quitté l'éditeur le 2026-04-16 ; son prompt, que plus rien n'appelait, a été supprimé. **Amendée le 2026-09-25 (C5b, checklist R6, R9)** : recherche web localisée en France, sans repli silencieux vers un fournisseur qui ne sait pas chercher. **Amendée le 2026-09-25 (C5b, checklist R21)** : ces deux actions cherchent aussi dans la ville du client et vérifient leurs liens ; leur résultat n'arrive donc plus au fil de l'écriture. **Amendée le 2026-09-25 (suites de clôture de C5b, commit `2ca3d32`)** : les liens retirés sont signalés ; une réponse coupée n'est plus proposée comme complète. **Amendée le 2026-09-25 (C7)** : le lien interne posé depuis la sélection est enregistré dans le réseau de liens ; il visait jusque-là l'adresse de la page et n'était enregistré nulle part, si bien que la vue Maillage et la publication l'ignoraient.
 
 > **En situation.** L'utilisateur sélectionne le paragraphe : *« L'indemnité légale dépend de l'ancienneté du salarié. »* Il clique sur l'action « ajouter une statistique ». L'IA recompose en quelques secondes : *« L'indemnité légale dépend de l'ancienneté du salarié : pour 5 ans d'ancienneté à 2 500 € brut/mois, elle s'élève à ≈ 3 100 €. »* Il accepte. La phrase remplace l'originale, le scoring SEO se met à jour automatiquement.
 
@@ -2553,7 +3131,13 @@ Quand l'utilisateur sélectionne un fragment de texte dans l'éditeur, une **min
 
 ---
 
-#### FR-RED-INTERNAL-LINKING — Suggestions de liens internes vers d'autres articles du cocon
+#### FR-RED-INTERNAL-LINKING — Suggestions de liens internes vers d'autres articles du cocon *(superseded 2026-09-25 par FR-RED-LINKING-MANUAL)*
+
+> **Statut :** superseded. **Depuis :** 2026-09-25. **Remplacée par :** `FR-RED-LINKING-MANUAL`. **Source :** épopée qualité SEO, réservée par C0, livrée par C7 (non livrée par C5b).
+>
+> **Ce qui change.** Les suggestions partent désormais de l'arbre du cocon : la famille de l'article (ses enfants pour un parent, son parent pour un enfant) vient en tête, même pas encore publiée, et la raison le signale ; les suggestions par mots communs suivent. Le lien posé depuis la sélection (action « lien interne ») est enregistré comme ceux du panneau. La publication signale chaque lien vers un article pas encore publié. Restent en place : le panneau « Maillage », appliquer ou rejeter chaque suggestion, l'enregistrement dans le réseau de liens, le bouton désactivé tant qu'aucun article n'est écrit. **Corrigé au passage** (le code fait foi) : les suggestions ne viennent pas d'une IA mais d'un rapprochement entre les titres des autres articles et le texte ; seuls les articles déjà rédigés y figuraient.
+>
+> Le texte ci-dessous est conservé pour l'historique.
 
 L'utilisateur peut demander à l'outil de **suggérer des liens internes** vers d'autres articles du cocon. L'IA analyse le contenu et propose une liste de suggestions : *pour ce texte d'ancre dans votre paragraphe, vous pourriez pointer vers cet autre article du cocon*. Pour chaque suggestion, l'utilisateur voit l'ancre proposée, l'article cible et peut soit appliquer le lien d'un clic (l'ancre devient cliquable dans l'éditeur), soit rejeter la suggestion. Les liens validés sont mémorisés et utilisés par la vue Maillage globale de l'outil.
 
@@ -2568,6 +3152,31 @@ L'utilisateur peut demander à l'outil de **suggérer des liens internes** vers 
 > **En situation.** L'utilisateur clique sur « Suggérer des liens ». Trois suggestions apparaissent : *(1) ancre « ancienneté du salarié » → article « Calculer son ancienneté », (2) ancre « rupture conventionnelle » → article « Procédure rupture conventionnelle », (3) ancre « formule légale » → article « Indemnité légale de licenciement »*. Il valide les deux premières, rejette la troisième qui doublerait avec un lien déjà présent. Dans l'éditeur, les deux ancres deviennent immédiatement cliquables et soulignées.
 
 → Conception : [DESIGN-RED-INTERNAL-LINKING](./design-registry.md#design-red-internal-linking)
+
+---
+
+#### FR-RED-LINKING-MANUAL — Le maillage interne se pose à la main, après la rédaction
+
+Des liens posés au jugé, sur des mots qui se ressemblent, ne suivent pas la logique du cocon : l'audit du 2026-09-19 a trouvé 35 liens sur 36 qui pointaient vers des articles pas encore écrits. Le maillage se fait désormais à la main, une fois le texte écrit, avec des suggestions qui partent de l'arbre du cocon : un parent renvoie vers chacun de ses enfants depuis la section qui l'annonce, un enfant renvoie vers son parent.
+
+**Critères d'acceptation**
+- Le panneau « Maillage » propose d'abord la famille de l'article : pour un parent, un lien vers chacun de ses enfants (la raison nomme la section qui l'annonce) ; pour un enfant, un lien vers son parent. Ces suggestions viennent même si la cible n'est pas encore publiée ; la raison le dit (« pas encore publié : le lien sera cassé tant qu'il n'est pas en ligne »).
+- L'ancre proposée est un passage qui existe tel quel dans le texte : un morceau du titre de la cible (deux mots au moins, sans commencer ni finir par un mot vide), à défaut son mot-clé. Sans passage trouvé, pas de suggestion.
+- Viennent ensuite, comme avant, les autres articles déjà rédigés dont le titre recoupe le texte, dans le respect de la hiérarchie du cocon ; dix suggestions au plus. Un article déjà relié n'est pas reproposé.
+- L'utilisateur applique ou rejette chaque suggestion ; appliquer pose le lien dans l'éditeur et l'enregistre dans le réseau de liens du cocon.
+- Le lien posé depuis la sélection (action « lien interne », cf. `FR-RED-CONTEXTUAL-ACTIONS`) est le même que celui du panneau et il est enregistré de la même façon.
+- À la publication, chaque lien vers un article pas encore publié — posé dans le texte ou enregistré dans le réseau de liens — est signalé 🟠 : tant que la cible n'est pas en ligne, le lien est cassé pour le lecteur (cf. `FR-RED-PUBLISH-GATE`).
+- Le réseau de liens suit le texte : chaque fois que le texte de l'article est enregistré, un lien qui n'y figure plus en sort. Un lien retiré dans l'éditeur ne reste donc ni dans la matrice du maillage ni dans les alertes de la publication. Enregistrer seulement le sommaire ne touche pas au réseau.
+
+**Limites connues**
+- Un parent ne propose un lien vers un enfant que si le titre ou le mot-clé de l'enfant apparaît dans son texte. Le résumé de la passe « Résumer » se termine par une phrase qui cite l'enfant, ce qui rend l'ancre possible (cf. `FR-RED-ENRICH-PASSES`).
+- ~~Retirer un lien de l'éditeur ne le retire pas du réseau de liens : la publication peut encore signaler un lien vers un article non publié qui n'est plus dans le texte.~~ Soldé le 2026-09-25 (commit `1388cbf`, révélé par la recette réelle C8) : le réseau suit le texte enregistré.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-RED-INTERNAL-LINKING`. **Source :** épopée qualité SEO, réservée par C0, non livrée par C5b, livrée par C7. **Amendée à la livraison :** la famille est proposée pour tout parent et tout enfant, pas seulement pour le pilier ; l'ancre est prise dans le texte (titre ou mot-clé de l'enfant), la section n'étant citée que dans la raison ; les suggestions par mots communs restent, après la famille. **Amendée le 2026-09-25 (recette réelle C8, commit `1388cbf`)** : le réseau de liens suit le texte enregistré — la publication du pilier de la recette signalait un « lien vers un article non publié » disparu du texte depuis longtemps.
+
+> **En situation.** L'intermédiaire « Auditer son site web » vient d'être publié. Arnaud ouvre le pilier et clique « Suggérer des liens » : en tête, « Article enfant (section « Audit de site ») », ancre « auditer son site web », prise dans la dernière phrase du résumé. Il l'applique. Un second enfant, « Choisir son hébergeur », est aussi proposé, avec la mention « pas encore publié » : s'il pose ce lien, la publication du pilier le lui rappellera (🟠).
+
+→ Conception : [DESIGN-RED-LINKING-MANUAL](./design-registry.md#design-red-linking-manual)
 
 ---
 
@@ -2597,8 +3206,11 @@ Pour rendre l'article moins « écrit par une IA », l'utilisateur peut déclenc
 - L'humanisation tourne section H2 par section H2 avec une barre de progression visible.
 - La structure HTML (titres, listes, blocs spéciaux, liens internes) est préservée intacte après humanisation.
 - Si une section est cassée par l'IA (structure invalide), l'outil retombe automatiquement sur la version originale et le signale dans une note discrète ; aucune section ne devient du texte non structuré.
-- L'utilisateur peut interrompre l'humanisation à tout moment ; les sections déjà humanisées restent humanisées.
+- L'utilisateur peut interrompre l'humanisation à tout moment ; l'article revient alors à son état d'avant l'humanisation.
 - Le contenu humanisé est immédiatement sauvegardé après l'opération.
+- Dans le même passage, l'humanisation relit la langue : phrases anglaises traduites, anglicismes remplacés, accords et typographie corrigés (cf. `FR-RED-LANG-REVIEW`). Elle se lance aussi depuis le panneau « Enrichir » (« Relecture de la langue »).
+
+**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C5b) : la consigne corrige aussi la langue (`FR-RED-LANG-REVIEW`). Corrigé au passage : ce texte disait qu'une interruption gardait les sections déjà humanisées ; le code rend l'article d'avant.
 
 > **En situation.** L'utilisateur trouve son brouillon trop scolaire (*« Dans cet article, nous allons voir... », « Il est important de noter que... »*). Il clique sur « Humaniser » à 11h02. À 11h04, c'est terminé. Il relit l'introduction : les transitions sont plus directes, le ton plus engagé. La 3ᵉ section porte une petite note *« humanisation revenue au texte original (structure non préservée) »* — il vérifie, c'est OK. Il garde le résultat.
 
@@ -2616,6 +3228,9 @@ Chaque article porte une **longueur cible en mots**, calculée en amont à parti
 - L'écart affiché est signé : positif quand l'article dépasse la cible, négatif quand il est trop court.
 - La cible est lue depuis les informations préparées au Cerveau (micro-contexte article + recommandation type d'article) — pas de saisie manuelle au moment de la rédaction.
 - La cible utilisée pour générer l'article est cohérente avec celle affichée — le réducteur tape sur la même valeur.
+- La cible est la longueur choisie pour l'article quand l'utilisateur en a choisi une, sinon la recommandation : la barre, l'écart, la réduction, le score SEO, le premier jet et sa porte lisent la même valeur. Changer la longueur choisie au brief est suivi aussitôt.
+
+**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C5b, checklist R16) : la barre, l'écart, la réduction et le score SEO lisaient la recommandation même quand l'utilisateur avait choisi une autre longueur, que suivaient la rédaction et sa porte. **Amendée le 2026-09-25 (C5b, checklist R24)** : après le premier jet, l'écran garde la longueur retenue pour l'article, même si une nouvelle recommandation arrive. **Amendée le 2026-09-25 (suites de clôture de C5b, commit `2ca3d32`)** : cette longueur est celle que le serveur a réellement visée — si une autre fenêtre en avait choisi une entre-temps, l'écran la reprend.
 
 > **En situation.** L'utilisateur passe de l'éditeur à la barre de progression. Affichage : *2 845 mots / cible 2 200 (+645)*. L'écart est clair, le signe immédiat. Il choisit la compression. À la fin : *2 280 / 2 200 (+80)*. L'écart résiduel est sous le seuil de 15 % — il garde tel quel, sans toucher manuellement.
 
@@ -2636,6 +3251,38 @@ L'outil suit pour chaque article une **phase éditoriale** qui reflète où il e
 > **En situation.** L'utilisateur a validé le brief la veille (phase = brief), puis le sommaire ce matin (phase = outline), puis a généré l'article (phase = writing). Sur le dashboard, le dot d'avancement « Rédaction » de cet article est passé en bleu progressif au fil des étapes. Quand il valide le SEO en fin d'après-midi (phase = seo), le 4ᵉ dot rédaction se remplit, et la carte article gagne le badge *« Prêt à publier »*.
 
 → Conception : [DESIGN-RED-PROGRESS](./design-registry.md#design-red-progress)
+
+---
+
+#### FR-RED-PUBLISH-GATE — On ne publie pas un article qu'un expert refuserait
+
+Publier, c'est déclarer l'article prêt. Le pilier 1013 a été marqué « publié » avec une description coupée, un H1 sans son capitaine et un texte six fois plus long que visé : la publication ne vérifiait rien. Elle passe désormais par une **porte** qui rejoue les contrôles de contenu, de méta et de SEO **avant** de marquer l'article publié et avant de télécharger le fichier. L'alarme graduée (cf. `FR-INFRA-GATE-WAIVER`) montre chaque point.
+
+**Critères d'acceptation**
+- ⛔ Défauts objectifs du texte : contenu vide, bloc tronqué, monologue d'IA, texte hors balise, restes de mise en forme, balise interdite, titre vide, saut de niveau de titre, plusieurs H1 dans le corps.
+- ⛔ Défauts de la méta : meta title ou meta description absents, trop longs ou coupés.
+- ⛔ Une image dont la place a été réservée par la passe Images reste « à fournir » (cf. `FR-RED-ENRICH-PASSES`) : le lecteur verrait l'image neutre. Le message invite à la remplacer par le bouton « Image » de la barre d'outils de l'éditeur, ou à la retirer.
+- 🔴 Le capitaine ne figure pas **en entier** dans le H1 ni dans le meta title (retrouver les trois quarts de ses mots ne suffit plus ; l'absence dans le meta title n'était qu'un avertissement).
+- 🔴 Autres écarts SEO : capitaine absent, capitaine visant une offre non vendue, texte trop court, adresse de page mal formée, chiffre invérifiable.
+- 🔴 Texte au-delà du plafond de son type : 3 500 mots pour un pilier, 2 500 pour un intermédiaire, 1 500 pour un spécialisé.
+- 🔴 Des marqueurs « à sourcer » restent dans le texte ; le message en donne le nombre, chaque marqueur comptant une fois.
+- 🔴 Qualité du texte, rejugée sur le texte du jour : chaque chiffre sans source hors marqueur, chaque phrase où l'anglais domine, chaque paragraphe qui en répète un autre (cf. `FR-RED-DRAFT-TO-SOURCE`, `FR-RED-DRAFT-SINGLE-PASS`). La porte du premier jet, elle, n'est pas rejouée : sa règle de longueur ne vaut que pour le premier jet.
+- 🟠 Les autres avertissements (capitaine absent de l'introduction, lieutenants peu couverts…).
+- 🔴 Une section dont est né un article enfant du cocon compte plus de 250 mots : elle développe ce que l'enfant doit dire, au lieu de le résumer (cf. `FR-CER-CHILD-FROM-PILLAR-H2`) ; le message invite à la passe « Résumer ». Une alerte par enfant.
+- 🟠 Une section dont est né un article enfant a disparu de l'article : le lecteur ne trouve plus le chemin vers l'enfant.
+- 🟠 Un lien vers un article pas encore publié, qu'il soit dans le texte ou enregistré dans le réseau de liens (cf. `FR-RED-LINKING-MANUAL`). Une alerte par article visé.
+- 🟠 Chaque dérogation posée en amont (capitaine, lieutenants, structure, lexique) est réaffichée et doit être reconfirmée.
+- Les portes amont — capitaine, lieutenants, structure, lexique — sont rejouées sur les données du jour : une alerte qu'aucune dérogation ne couvre plus revient à son niveau d'origine. Un terme générique resté dans le lexique, ou un lexique vide, donne donc 🔴 (cf. `FR-LEX-METIER-ONLY`) ; une structure sans H1 ou sans chapitre donne ⛔, un H1 sans le capitaine ou un nombre de chapitres hors des règles du type donne 🔴 (cf. `FR-HN-LOCK-GATE`). La porte juge la structure enregistrée, validée ou non : un article qui n'en a aucune — rédigé sans passer par l'onglet Structure, par exemple — reçoit 🔴 (« structure absente »), assumable par écrit comme un lexique vide.
+- Un H1 laissé dans le corps est toléré : l'export le retire.
+- Si la porte refuse, l'article n'est ni marqué « publié » ni téléchargé, et un message « Publication annulée » l'explique. Après dérogation, la publication reprend d'elle-même.
+- Changer le statut d'un article vers autre chose que « publié » n'est pas contrôlé.
+- L'audit du projet (`npm run verify`) signale tout article déjà rédigé que cette porte refuserait.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist P3, P5), réservée par C0, livrée par C2. **Amendée le 2026-09-25** (C3) : la porte du lexique rejoint les portes amont rejouées à la publication. **Amendée le 2026-09-25 (C5a)** : trois règles de qualité du texte (chiffre sans source, phrase non française, paragraphe répété) rejoignent la publication, parce que le texte a pu changer depuis le premier jet ; le pilier 1013 est désormais refusé aussi pour ses chiffres sans source. **Amendée le 2026-09-25 (C5b)** : ⛔ une image encore « à fournir » ; un marqueur « à sourcer » balisé n'est plus compté deux fois (sa balise et son texte). **Amendée le 2026-09-25 (C5b, checklist R20)** : la photo se fournit par le bouton « Image » de l'éditeur, que le message de la porte cite. **Amendée le 2026-09-25 (C6)** : la porte de la structure rejoint les portes amont rejouées à la publication ; ses dérogations sont réaffichées. **Amendée le 2026-09-25 (C7)** : 🔴 une section dont est né un enfant et qui dépasse 250 mots, 🟠 une telle section disparue, 🟠 un lien vers un article pas encore publié. **Corrigé au passage (C7, le code fait foi)** : ce texte disait encore qu'un article sans structure ne pouvait pas être publié (⛔) ; depuis les défauts de clôture de C6 (checklist P6), une structure absente est 🔴 et s'assume par écrit.
+
+> **En situation.** L'utilisateur clique « Exporter » sur le pilier 1013. L'alarme « Avant de publier » s'ouvre : la meta description est coupée en plein vol (⛔), « stratégie » manque au H1 et au meta title (🔴 deux fois), et le texte fait 15 601 mots pour un pilier plafonné à 3 500 (🔴). Le bouton affiche « Correction nécessaire » et reste grisé : un défaut ⛔ ne se déroge pas. Il revient corriger ; sous la barre d'aperçu, un message indique « Publication annulée : corrigez les points signalés, puis exportez à nouveau. » Rien n'a été marqué publié, aucun fichier n'a été téléchargé.
+
+→ Conception : [DESIGN-RED-PUBLISH-GATE](./design-registry.md#design-red-publish-gate)
 
 ---
 
@@ -2665,16 +3312,19 @@ L'étape de génération de l'article (saisie / génération IA du contenu) **n'
 
 #### FR-RED-PANELS-LAYOUT — Toolbar et panneaux d'analyse redimensionnables
 
-L'écran de rédaction expose en permanence une **toolbar de panneaux d'analyse** à droite de l'éditeur. Cinq boutons toggle permettent de basculer entre cinq panneaux : SEO, GEO (scoring spécifique pour l'optimisation pour les moteurs génératifs / IA / réponses), Maillage (liens internes), Blocs (bibliothèque de blocs dynamiques — éditeur libre uniquement), IA Brief (analyse stratégique — workflow uniquement). Un seul panneau est visible à la fois ; le panneau actif est rendu dans une zone latérale **redimensionnable** (l'utilisateur peut élargir ou rétrécir la zone à la souris). Tant qu'aucun article n'est généré, les panneaux SEO / GEO / Maillage / Blocs sont visibles mais désactivés (boutons grisés avec libellé explicite) — l'IA Brief reste accessible parce qu'il analyse le brief, pas le contenu. La touche Échap ferme le panneau ouvert.
+L'écran de rédaction expose en permanence une **toolbar de panneaux d'analyse** à droite de l'éditeur. Six boutons toggle permettent de basculer entre six panneaux : SEO, GEO (scoring spécifique pour l'optimisation pour les moteurs génératifs / IA / réponses), Maillage (liens internes), Blocs (bibliothèque de blocs dynamiques — éditeur libre uniquement), IA Brief (analyse stratégique — workflow uniquement), Enrichir (passes d'enrichissement du premier jet — les deux vues, depuis le 2026-09-25). Un seul panneau est visible à la fois ; le panneau actif est rendu dans une zone latérale **redimensionnable** (l'utilisateur peut élargir ou rétrécir la zone à la souris). Tant qu'aucun article n'est généré, les panneaux SEO / GEO / Maillage / Blocs sont visibles mais désactivés (boutons grisés avec libellé explicite) — l'IA Brief reste accessible parce qu'il analyse le brief, pas le contenu. La touche Échap ferme le panneau ouvert.
 
 **Critères d'acceptation**
 - La toolbar de droite expose les boutons SEO, GEO et Maillage dans les deux vues de rédaction (workflow guidé et éditeur libre).
 - La toolbar expose en plus le bouton « Blocs » dans la vue éditeur libre (composition manuelle de l'article).
 - La toolbar expose en plus le bouton « IA Brief » dans la vue workflow guidée (préparation à l'écriture).
+- La toolbar expose le bouton « Enrichir » dans les deux vues (passes d'enrichissement, relecture de la langue, réécriture d'un chapitre, cf. `FR-RED-ENRICH-PASSES`) ; désactivé tant que l'article n'a pas de contenu, avec le libellé « Rédigez le premier jet pour l'enrichir ».
 - Un seul panneau est visible à la fois : cliquer sur un autre bouton bascule la zone latérale, cliquer sur le bouton actif referme le panneau.
 - Tant que l'article n'a pas de contenu, les boutons SEO / GEO / Maillage / Blocs sont désactivés (apparents mais non-cliquables) avec un libellé d'explication ; le bouton IA Brief reste actif.
 - Le panneau actif vit dans une zone redimensionnable à la souris (élargissement / rétrécissement) ; la dimension choisie persiste pendant la session.
 - La touche Échap ferme le panneau actif et redonne toute la largeur à l'éditeur.
+
+**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C5b) : un sixième panneau, « Enrichir », dans les deux vues.
 
 > **En situation.** L'utilisateur travaille en plein écran sur la relecture. Il ouvre SEO d'un clic, redimensionne le panneau pour qu'il occupe un tiers de l'écran (au lieu d'un quart par défaut). Il bascule sur Maillage pour vérifier les suggestions de liens internes — la largeur du panneau est conservée. Il appuie sur Échap, l'éditeur reprend toute la largeur. Quand il rouvrira SEO plus tard dans la session, la largeur sera celle qu'il avait choisie.
 
@@ -2739,6 +3389,7 @@ Dans la vue workflow guidée (la version assistée de la rédaction), un panneau
 Endpoint `POST /api/content-gap/analyze`. Scrape top 10 → identifie topics manquants → suggestions de gaps. Stockage `keyword_metrics.content_gap_analysis`.
 **Consommée par** : `LieutenantsPanel.vue`, `LieutenantCard.vue`, `LieutenantProposals.vue`, `ContentGapPanel.vue` (Moteur).
 **Source :** `server/routes/content-gap.routes.ts` — `server/services/article/content-gap.service.ts`.
+**Limite, choix produit à trancher** *(relevé par T3, 2026-09-25 ; checklist M22)* : un thème ne compte « présent dans l'article » que si son libellé entier y figure tel quel, casse ignorée (`presentInArticle`, `content-gap.service.ts:185,210`) — un texte qui parle de tarifs et de devis séparément ne couvre pas le thème « tarifs et devis ». Reconnaître un thème à ses mots, ou par l'IA, reste à décider.
 
 #### ~~FR-EXP-AUDIT~~ — DEPRECATED 2026-05-10
 ~~Audit batch keywords d'un cocon via `POST /api/keywords/audit`. Composants `KeywordAuditTable.vue`, `KeywordComparison.vue`.~~ La route subsiste côté backend (utilisée par `EnginePhase.vue` orphelin) mais n'est plus appelée par aucun composant Vue actif. Dette à nettoyer dans un chantier ultérieur de retrait des composants `production/`.
@@ -2793,6 +3444,9 @@ Quand l'utilisateur veut **tester l'outil sans consommer ses crédits** (notamme
 - En mode bac à sable, aucun appel à l'API payante n'est émis ; les données reçues sont fictives mais structurellement identiques.
 - L'utilisateur peut basculer entre bac à sable et production sans redémarrer l'app : un toggle global dans la barre de navigation change le mode pour DataForSEO et l'IA en même temps.
 - Quand le mode bac à sable est actif, l'utilisateur voit un indicateur visuel clair (badge, libellé navbar) pour ne pas se tromper de mode.
+- Le bac à sable répond avec ses propres mots-clés factices : les mesures demandées en groupe sont rattachées, dans l'ordre, aux mots-clés demandés, pour que chacun reçoive une mesure comme en réel.
+
+**Statut :** active. **Précisée le 2026-09-25 (C7)** : les mesures groupées n'étaient rattachées à aucun mot-clé en bac à sable ; les mots-clés candidats d'un nouvel article (cf. `FR-CER-KEYWORD-REAL-DATA`) restaient donc « non mesurés », et aucun article ne pouvait être créé en mode simulé.
 
 > **En situation.** L'utilisateur veut tester une nouvelle fonctionnalité du Moteur sur un cocon factice pour vérifier qu'elle marche, sans payer un centime à DataForSEO. Il clique sur le toggle « Mock / Réel » de la navbar, le bascule sur « Mock » — un badge orange apparaît, l'app loggue « DataForSEO : SANDBOX » dans la pile d'activité. Il fait son test, voit que tout fonctionne avec des données factices (mais structurellement identiques au réel), revient sur « Réel » au moment de tester son vrai cocon de production. Aucun crédit consommé pendant la phase de test.
 
@@ -2876,6 +3530,9 @@ Quand le fournisseur IA principal de l'utilisateur (par défaut Claude) **rencon
 - Les autres types d'erreur (réseau, bug applicatif) ne déclenchent **pas** le fallback — ils remontent telles quelles, parce qu'elles signalent un vrai problème qu'il faut diagnostiquer.
 - Avant le fallback, l'app **retente la requête** avec un délai exponentiel sur le même fournisseur, pour absorber une surcharge passagère.
 - Quand un fallback se déclenche, la pile d'activité l'affiche explicitement (« Claude saturé, bascule sur Gemini ») pour que l'utilisateur comprenne pourquoi sa requête est plus lente ou différente d'habitude.
+- Une requête qui demande la recherche web ne bascule jamais vers un fournisseur qui ne sait pas chercher : seul Claude est essayé (la simulation en mode simulé), même quand le fournisseur principal est Gemini ; s'il échoue, la requête échoue en le disant, au lieu de rendre un texte sans source (cf. `FR-RED-ENRICH-SOURCES`).
+
+**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C5b, checklist R9) : la recherche web se perdait sans bruit lors d'une bascule vers Gemini ou OpenRouter.
 
 > **En situation.** L'utilisateur lance la génération du brief pour son article du jour. Sa requête part normalement vers Claude. Mais Anthropic est en surcharge à ce moment précis et renvoie une erreur 503. Avant que l'utilisateur s'en rende compte, l'app a déjà retenté deux fois (avec délais exponentiels), puis a basculé sur Gemini qui lui renvoie le brief en quelques secondes de plus. Côté UX, il a juste vu son brief arriver — peut-être un poil plus lent que d'habitude. En consultant la pile d'activité en bas à droite, il voit l'historique : « Claude overloaded → fallback Gemini, brief généré ». La prochaine fois qu'il rédigera, Claude sera revenu, le fallback ne se déclenchera pas. Si un jour l'utilisateur veut tester spécifiquement Gemini sans cette mécanique (pour comparer la qualité brute), il met `AI_PROVIDER_NO_FALLBACK=1` dans son `.env` et il voit alors les vraies erreurs des autres providers.
 
@@ -2891,7 +3548,7 @@ Claude est le **fournisseur IA principal** de l'app : c'est lui qui sert par dé
 - L'utilisateur peut sélectionner son modèle Claude via une variable d'env, sans toucher au code.
 - Pour la sortie structurée (analyses, classifications), l'app force Claude à respecter un schéma précis pour garantir la qualité de parsing.
 - Le coût de chaque appel Claude est calculé selon les tarifs publics du modèle utilisé et apparaît dans la pile d'activité (badge € sur chaque ligne).
-- Si le crédit Anthropic est insuffisant, l'erreur déclenche le fallback automatique vers un autre fournisseur (cf. FR-EXT-AI-FALLBACK) avec un message « crédits insuffisants » explicite.
+- Si le crédit Anthropic est insuffisant, l'erreur déclenche le fallback automatique vers un autre fournisseur (cf. FR-EXT-AI-FALLBACK) avec un message « crédits insuffisants » explicite — sauf pour une requête avec recherche web, que seul Claude sait faire : elle échoue alors en le disant.
 
 > **En situation.** L'utilisateur travaille un article exigeant et veut la meilleure qualité possible — il passe `CLAUDE_MODEL=claude-sonnet-4-6` dans son `.env`. Pour ses brouillons ou analyses rapides, il bascule sur `claude-haiku-4-5-…` (4× moins cher) sans changer une ligne de code. À chaque génération, la pile d'activité affiche « Sonnet : 1 250 tokens in / 850 out → $0,022 » — il voit en temps réel ce qu'il consomme et peut décider de switcher au modèle moins cher si son article ne le justifie pas. Le jour où Anthropic affiche « insufficient credit », l'app bascule sur Gemini et le signale dans la pile d'activité, l'utilisateur recharge tranquillement ses crédits sans avoir été bloqué.
 
@@ -3061,19 +3718,95 @@ Les prompts envoyés à Claude / Gemini sont stockés en fichiers `.md` **sans l
 2. Le contenu utilisateur injecté (par exemple le titre d'un article ou un texte sélectionné dans l'éditeur) est **échappé** avant injection — un utilisateur ne peut pas, par mégarde, casser le comportement de l'IA en collant un texte qui ressemble à une instruction.
 
 **Critères d'acceptation**
-- Aucun prompt `.md` ne contient de logique conditionnelle ou de référence à un état utilisateur — tout passe par variables `{{...}}`.
+- Aucun prompt `.md` ne contient de référence à un état utilisateur — tout passe par variables `{{...}}`.
+- La seule logique permise dans un prompt est d'afficher ou non un bloc selon qu'une valeur est vide : un bloc « contexte enrichi » disparaît, titre compris, quand il n'y a pas de contexte. Aucune autre condition.
+- Chaque prompt reçoit exactement les variables qu'il attend : une variable attendue mais absente, ou fournie mais inutilisée, est une erreur visible en développement et en test (cf. `FR-INFRA-PROMPT-LAYERS`).
+- Un texte inséré arrive tel quel : une suite de caractères qui ressemble à une variable (`{{…}}`) ou à un motif de remplacement (`$1`, `$&`) n'est ni interprétée ni perdue.
 - Le contenu utilisateur qui ressemble à une instruction (`\n\nHuman:`, `<system>`, etc.) est neutralisé avant injection dans le prompt.
+
+**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C4) : le chargeur devient strict (variables exactes, rendu en une passe) ; le critère « aucune logique conditionnelle » devient « un bloc affiché ou non selon qu'une valeur est vide » — de tels blocs existaient déjà dans les prompts du Cerveau, mais rien ne les traitait et deux d'entre eux partaient bruts chez l'IA.
 
 → Conception : [DESIGN-INFRA-PROMPT-LOADER](./design-registry.md#design-infra-prompt-loader)
 
 ---
 
+#### FR-INFRA-PROMPT-LAYERS — Des consignes d'IA organisées en couches, sans rien d'écrit en dur
+
+Une consigne d'IA (un « prompt ») ressemble au brief qu'un chef donne à un pigiste : qui il est, ce qu'il doit savoir, les règles de la maison, ce qu'on attend de lui et sous quelle forme le rendre. Le pilier 1013 (2026-09-24) a montré ce qui arrive quand ce brief est écrit n'importe comment : le budget de mots de chaque section était calculé puis perdu en route, sans que rien ne le signale ; des années passées et des quartiers de Toulouse étaient écrits en dur dans les consignes, quel que soit le client ; et l'IA du Cerveau a recopié deux fois l'exemple de sa consigne, jusqu'à l'adresse de page du pilier. Désormais chaque consigne suit les mêmes couches, reçoit exactement les informations qu'elle attend, et tire la date et la zone du contexte.
+
+**Critères d'acceptation**
+- Chaque consigne se compose de cinq couches : l'identité (qui écrit, pour qui, avec quel ton), le contexte (date, zone, stratégie, article, mots-clés), les règles du type d'article (cf. `FR-INFRA-TYPE-RULES-SSOT`), la tâche, et le contrat de sortie (la forme attendue, et ce qui la vérifie).
+- Une information attendue par une consigne mais absente, ou fournie mais inutilisée, est une erreur qui arrête l'appel en développement et en test ; en production, l'écart est journalisé et l'appel continue.
+- Un bloc facultatif disparaît, titre compris, quand l'information qu'il annonce est vide : l'IA ne reçoit jamais un repère brut ni un titre sans contenu.
+- Aucune année ni aucun lieu n'est écrit en dur dans les consignes : la date du jour, l'année, la zone du client (celle de sa configuration) et ses repères locaux (autres noms de la zone, quartiers et communes, lieux connus) viennent du contexte. Les entreprises du référentiel local ne sont pas proposées comme repères : l'IA leur prêterait des faits qu'elle ne connaît pas.
+- Les exemples des consignes sont fictifs, pris dans un autre métier, avec « [ville] » à la place du lieu ; la consigne interdit de recopier un exemple.
+- La stratégie validée du cocon arrive une seule fois dans une consigne, lue dans ce qui est enregistré.
+- La liste des consignes, avec les informations que chacune attend et ce qui l'appelle, est produite à partir des consignes elles-mêmes ; un test échoue si elle n'est pas à jour.
+- L'état du cocon (ses articles, leurs niveaux et mots-clés, les sections dont chacun est né, rédigé ou non) fait partie du contexte des consignes qui construisent un article : mots-clés d'un nouvel article, structure, premier jet (cf. `FR-INFRA-COCOON-CONTEXT`, depuis C7).
+- Les repères locaux sont ceux de la zone du client. Un repère rattaché à une région n'est proposé que si la zone du client nomme cette région (accents, majuscules et tirets ignorés) ; les repères sans région forment le référentiel par défaut, proposé seulement si la zone nomme l'un de ses noms de zone. Sinon, aucun repère : mieux vaut aucun exemple local qu'un quartier d'une autre ville.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist K5, K7, R11, D1, D2, D3), réservée par C0, livrée par C4. **Amendée le 2026-09-25 (C7)** : l'état du cocon rejoint la couche de contexte (cf. `FR-INFRA-COCOON-CONTEXT`). **Amendée le 2026-09-25 (checklist D5, commit `3638d00`, sur la branche de C7)** : les repères locaux suivent la zone du client ; la limite « référentiel non trié par zone, repères toulousains pour un client d'une autre ville » est levée, et l'« En situation » est désormais tenue en entier.
+
+> **En situation.** Arnaud crée un cocon pour un client à Bordeaux et renseigne la zone dans la configuration. La consigne de rédaction annonce la date du jour et dit que la zone du client est Bordeaux : aucune consigne n'écrit plus Toulouse ni une année en dur, et aucun texte n'annonce « en 2024 ». Le référentiel local de l'outil ne décrit que Toulouse : pour ce client, la consigne ne reçoit aucun repère local plutôt que des quartiers toulousains ; des repères rattachés à la région de Bordeaux, s'ils étaient ajoutés au référentiel, lui seraient proposés. Au Cerveau, l'IA propose des titres pour son métier à lui : l'exemple de la consigne, celui d'un chauffagiste, ne se retrouve pas dans le plan. Le lendemain, un développeur transmet une nouvelle information au sommaire sans l'ajouter à la consigne : `npm run verify` échoue et nomme l'information inutilisée.
+
+→ Conception : [DESIGN-INFRA-PROMPT-LAYERS](./design-registry.md#design-infra-prompt-layers)
+
+---
+
+#### FR-INFRA-COCOON-CONTEXT — Chaque génération connaît l'état du cocon
+
+En rédigeant le pilier 1013, l'IA ne savait rien des autres articles du cocon : elle a traité en profondeur ce que ses enfants devaient dire. Les consignes d'IA qui construisent un article reçoivent désormais le même état du cocon, lu dans la base au moment de l'appel — comme un rédacteur qui aurait sous les yeux le plan du site avant d'écrire sa page.
+
+**Critères d'acceptation**
+- L'état du cocon décrit l'arbre réel : le pilier, puis, pour chaque article, ses sections et l'article né de chacune (ou « pas encore d'article ») ; pour chaque article, son niveau, son mot-clé et s'il est rédigé (cf. `FR-CER-PARENT-WRITTEN-GATE`). Les articles sans parent, créés avant l'arbre, sont listés à part. Un cocon vide le dit : l'article à venir en sera le pilier.
+- Pour l'article visé : la section de son parent dont il naît et ce qu'elle en dit déjà (un extrait d'environ 1 200 caractères au plus), avec la consigne de la développer sans la répéter ; ses propres sections qui ont déjà leur article, à résumer et à relier plutôt qu'à creuser.
+- Trois ateliers le reçoivent : la proposition de mots-clés d'un nouvel article (Cerveau, cf. `FR-CER-KEYWORD-REAL-DATA`), la structure de l'article (Moteur, cf. `FR-HN-TAB`) et le premier jet (Rédaction, cf. `FR-RED-DRAFT-SINGLE-PASS`).
+- La stratégie validée du cocon est transmise à ces trois ateliers (au premier jet, celle de l'article l'emporte quand elle existe).
+- Pour la structure et le premier jet, un état illisible n'empêche pas la génération : elle part sans lui (le premier jet le note au journal). La proposition de mots-clés candidats, qui en a besoin pour vérifier la place de l'article, échoue au contraire avec un message.
+
+**Limites connues**
+- Les lieutenants et les structures des autres articles ne sont pas décrits : seulement leur niveau, leur mot-clé (le capitaine verrouillé, sinon le mot-clé suggéré), leurs sections et leur statut « rédigé ».
+- Les passes d'enrichissement, la méta et les actions contextuelles ne reçoivent pas l'état du cocon ; la passe « Résumer » reçoit seulement le titre et le mot-clé de l'enfant concerné.
+- Un spécialisé rattaché à un intermédiaire lui-même sans parent n'apparaît pas dans l'arbre décrit : seuls les piliers, leurs descendants et les articles sans parent y figurent.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C7 (la stratégie du cocon est transmise à la rédaction depuis C1). **Amendée à la livraison :** « articles, capitaines, lieutenants, structures, résumés, statut de rédaction » devient : niveaux, mots-clés, sections (chapitres du texte, sinon de la structure), statut « rédigé », et, pour l'article visé, le texte de la section qui l'annonce ; les lieutenants et les structures des autres articles n'y sont pas.
+
+> **En situation.** En rédigeant le pilier, l'IA sait que « Audit de site » a déjà son article dans le cocon : son chapitre « Audit de site » en dit l'essentiel en quelques phrases et annonce l'article, au lieu de trois sous-parties. Plus tard, en construisant la structure de l'intermédiaire « Auditer son site web », l'IA lit ce que le pilier en dit déjà et propose des chapitres qui vont plus loin.
+
+→ Conception : [DESIGN-INFRA-COCOON-CONTEXT](./design-registry.md#design-infra-cocoon-context)
+
+---
+
+#### FR-INFRA-TYPE-RULES-SSOT — Une seule définition de ce qu'est un pilier, un intermédiaire, un spécialisé
+
+Le type d'un article décide de sa longueur, de son nombre de chapitres, de lieutenants et de questions de FAQ. Avant l'épopée qualité SEO, ces règles vivaient en plusieurs exemplaires qui se contredisaient : un intermédiaire faisait « 1 000 à 1 500 mots » dans deux consignes d'IA, 1 800 mots dans la rédaction et 1 850 à l'écran ; un pilier était annoncé à 2 650 mots dans le brief et rédigé pour 2 500 ; le mode automatique gardait 8 lieutenants pour un pilier quand l'écran en garde 5. Désormais une seule table définit chaque type, et tout le monde la lit.
+
+**Critères d'acceptation**
+- Une seule source définit, pour chaque type : la longueur visée, la fourchette de longueur admise, le seuil de contenu trop mince, le nombre de H2 (fourchette et seuil d'alerte), le nombre de H3 par H2, le nombre de lieutenants (candidats proposés, minimum et maximum retenus), le nombre de questions de la FAQ et le nombre de H2 qui peuvent citer la ville.
+- La fourchette de H2 compte les **H2 de fond** : l'introduction et la conclusion, que le sommaire ajoute toujours, s'y ajoutent (un pilier compte 6 à 8 H2 de fond, soit 8 à 10 H2 dans l'article). Les règles transmises à l'IA le disent.
+- Les consignes d'IA (sommaire, lieutenants, structure Hn, premier jet, FAQ), la recommandation de longueur, la valeur affichée dans le brief, le budget de rédaction, les alertes SEO, les vérificateurs (lieutenants, structure, publication, propositions de FAQ) et le mode automatique lisent cette source ; aucune consigne ne recopie un nombre par type.
+- Sans données concurrentes, la longueur recommandée est la longueur visée du type : celle qui s'affiche est celle que la rédaction vise.
+- Un seuil d'alerte (« contenu trop mince », « trop peu de chapitres ») n'est pas la borne basse de la cible : ce sont deux valeurs distinctes, dans la même source.
+- Un test échoue si une consigne recopie une règle par type, si un calcul ne rend pas la valeur de la source, ou si une autre table de nombres par type apparaît dans le code.
+- La FAQ ajoutée par la passe d'enrichissement compte 4 à 6 questions pour un pilier, 3 à 5 pour un intermédiaire, 3 à 4 pour un spécialisé : la consigne de la passe FAQ cite cette règle, et une FAQ proposée hors de la fourchette est signalée 🟠 (cf. `FR-RED-ENRICH-PASSES`).
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist M10), réservée par C0, livrée par C4. **Amendée le 2026-09-25 (C5b, checklist R22)** : le nombre de questions de FAQ devient une règle par type ; la passe FAQ, livrée le même jour, demandait 3 à 6 questions quel que soit le type, dans sa propre consigne. **Amendée le 2026-09-25 (C6)** : « H2 de fond » — la règle « 6 à 8 H2 » ne disait pas si l'introduction et la conclusion comptaient ; la consigne de structure invitait à les écrire alors que le sommaire les ajoutait, d'où des doublons. Elles ne comptent plus ; le vérificateur de la structure lit la même fourchette. L'alerte « trop peu de chapitres » de l'article rédigé compte, elle, tous les H2 (introduction et conclusion comprises) contre son seuil d'alerte.
+
+> **En situation.** Arnaud décide qu'un pilier vise 3 000 mots au lieu de 2 500. Il change cette seule valeur : la longueur affichée dans le brief, celle que la rédaction vise par défaut et les règles que l'IA reçoit pour le sommaire disent toutes 3 000. S'il relève aussi le plafond du pilier, la porte de publication suit. Aucune consigne n'est à retoucher.
+
+→ Conception : [DESIGN-INFRA-TYPE-RULES-SSOT](./design-registry.md#design-infra-type-rules-ssot)
+
+---
+
 #### FR-INFRA-WORKFLOW-CHECKS-CONSTANTS — Source unique des checks workflow
-Les **checks de progression Moteur** (Discovery fait, Radar fait, Capitaine verrouillé, Lieutenants verrouillés, Lexique validé) ne sont jamais écrits comme des strings libres dans le code — ils passent par une liste centralisée de constantes préfixées `moteur:*`. Pour l'utilisateur, cela garantit que **les dots de progression et les bannières de transition affichent toujours le même état** quel que soit l'endroit qui a déclenché l'avancement. (Les préfixes `cerveau:*` / `redaction:*` historiques ont été retirés 2026-05-13, cf. DRIFT-002.)
+Les **checks de progression Moteur** (Discovery fait, Radar fait, Capitaine verrouillé, Lieutenants verrouillés, Structure validée — depuis C6, 2026-09-25 —, Lexique validé) ne sont jamais écrits comme des strings libres dans le code — ils passent par une liste centralisée de constantes préfixées `moteur:*`. Depuis C7 (2026-09-25), la même liste porte une seule étape de la Rédaction, « Premier jet accepté » (`redaction:draft_accepted`, cf. `FR-CER-PARENT-WRITTEN-GATE`). Pour l'utilisateur, cela garantit que **les dots de progression, les bannières de transition et le bandeau du premier jet affichent toujours le même état** quel que soit l'endroit qui a déclenché l'avancement. (Les préfixes `cerveau:*` et les cinq anciennes étapes `redaction:*` ont été retirés 2026-05-13, cf. DRIFT-002.)
 
 **Critères d'acceptation**
 - Toute progression utilisateur Moteur (verrouillage Capitaine, validation Lexique, etc.) émet exactement la constante `moteur:*` correspondante — pas de variante orthographique.
-- Tout consommateur (dots du header, bannière de transition, finalisation gating) lit la même constante — pas de duplication.
+- L'étape « Premier jet accepté » est écrite et lue par sa constante, par l'écran de rédaction, la création d'un enfant, le mode automatique et le rattrapage des cocons.
+- Tout consommateur (dots du header, bannière de transition, finalisation gating, bandeau du premier jet, arbre du cocon) lit la même constante — pas de duplication.
+
+**Statut :** active. **Amendée le 2026-09-25 (C7)** : l'étape de la Rédaction `redaction:draft_accepted` rejoint le catalogue, accordée par la porte du premier jet ; les dots, eux, ne comptent que les six étapes du Moteur.
 
 → Conception : [DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS](./design-registry.md#design-infra-workflow-checks-constants)
 
@@ -3293,6 +4026,10 @@ Chaque cocon dispose d'un **pool de mots-clés SEO** (suggérés par l'utilisate
 **Critères d'acceptation**
 - L'utilisateur peut ajouter, remplacer, statut-er (suggéré / validé / écarté) ou supprimer un mot-clé du pool depuis le Cerveau.
 - La liste s'affiche identique d'un onglet à l'autre, d'une session à l'autre.
+- Chaque mot-clé du pool porte un type que tous les écrans comprennent (Pilier, Intermédiaire, Spécialisé, Moyenne traîne, Longue traîne) ; un type inconnu est refusé à l'écriture.
+- Un même mot-clé ne peut viser qu'un seul cocon ; le refus nomme le cocon qui l'utilise déjà.
+
+**Statut :** durci le 2026-09-24. **Pourquoi :** le Cerveau écrivait le niveau d'article en minuscules, et le mot-clé pilier n'était jamais retrouvé ; un doublon entre cocons était refusé sans dire où (épopée qualité SEO, K1-K2).
 
 → Conception : [DESIGN-INFRA-KEYWORDS-SEO](./design-registry.md#design-infra-keywords-seo)
 
@@ -3391,44 +4128,90 @@ Au lieu d'avoir une table de cache dédiée par fournisseur ou par type d'appel,
 
 ---
 
+#### FR-INFRA-VERIFIER-SHARED — Un même contrôle à l'écran, au serveur et dans l'audit
+
+Une règle de qualité est écrite **une seule fois** et placée à une transition du parcours — une **porte** : verrouiller le capitaine, valider les lieutenants, valider la structure, valider le lexique, accepter le premier jet, publier. Le serveur est le seul à l'évaluer. L'écran affiche son verdict au moment du geste et explique chaque point ; le serveur refuse l'étape ou la publication qui ne passe pas, même quand la demande ne vient pas de l'écran ; l'audit du projet rejoue la même évaluation après coup. Les trois ne peuvent donc pas se contredire.
+
+**Critères d'acceptation**
+- Une règle donne le même verdict à l'écran, au serveur et dans l'audit : les trois passent par la même évaluation.
+- Un refus renvoie la liste complète des points, dans les mots affichés à l'écran : ce qui est constaté, le risque en clair, l'extrait concerné et, quand l'outil en a, des pistes à la place.
+- Chaque point porte un niveau — 🟠 attention, 🔴 risque, ⛔ technique — et un nom stable. Chaque contrôle est rattaché à l'exigence qu'il protège (`FR-CAP-LOCK-GATE`, `FR-LIE-LOCK-GATE`, `FR-HN-LOCK-GATE`, `FR-LEX-METIER-ONLY`, `FR-RED-DRAFT-SINGLE-PASS`, `FR-RED-PUBLISH-GATE`).
+- La porte « accepter le premier jet » garde, depuis C7, l'étape « Premier jet accepté » (cf. `FR-CER-PARENT-WRITTEN-GATE`) : elle juge le texte juste après sa rédaction, et à la demande, et ouvre l'alarme s'il ne passe pas. Elle ne refuse ni l'enregistrement ni l'enrichissement du texte ; sans l'étape, seuls les articles enfants ne peuvent pas naître. Le mode automatique la demande et s'arrête sur un refus.
+- Une étape refusée n'est pas enregistrée : la progression de l'article ne bouge pas. Une publication refusée ne change pas le statut de l'article.
+- Les outils automatiques (génération d'article en ligne de commande) subissent la même règle : un refus arrête le run en listant chaque point avec son niveau, et l'outil ne passe jamais outre à la place d'un humain.
+- L'audit du projet (`npm run verify`) signale tout article déjà rédigé que la porte de publication refuserait, avec le nombre de points par niveau.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C2. **Amendée le 2026-09-25 (C5a)** : la porte « accepter le premier jet » rejoint les portes ; elle alerte sans rien refuser. **Amendée le 2026-09-25 (C6)** : la porte « valider la structure », réservée depuis C2, est livrée ; elle garde l'étape « Structure validée ». **Amendée le 2026-09-25 (C7)** : la porte du premier jet garde l'étape « Premier jet accepté » ; la publication juge aussi les résumés des enfants et les liens vers des articles non publiés.
+
+> **En situation.** L'utilisateur contourne l'écran et demande directement au serveur de valider l'étape « Capitaine verrouillé » pour un mot-clé NO-GO jamais mesuré. Le serveur refuse, avec les mêmes points que ceux que l'alarme aurait affichés : « Aucun volume de recherche mesuré », « Le verdict du mot-clé est NO-GO ». Le soir, `npm run verify` signale que le pilier 1013, déjà rédigé, serait refusé à la publication : méta coupée ⛔, capitaine absent du H1 et du meta title 🔴, 15 601 mots 🔴.
+
+→ Conception : [DESIGN-INFRA-VERIFIER-SHARED](./design-registry.md#design-infra-verifier-shared)
+
+---
+
+#### FR-INFRA-GATE-WAIVER — Passer outre en prenant sa responsabilité, par écrit
+
+Quand une porte signale un point, l'utilisateur n'est pas bloqué par principe : il peut savoir quelque chose que l'outil ne voit pas (des demandes reçues par téléphone, une donnée absente de l'outil, un mot-clé de marque). Il peut alors passer outre — c'est une **dérogation** — mais par écrit, point par point, et seulement pour les données qu'il a sous les yeux. C'est l'**alarme graduée**, commune à toutes les portes.
+
+**Critères d'acceptation**
+- 🟠 Attention : cocher « J'ai lu » suffit ; l'accusé de lecture est enregistré.
+- 🔴 Risque : il faut choisir une catégorie — longue traîne assumée, donnée manquante dans l'outil, mot-clé de marque, autre — et écrire une raison d'au moins 20 caractères. Un compteur montre la progression (« 3 / 20 ») et le bouton reste grisé tant que chaque point n'a pas sa réponse.
+- ⛔ Technique : aucune dérogation possible, même avec une raison ; le bouton affiche « Correction nécessaire » et reste grisé.
+- Le libellé du bouton dit ce qu'on fait : « J'ai lu, je continue » quand il n'y a que des 🟠, « Je prends la responsabilité et je continue » dès qu'il y a un 🔴. « Revenir corriger » n'enregistre rien.
+- Le serveur revérifie chaque dérogation et refuse, avec son motif affiché sous le point, celle qui n'est pas recevable (raison trop courte, alerte qui n'existe plus parce que les données ont changé).
+- Chaque dérogation est enregistrée : quand, à quelle porte, pour quel point, avec quelle catégorie et quelle raison. L'outil est mono-utilisateur : l'auteur n'est pas enregistré.
+- Une dérogation ne couvre qu'un point, et seulement pour les données vérifiées à ce moment : dès qu'elles changent (autre capitaine, lieutenants modifiés, structure modifiée, lexique modifié, texte ou méta retouchés), elle tombe et l'alarme revient.
+- Quand un même point peut viser plusieurs éléments (plusieurs lieutenants en conflit, plusieurs termes génériques dans le lexique, plusieurs lieutenants absents de la structure), chaque élément se déroge séparément.
+- Les dérogations qui couvrent déjà des points de la porte sont rappelées dans l'alarme sous un badge 🛡.
+- À la publication, chaque dérogation posée en amont (capitaine, lieutenants, structure, lexique) est réaffichée et doit être reconfirmée ; celles du premier jet ne le sont pas, car la publication rejuge elle-même la qualité du texte (cf. `FR-RED-PUBLISH-GATE`). L'audit du projet (`npm run verify`) les liste toutes, article par article, avec leur catégorie et leur raison.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C2. **Amendée le 2026-09-25 (C5a)** : les dérogations du premier jet ne sont pas réaffichées à la publication. **Amendée le 2026-09-25 (C6)** : dérogations de la porte « valider la structure », réaffichées à la publication.
+
+> **En situation.** L'utilisateur verrouille « rénovation grange pierre Gers », que l'outil n'a jamais mesuré. L'alarme 🔴 dit : « Aucun volume de recherche mesuré ». Il tape « peu » : le compteur affiche 3 / 20 et le bouton reste grisé. Il choisit « Longue traîne assumée » et écrit « demandes réelles reçues par téléphone chaque mois » : le capitaine est verrouillé. Trois semaines plus tard, à la publication, l'alarme lui remontre cette dérogation ; il coche « J'ai lu » et publie. S'il avait changé de capitaine entre-temps, la dérogation serait tombée et l'alarme serait revenue au verrouillage.
+
+→ Conception : [DESIGN-INFRA-GATE-WAIVER](./design-registry.md#design-infra-gate-waiver)
+
+---
+
 ### 8.14.bis — Matrice de couverture tables ↔ FR
 
 > **Pourquoi cette matrice ?**
 > Les FR métier (§8.1 → §8.13) décrivent **ce que fait** chaque workflow ; les FR-INFRA (§8.14) décrivent **comment** la persistance est structurée. Il manquait une **vue inverse** : pour une table donnée, quelles FR la produisent / consomment ? Cette matrice répond à 3 questions opérationnelles : (1) si je modifie le schéma d'une table, quelles FR dois-je relire ? (2) si une FR change, quelles tables sont touchées ? (3) y a-t-il des tables sans FR (zone aveugle) ?
 >
-> **Règle de maintenance :** toute migration créant ou modifiant une table doit ajouter / mettre à jour une ligne dans cette matrice. Le test `tests/unit/coherence/prd-tables-matrix.test.ts` compare les `CREATE TABLE` de `server/db/schema.sql` à cette matrice et échoue sur toute table non documentée.
+> **Matrice déplacée le 2026-09-28.** La matrice qui fait foi est désormais dans [`design/02-donnees.md`](../../design/02-donnees.md) (« Matrice tables ↔ exigences »), où l'ancienne citait une vingtaine d'identifiants inexistants. Le test `tests/unit/coherence/design-tables-matrix.test.ts` (ex-`prd-tables-matrix`) compare les `CREATE TABLE` de `server/db/schema.sql` à celle-là. La table ci-dessous reste pour l'historique.
 >
 > **Convention :** la colonne **AUTHORITY** indique la FR-INFRA qui définit la table (schéma + producteurs + consommateurs). Les colonnes **Producteurs FR** / **Consommateurs FR** listent les FR métier qui écrivent / lisent.
 
 | Table                       | AUTHORITY (FR-INFRA)                  | Producteurs FR (métier)                                | Consommateurs FR (métier)                                              | Notes                                                                 |
 | --------------------------- | ------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `articles`                  | (schéma initial — pas de FR-INFRA)    | FR-CER-BATCH-CREATE, FR-CER-STEPS-ARTICLE              | FR-DASH-NAV, FR-MOT-PHASES, FR-FIN-*, FR-RED-*                         | Cœur du domaine. 35 mentions PRD.                                     |
+| `articles`                  | (schéma initial — pas de FR-INFRA)    | FR-CER-COCOON-PROGRESSIVE (création unitaire, C7 ; avant : FR-CER-BATCH-CREATE), FR-CER-CHILD-FROM-PILLAR-H2 (`parent_id`, `parent_section`), FR-CER-STEPS-ARTICLE | FR-DASH-NAV, FR-MOT-PHASES, FR-FIN-*, FR-RED-*, FR-INFRA-COCOON-CONTEXT (arbre du cocon), FR-RED-LINKING-MANUAL (famille), FR-RED-PUBLISH-GATE (enfants, cibles non publiées) | Cœur du domaine. Depuis C7 : `parent_id` (clé étrangère `ON DELETE RESTRICT`, jamais soi-même, indexée) et `parent_section` (titre du H2 du parent). |
 | `article_content`           | (schéma initial)                      | FR-RED-EDITOR-PERSIST                                  | FR-RED-EDITOR-LOAD, FR-RED-EXPORT-*                                    | TipTap doc + meta-tags.                                               |
-| `article_keywords`          | (schéma initial)                      | FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-PERSIST         | FR-MOT-PHASES, FR-RED-PROMPT-CONTEXT, FR-FIN-RECAP                     | JSONB `lexique`, `hn_structure`, `validation_history`.                |
+| `article_keywords`          | (schéma initial)                      | FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-PERSIST, FR-HN-TAB (`hn_structure`, C6) | FR-MOT-PHASES, FR-RED-PROMPT-CONTEXT, FR-FIN-RECAP, FR-LEX-METIER-ONLY (porte du lexique), FR-HN-LOCK-GATE (porte de la structure, C6) | TEXT[] `lexique`, JSONB `hn_structure`, `validation_history`. Un enregistrement sans `hnStructure` garde la structure en base (C6). |
 | `article_micro_contexts`    | **FR-INFRA-MICRO-CONTEXTS**           | FR-CER-MICRO-CONTEXT, FR-CER-WORD-COUNT-RECOMMEND      | NFR-INT-PROMPT-AGNOSTIC (via `buildMicroContextBlock`)                 | 1:1 avec articles.                                                    |
 | `article_strategies`        | **FR-INFRA-ARTICLE-STRATEGIES**       | FR-CER-STEPS-ARTICLE                                   | FR-CER-CONTEXT-FOR-MOTEUR, prompts IA Rédaction                        | Wizard Cerveau article-scoped.                                        |
-| `articles.completed_checks` | **FR-INFRA-WORKFLOW-CHECKS-CONSTANTS**| FR-MOT-PHASES (toutes émissions `MOTEUR_*`)            | FR-MOT-SOFT-GATING, FR-FIN-RECAP, `useFinalisationGating`              | TEXT[] sur `articles`. SSOT (`NFR-INT-COMPLETED-CHECKS-SSOT`).        |
-| `external_api_cache`                 | **FR-INFRA-API-CACHE**                | FR-EXT-DATAFORSEO-CACHE, FR-EXT-PAA-CACHE              | Toutes FR-EXT (lecture before fetch)                                   | TTL court multi-types. Purge horaire (`FR-INFRA-API-CACHE-PURGE`).    |
+| `articles.completed_checks` | **FR-INFRA-WORKFLOW-CHECKS-CONSTANTS**| FR-MOT-PHASES (toutes émissions `MOTEUR_*`), FR-CER-PARENT-WRITTEN-GATE (`redaction:draft_accepted`, C7) | FR-MOT-SOFT-GATING, FR-FIN-RECAP, `useFinalisationGating`, FR-CER-COCOON-PROGRESSIVE (parent rédigé), FR-INFRA-COCOON-CONTEXT | TEXT[] sur `articles`. SSOT (`NFR-INT-COMPLETED-CHECKS-SSOT`).        |
+| `external_api_cache`                 | **FR-INFRA-API-CACHE**                | FR-EXT-DATAFORSEO-CACHE, FR-EXT-PAA-CACHE, FR-CER-KEYWORD-REAL-DATA (`serp-top`, C7) | Toutes FR-EXT (lecture before fetch), FR-CER-KEYWORD-REAL-DATA | TTL court multi-types. Purge horaire (`FR-INFRA-API-CACHE-PURGE`).    |
 | `captain_explorations`      | (FR-CAP-PERSIST décrit la table)      | FR-CAP-PERSIST, FR-RAD-LONGTAIL-PERSIST (via source)   | FR-CAP-LOCK, FR-CAP-CARDS, FR-EXP-COUNTS                               | Renommée depuis `keyword_tests` en migration 010.                     |
 | `cocoons`                   | (schéma initial)                      | FR-CER-STEPS-COCOON, FR-DASH-WORKFLOW-CHOICE           | FR-DASH-NAV, FR-CER-AIGUILLAGE                                         |                                                                       |
 | `cocoon_strategies`         | **FR-INFRA-COCOON-STRATEGIES**        | FR-CER-STEPS-COCOON                                    | FR-CER-CONTEXT-FOR-MOTEUR, prompts IA (via `buildCocoonStrategyBlock`) | Cross-articles du même cocon.                                         |
 | `intent_explorations`       | **FR-INFRA-INTENT-EXPLORATIONS-LEGACY** | aucun (legacy)                                       | aucun (legacy)                                                         | **Supprimée** (ancienne migration 016, archivée) : absente de `schema.sql`. Ligne gardée pour la traçabilité. |
-| `internal_links`            | (FR-RED-INTERNAL-LINKS décrit)        | FR-RED-INTERNAL-LINKS                                  | FR-RED-INTERNAL-LINKS, prompts maillage                                |                                                                       |
+| `internal_links`            | (FR-RED-LINKING-MANUAL décrit ; avant C7 : FR-RED-INTERNAL-LINKING) | FR-RED-LINKING-MANUAL (panneau Maillage), FR-RED-CONTEXTUAL-ACTIONS (action « lien interne », C7) | FR-RED-LINKING-MANUAL, FR-RED-PUBLISH-GATE (liens vers des articles non publiés, C7) | La ligne citait `FR-RED-INTERNAL-LINKS`, ID qui n'a jamais existé. |
 | `keyword_autocomplete`      | **NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION** | FR-RAD-PERSIST (suggestions autocomplete)           | FR-RAD-CARDS, FR-CAP-CARDS                                             | Cross-article. FK → `keyword_metrics`. TTL 1j (30 min si vide).       |
 | `keyword_discoveries`       | **FR-INFRA-KEYWORD-DISCOVERIES**      | FR-DIS-CACHE                                           | FR-DIS-CACHE, FR-DIS-LOAD                                              | TTL applicatif 30j (différent `external_api_cache`).                           |
-| `keyword_intent_analyses`   | (FR-MOT-INTENT-ANALYSIS décrit)       | FR-MOT-INTENT-ANALYSIS                                 | FR-CAP-CARDS, FR-RAD-CARDS                                             | Cross-article permanent.                                              |
-| `keyword_metrics`           | **FR-INFRA-KEYWORD-METRICS**          | FR-EXT-DATAFORSEO-CACHE, FR-MOT-RAW-KPIS               | Toutes FR Capitaine / Radar / Lieutenants (kpis)                       | Cross-article permanent. Freshness 7j.                                |
+| `keyword_intent_analyses`   | aucune (table morte, conservée)       | aucun — son seul producteur, `POST /api/intent/analyze` (FR-EXP-INTENT-ANALYZE, puis FR-MOT-INTENT-ANALYSIS), est supprimé depuis le 2026-05-10 | aucun depuis M3 (2026-09-25) ; avant : FR-CAP-CARDS, FR-RAD-CARDS, qui n'en affichaient déjà rien | **Conservée en base, plus lue ni écrite** (épopée qualité SEO, checklist M3, commit `f59e675`) : ses lignes étaient figées et servies sans que personne les affiche. L'intention SERP vit dans `keyword_metrics` (`intent_raw`, `intent_label`). Un test de cohérence (`db-tables-coverage.test.ts`) casse si le code la relit. |
+| `keyword_metrics`           | **FR-INFRA-KEYWORD-METRICS**          | FR-EXT-DATAFORSEO-CACHE, FR-MOT-RAW-KPIS, FR-CER-KEYWORD-REAL-DATA (candidats mesurés, C7) | Toutes FR Capitaine / Radar / Lieutenants (kpis), FR-CER-KEYWORD-REAL-DATA (mot-clé mesuré exigé à la création) | Cross-article permanent. Freshness 7j.                                |
 | `keyword_paa_questions`     | **NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION** | FR-EXT-PAA-CACHE                                    | FR-CAP-CARDS, brief Capitaine                                          | Cross-article. FK → `keyword_metrics`.                                |
-| `keyword_serp_results`      | **NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION** | FR-LIE-SERP-ANALYZE (NFR-INT-SERP-ONCE)             | FR-LEX-TFIDF, FR-LEX-PRECHECK-SERP, brief Capitaine                    | URLs Top 10, cross-article. TTL 7j.                                   |
+| `keyword_serp_results`      | **NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION** | FR-LIE-SERP-ANALYZE (NFR-INT-SERP-ONCE) | FR-LEX-TFIDF, FR-LEX-PRECHECK-SERP, brief Capitaine, FR-CER-KEYWORD-REAL-DATA (trois premiers résultats, lecture seule) | URLs Top 10, cross-article. TTL 7j. Une analyse n'est relue que si des pages ont été lues (`keyword_serp_scrapes`, C7). Le relevé des candidats du Cerveau va dans `external_api_cache` (`serp-top`), jamais ici. |
 | `keyword_serp_scrapes`      | **NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION** | FR-LIE-SERP-ANALYZE                                 | FR-LEX-TFIDF, FR-LEX-PRECHECK-SERP                                     | HTML scrapé des pages Top 10. FK → `keyword_serp_results`.            |
-| `keywords_seo`              | **FR-INFRA-KEYWORDS-SEO**             | FR-CER-AIGUILLAGE, FR-CER-BATCH-CREATE                 | FR-CAP-CARDS, FR-MOT-PHASES                                            | Cocoon-scoped. Pool dans lequel le Capitaine pioche.                  |
+| `keywords_seo`              | **FR-INFRA-KEYWORDS-SEO**             | FR-CER-AIGUILLAGE, FR-CER-COCOON-PROGRESSIVE (avant C7 : FR-CER-BATCH-CREATE) | FR-CAP-CARDS, FR-MOT-PHASES                                            | Cocoon-scoped. Pool dans lequel le Capitaine pioche.                  |
 | `lexique_explorations`      | (FR-LEX-EXPLORATION décrit)           | FR-LEX-EXPLORATION                                     | FR-LEX-RECOMMEND, FR-EXP-COUNTS                                        |                                                                       |
 | `lieutenant_explorations`   | **FR-INFRA-LIEUTENANT-EXPLORATIONS**  | FR-LIE-PROPOSE, FR-LIE-PERSIST                         | FR-LIE-SELECT, FR-EXP-COUNTS                                           | Renommée depuis `lieutenant_proposals` en migration 010.              |
-| `local_entities`            | **FR-INFRA-LOCAL-ENTITIES**           | seed migration uniquement                              | FR-CAP-LOCAL-ANCHORING, FR-RED-CONTENT-GAP                             | Référentiel statique cross-cocon.                                     |
+| `local_entities`            | **FR-INFRA-LOCAL-ENTITIES**           | seed migration uniquement                              | FR-CAP-LOCAL-ANCHORING, FR-RED-CONTENT-GAP, FR-INFRA-PROMPT-LAYERS (repères de la zone, C4 ; triés par la colonne `region` depuis D5) | Référentiel statique cross-cocon. Une entité sans `region` appartient au référentiel par défaut. |
 | `paa_explorations`          | **FR-INFRA-PAA-EXPLORATIONS**         | FR-CAP-PERSIST (PAA testées)                           | FR-CAP-CARDS, FR-EXP-COUNTS                                            | Distinct de `external_api_cache.cache_type='paa'`.                             |
 | `radar_explorations`        | (FR-RAD-PERSIST décrit)               | FR-RAD-PERSIST, FR-RAD-LONGTAIL-PERSIST                | FR-RAD-CARDS, FR-CAP-PERSIST (via source), FR-EXP-COUNTS               | Article-scoped, JSONB `scan_result`.                                  |
 | `silos`                     | (schéma initial)                      | FR-DASH-NAV (CRUD admin)                               | FR-DASH-NAV                                                            | Conteneur de cocoons.                                                 |
-| `theme_config`              | (FR-CER-THEME-CONFIG décrit)          | FR-CER-THEME-CONFIG                                    | NFR-INT-PROMPT-AGNOSTIC (via `buildThemeContextBlock`)                 | Singleton (`id=1`).                                                   |
+| `theme_config`              | (FR-CER-THEME-CONFIG décrit)          | FR-CER-THEME-CONFIG                                    | NFR-INT-PROMPT-AGNOSTIC (via `buildThemeContextBlock`, sur la copie envoyée par l'écran), FR-INFRA-PROMPT-LAYERS (zone du client, lue en base, C4) | Singleton (`id=1`).                                                   |
+| `gate_waivers`              | **FR-INFRA-GATE-WAIVER**              | FR-INFRA-GATE-WAIVER (alarme graduée : dérogation 🟠 / 🔴) | FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-HN-LOCK-GATE, FR-LEX-METIER-ONLY, FR-RED-PUBLISH-GATE (réaffichage) | Épopée qualité SEO (C2, porte du lexique en C3, de la structure en C6). `ON DELETE CASCADE` sur articles. |
 
 > **Lecture de la matrice :**
 > - Une cellule **Producteurs / Consommateurs FR** vide signifie que la table est lue/écrite uniquement via une FR-INFRA (pas de FR métier identifiée). C'est attendu pour les tables d'infra (cache, telemetry).
@@ -3473,6 +4256,11 @@ Deuxième invariant essentiel pour l'utilisateur : **les panels IA sont visibles
 - Une fois le résultat affiché, l'utilisateur peut relancer l'IA via un bouton de régénération qui réutilise le même mécanisme de confirmation/streaming.
 - L'aspect et le comportement de ces panels restent cohérents entre onglets : refactor d'un comportement de panel dans un onglet ne doit pas casser la cohérence du même comportement dans les autres.
 
+**Limites connues**
+- Le panneau d'analyse du brief de la Rédaction guidée (cf. `FR-RED-IA-BRIEF`) ne suit pas encore ce modèle : il est fait à part, sans la structure commune, et n'a pas d'état « erreur » — une analyse qui échoue ne le dit pas dans le panneau (épopée qualité SEO, relevé par T2, checklist U4). Les panels des cinq onglets du Moteur, eux, sont vérifiés.
+
+**Statut :** active. **Précisée le 2026-09-25 (épopée qualité SEO, T2)** : écart de la Rédaction consigné ; son test reste ignoré tant que le panneau n'est pas refait.
+
 > **En situation.** L'utilisateur ouvre l'onglet Lexique d'un article fraîchement promu en phase Moteur, sans avoir encore extrait son lexique. Le panel IA est là, visible, mais son bouton « Extraire les termes » est grisé avec le message « Verrouille d'abord ton Capitaine pour extraire le lexique ». L'utilisateur comprend instantanément la dépendance — il revient sur le Capitaine, verrouille, et le bouton du panel Lexique devient cliquable sans qu'il ait à recharger ou à passer par une animation d'apparition. Plus tard, sur le même article, il bascule sur le panel IA Lieutenants : même structure (titre, bouton de déclenchement, état, zone de rendu), même rythme d'interaction. Pas besoin de réapprendre, l'IA Moteur parle un langage cohérent partout. Si un développeur ajoute demain un 7ᵉ panel IA dans le Moteur, l'utilisateur doit pouvoir le manipuler sans manuel d'utilisation, simplement parce qu'il a déjà manipulé les 6 autres.
 
 → Conception : [DESIGN-UI-AI-PANELS-PATTERN](./design-registry.md#design-ui-ai-panels-pattern)
@@ -3481,9 +4269,9 @@ Deuxième invariant essentiel pour l'utilisateur : **les panels IA sont visibles
 
 #### FR-UI-ARTICLE-SHARED — Composants partagés entre la vue Editor et la vue Workflow
 
-L'utilisateur peut produire un article par **deux entrées différentes** : la vue Workflow (intégrée au pipeline Moteur → Rédaction, avec brief IA, outline généré, sections enchaînées) ou la vue Editor (édition libre TipTap d'un article existant). Ces deux vues partagent un cœur d'**éléments d'éditeur réutilisés à l'identique** : la barre d'outils des panneaux annexes (SEO, GEO, Maillage, Blocs), la zone de panneaux redimensionnable, la barre de progression de section, les badges de coût IA, le compteur de mots, les overlays d'erreurs d'actions. Quand l'utilisateur passe d'une vue à l'autre, ces blocs lui apparaissent identiques — c'est le même outil d'édition d'article, vu sous deux modes d'entrée.
+L'utilisateur peut produire un article par **deux entrées différentes** : la vue Workflow (intégrée au pipeline Moteur → Rédaction, avec brief IA, outline généré, sections enchaînées) ou la vue Editor (édition libre TipTap d'un article existant). Ces deux vues partagent un cœur d'**éléments d'éditeur réutilisés à l'identique** : la barre d'outils des panneaux annexes (SEO, GEO, Maillage, Blocs, Enrichir), la zone de panneaux redimensionnable, la barre de progression de section, les badges de coût IA, le compteur de mots, les overlays d'erreurs d'actions. Quand l'utilisateur passe d'une vue à l'autre, ces blocs lui apparaissent identiques — c'est le même outil d'édition d'article, vu sous deux modes d'entrée.
 
-Le cœur de génération d'article (orchestration du streaming IA section par section, persistance, log de coût) est **factorisé en composable partagé** : les deux vues délèguent à la même implémentation, garantissant qu'une régression côté générateur affecte de la même façon les deux entrées plutôt que d'en privilégier une.
+Le cœur de génération d'article (premier jet streamé et affiché chapitre par chapitre, persistance, log de coût, porte « accepter le premier jet ») est **factorisé en composable partagé** : les deux vues délèguent à la même implémentation, garantissant qu'une régression côté générateur affecte de la même façon les deux entrées plutôt que d'en privilégier une.
 
 **Critères d'acceptation**
 - Les éléments d'édition partagés (toolbar panneaux, container redimensionnable, barre de progression, badges coût, compteur mots, overlays d'erreur) ont la même apparence et le même comportement quel que soit le mode d'entrée (Workflow ou Editor).
@@ -3498,17 +4286,17 @@ Le cœur de génération d'article (orchestration du streaming IA section par se
 
 #### FR-UI-MOTEUR-SHARED — Briques d'interface partagées entre les onglets du Moteur
 
-Les onglets du Moteur (Discovery, Radar, Capitaine, Lieutenants, Lexique, Finalisation) partagent un **ensemble de briques d'interface transverses** que l'utilisateur retrouve à l'identique d'un onglet à l'autre : le panneau de cache « combien de données existantes pour cet article » avec son bouton de purge, l'invitation « charger les données existantes » au premier mount d'un onglet déjà alimenté, le récap de contexte (cocon, Capitaine verrouillé, articles publiés / suggérés), la bannière de transition Phase ② → ③, les dots de progression dans l'en-tête du Moteur, et le panneau d'assistance contextuelle (actions globales sur le mot-clé en cours). Ces briques garantissent à l'utilisateur un **langage visuel commun** dans tout le Moteur — il n'a pas à se réorienter en changeant d'onglet.
+Les onglets du Moteur (Discovery, Radar, Capitaine, Lieutenants, Structure, Lexique, Finalisation) partagent un **ensemble de briques d'interface transverses** que l'utilisateur retrouve à l'identique d'un onglet à l'autre : le panneau de cache « combien de données existantes pour cet article » avec son bouton de purge, l'invitation « charger les données existantes » au premier mount d'un onglet déjà alimenté, le récap de contexte (cocon, Capitaine verrouillé, articles publiés / suggérés), la bannière de transition Phase ② → ③, les dots de progression dans l'en-tête du Moteur, et le panneau d'assistance contextuelle (actions globales sur le mot-clé en cours). Ces briques garantissent à l'utilisateur un **langage visuel commun** dans tout le Moteur — il n'a pas à se réorienter en changeant d'onglet.
 
 **Critères d'acceptation**
 - Le panneau de cache (compteur de données externes + bouton purge) a la même apparence et le même comportement sur tous les onglets qui en disposent.
 - L'invitation « charger les données existantes » s'affiche selon une même règle (présence de données en base) et expose un même bouton, quel que soit l'onglet.
 - Le récap de contexte stratégie (cocon, articles publiés / suggérés, Capitaine verrouillé) est consultable depuis chaque onglet Moteur et reste identique en apparence.
-- Les dots de progression dans l'en-tête du Moteur reflètent l'état des 5 checks Moteur (Discovery, Radar, Capitaine, Lieutenants, Lexique) — leur rendu ne change pas selon l'onglet actif.
+- Les dots de progression dans l'en-tête du Moteur reflètent l'état des 6 checks Moteur (Discovery, Radar, Capitaine, Lieutenants, Structure, Lexique ; 5 avant C6) — leur rendu ne change pas selon l'onglet actif.
 - La bannière de transition Phase ② → ③ apparaît selon une même règle et avec le même libellé quand le Capitaine vient d'être verrouillé.
 - Un refactor visuel sur l'une de ces briques doit rester cohérent sur tous les onglets consommateurs ; aucune duplication par onglet n'est tolérée.
 
-> **En situation.** L'utilisateur travaille sur un article et oscille entre Discovery (pour relancer un scan), Capitaine (pour ajuster son verrouillage) et Lexique (pour valider quelques termes). À chaque bascule d'onglet, il retrouve **les mêmes briques aux mêmes endroits** : récap de contexte stratégie en haut, dots de progression dans le header avec l'état exact de ses 5 checks, panneau de cache sticky en bas qui lui dit « 142 mots-clés en cache pour cet article — Vider ». Il n'a jamais l'impression de changer d'application en changeant d'onglet. Quand un développeur modifie demain le libellé du bouton de purge cache pour le rendre plus explicite, l'utilisateur voit le nouveau libellé **partout** où le cache est exposé — sinon il y aurait deux versions du même bouton selon l'onglet, source de confusion.
+> **En situation.** L'utilisateur travaille sur un article et oscille entre Discovery (pour relancer un scan), Capitaine (pour ajuster son verrouillage) et Lexique (pour valider quelques termes). À chaque bascule d'onglet, il retrouve **les mêmes briques aux mêmes endroits** : récap de contexte stratégie en haut, dots de progression dans le header avec l'état exact de ses 6 checks, panneau de cache sticky en bas qui lui dit « 142 mots-clés en cache pour cet article — Vider ». Il n'a jamais l'impression de changer d'application en changeant d'onglet. Quand un développeur modifie demain le libellé du bouton de purge cache pour le rendre plus explicite, l'utilisateur voit le nouveau libellé **partout** où le cache est exposé — sinon il y aurait deux versions du même bouton selon l'onglet, source de confusion.
 
 → Conception : [DESIGN-UI-MOTEUR-SHARED](./design-registry.md#design-ui-moteur-shared)
 
@@ -3519,7 +4307,7 @@ Les onglets du Moteur (Discovery, Radar, Capitaine, Lieutenants, Lexique, Finali
 ### 9.1 — Performance (NFR-PERF)
 
 > **Pourquoi cette section ?**
-> L'utilisateur travaille toute la journée dans l'outil : il enchaîne les recherches de mots-clés, valide des cartes, déclenche des analyses IA, génère des articles section par section. La perception de fluidité de l'app n'est pas un luxe — c'est ce qui fait la différence entre un outil dans lequel on rentre avec entrain et un outil qu'on subit. Cette section formalise les attentes de **réactivité** que l'utilisateur doit pouvoir percevoir, et la façon dont l'app évite les ralentissements inutiles (debounce, cache, purge, streaming).
+> L'utilisateur travaille toute la journée dans l'outil : il enchaîne les recherches de mots-clés, valide des cartes, déclenche des analyses IA, génère des premiers jets d'articles. La perception de fluidité de l'app n'est pas un luxe — c'est ce qui fait la différence entre un outil dans lequel on rentre avec entrain et un outil qu'on subit. Cette section formalise les attentes de **réactivité** que l'utilisateur doit pouvoir percevoir, et la façon dont l'app évite les ralentissements inutiles (debounce, cache, purge, streaming).
 
 #### NFR-PERF-API-LOCAL — Réactivité des actions locales
 
@@ -3540,7 +4328,7 @@ Quand l'utilisateur déclenche une action qui **ne dépend pas d'une API externe
 
 #### NFR-PERF-SSE-FIRST-TOKEN — Premier mot d'IA visible rapidement
 
-Pour les actions IA qui *streament* leur réponse (rédaction d'article section par section, suggestions de mots-clés long-tail, brief IA, analyses contextuelles), l'utilisateur voit le **premier mot apparaître à l'écran en moins de 2 secondes** après le clic. Il sait que l'IA travaille, il peut commencer à lire en même temps qu'elle écrit, plutôt que de fixer un spinner pendant 30 secondes.
+Pour les actions IA qui *streament* leur réponse (premier jet de l'article, suggestions de mots-clés long-tail, brief IA, analyses contextuelles), l'utilisateur voit le **premier mot apparaître à l'écran en moins de 2 secondes** après le clic. Il sait que l'IA travaille, il peut commencer à lire en même temps qu'elle écrit, plutôt que de fixer un spinner pendant 30 secondes.
 
 **Critères d'acceptation**
 - Toute action IA en mode streaming affiche un premier caractère perceptible en moins de 2 secondes.
@@ -3623,7 +4411,9 @@ Quand l'utilisateur écrit un article, le **score SEO et les indicateurs de pert
 
 ---
 
-#### NFR-PERF-INTER-SECTION-DELAY — Pause entre sections pour fiabiliser la génération
+#### NFR-PERF-INTER-SECTION-DELAY — Pause entre sections pour fiabiliser la génération *(deprecated 2026-09-25)*
+
+> **Statut :** deprecated. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, chantier C5a (`FR-RED-DRAFT-SINGLE-PASS`). Le premier jet est rédigé en un seul appel : il n'y a plus de sections successives à espacer. La pause, sa variable de configuration et l'état d'attente associé ont disparu ; une saturation de l'IA est absorbée par les réessais et la bascule de fournisseur communs à toutes les générations (cf. `FR-EXT-AI-FALLBACK`). Texte conservé pour l'historique.
 
 Lors de la génération d'un article section par section, l'app **temporise volontairement entre chaque section** (15 secondes par défaut) pour respecter les limites de débit de Claude. L'utilisateur préfère attendre quelques secondes par section plutôt que de voir la génération s'interrompre à mi-parcours avec une erreur « rate-limit ».
 
@@ -3632,7 +4422,7 @@ Lors de la génération d'un article section par section, l'app **temporise volo
 - Le délai est ajustable via configuration (`INTER_SECTION_DELAY` env var) — 0 pour les tests, plus si l'utilisateur veut être plus prudent.
 - L'utilisateur voit un compte à rebours ou un état d'attente clair entre deux sections, pas un silence anxiogène.
 
-**Statut :** active.
+**Statut (historique) :** active jusqu'au 2026-09-25.
 
 > **En situation.** L'utilisateur lance la génération complète d'un article de 6 sections. La section 1 s'écrit en stream. À la fin, une indication « Section 2 dans 15 s... » apparaît. Pendant ce temps, il peut relire et corriger la section 1. La pause se termine, la section 2 s'écrit. Le flow naturel — lire/corriger/laisser-couler — épouse la cadence de l'IA plutôt que de la combattre.
 
@@ -3747,11 +4537,11 @@ L'utilisateur peut basculer l'app en **mode mock** où tous les appels IA (Claud
 ### 9.3 — Intégration et contrats (NFR-INT)
 
 > **Pourquoi cette section ?**
-> Le pipeline Cerveau → Moteur → Rédaction passe par des **contrats partagés** : la même donnée traverse plusieurs couches (cocon, article, mot-clé), plusieurs onglets (Discovery → Radar → Capitaine → Lieutenants → Lexique), plusieurs vues (Workflow vs Editor). Pour que l'utilisateur ne perde jamais le fil — son verrou Capitaine reste visible partout, son scan SERP nourrit aussi son Lexique sans qu'il refasse le travail, sa stratégie Cerveau alimente les prompts IA sans qu'il copie-colle — les conventions d'intégration doivent être formalisées et tenues partout dans le code.
+> Le pipeline Cerveau → Moteur → Rédaction passe par des **contrats partagés** : la même donnée traverse plusieurs couches (cocon, article, mot-clé), plusieurs onglets (Discovery → Radar → Capitaine → Lieutenants → Structure → Lexique), plusieurs vues (Workflow vs Editor). Pour que l'utilisateur ne perde jamais le fil — son verrou Capitaine reste visible partout, son scan SERP nourrit aussi son Lexique sans qu'il refasse le travail, sa stratégie Cerveau alimente les prompts IA sans qu'il copie-colle — les conventions d'intégration doivent être formalisées et tenues partout dans le code.
 
 #### NFR-INT-MOTEUR-BIMODAL — Mêmes composants en workflow et en libre
 
-Les composants principaux du Moteur (Discovery, Radar, Capitaine, Lieutenants, Lexique) **ne sont pas dupliqués** entre le mode workflow (intégré au pipeline d'un article) et le mode libre (laboratoire de recherche). Un seul composant prend une propriété de mode et s'adapte — l'utilisateur retrouve la même interface, les mêmes interactions, les mêmes scores, simplement avec ou sans persistance/checks selon le contexte.
+Les composants principaux du Moteur (Discovery, Radar, Capitaine, Lieutenants, Structure, Lexique) **ne sont pas dupliqués** entre le mode workflow (intégré au pipeline d'un article) et le mode libre (laboratoire de recherche). Un seul composant prend une propriété de mode et s'adapte — l'utilisateur retrouve la même interface, les mêmes interactions, les mêmes scores, simplement avec ou sans persistance/checks selon le contexte.
 
 **Critères d'acceptation**
 - Un composant Moteur n'existe qu'**en un seul exemplaire** dans le code, paramétré par le mode d'usage.
@@ -3766,7 +4556,7 @@ Les composants principaux du Moteur (Discovery, Radar, Capitaine, Lieutenants, L
 
 #### NFR-INT-COMPLETED-CHECKS-SSOT — Une seule source pour la progression d'un article
 
-L'avancement d'un article dans le pipeline Moteur (les 5 étapes : Discovery, Radar, Capitaine, Lieutenants, Lexique) est stocké dans **un seul endroit** : la colonne `completed_checks` de l'article. Tous les composants qui affichent une progression (dots du dashboard, bannières de transition, panneau de finalisation) **lisent ce même endroit** — aucune copie locale dérivée, pas de cache divergent. (Cerveau et Rédaction ne posent plus de checks workflow depuis 2026-05-13, cf. DRIFT-002.)
+L'avancement d'un article dans le pipeline Moteur (les 6 étapes : Discovery, Radar, Capitaine, Lieutenants, Structure, Lexique — 5 avant C6, 2026-09-25) est stocké dans **un seul endroit** : la colonne `completed_checks` de l'article. Tous les composants qui affichent une progression (dots du dashboard, bannières de transition, panneau de finalisation) **lisent ce même endroit** — aucune copie locale dérivée, pas de cache divergent. (Le Cerveau ne pose plus de checks workflow depuis 2026-05-13, cf. DRIFT-002 ; la Rédaction en pose un seul depuis C7, « Premier jet accepté », dans la même colonne — cf. `FR-CER-PARENT-WRITTEN-GATE`.)
 
 **Critères d'acceptation**
 - L'état de progression d'un article est unique en base et n'a pas de doublon dans une autre table.
@@ -3781,16 +4571,16 @@ L'avancement d'un article dans le pipeline Moteur (les 5 étapes : Discovery, Ra
 
 ---
 
-#### NFR-INT-CHECKS-NAMESPACE — Préfixe `moteur:` pour ranger les checks
+#### NFR-INT-CHECKS-NAMESPACE — Préfixes de workflow pour ranger les checks
 
-Chaque check de progression écrit par l'app est **préfixé `moteur:`**. Le préfixe permet de filtrer les checks Moteur de tout autre payload (et garantit la rétro-compatibilité avec d'éventuels checks legacy `cerveau:*` / `redaction:*` qui auraient été persistés avant le retrait 2026-05-13 — ces valeurs résiduelles sont tolérées en lecture mais plus émises).
+Chaque check de progression écrit par l'app est **préfixé par son workflow** : `moteur:` pour les six étapes du Moteur, `redaction:` pour la seule étape de la Rédaction revenue avec C7, `redaction:draft_accepted` (« Premier jet accepté »). Le préfixe permet de filtrer les checks Moteur de tout autre payload (et garantit la rétro-compatibilité avec d'éventuels checks legacy `cerveau:*` / `redaction:*` qui auraient été persistés avant le retrait 2026-05-13 — ces valeurs résiduelles sont tolérées en lecture mais plus émises).
 
 **Critères d'acceptation**
-- Tous les checks émis par l'app portent le préfixe `moteur:`.
+- Tous les checks émis par l'app portent le préfixe `moteur:`, sauf `redaction:draft_accepted`.
 - Les constantes correspondantes sont définies dans un fichier partagé et **jamais** hardcodées sous forme de string dans les composants.
-- Tout check sans préfixe `moteur:` lu depuis la DB est ignoré côté affichage (pas d'erreur, pas de dot).
+- Tout check sans préfixe `moteur:` lu depuis la DB est ignoré par les dots de progression (pas d'erreur, pas de dot) ; `redaction:draft_accepted` est lu par le bandeau du premier jet et l'arbre du cocon.
 
-**Statut :** active.
+**Statut :** active. **Amendée le 2026-09-25 (C7)** : le préfixe `redaction:` revient pour une seule étape, `redaction:draft_accepted`. Le titre de l'exigence suit (« Préfixe `moteur:` » → « Préfixes de workflow »), ce qui rétablit aussi le lien depuis le registre, qui visait déjà ce titre.
 
 → Conception : [DESIGN-INT-CHECKS-NAMESPACE](./design-registry.md#design-int-checks-namespace)
 
@@ -3804,8 +4594,9 @@ Quand l'utilisateur déclenche un scan SERP sur le Capitaine de son article (ét
 - Le contenu SERP est scrapé au plus une fois pour un mot-clé donné dans la fenêtre de fraîcheur.
 - Le Lexique consomme les données SERP héritées des Lieutenants — il ne déclenche pas un second scraping.
 - L'utilisateur voit dans le Lexique des données concordantes avec ce qu'il a validé dans les Lieutenants.
+- Seule une analyse qui a lu des pages concurrentes compte comme déjà faite : une liste de résultats Google sans aucune page lue (par exemple le relevé fait pour choisir le mot-clé d'un nouvel article au Cerveau) ne dispense pas de l'analyse.
 
-**Statut :** active.
+**Statut :** active. **Précisée le 2026-09-25 (C7)** : un relevé des premiers résultats, sans page lue, ne compte plus comme une analyse. La mesure des mots-clés candidats du Cerveau (cf. `FR-CER-KEYWORD-REAL-DATA`) en écrivait un, pris pour une analyse fraîche : pendant 7 jours, Lieutenants, Structure et Lexique restaient sans pages concurrentes sur le mot-clé choisi.
 
 > **En situation.** L'utilisateur valide ses Lieutenants : 10 résultats Google scrapés, scores affichés, contenu archivé. Il passe au Lexique : le panneau s'ouvre avec déjà les termes TF-IDF extraits des **mêmes 10 pages** — il n'attend pas un deuxième scrape, pas d'appel facturé en double.
 
@@ -3995,8 +4786,10 @@ Les parcours sensibles de l'utilisateur (navigation cocon → article, verrou Ca
 - Tests organisés dans `tests/browser-e2e/`.
 - `npm run test:browser` exécute la suite Playwright en parallèle des unit tests.
 - Les parcours majeurs Cerveau / Moteur / Rédaction sont chacun couverts par au moins un scénario E2E.
+- Les tests navigateur écrivent dans **leur propre base**, recréée vide avant chaque passage : la base de développement de l'utilisateur n'est jamais touchée — ni données de test pendant l'exécution, ni restes quand un test plante, ni mesures factices du bac à sable dans les caches permanents. Seuls un passage réel (dont les données sont faites pour être relues) et des tests lancés contre un serveur déjà ouvert gardent la base de ce serveur.
+- Une base ne se recrée que si son nom le désigne comme une base de test, et si ce n'est pas celle de l'application.
 
-**Statut :** active.
+**Statut :** active. **Amendée le 2026-09-25 (épopée qualité SEO, checklist T10, commit `9ac5281`)** : les tests navigateur ont leur propre base ; jusque-là, ils écrivaient dans celle de développement.
 
 → Conception : [DESIGN-MAIN-TESTS-PLAYWRIGHT](./design-registry.md#design-main-tests-playwright)
 
@@ -4079,6 +4872,41 @@ L'arbre des imports de l'app est **acyclique** : un module A qui importe B ne pe
 
 ---
 
+#### NFR-MAIN-REQUIREMENTS-TRACE — Toute exigence citée par un test existe par écrit
+
+Un test qui cite une exigence (`FR-…`, `NFR-…`, `DESIGN-…`) promet de protéger un besoin précis. Si l'identifiant est mal orthographié, renommé, ou jamais écrit dans le PRD, le test continue de passer mais plus personne ne sait ce qu'il protège. La vérification rapide du projet contrôle donc que chaque identifiant cité par un test existe réellement : dans ce PRD, dans le registre de conception, ou dans l'épopée en cours qui réserve les exigences pas encore livrées.
+
+**Critères d'acceptation**
+- Un identifiant cité par un test et introuvable fait échouer `npm run verify`, en nommant l'identifiant et le fichier.
+- La dette constatée à la mise en place (identifiants déjà orphelins) est figée et ne peut que baisser : dès qu'un identifiant devient traçable, il doit sortir de la liste.
+- Une exigence réservée dans l'épopée entre au PRD dans la PR qui la livre.
+
+**Statut :** active. **Depuis :** 2026-09-24. **Source :** épopée qualité SEO, chantier C0.
+
+> **En situation.** Un développeur cite par erreur `FR-LEX-TF-IDF` (au lieu de `FR-LEX-TFIDF`) dans un test sans toucher au PRD. `npm run verify` échoue et affiche : « FR-LEX-TF-IDF ← tests/unit/services/tfidf.test.ts ». Il corrige l'orthographe au lieu de laisser un lien mort.
+
+→ Conception : [DESIGN-MAIN-REQUIREMENTS-TRACE](./design-registry.md#design-main-requirements-trace)
+
+---
+
+#### NFR-TEST-BEHAVIORAL — Les tests se comportent comme un utilisateur, y compris quand il se trompe
+
+Un test qui ne tente jamais l'action interdite ne prouve pas qu'elle est interdite. Et un test qui sort vert faute de pouvoir s'exécuter laisse croire que tout va bien. Les tests reproduisent donc aussi les erreurs d'un utilisateur, et un test qui n'a rien vérifié le dit.
+
+**Critères d'acceptation**
+- Chaque porte de qualité a son test négatif, à l'écran comme au serveur : l'action interdite déclenche l'alarme et ne passe pas ; une raison trop courte laisse le passage fermé ; une vraie raison fait passer et reste enregistrée ; une dérogation tombe quand les données changent ; un défaut technique ne se déroge jamais.
+- Aucune assertion ne peut passer quoi qu'il arrive : un test privé de ce dont il a besoin (un serveur, par exemple) apparaît « ignoré », jamais « réussi ». Les formes connues d'assertion toujours vraie sont comptées, et leur nombre ne peut que baisser.
+- Les parcours varient leurs choix : pas toujours la première option ; décocher, recharger, revenir en arrière, panne d'un service.
+- En mode réel, le parcours passe le texte produit dans les mêmes vérificateurs que la vérification du projet.
+
+**Statut :** active, livrée en partie. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0 ; les deux premiers critères sont livrés par C2, les deux derniers suivront avec les chantiers C5 à C8. **Le 2026-09-25 (checklists T2, T3, commit `8bc3aa1`)** : le deuxième critère est resserré — des 40 tests ignorés, il n'en reste qu'un, qui nomme le défaut qu'il attend (`FR-UI-AI-PANELS-PATTERN`) ; les assertions toujours vraies des tests contre serveur et des tests fonctionnels sont devenues des valeurs exactes ; celles qui restent (6 « ≥ 0 », 1 « est un booléen ») sont dans les tests navigateur. **Le 2026-09-25 (recette réelle C8)** : le texte d'un pilier produit en mode réel a été passé dans la porte de publication (0 alerte, 0 dérogation) et dans l'audit de contenu (`npm run verify:content`, 0 erreur) ; c'était un contrôle de recette, pas encore une étape d'un parcours automatique.
+
+> **En situation.** Le test tente de verrouiller un capitaine que personne ne cherche. L'alarme 🔴 s'ouvre. Il écrit « trop court » : le bouton reste grisé et le compteur affiche « 10 / 20 ». Il écrit une vraie raison : le capitaine se verrouille et la raison est enregistrée. Il change ensuite les données du mot-clé et verrouille à nouveau : l'alarme revient, car l'ancienne dérogation ne couvre plus ces données.
+
+→ Conception : [DESIGN-TEST-BEHAVIORAL](./design-registry.md#design-test-behavioral)
+
+---
+
 ### 9.5 — Sécurité et robustesse (NFR-SEC)
 
 > **Pourquoi cette section ?**
@@ -4120,8 +4948,9 @@ Le contenu utilisateur injecté dans un prompt IA (titre d'article, point de dou
 **Critères d'acceptation**
 - Les variables substituées dans les prompts (`{{strategy_context}}`, `{{painPoint}}`, `{{articleTitle}}`...) passent par un échappement systématique.
 - Un texte utilisateur qui contient des séquences de contrôle est rendu inoffensif sans avertir l'utilisateur (transparent).
+- Le texte sélectionné dans l'éditeur pour une action contextuelle est lui aussi neutralisé ; un contrôle automatique l'impose à toute nouvelle route.
 
-**Statut :** active.
+**Statut :** active. **Durci :** 2026-09-24 (la route des actions contextuelles transmettait la sélection brute ; épopée qualité SEO, R12).
 
 → Conception : [DESIGN-SEC-PROMPT-INJECTION](./design-registry.md#design-sec-prompt-injection)
 
@@ -4301,7 +5130,7 @@ Quand une erreur a une cause connue (budget DataForSEO dépassé, provider IA sa
 > Les **comportements** que ces variables pilotent (basculement mock/réel, plafond budget DataForSEO, configuration du délai inter-section, ports applicatifs figés) sont déjà couverts par les NFRs et FRs métier ailleurs dans ce PRD :
 > - Mode bac à sable DataForSEO → `FR-EXT-DATAFORSEO-SANDBOX`
 > - Budget DataForSEO configurable → `NFR-COST-DATAFORSEO-BUDGET`
-> - Délai inter-section → `NFR-PERF-INTER-SECTION-DELAY`
+> - ~~Délai inter-section → `NFR-PERF-INTER-SECTION-DELAY`~~ (deprecated 2026-09-25 : le premier jet s'écrit en un appel)
 > - Mode développement gratuit (IA mock) → `NFR-COST-AI-MOCK`
 > - Bascule provider IA / OAuth GSC → `FR-EXT-AI-MULTI-PROVIDER`, `FR-EXT-GSC-OAUTH`
 > - Ports applicatifs figés (`3400` back / `5400` front) → règle d'infrastructure documentée dans [`architecture.md`](./architecture.md).
@@ -4354,8 +5183,8 @@ Variable `AI_PROVIDER` switch entre `claude` / `gemini` / `openrouter` / `mock`.
 #### NFR-CFG-DATAFORSEO-REFRESH
 Refresh delay configurable (`DATAFORSEO_REFRESH_DELAY_MS`).
 
-#### NFR-CFG-WEB-SEARCH
-`WEB_SEARCH_ENABLED=1` active web search dans actions et génération article.
+#### NFR-CFG-WEB-SEARCH *(deprecated 2026-09-25)*
+~~`WEB_SEARCH_ENABLED=1` active web search dans actions et génération article.~~ Seule la rédaction section par section la lisait, et sans effet : la valeur envoyée par l'écran (ou `true` par défaut, fixé par la validation de la requête) passait toujours avant elle ; les actions contextuelles ne l'ont jamais lue. Le premier jet n'a pas de recherche web (`FR-RED-DRAFT-SINGLE-PASS`) : plus aucun code ne la lit depuis le 2026-09-25 (épopée qualité SEO, C5a). `.env.example` la signale comme retirée depuis C5b : la recherche web ne sert plus qu'à la passe Sources et aux actions « sources chiffrées » / « exemples réels », toujours par Claude (`FR-RED-ENRICH-SOURCES`), sans variable pour la couper.
 
 #### NFR-CFG-PG-CONN
 Variables d'env PostgreSQL (`PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASSWORD`, `PG_DATABASE`).
@@ -4363,8 +5192,8 @@ Variables d'env PostgreSQL (`PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASSWORD`, `PG_
 #### NFR-CFG-GSC-OAUTH
 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GSC_TOKEN_PATH`.
 
-#### NFR-CFG-INTER-SECTION-DELAY
-`INTER_SECTION_DELAY_MS` configurable (défaut 15s).
+#### NFR-CFG-INTER-SECTION-DELAY *(deprecated 2026-09-25)*
+~~`INTER_SECTION_DELAY_MS` configurable (défaut 15s).~~ La variable lue était `INTER_SECTION_DELAY` (la constante du code s'appelait `INTER_SECTION_DELAY_MS`). Retirée avec la rédaction section par section (cf. `NFR-PERF-INTER-SECTION-DELAY`, épopée qualité SEO, C5a).
 
 #### NFR-CFG-APP-PORTS
 **Ports applicatifs figés.** Le projet utilise deux ports applicatifs uniques sur la machine de dev :
@@ -4377,7 +5206,7 @@ Ces valeurs sont les **défauts en dur** (`server/index.ts`, `vite.config.ts`) e
 - AC1 : `.env.example` contient `PORT=3400` et `VITE_PORT=5400`.
 - AC2 : `server/index.ts` fait `const PORT = process.env.PORT || 3400` (le fallback est `3400`, jamais `3005` ou autre).
 - AC3 : `vite.config.ts` exporte `server.port = Number(process.env.VITE_PORT) || 5400` et `server.proxy['/api'].target` pointe sur `http://localhost:${PORT_BACK}` avec `PORT_BACK = process.env.PORT || 3400`.
-- AC4 : `playwright.config.ts` `baseURL` défaut = `http://localhost:5400` ; `webServer[0].port = 3400` ; `webServer[1].port = 5400`.
+- AC4 : les tests navigateur démarrent **leur propre** serveur sur des ports distincts de l'application : `playwright.config.ts` utilise `E2E_SERVER_PORT` (défaut `3410`) et `E2E_CLIENT_PORT` (défaut `5410`), jamais `3400` / `5400`. *(Amendé le 2026-09-25, épopée qualité SEO T8 : en réutilisant le serveur de développement, les tests basculaient son mode global ; un mode réel posé par l'utilisateur leur a fait appeler la vraie IA.)*
 - AC5 : grep dans le repo (hors `node_modules`, `dist`, `_archive`) sur les littéraux `:3005` ou `:5173` retourne **0 résultat actif** (peuvent subsister dans des doc archivées avec bandeau ARCHIVED).
 
 **Statut :** active. **Depuis :** 2026-05-05.
@@ -4393,12 +5222,12 @@ Ces valeurs sont les **défauts en dur** (`server/index.ts`, `vite.config.ts`) e
 Câblage `package.json` :
 - `predev` → kill-port `3400 5400`,
 - `prebuild` → kill-port `3400 5400` (le build Vite peut lancer un serveur de prévisualisation),
-- `pretest:browser` → kill-port `3400 5400` (Playwright `webServer` ne réutilise pas si un autre process tient le port).
+- `pretest:browser` → kill-port `3410 5410`, les ports propres aux tests : lancer les tests ne coupe jamais le serveur de développement de l'utilisateur *(amendé le 2026-09-25, T8)* ; puis recréation de la base propre aux tests navigateur *(amendé le 2026-09-25, T10, cf. `NFR-MAIN-TESTS-PLAYWRIGHT`)*.
 
 **Critères d'acceptation testables :**
 - AC1 : `scripts/kill-port.mjs` existe et est exécutable via `node scripts/kill-port.mjs`.
 - AC2 : appelé sans port occupé → exit code `0`, aucune erreur stderr fatale.
-- AC3 : `package.json` contient les hooks `predev`, `prebuild`, `pretest:browser` invoquant `node scripts/kill-port.mjs 3400 5400`.
+- AC3 : `package.json` contient les hooks `predev` et `prebuild` invoquant `node scripts/kill-port.mjs 3400 5400`, et `pretest:browser` invoquant `node scripts/kill-port.mjs 3410 5410` (jamais 3400 / 5400).
 - AC4 : test unit qui parse `package.json` et vérifie la présence des 3 hooks + l'invocation du script.
 - AC5 : test unit qui appelle la fonction `freePort(port)` exportée par le script (mock de `child_process.exec`) → vérifie la commande émise selon `os.platform()`.
 
@@ -4478,7 +5307,7 @@ Bénéfice pour l'utilisateur : sa carte mentale de l'écran reste stable, il ne
 |---|---|---|
 | `silos` | id, name | Conteneurs thématiques |
 | `cocoons` | id, silo_id, nom | Clusters sémantiques |
-| `articles` | id, cocoon_id, titre, type, slug, status, phase, meta_title, meta_description, seo_score, geo_score, completed_checks[] | Master article |
+| `articles` | id, cocoon_id, titre, type, slug, status, phase, meta_title, meta_description, seo_score, geo_score, completed_checks[], parent_id, parent_section | Master article ; depuis C7, le parent dans le cocon et le H2 du parent dont l'article est né |
 | `article_content` | article_id, outline JSONB, content TEXT | Sommaire + contenu généré |
 | `article_strategies` | article_id, data JSONB, completed_steps | 6 étapes Cerveau |
 | `article_micro_contexts` | article_id, angle, tone, directives, target_word_count | Micro-context éditorial |
@@ -4491,7 +5320,8 @@ Bénéfice pour l'utilisateur : sa carte mentale de l'écran reste stable, il ne
 | `radar_explorations` | article_id PK, scan_result JSONB | Persistance Radar (cards + longTailSuggestions) |
 | `captain_explorations` | article_id, keyword, source, validation JSONB | Persistance Capitaine |
 | `lexique_explorations` | article_id, source_keyword, tfidfTerms, aiRecommendations, aiMissingTerms, aiSummary | Persistance Lexique multi-keyword |
-| `keyword_intent_analyses` | keyword, analysis JSONB | Cache intent Explorateur |
+| `keyword_intent_analyses` | keyword, location_code, dominant_intent, modules JSONB, … | Ancien cache d'analyse d'intention de l'Explorateur : **conservée, plus lue ni écrite** depuis le 2026-09-25 (épopée qualité SEO, M3) |
+| `gate_waivers` | article_id, gate_id, rule, level, category, reason, input_hash | Dérogations aux portes de qualité (alarme graduée) |
 
 ### 12.2 — Routes Express enregistrées (24 fichiers)
 
@@ -4499,15 +5329,9 @@ cocoons, keywords, articles, dataforseo, generate (sub-routes), links, export, i
 
 ### 12.3 — Prompts `.md` (`server/prompts/`)
 
-Stratégie article : `strategy-suggest.md`, `strategy-deepen.md`, `strategy-consolidate.md`.
+L'inventaire n'est plus tenu à la main (il citait des prompts disparus : `generate-article.md`, `actions/localize.md`, `discovery-*.md`…). Il est **généré** depuis les prompts eux-mêmes dans `docs/prompts-reference.md` (`npm run docs:prompts`) : pour chaque prompt, son rôle, ses variables, ses blocs facultatifs, les variables globales qu'il cite et les fichiers qui le chargent ; un test échoue si le fichier n'est pas à jour. L'organisation en cinq couches est décrite dans `docs/prompts-architecture.md` (cf. `FR-INFRA-PROMPT-LAYERS`).
 
-Stratégie cocon : `cocoon-brainstorm.md`, `cocoon-articles.md`, `cocoon-articles-topics.md`, `cocoon-paa-queries.md`, `cocoon-articles-spe.md`.
-
-Moteur : `discovery-*.md`, `radar-*.md`, `painpoint-translate.md`, `capitaine-ai-panel.md`, `propose-lieutenants.md`, `lieutenants-hn-structure.md`, `lexique-suggest.md`, `lexique-analysis-upfront.md`, `lexique-ai-panel.md`.
-
-Rédaction : `brief-ia-panel.md`, `generate-outline.md`, `generate-article.md`, `generate-article-section.md`, `generate-meta.md`.
-
-Actions contextuelles (12) : `actions/reformulate.md`, `actions/simplify.md`, `actions/convert-list.md`, `actions/pme-example.md`, `actions/keyword-optimize.md`, `actions/add-statistic.md`, `actions/answer-capsule.md`, `actions/question-heading.md`, `actions/localize.md`, `actions/sources-chiffrees.md`, `actions/exemples-reels.md`, `actions/ce-quil-faut-retenir.md`.
+Au 2026-09-25 : 39 prompts à la racine de `server/prompts/` (dont `system-propulsite.md`, le prompt système des générations de texte ; depuis C5b, les passes `enrich-*.md` et `section-rewrite.md` ; depuis C7, `cocoon-child-keywords.md` et la passe `enrich-resumes.md`) et 11 actions contextuelles dans `server/prompts/actions/`.
 
 ### 12.4 — Liste des FR/NFR introduits ou modifiés depuis le 2026-04-24
 
@@ -4568,6 +5392,86 @@ Actions contextuelles (12) : `actions/reformulate.md`, `actions/simplify.md`, `a
 | NFR-OBS-EXTERNAL-API-OPT-OUT | nouveau (opt-out documenté pour fetch externes) | tech-spec-fetch-to-wrapper-migration | 2026-05-05 |
 | NFR-CFG-APP-PORTS | nouveau (ports figés 3400 back / 5400 front) | chantier-ports-3400-5400 | 2026-05-05 |
 | NFR-CFG-PORT-PREFLIGHT | nouveau (kill-port preflight idempotent) | chantier-ports-3400-5400 | 2026-05-05 |
+| NFR-MAIN-REQUIREMENTS-TRACE | nouveau (cliquet des IDs cités par les tests) | epic-qualite-seo-garde-fous (C0) | 2026-09-24 |
+| FR-CER-CREATION-HONNETE | nouveau (un article annoncé créé existe vraiment ; un refus 409 nomme le cocon) | epic-qualite-seo-garde-fous (C1) | 2026-09-24 |
+| FR-CER-TYPE-TOLERANT | nouveau (le niveau d'un article est compris quel que soit son format) | epic-qualite-seo-garde-fous (C1) | 2026-09-24 |
+| FR-RED-META-CAPTAIN | nouveau (méta, sommaire et rédaction construits sur le capitaine verrouillé) | epic-qualite-seo-garde-fous (C1) | 2026-09-24 |
+| FR-INFRA-VERIFIER-SHARED | nouveau (portes de qualité : un seul évaluateur pour l'écran, le serveur et l'audit) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-INFRA-GATE-WAIVER | nouveau (alarme graduée 🟠 / 🔴 / ⛔, dérogation motivée qui tombe si les données changent) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-CAP-LOCK-GATE | nouveau (remplace FR-CAP-VERDICT-INFORMATIVE) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-CAP-VERDICT-INFORMATIVE | superseded (par FR-CAP-LOCK-GATE) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-LIE-LOCK-GATE | nouveau (minimum de lieutenants par type, cannibalisation dans le cocon) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-RED-PUBLISH-GATE | nouveau (publication contrôlée, reconfirmation des dérogations) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-RED-SEO-SCORE-PERSIST | nouveau (amendé à la livraison : score affiché enregistré avec son texte, pas recalculé par le serveur) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-CAP-CHECK, FR-LIE-CHECK, FR-CAP-AUTO-NOGO | amendées (l'étape passe par la porte ; un NO-GO se verrouille par dérogation) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| NFR-TEST-BEHAVIORAL | nouveau (livré en partie : tests négatifs des portes, plus aucun test vert faute de serveur) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-LEX-METIER-ONLY | nouveau (lexique sans mots vides ni décor de page, aucun terme validé d'office, porte du lexique 🔴 vide ou terme générique, revérifiée à chaque changement) | epic-qualite-seo-garde-fous (C3) | 2026-09-25 |
+| FR-LEX-PRECHECK-PERSISTE | amendée (plus aucun terme coché d'office ; chaque geste est enregistré ; l'écran suit toujours le lexique enregistré, rechargement compris ; l'étape passe par la porte du lexique) | epic-qualite-seo-garde-fous (C3) | 2026-09-25 |
+| FR-LEX-SELECT, FR-LEX-CHECK, FR-LEX-CHECKBOX-LOCK-IMMEDIATE | amendées (fin du pré-cochage des Obligatoires ; l'étape passe par la porte du lexique) | epic-qualite-seo-garde-fous (C3) | 2026-09-25 |
+| FR-RED-PUBLISH-GATE, FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER | amendées (la porte du lexique rejoint les portes, rejouée à la publication) | epic-qualite-seo-garde-fous (C3) | 2026-09-25 |
+| FR-INFRA-PROMPT-LAYERS | nouveau (cinq couches ; variables exactes ; date, zone et repères locaux tirés du contexte — repères pas encore triés par zone ; exemples non recopiables ; référence des prompts générée) | epic-qualite-seo-garde-fous (C4) | 2026-09-25 |
+| FR-INFRA-TYPE-RULES-SSOT | nouveau (une seule table des règles par type, lue par les prompts, les calculs et les vérificateurs ; pas encore de règle de FAQ) | epic-qualite-seo-garde-fous (C4) | 2026-09-25 |
+| FR-INFRA-PROMPT-LOADER | amendée (chargeur strict ; seule logique permise : un bloc affiché ou non selon qu'une valeur est vide ; texte inséré jamais réinterprété) | epic-qualite-seo-garde-fous (C4) | 2026-09-25 |
+| FR-LEX-METIER-ONLY | amendée (le lexique modifié depuis la Rédaction passe par le filtre des mots génériques) | epic-qualite-seo-garde-fous (C4) | 2026-09-25 |
+| FR-RED-CONTEXTUAL-ACTIONS | amendée (11 actions : « localiser », sortie de l'éditeur en avril, n'est plus listée ; son prompt est supprimé) | epic-qualite-seo-garde-fous (C4) | 2026-09-25 |
+| FR-RED-DRAFT-SINGLE-PASS | nouveau (remplace FR-RED-ARTICLE : premier jet en un appel sans recherche web, progression chapitre par chapitre, reprise après coupure, porte « accepter le premier jet » qui alerte sans refuser ; H1 sans capitaine 🔴, H1 absent ⛔) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
+| FR-RED-DRAFT-TO-SOURCE | nouveau (aucun chiffre inventé : marqueur « à sourcer » surligné dans l'éditeur, chiffre sans source 🔴 au premier jet et à la publication) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
+| FR-RED-ARTICLE | superseded (par FR-RED-DRAFT-SINGLE-PASS) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
+| FR-RED-PUBLISH-GATE | amendée (chiffre sans source, phrase non française, paragraphe répété 🔴 ; la porte du premier jet n'est pas rejouée) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
+| FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER | amendées (porte du premier jet, qui ne refuse rien ; ses dérogations ne sont pas réaffichées à la publication) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
+| NFR-PERF-INTER-SECTION-DELAY, NFR-CFG-INTER-SECTION-DELAY, NFR-CFG-WEB-SEARCH | deprecated (plus de pause entre sections ; plus de recherche web à la rédaction) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
+| FR-UI-ARTICLE-SHARED, NFR-PERF-SSE-FIRST-TOKEN, FR-CER-WORD-COUNT-RECOMMEND | libellé mis à jour (premier jet au lieu de la rédaction section par section) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
+| FR-RED-ENRICH-PASSES | nouveau (panneau « Enrichir » : passes Sources, Exemples, Tableaux, Images, FAQ, proposées chapitre par chapitre, vérifiées, acceptées ou refusées ; image « à fournir » ; tableaux et images gardés par l'éditeur) | epic-qualite-seo-garde-fous (C5b) | 2026-09-25 |
+| FR-RED-ENRICH-SOURCES | nouveau (recherche web depuis la France et la ville du client, à la date du jour ; seuls les liens trouvés restent ; Claude seul, sans repli silencieux) | epic-qualite-seo-garde-fous (C5b) | 2026-09-25 |
+| FR-RED-SECTION-REWRITE | nouveau (réécrire un chapitre sur consigne, en voyant l'article entier, proposé avant d'être appliqué) | epic-qualite-seo-garde-fous (C5b) | 2026-09-25 |
+| FR-RED-LANG-REVIEW | nouveau (relecture de la langue = humanisation qui corrige aussi anglais, franglais, accords et typographie, appliquée directement) | epic-qualite-seo-garde-fous (C5b) | 2026-09-25 |
+| FR-RED-PUBLISH-GATE | amendée (⛔ image encore « à fournir » ; chaque marqueur « à sourcer » compté une fois) | epic-qualite-seo-garde-fous (C5b) | 2026-09-25 |
+| FR-RED-DRAFT-SINGLE-PASS, FR-RED-WORD-COUNT-TARGET | amendées (R16 soldée : barre de mots, écart, réduction et score SEO lisent la longueur choisie pour l'article, comme le premier jet et sa porte) | epic-qualite-seo-garde-fous (C5b) | 2026-09-25 |
+| FR-RED-DRAFT-TO-SOURCE, FR-RED-EDITOR-TIPTAP, FR-RED-HUMANIZE-SECTION, FR-RED-PANELS-LAYOUT, FR-RED-CONTEXTUAL-ACTIONS, FR-EXT-AI-FALLBACK | amendées (passe Sources ; tableaux et images dans l'éditeur ; relecture de la langue, arrêt = article d'avant ; bouton « Enrichir » ; recherche web localisée, jamais confiée à un fournisseur qui ne sait pas chercher) | epic-qualite-seo-garde-fous (C5b) | 2026-09-25 |
+| FR-INFRA-TYPE-RULES-SSOT | amendée (nombre de questions de FAQ par type — 4 à 6, 3 à 5, 3 à 4 —, cité par la passe FAQ, 🟠 hors fourchette) | epic-qualite-seo-garde-fous (C5b, checklist R22) | 2026-09-25 |
+| FR-RED-ENRICH-PASSES, FR-RED-ENRICH-SOURCES, FR-RED-SECTION-REWRITE | amendées (article entier jusqu'à 30 000 caractères et stratégie de l'article, sinon du cocon ; titre principal protégé ; tout arrêt anormal de l'IA rend une proposition « coupée » ; FAQ par type, non insérée si la conclusion a changé ; bouton « Image » pour fournir la photo) | epic-qualite-seo-garde-fous (C5b, checklist R17 à R20, R22, R23) | 2026-09-25 |
+| FR-RED-CONTEXTUAL-ACTIONS | amendée (« sources chiffrées » et « exemples réels » : recherche dans la ville du client, liens vérifiés avant l'affichage, résultat d'un bloc) | epic-qualite-seo-garde-fous (C5b, checklist R21) | 2026-09-25 |
+| FR-RED-EDITOR-TIPTAP, FR-RED-PUBLISH-GATE | amendées (bouton « Image » : remplacer une place « à fournir » ou insérer une image avec son texte alternatif ; le message de la porte le cite) | epic-qualite-seo-garde-fous (C5b, checklist R20) | 2026-09-25 |
+| FR-RED-DRAFT-SINGLE-PASS, FR-RED-WORD-COUNT-TARGET | amendées (l'écran garde la longueur retenue dès la fin du premier jet) | epic-qualite-seo-garde-fous (C5b, checklist R24) | 2026-09-25 |
+| FR-RED-LANG-REVIEW | complétée (consigne de relecture, simulation et bouton vérifiés par des tests ; limite « aucun test » retirée) | epic-qualite-seo-garde-fous (C5b, checklist T12) | 2026-09-25 |
+| FR-HN-TAB | nouveau (remplace FR-LIE-HN-STRUCTURE : onglet Structure entre Lieutenants et Lexique ; structure proposée à partir des lieutenants retenus, des titres récurrents des concurrents et des autres articles du cocon ; « Valider la structure » écrit le sommaire et la longueur conseillée puis demande l'étape ; plus aucune structure effacée en silence ; mode automatique et articles déjà avancés alignés) | epic-qualite-seo-garde-fous (C6, checklist M7) | 2026-09-25 |
+| FR-HN-LOCK-GATE | nouveau (porte de la structure : ⛔ structure vide, H1 absent, titre vide, H3 orphelin ; 🔴 H1 sans le capitaine, H2 de fond hors du type, ville trop citée, pilier qui développe le sujet d'un article du cocon ; 🟠 lieutenant absent des titres, introduction ou conclusion écrites, trop de H3 ; rejouée à la publication) | epic-qualite-seo-garde-fous (C6) | 2026-09-25 |
+| FR-LIE-HN-STRUCTURE | superseded (par FR-HN-TAB) | epic-qualite-seo-garde-fous (C6) | 2026-09-25 |
+| FR-MOT-CHECKS, FR-MOT-PHASES, FR-MOT-SOFT-GATING, FR-DASH-PROGRESS, FR-FIN-RECAP, FR-FIN-LINK-REDACTION, FR-FIN-CHECK, FR-INFRA-WORKFLOW-CHECKS-CONSTANTS, FR-UI-MOTEUR-SHARED, NFR-INT-COMPLETED-CHECKS-SSOT | amendées (six étapes, sept onglets, quatre verrous : « Structure validée » s'ajoute ; les dots s'affichent en haut du Moteur, pas au tableau de bord) | epic-qualite-seo-garde-fous (C6) | 2026-09-25 |
+| FR-LIE-CHECK, FR-LIE-LOCK-GATE, FR-MOT-WORKFLOW-GATING-DUAL, FR-LIE-PROPOSE-AI, FR-LIE-AI-FRONTIER, FR-LIE-CHECKBOX-LOCK-IMMEDIATE, FR-LIE-EXTRACT-HEADINGS, FR-LIE-SECTIONS-FOLDABLE | amendées (un lieutenant verrouillé suffit à demander l'étape ; plus de structure dans l'onglet Lieutenants ni dans la proposition de l'IA ; les titres concurrents s'affichent dans l'onglet Structure ; une case cochée pendant la vérification n'est plus perdue) | epic-qualite-seo-garde-fous (C6, checklist M7) | 2026-09-25 |
+| FR-RED-OUTLINE, FR-INFRA-TYPE-RULES-SSOT, FR-CER-WORD-COUNT-RECOMMEND | amendées (sommaire tiré de la structure validée, sans introduction ni conclusion doublées ; « H2 de fond » ; longueur conseillée à la validation de la structure) | epic-qualite-seo-garde-fous (C6) | 2026-09-25 |
+| FR-RED-PUBLISH-GATE, FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER | amendées (la porte de la structure rejoint les portes, rejouée à la publication ; un article sans structure enregistrée n'est pas publiable) | epic-qualite-seo-garde-fous (C6) | 2026-09-25 |
+| FR-MOT-NO-AUTO-ACTION, FR-MOT-CHECK-RECONCILIATION | précisées (l'onglet Structure relit l'analyse des concurrents à l'ouverture ; il ne réconcilie pas son étape) | epic-qualite-seo-garde-fous (C6) | 2026-09-25 |
+| FR-CER-COCOON-PROGRESSIVE | nouveau (remplace FR-CER-BATCH-CREATE : pilier d'abord, puis un article à la fois sous un parent du niveau juste au-dessus ; parent et section enregistrés ; constructeur de l'arbre réel dans le Cerveau, proposition de plan en carte indicative ; retrait d'un parent refusé ; mode automatique et rattrapage des cocons existants) | epic-qualite-seo-garde-fous (C7, checklist K6) | 2026-09-25 |
+| FR-CER-PARENT-WRITTEN-GATE | nouveau (étape « Premier jet accepté » gardée par la porte du premier jet, redemandable par un bandeau ; pas d'enfant sous un parent qui ne l'a pas — l'alarme s'ouvre sur le parent) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-CER-CHILD-FROM-PILLAR-H2 | nouveau (un enfant naît d'une section libre de son parent ; la section se résume en 150 à 250 mots, 🔴 au-delà à la publication, passe « Résumer ») | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-CER-KEYWORD-REAL-DATA | nouveau (3 à 5 candidats mesurés — volume, difficulté, intention, trois premiers résultats —, base d'abord ; aucun mot-clé enregistré sans mesure) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-INFRA-COCOON-CONTEXT | nouveau (l'état du cocon transmis aux mots-clés candidats, à la structure et au premier jet) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-RED-LINKING-MANUAL | nouveau (remplace FR-RED-INTERNAL-LINKING : famille du cocon proposée d'abord, même non publiée ; lien de la sélection enregistré ; 🟠 lien vers un article non publié à la publication) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-CER-BATCH-CREATE | superseded (par FR-CER-COCOON-PROGRESSIVE) | epic-qualite-seo-garde-fous (C7, checklist K6) | 2026-09-25 |
+| FR-RED-INTERNAL-LINKING | superseded (par FR-RED-LINKING-MANUAL) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-RED-PUBLISH-GATE | amendée (🔴 section d'un enfant au-delà de 250 mots, 🟠 section d'un enfant disparue, 🟠 lien vers un article non publié ; structure absente 🔴, texte aligné sur P6) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-RED-ENRICH-PASSES | amendée (sixième passe « Résumer » pour les chapitres dont est né un enfant) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-RED-DRAFT-SINGLE-PASS, FR-INFRA-VERIFIER-SHARED, FR-HN-TAB | amendées (la porte du premier jet accorde une étape ; état du cocon dans le premier jet et la structure) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-MOT-CHECKS, FR-MOT-CHECKS-CONSTANTS, FR-INFRA-WORKFLOW-CHECKS-CONSTANTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE | amendées (une étape de la Rédaction, `redaction:draft_accepted`, rejoint le catalogue ; les dots restent ceux du Moteur) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-RED-CONTEXTUAL-ACTIONS | amendée (le lien interne posé depuis la sélection est enregistré dans le réseau de liens) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-CER-STEPS-COCOON, FR-CER-AIGUILLAGE, FR-CER-CREATION-HONNETE | amendées (proposition de plan = carte indicative ; parent enregistré et vérifié ; nouveaux refus expliqués, retrait refusé dit et carte gardée) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-INFRA-PROMPT-LAYERS | amendée (état du cocon dans la couche de contexte ; repères locaux triés selon la zone du client, checklist D5) | epic-qualite-seo-garde-fous (C7, D5 commit `3638d00`) | 2026-09-25 |
+| NFR-INT-SERP-ONCE, FR-EXT-DATAFORSEO-SANDBOX | précisées (un relevé sans page lue ne compte pas comme une analyse ; en bac à sable, les mesures groupées sont rattachées aux mots-clés demandés) | epic-qualite-seo-garde-fous (C7, commits `1062072`, `f16cab5`) | 2026-09-25 |
+| FR-CER-COCOON-PROGRESSIVE | amendée (un article hors de l'arbre se rattache à la section libre d'un parent rédigé, aux règles d'une création) | epic-qualite-seo-garde-fous (checklist K8, commit `1cbc921`) | 2026-09-25 |
+| FR-CER-KEYWORD-REAL-DATA, FR-PIE-AI-GENERATION | amendées (chaque candidat porte l'intention éditoriale attendue, que l'article reçoit à sa création) | epic-qualite-seo-garde-fous (checklist K9, commit `f2ec990`) | 2026-09-25 |
+| FR-CAP-RELEVANCE-INTENT-SIGNAL, FR-CAP-SCORING-BIMODAL | amendées (au scan, l'intention SERP entre dans le Score Marché, et le signal d'intention du Score Pertinence est calculé comme à la réouverture) | epic-qualite-seo-garde-fous (checklist M2, commit `9d53c3f`) | 2026-09-25 |
+| FR-RED-BRIEF | amendée (les données de Google de la Rédaction portent sur le mot-clé de l'article, jamais sur le pilier du cocon) | epic-qualite-seo-garde-fous (checklist R13, commit `1227eb0`) | 2026-09-25 |
+| FR-RED-DRAFT-SINGLE-PASS | amendée (les paragraphes ne sont plus fusionnés ; limite retirée) | epic-qualite-seo-garde-fous (checklist R14, commit `3238a5f`) | 2026-09-25 |
+| FR-LEX-METIER-ONLY | amendée (les explorations enregistrées avant la règle sont filtrées à la relecture) | epic-qualite-seo-garde-fous (checklist M16, commit `e490437`) | 2026-09-25 |
+| NFR-MAIN-TESTS-PLAYWRIGHT, NFR-CFG-PORT-PREFLIGHT | amendées (base propre aux tests navigateur, recréée avant chaque passage) | epic-qualite-seo-garde-fous (checklist T10, commit `9ac5281`) | 2026-09-25 |
+| FR-RED-DRAFT-TO-SOURCE | amendée (le serveur transforme toute phrase chiffrée sans source du premier jet en passage « à sourcer ») | epic-qualite-seo-garde-fous (recette C8, commit `8d1bac2`) | 2026-09-25 |
+| FR-RED-LINKING-MANUAL | amendée (le réseau de liens suit le texte enregistré ; limite retirée) | epic-qualite-seo-garde-fous (recette C8, commit `1388cbf`) | 2026-09-25 |
+| FR-LEX-MULTI-KEYWORD | corrigée (« Tester un mot-clé » reste ouvert quand des termes sont retenus) | epic-qualite-seo-garde-fous (T2, commit `20e4aa9`) | 2026-09-25 |
+| FR-UI-AI-PANELS-PATTERN, FR-RED-SEO-SCORE-PERSIST | précisées (panneau IA du brief hors modèle, U4 ; mode automatique sans score, P7) | epic-qualite-seo-garde-fous (T2, recette C8) | 2026-09-25 |
+| NFR-TEST-BEHAVIORAL | avancée (T2, T3 : un seul test ignoré, assertions exactes côté serveur ; recette C8 : texte réel passé dans les vérificateurs) | epic-qualite-seo-garde-fous (commit `8bc3aa1`, recette C8) | 2026-09-25 |
+| FR-CER-COCOON-PROGRESSIVE | amendée (« Générer avec Claude » devient un menu qui fait grandir la carte indicative : le pilier seul, puis un article à la fois sous un parent déjà posé, ou la carte complète ; rien n'est créé en base) | epic-qualite-seo-garde-fous (U7 et recette manuelle R1, commits `0f16e87`, `60b9818`) | 2026-09-25 |
+| FR-CER-STEPS-COCOON | précisée (la carte indicative se retouche ; elle n'était pas « en lecture seule ») | consolidation de la documentation | 2026-09-28 |
 
 ### 12.5 — Dette technique identifiée
 

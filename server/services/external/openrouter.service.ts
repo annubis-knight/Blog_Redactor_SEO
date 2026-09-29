@@ -159,6 +159,7 @@ export async function* streamChatCompletionOpenRouter(
   let buffer = ''
   let inputTokens = 0
   let outputTokens = 0
+  let finishReason: string | undefined
 
   try {
     while (true) {
@@ -176,11 +177,12 @@ export async function* streamChatCompletionOpenRouter(
         if (data === '[DONE]') continue
         try {
           const parsed = JSON.parse(data) as {
-            choices?: Array<{ delta?: { content?: string } }>
+            choices?: Array<{ delta?: { content?: string }; finish_reason?: string | null }>
             usage?: { prompt_tokens?: number; completion_tokens?: number }
           }
           const chunkText = parsed.choices?.[0]?.delta?.content
           if (chunkText) yield chunkText
+          finishReason = parsed.choices?.[0]?.finish_reason ?? finishReason
           if (parsed.usage?.prompt_tokens != null) inputTokens = parsed.usage.prompt_tokens
           if (parsed.usage?.completion_tokens != null) outputTokens = parsed.usage.completion_tokens
         } catch {
@@ -199,6 +201,8 @@ export async function* streamChatCompletionOpenRouter(
     cacheReadTokens: 0,
     cacheCreationTokens: 0,
     estimatedCost: 0,
+    // Raison d'arrêt : un texte coupé au plafond est incomplet (FR-RED-DRAFT-SINGLE-PASS).
+    stopReason: finishReason === 'length' ? 'max_tokens' : finishReason === 'stop' ? 'end' : finishReason ? 'other' : undefined,
   }
 
   log.debug(`OpenRouter stream done`, {

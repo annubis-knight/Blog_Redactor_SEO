@@ -11,7 +11,7 @@ import { test, expect } from './helpers/test-fixtures'
 import { openMoteur, selectArticleByTitle, tabLocator } from './helpers/moteur-ui'
 
 test.describe('Finalisation — récapitulatif', () => {
-  test('le panneau récapitule les trois sous-phases, vides comprises', async ({ page, ctx }) => {
+  test('le panneau récapitule les quatre sous-phases, vides comprises (Structure : FR-HN-TAB)', async ({ page, ctx }) => {
     const article = await ctx.createArticle('FinalGate Browser')
     await openMoteur(page, article.cocoonId)
     await selectArticleByTitle(page, article.titre)
@@ -20,7 +20,7 @@ test.describe('Finalisation — récapitulatif', () => {
     await expect(page.locator('[data-testid="finalisation-panel"]'), 'le panneau se rend')
       .toBeVisible({ timeout: 15000 })
 
-    for (const section of ['capitaine', 'lieutenants', 'lexique']) {
+    for (const section of ['capitaine', 'lieutenants', 'structure', 'lexique']) {
       await expect(page.locator(`[data-testid="finalisation-${section}"]`), `la section ${section} est présente`)
         .toBeVisible({ timeout: 10000 })
     }
@@ -37,6 +37,7 @@ test.describe('Finalisation — récapitulatif', () => {
 
     // Aucune décision prise : l'écran l'annonce explicitement (pas de zone muette).
     await expect(panel, 'les Lieutenants manquants sont annoncés').toContainText('Aucun lieutenant verrouillé')
+    await expect(panel, 'la Structure manquante est annoncée').toContainText('Aucune structure validée')
     await expect(panel, 'le Lexique manquant est annoncé').toContainText('Aucun terme validé')
     // Le Capitaine absent s'affiche « — », jamais un vide ni un zéro inventé.
     await expect(page.locator('.finalisation__keyword'), 'le Capitaine absent s’affiche « — »')

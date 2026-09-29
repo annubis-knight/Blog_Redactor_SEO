@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import { MOTEUR_CHECKS, MOTEUR_HN_LOCKED } from '@shared/constants/workflow-checks.constants.js'
 
 vi.mock('@/services/api.service', () => ({
   apiGet: vi.fn().mockResolvedValue(null),
@@ -46,18 +47,17 @@ describe('emitCheckCompleted — helper logic', () => {
     expect(addCheckSpy).not.toHaveBeenCalled()
   })
 
-  it('calls addCheck for each of the 5 standardized checks', () => {
-    const checks = [
-      'moteur:discovery_done', 'moteur:radar_done',
-      'moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated',
-    ]
+  it('calls addCheck for each of the 6 standardized checks (FR-HN-TAB : hn_locked compris)', () => {
+    const checks = [...MOTEUR_CHECKS]
+    expect(checks).toHaveLength(6)
+    expect(checks).toContain(MOTEUR_HN_LOCKED)
 
     const emitCheck = createEmitCheckCompleted('test-slug')
     for (const check of checks) {
       emitCheck(check)
     }
 
-    expect(addCheckSpy).toHaveBeenCalledTimes(5)
+    expect(addCheckSpy).toHaveBeenCalledTimes(6)
     for (const check of checks) {
       expect(addCheckSpy).toHaveBeenCalledWith('test-slug', check)
     }

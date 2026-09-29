@@ -157,6 +157,8 @@ export interface ProposedArticle {
   suggestedTitles: string[]
   type: ArticleLevel
   parentTitle: string | null
+  /** Section (H2) du parent dont l'article naît (C7) ; choisie à la création. */
+  parentSection?: string | null
   rationale: string
   painPoint: string
   /**

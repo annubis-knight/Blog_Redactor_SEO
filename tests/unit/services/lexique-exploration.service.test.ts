@@ -47,6 +47,35 @@ describe('lexique-exploration.service', () => {
     mockedQuery.mockReset()
   })
 
+  // M16 (FR-LEX-METIER-ONLY) : les explorations enregistrées avant C3 gardaient
+  // leurs mots génériques (« être », « cookies »), réaffichés à chaque visite.
+  // Elles sont filtrées à la relecture, comme toute nouvelle analyse.
+  it('une exploration relue ne rend jamais de mot générique', async () => {
+    const term = (t: string) => ({ term: t, level: 'obligatoire', documentFrequency: 1, density: 1, competitorCount: 3, totalCompetitors: 5 })
+    mockedQuery.mockResolvedValue({ rows: [{
+      ...FULL_ROW,
+      tfidf_terms: {
+        keyword: 'isolation combles', totalCompetitors: 5,
+        obligatoire: [term('être'), term('isolation')],
+        differenciateur: [term('votre'), term('combles perdus')],
+        optionnel: [term('cookies')],
+      },
+      ai_recommendations: [
+        { term: 'menu', aiRecommended: true, aiReason: 'x' },
+        { term: 'laine de verre', aiRecommended: true, aiReason: 'y' },
+      ],
+      ai_missing_terms: ['vos cookies', 'pare-vapeur'],
+    }] } as never)
+
+    const result = await getLexiqueExploration(7, 'isolation combles')
+
+    expect(result!.tfidfTerms!.obligatoire.map(t => t.term)).toEqual(['isolation'])
+    expect(result!.tfidfTerms!.differenciateur.map(t => t.term)).toEqual(['combles perdus'])
+    expect(result!.tfidfTerms!.optionnel).toEqual([])
+    expect(result!.aiRecommendations.map(r => r.term)).toEqual(['laine de verre'])
+    expect(result!.aiMissingTerms).toEqual(['pare-vapeur'])
+  })
+
   describe('getLexiqueExploration', () => {
     it('retourne null si la ligne n\'existe pas', async () => {
       mockedQuery.mockResolvedValue({ rows: [] } as never)

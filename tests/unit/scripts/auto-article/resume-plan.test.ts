@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { applyForcedCapitaine, planResume } from '../../../../scripts/auto-article/resume-plan.js'
 import { fromCanonicalType, toCanonicalType } from '../../../../scripts/auto-article/canonical.js'
-import { MOTEUR_LEXIQUE_VALIDATED, MOTEUR_CAPITAINE_LOCKED } from '../../../../shared/constants/workflow-checks.constants.js'
+import {
+  MOTEUR_LEXIQUE_VALIDATED,
+  MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
+  REDACTION_DRAFT_ACCEPTED,
+} from '../../../../shared/constants/workflow-checks.constants.js'
 
 describe('auto:canonical — fromCanonicalType', () => {
   it('inverse de toCanonicalType (round-trip)', () => {
@@ -18,30 +24,54 @@ describe('auto:canonical — fromCanonicalType', () => {
 describe('auto:resume-plan — planResume', () => {
   it('article neuf : rien à sauter', () => {
     expect(planResume({ checks: [], capitaine: null, hasContent: false, hasStrategy: false }))
-      .toEqual({ skipCerveau: false, skipMoteur: false, skipRedaction: false })
+      .toEqual({ skipCerveau: false, skipMoteur: false, skipRedaction: false, skipDraft: false })
   })
 
   it('stratégie présente → skip Cerveau', () => {
     expect(planResume({ checks: [], capitaine: null, hasContent: false, hasStrategy: true }).skipCerveau).toBe(true)
   })
 
-  it('Moteur complet (lexique validé + capitaine) → skip Moteur', () => {
-    expect(planResume({ checks: [MOTEUR_LEXIQUE_VALIDATED], capitaine: 'kw', hasContent: false, hasStrategy: true }).skipMoteur).toBe(true)
+  // FR-HN-TAB : le Moteur n'est fini que si la structure Hn ET le lexique sont validés.
+  it('Moteur complet (structure + lexique validés + capitaine) → skip Moteur', () => {
+    expect(planResume({ checks: [MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED], capitaine: 'kw', hasContent: false, hasStrategy: true }).skipMoteur).toBe(true)
+  })
+
+  it('FR-HN-TAB — article d’avant C6 (lexique validé, structure non validée) → repasse par le Moteur', () => {
+    expect(planResume({
+      checks: [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_LEXIQUE_VALIDATED],
+      capitaine: 'kw', hasContent: false, hasStrategy: true,
+    }).skipMoteur).toBe(false)
+  })
+
+  it('FR-HN-TAB — structure validée sans lexique → ne skip pas', () => {
+    expect(planResume({ checks: [MOTEUR_HN_LOCKED], capitaine: 'kw', hasContent: false, hasStrategy: true }).skipMoteur).toBe(false)
+  })
+
+  it('structure + lexique validés mais sans capitaine → ne skip pas', () => {
+    expect(planResume({ checks: [MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED], capitaine: null, hasContent: false, hasStrategy: true }).skipMoteur).toBe(false)
   })
 
   it('Moteur partiel (capitaine sans lexique) → ne skip pas', () => {
     expect(planResume({ checks: [MOTEUR_CAPITAINE_LOCKED], capitaine: 'kw', hasContent: false, hasStrategy: true }).skipMoteur).toBe(false)
   })
 
-  it('contenu présent → skip Rédaction', () => {
-    expect(planResume({ checks: [], capitaine: null, hasContent: true, hasStrategy: false }).skipRedaction).toBe(true)
+  it('contenu présent et premier jet accepté → skip Rédaction', () => {
+    expect(planResume({ checks: [REDACTION_DRAFT_ACCEPTED], capitaine: null, hasContent: true, hasStrategy: false }))
+      .toMatchObject({ skipRedaction: true, skipDraft: true })
+  })
+
+  // Recette C8 (2026-09-25) : un premier jet refusé par sa porte était pris pour
+  // une Rédaction finie — la reprise exportait le texte refusé, sans correction.
+  it('contenu présent mais premier jet pas accepté → le premier jet est gardé, la suite est rejouée', () => {
+    expect(planResume({ checks: [], capitaine: null, hasContent: true, hasStrategy: false }))
+      .toMatchObject({ skipRedaction: false, skipDraft: true })
   })
 })
 
 // Capitaine imposé (`--capitaine`) — né du run réel du 2026-09-21 : l'heuristique
 // avait retenu « site e-commerce » pour une agence qui n'en fait pas.
 describe('applyForcedCapitaine', () => {
-  const ALL_SKIPPED = { skipCerveau: true, skipMoteur: true, skipRedaction: true }
+  const ALL_SKIPPED = { skipCerveau: true, skipMoteur: true, skipRedaction: true, skipDraft: true }
 
   it('sans Capitaine imposé → plan inchangé', () => {
     expect(applyForcedCapitaine(ALL_SKIPPED, 'site e-commerce', null)).toEqual(ALL_SKIPPED)
@@ -52,6 +82,7 @@ describe('applyForcedCapitaine', () => {
       skipCerveau: true,
       skipMoteur: false,
       skipRedaction: false,
+      skipDraft: false,
     })
   })
 

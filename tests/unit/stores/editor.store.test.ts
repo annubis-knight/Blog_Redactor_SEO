@@ -32,6 +32,7 @@ const mockBriefData: BriefData = {
     topic: 'Test Theme',
     status: 'à rédiger',
     cocoonName: 'Test Cocoon',
+    captainKeywordLocked: 'capitaine verrouillé',
   },
   keywords: [
     { keyword: 'pilier keyword', cocoonName: 'Test Cocoon', type: 'Pilier' },
@@ -69,16 +70,15 @@ describe('editor.store — generateArticle', () => {
     await store.generateArticle(mockBriefData, mockOutline)
 
     expect(mockStartStream).toHaveBeenCalledWith(
-      '/api/generate/article',
+      '/api/generate/article-draft',
       expect.objectContaining({
         articleId: 1,
         outline: mockOutline,
-        keyword: 'pilier keyword',
+        keyword: 'capitaine verrouillé',
         keywords: ['pilier keyword', 'secondary keyword'],
         articleType: 'Pilier',
         articleTitle: 'Test Article',
         cocoonName: 'Test Cocoon',
-        topic: 'Test Theme',
       }),
       expect.objectContaining({
         onChunk: expect.any(Function),
@@ -86,6 +86,17 @@ describe('editor.store — generateArticle', () => {
         onError: expect.any(Function),
       }),
     )
+  })
+
+  // FR-RED-DRAFT-SINGLE-PASS — le premier jet n'a ni recherche web ni PAA :
+  // les sources viennent à la passe d'enrichissement.
+  it('le premier jet n’envoie ni recherche web, ni PAA, ni thème', async () => {
+    const store = useEditorStore()
+    await store.generateArticle(mockBriefData, mockOutline)
+    const body = mockStartStream.mock.calls[0]![1] as Record<string, unknown>
+    expect(Object.keys(body)).not.toContain('webSearchEnabled')
+    expect(Object.keys(body)).not.toContain('paa')
+    expect(Object.keys(body)).not.toContain('topic')
   })
 
   it('sets isGenerating during generation', async () => {
@@ -128,9 +139,29 @@ describe('editor.store — generateArticle', () => {
     expect(store.error).toBe('Claude API error')
   })
 
-  it('uses article title as fallback when no pilier keyword', async () => {
+  // Épopée qualité SEO, R3 : le mot-clé principal est le capitaine de CET
+  // article. Le mot-clé pilier du pool est celui du cocon : pour un
+  // intermédiaire, c'est celui du pilier.
+  it('n’utilise jamais le mot-clé pilier du cocon pour un autre article', async () => {
+    const intermediaire: BriefData = {
+      ...mockBriefData,
+      article: { ...mockBriefData.article, type: 'Intermédiaire', captainKeywordLocked: 'audit site web' },
+    }
+
+    const store = useEditorStore()
+    await store.generateArticle(intermediaire, mockOutline)
+
+    expect(mockStartStream).toHaveBeenCalledWith(
+      '/api/generate/article-draft',
+      expect.objectContaining({ keyword: 'audit site web' }),
+      expect.any(Object),
+    )
+  })
+
+  it('uses article title as fallback when no captain is locked', async () => {
     const briefNoPilier: BriefData = {
       ...mockBriefData,
+      article: { ...mockBriefData.article, captainKeywordLocked: null },
       keywords: [{ keyword: 'secondary', cocoonName: 'Test Cocoon', type: 'Moyenne traine' }],
     }
 
@@ -138,7 +169,7 @@ describe('editor.store — generateArticle', () => {
     await store.generateArticle(briefNoPilier, mockOutline)
 
     expect(mockStartStream).toHaveBeenCalledWith(
-      '/api/generate/article',
+      '/api/generate/article-draft',
       expect.objectContaining({ keyword: 'Test Article' }),
       expect.any(Object),
     )
@@ -184,10 +215,13 @@ describe('editor.store — saveArticle', () => {
 
     await store.saveArticle(1)
 
+    // Aucun score calculé sur ce texte : la base porte « inconnu » (FR-RED-SEO-SCORE-PERSIST).
     expect(mockApiPut).toHaveBeenCalledWith('/articles/1', {
       content: '<h2>Article</h2>',
       metaTitle: 'Mock Title',
       metaDescription: 'Mock description.',
+      seoScore: null,
+      geoScore: null,
     })
   })
 

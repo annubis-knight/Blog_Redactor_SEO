@@ -48,12 +48,11 @@ describe('prompt-loader — loadPrompt', () => {
     expect(result).toBe('foo and foo again')
   })
 
-  it('leaves unmatched placeholders untouched', async () => {
+  it('refuses a placeholder left without a value (FR-INFRA-PROMPT-LAYERS)', async () => {
+    // Avant : `{{unknown}}` partait tel quel chez l'IA, sans que personne le voie.
     mockReadFile.mockResolvedValueOnce('{{known}} and {{unknown}}')
 
-    const result = await loadPrompt('test', { known: 'yes' })
-
-    expect(result).toBe('yes and {{unknown}}')
+    await expect(loadPrompt('test', { known: 'yes' })).rejects.toThrow(/unknown/)
   })
 
   it('propagates file read errors', async () => {

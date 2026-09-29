@@ -1,10 +1,13 @@
 /**
  * Phase 3 — Rédaction : outline → article → meta → save → export.
  *
- *   1. POST /generate/outline (SSE)      → outline, persisté via PUT /articles/:id
- *   2. POST /generate/article (SSE)      → contenu HTML section par section
+ *   1. Sommaire : la structure validée au Moteur (FR-HN-TAB), sinon
+ *      POST /generate/outline (SSE) ; persisté via PUT /articles/:id
+ *   2. POST /generate/article-draft (SSE) → premier jet en un appel (FR-RED-DRAFT-SINGLE-PASS)
+ *      2 bis. chapitre hors budget → POST /generate/section-rewrite (redaction-passes.ts)
  *   3. POST /generate/meta               → metaTitle + metaDescription
- *   4. PUT  /articles/:id                → save content + meta
+ *   4. PUT  /articles/:id                → save content + meta, puis étape « premier
+ *      jet accepté » ; 4 ter. passe « sources » → POST /generate/enrich/sources
  *   5. PUT  /articles/:id/status         → brouillon
  *   6. POST /export/:id                  → HTML PropulSite, écrit sur disque
  */
@@ -13,36 +16,22 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { PhaseFn } from '../orchestrator.js'
 import type { PhaseDeps } from '../deps.js'
-import type { ApiUsageLike, AutoRunContext, SseEvent } from '../types.js'
+import type { ApiUsageLike, AutoRunContext } from '../types.js'
+import { collectSse } from '../collect-sse.js'
+import { structureToOutline } from '../../../shared/structure-outline.js'
 import { toCanonicalType } from '../canonical.js'
 import { slugify } from '../slug.js'
-import { runInternalLinking } from './linking.js'
+import { runInternalLinking, unlinkUnpublished } from './linking.js'
+import { fitChapterBudgets, sourcePassages, rephraseUnsourceable, chaptersToSource } from './redaction-passes.js'
+import { markUnsourcedFigures } from '../../../shared/text-quality.js'
+import { emitCheck } from '../checks.js'
+import { REDACTION_DRAFT_ACCEPTED } from '../../../shared/constants/workflow-checks.constants.js'
 import {
   checkContentBeforeExport,
   detectUnverifiableClaims,
 } from '../heuristics/check-content-quality.js'
 
 const OUTPUT_DIR = '_auto-output'
-
-async function collectSse(
-  deps: PhaseDeps,
-  path: string,
-  body: unknown,
-  onEvent?: (ev: SseEvent) => void,
-): Promise<Record<string, unknown>> {
-  let donePayload: Record<string, unknown> | null = null
-  let errorMsg: string | null = null
-
-  await deps.client.consumeSse(path, body, (ev) => {
-    if (ev.event === 'done') donePayload = ev.data as Record<string, unknown>
-    else if (ev.event === 'error') errorMsg = (ev.data as { message?: string })?.message ?? 'Erreur SSE'
-    else onEvent?.(ev)
-  })
-
-  if (errorMsg) throw new Error(errorMsg)
-  if (!donePayload) throw new Error(`SSE ${path} : aucun événement "done" reçu`)
-  return donePayload
-}
 
 /**
  * Garde-fou qualité avant export (audit 2026-09-19).
@@ -77,6 +66,25 @@ function guardContent(deps: PhaseDeps, ctx: AutoRunContext): boolean {
   return false
 }
 
+/**
+ * Après l'acceptation du premier jet : la passe « sources » cherche une source à
+ * chaque passage à sourcer ; ce qui n'en a pas est reformulé sans chiffre
+ * (recette C8). Le texte n'est enregistré que s'il a changé.
+ */
+async function finishPassages(
+  deps: PhaseDeps,
+  ctx: AutoRunContext,
+  passes: { articleId: number; keyword: string; keywords: string[] },
+): Promise<void> {
+  if (chaptersToSource(ctx.articleContent ?? '').length === 0) return
+  const sourced = await sourcePassages(deps, passes, ctx.articleContent ?? '')
+  const finished = await rephraseUnsourceable(deps, passes, sourced)
+  if (finished !== ctx.articleContent) {
+    ctx.articleContent = finished
+    await deps.client.apiPut(`/articles/${passes.articleId}`, { content: finished })
+  }
+}
+
 /** Export HTML PropulSite → écriture disque. Réutilisé par le run normal et la reprise. */
 async function exportArticle(deps: PhaseDeps, ctx: AutoRunContext): Promise<void> {
   const { client, logger, report } = deps
@@ -108,7 +116,16 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
     logger.phase('Phase 3 — Rédaction')
     if (ctx.articleId == null) throw new Error('Rédaction : articleId manquant')
     if (ctx.resume.skipRedaction) {
-      logger.dim('reprise : contenu déjà présent — export seul')
+      // Premier jet déjà accepté : restent les finitions qu'un run interrompu
+      // n'aurait pas faites (passages à sourcer, liens vers un non-publié).
+      logger.dim('reprise : premier jet déjà accepté — finitions puis export')
+      if (ctx.capitaine) {
+        const stored = await client.apiGet<{ content?: string | null }>(`/articles/${ctx.articleId}/content`)
+        ctx.articleContent = stored.content ?? ''
+        await finishPassages(deps, ctx, { articleId: ctx.articleId, keyword: ctx.capitaine, keywords: [...new Set([ctx.capitaine, ...ctx.lieutenants])] })
+      }
+      await unlinkUnpublished(deps, ctx.articleId)
+      ctx.articleContent = ''
       await exportArticle(deps, ctx)
       return
     }
@@ -129,40 +146,66 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
       topic: null as string | null,
     }
 
-    // 1. Outline — ancré sur la structure des concurrents quand elle existe
-    logger.step(
-      `Sommaire — génération…${ctx.serpPaa.length > 0 ? ` (${ctx.serpPaa.length} PAA)` : ''}${ctx.hnStructure.length > 0 ? ` (${ctx.hnStructure.length} chapitres concurrents)` : ''}`,
-    )
-    const outlineDone = await collectSse(deps, '/generate/outline', {
-      ...base,
-      competitorStructure: ctx.hnStructureBrief,
-    })
-    const outline = outlineDone.outline
-    report.addUsage(outlineDone.usage as ApiUsageLike | null)
-    await client.apiPut(`/articles/${ctx.articleId}`, { outline })
-    const sectionCount = Array.isArray((outline as { sections?: unknown[] })?.sections)
-      ? (outline as { sections: unknown[] }).sections.length
-      : 0
-    report.addStep(`Rédaction · Sommaire (${sectionCount} sections)`)
+    if (ctx.resume.skipDraft) {
+      // Reprise d'un premier jet déjà écrit mais pas accepté (recette C8) : il
+      // est gardé — pas de nouvel appel payant — et passe par le même filet que
+      // la route du premier jet (chiffre sans source → « à sourcer »).
+      logger.dim('reprise : premier jet déjà écrit — corrections, acceptation et sources seulement')
+      const stored = await client.apiGet<{ content?: string | null }>(`/articles/${ctx.articleId}/content`)
+      ctx.articleContent = markUnsourcedFigures(stored.content ?? '')
+    } else {
+      // 1. Sommaire — la structure validée au Moteur, comme à l'écran (FR-HN-TAB) ;
+      //    à défaut, un sommaire généré, ancré sur la structure des concurrents.
+      let outline: unknown
+      if (ctx.articleStructure.length > 0) {
+        logger.step('Sommaire — tiré de la structure validée au Moteur')
+        outline = structureToOutline(ctx.articleStructure, ctx.articleTitle)
+      } else {
+        logger.step(
+          `Sommaire — génération…${ctx.serpPaa.length > 0 ? ` (${ctx.serpPaa.length} PAA)` : ''}${ctx.hnStructure.length > 0 ? ` (${ctx.hnStructure.length} chapitres concurrents)` : ''}`,
+        )
+        const outlineDone = await collectSse(deps, '/generate/outline', {
+          ...base,
+          competitorStructure: ctx.hnStructureBrief,
+        })
+        outline = outlineDone.outline
+        report.addUsage(outlineDone.usage as ApiUsageLike | null)
+      }
+      await client.apiPut(`/articles/${ctx.articleId}`, { outline })
+      const sectionCount = Array.isArray((outline as { sections?: unknown[] })?.sections)
+        ? (outline as { sections: unknown[] }).sections.length
+        : 0
+      report.addStep(`Rédaction · Sommaire (${sectionCount} sections)`)
 
-    // 2. Article (streaming section par section)
-    logger.step('Article — rédaction section par section…')
-    const articleDone = await collectSse(
-      deps,
-      '/generate/article',
-      // Recherche web activée en réel seulement : elle ancre factuellement les
-      // sections (chiffres, sources) mais coûte et rallonge — inutile en mock.
-      { ...base, outline, webSearchEnabled: ctx.config.mode === 'real' },
-      (ev) => {
-        if (ev.event === 'section-start') {
-          const d = ev.data as { index: number; total: number; title: string }
-          logger.dim(`  section ${d.index + 1}/${d.total} — ${d.title}`)
-        }
-      },
-    )
-    ctx.articleContent = String(articleDone.content ?? '')
-    report.addUsage(articleDone.usage as ApiUsageLike | null)
-    report.addStep(`Rédaction · Article (${ctx.articleContent.length} caractères)`)
+      // 2. Premier jet, en un appel et sans recherche web : un chiffre à sourcer
+      //    est posé dans un marqueur, la passe « sources » le traitera.
+      logger.step('Article — premier jet en un appel…')
+      const { paa: _paa, topic: _topic, ...draftBase } = base
+      const articleDone = await collectSse(
+        deps,
+        '/generate/article-draft',
+        { ...draftBase, outline },
+        (ev) => {
+          if (ev.event === 'section-start') {
+            const d = ev.data as { index: number; total: number; title: string }
+            logger.dim(`  chapitre ${d.index + 1}/${d.total} — ${d.title}`)
+          } else if (ev.event === 'continuation') {
+            const d = ev.data as { fromIndex: number; attempt: number }
+            logger.dim(`  coupé au plafond : reprise au chapitre ${d.fromIndex + 1} (${d.attempt}/2)`)
+          }
+        },
+      )
+      ctx.articleContent = String(articleDone.content ?? '')
+      report.addUsage(articleDone.usage as ApiUsageLike | null)
+      report.addStep(`Rédaction · Article (${ctx.articleContent.length} caractères)`)
+    }
+
+    // 2 bis. Un chapitre hors de son budget est réécrit à sa longueur, comme
+    //        l'utilisateur le ferait avant d'accepter le premier jet (recette C8).
+    //        La porte juge la base : le texte y est d'abord enregistré.
+    const passes = { articleId: ctx.articleId, keyword: ctx.capitaine, keywords }
+    await client.apiPut(`/articles/${ctx.articleId}`, { content: ctx.articleContent })
+    ctx.articleContent = await fitChapterBudgets(deps, passes, ctx.articleContent)
 
     // 3. Meta
     logger.step('Meta — title + description…')
@@ -180,8 +223,17 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
       metaTitle: ctx.metaTitle,
       metaDescription: ctx.metaDescription,
     })
-    // 5. Maillage interne — avant l'export, pour que le HTML exporté porte les liens.
+    // 4 bis. Premier jet accepté par sa porte (C7, FR-CER-PARENT-WRITTEN-GATE) :
+    // c'est cette étape qui fait de l'article un parent rédigé. Un refus arrête
+    // le run — le script ne déroge jamais à la place d'un humain.
+    await emitCheck(client, ctx.articleId, REDACTION_DRAFT_ACCEPTED)
+    report.addStep('Rédaction · premier jet accepté par sa porte')
+    // 4 ter. Passe « sources », puis ce qui n'a pas de source se dit sans chiffre.
+    await finishPassages(deps, ctx, passes)
+    // 5. Maillage interne — avant l'export, pour que le HTML exporté porte les liens ;
+    //    jamais vers un article pas encore publié.
     await runInternalLinking(deps, ctx.articleId)
+    await unlinkUnpublished(deps, ctx.articleId)
 
     // 6. Statut brouillon
     await client.apiPut(`/articles/${ctx.articleId}/status`, { status: 'brouillon' })

@@ -13,6 +13,17 @@ vi.mock('../../../server/services/infra/data.service', () => ({
   getKeywordsByCocoon: vi.fn(),
 }))
 
+// Test unitaire : aucune base. Le cache relaie directement vers la source —
+// sans cela le test interrogeait PostgreSQL : vert sur un poste de dev, rouge
+// en CI (ECONNREFUSED), et faussé par les réponses mises en cache localement.
+vi.mock('../../../server/db/cache-helpers', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../server/db/cache-helpers')>()
+  return {
+    ...actual,
+    getOrFetch: <T>(_type: string, _key: string, _ttl: number, fetcher: () => Promise<T>) => fetcher(),
+  }
+})
+
 import {
   fetchDataForSeo,
   fetchKeywordOverviewBatch,

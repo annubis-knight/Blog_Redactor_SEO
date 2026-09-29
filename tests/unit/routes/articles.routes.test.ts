@@ -2,16 +2,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
-const { mockGetArticleBySlug, mockSaveArticleContent, mockGetArticleContent, mockRemoveArticleFromCocoon } = vi.hoisted(() => ({
+const { mockGetArticleBySlug, mockSaveArticleContent, mockGetArticleContent, mockRemoveArticleFromCocoon, mockRemoveArticleChecks, mockGetChildren } = vi.hoisted(() => ({
+  mockGetChildren: vi.fn(),
   mockGetArticleBySlug: vi.fn(),
   mockSaveArticleContent: vi.fn(),
   mockGetArticleContent: vi.fn(),
   mockRemoveArticleFromCocoon: vi.fn(),
+  mockRemoveArticleChecks: vi.fn(),
 }))
 
 vi.mock('../../../server/services/infra/data.service', () => ({
   getArticleBySlug: mockGetArticleBySlug,
   removeArticleFromCocoon: mockRemoveArticleFromCocoon,
+  removeArticleChecks: mockRemoveArticleChecks,
+  getArticleChildren: mockGetChildren,
 }))
 
 vi.mock('../../../server/services/article/article-content.service', () => ({
@@ -125,7 +129,7 @@ describe('DELETE /articles/:id', () => {
   const handler = findHandler('delete', '/articles/:id')
 
   it('deletes article and returns success', async () => {
-    mockRemoveArticleFromCocoon.mockResolvedValueOnce(true)
+    mockRemoveArticleFromCocoon.mockResolvedValueOnce('removed')
 
     const req = { params: { id: '1' } } as unknown as Request
     const res = createMockRes()
@@ -136,8 +140,23 @@ describe('DELETE /articles/:id', () => {
     expect(res.json).toHaveBeenCalledWith({ data: { id: 1, removed: true } })
   })
 
+  // C7 : un parent détaché laisserait ses enfants sans parent dans le cocon.
+  it('refuse (409 HAS_CHILDREN) de détacher un article qui a encore des enfants', async () => {
+    mockRemoveArticleFromCocoon.mockResolvedValueOnce('has-children')
+
+    const req = { params: { id: '7' } } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(409)
+    expect(res.json).toHaveBeenCalledWith({
+      error: expect.objectContaining({ code: 'HAS_CHILDREN', message: expect.stringMatching(/enfant|sections/i) }),
+    })
+  })
+
   it('returns 404 when article not found', async () => {
-    mockRemoveArticleFromCocoon.mockResolvedValueOnce(false)
+    mockRemoveArticleFromCocoon.mockResolvedValueOnce('not-found')
 
     const req = { params: { id: '99' } } as unknown as Request
     const res = createMockRes()
@@ -168,3 +187,47 @@ describe('DELETE /articles/:id', () => {
     )
   })
 })
+
+// M19 : la structure est construite sur le capitaine et les lieutenants
+// retenus. Retirer l'une de ces étapes laissait l'étape Structure validée sur
+// des données qui avaient changé ; seule la publication le voyait.
+describe('POST /articles/:id/progress/uncheck', () => {
+  const handler = findHandler('post', '/articles/:id/progress/uncheck')
+
+  it.each([
+    ['moteur:capitaine_locked'],
+    ['moteur:lieutenants_locked'],
+  ])('retirer %s retire aussi l’étape Structure', async (check) => {
+    mockRemoveArticleChecks.mockResolvedValueOnce({ phase: 'moteur', completedChecks: [], checkTimestamps: {} })
+    const res = createMockRes()
+    await handler({ params: { id: '4' }, body: { check } } as unknown as Request, res)
+    expect(mockRemoveArticleChecks).toHaveBeenCalledWith(4, [check, 'moteur:hn_locked'])
+    expect(res.json).toHaveBeenCalledWith({ data: expect.objectContaining({ completedChecks: [] }) })
+  })
+
+  it('retirer l’étape Lexique ne touche à rien d’autre', async () => {
+    mockRemoveArticleChecks.mockResolvedValueOnce({ phase: 'moteur', completedChecks: [], checkTimestamps: {} })
+    await handler({ params: { id: '4' }, body: { check: 'moteur:lexique_validated' } } as unknown as Request, createMockRes())
+    expect(mockRemoveArticleChecks).toHaveBeenCalledWith(4, ['moteur:lexique_validated'])
+  })
+})
+
+// C7 : les articles nés des sections d'un article (passe « Résumer », maillage).
+describe('GET /articles/:id/children', () => {
+  const handler = findHandler('get', '/articles/:id/children')
+
+  it('renvoie les enfants', async () => {
+    mockGetChildren.mockResolvedValueOnce([{ id: 11, title: 'Isoler ses combles', parentSection: 'Isoler les combles', keyword: 'isolation combles', status: 'à rédiger' }])
+    const res = createMockRes()
+    await handler({ params: { id: '10' } } as unknown as Request, res)
+    expect(mockGetChildren).toHaveBeenCalledWith(10)
+    expect(res.json).toHaveBeenCalledWith({ data: [expect.objectContaining({ id: 11, parentSection: 'Isoler les combles' })] })
+  })
+
+  it('identifiant invalide : 400', async () => {
+    const res = createMockRes()
+    await handler({ params: { id: 'x' } } as unknown as Request, res)
+    expect(res.status).toHaveBeenCalledWith(400)
+  })
+})
+

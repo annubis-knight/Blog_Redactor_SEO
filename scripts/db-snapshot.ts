@@ -19,6 +19,7 @@ import {
   computeSchemaFingerprint,
   getTableCount,
 } from './db-introspect.js'
+import { generateBootstrap } from './db-bootstrap.js'
 
 const SCHEMA_PATH = resolve('server/db/schema.sql')
 
@@ -95,6 +96,11 @@ async function main(): Promise<void> {
     console.log(`  Tables           : ${tableCount}`)
     console.log(`  Empreinte schéma : sha256:${fingerprint.slice(0, 16)}…`)
     console.log(`  Commit           : ${git.commit} (${git.branch})${git.clean ? '' : '  ⚠️  dirty'}`)
+
+    // Le schéma rejouable (CI) suit le snapshot : les deux ne doivent jamais diverger.
+    if (!generateBootstrap()) {
+      throw new Error('server/db/bootstrap.sql n’a pas pu être régénéré : la CI créerait une base périmée')
+    }
   } finally {
     await pool.end()
   }

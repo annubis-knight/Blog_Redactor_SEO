@@ -4,6 +4,7 @@ import { useSeoStore } from '@/stores/article/seo.store'
 import { useBriefStore } from '@/stores/strategy/brief.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useCannibalization } from '@/composables/seo/useCannibalization'
+import { DEFAULT_TARGET_WORDS_FALLBACK } from '@shared/constants/article-type-rules.js'
 import ScoreGauge from '@/components/shared/ScoreGauge.vue'
 import KeywordsTab from '@/components/panels/KeywordsTab.vue'
 import IndicatorsTab from '@/components/panels/indicators/IndicatorsTab.vue'
@@ -29,7 +30,7 @@ const cocoonRef = computed(() => props.cocoonName || briefStore.briefData?.artic
 const { warnings: cannibalizationWarnings } = useCannibalization(articleIdRef, cocoonRef)
 
 // Content length target
-const contentLengthTarget = computed(() => briefStore.briefData?.contentLengthRecommendation ?? 1500)
+const contentLengthTarget = computed(() => briefStore.targetWordCount ?? DEFAULT_TARGET_WORDS_FALLBACK)
 
 // Tab management
 type TabId = 'mots-clefs' | 'indicateurs' | 'serp-data'
@@ -148,9 +149,9 @@ const serpData = computed(() => briefStore.briefData?.dataForSeo ?? null)
   margin-bottom: 1rem;
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--color-warning-text, #92400e);
-  background: var(--color-warning-bg, #fffbeb);
-  border: 1px solid var(--color-warning-border, #fde68a);
+  color: var(--color-warning-text);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
   border-radius: 6px;
 }
 

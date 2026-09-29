@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 
-export type PanelId = 'seo' | 'geo' | 'linking' | 'ia-brief' | 'blocks' | null
+export type PanelId = 'seo' | 'geo' | 'linking' | 'ia-brief' | 'blocks' | 'enrich' | null
 
 export function usePanelToggle(defaultPanel: PanelId = 'seo') {
   const activePanel = ref<PanelId>(defaultPanel)
@@ -14,6 +14,7 @@ export function usePanelToggle(defaultPanel: PanelId = 'seo') {
   const showLinkSuggestions = computed(() => activePanel.value === 'linking')
   const showIaBriefPanel = computed(() => activePanel.value === 'ia-brief')
   const showBlocksPanel = computed(() => activePanel.value === 'blocks')
+  const showEnrichPanel = computed(() => activePanel.value === 'enrich')
   const hasActivePanel = computed(() => activePanel.value !== null)
 
   return {
@@ -24,6 +25,7 @@ export function usePanelToggle(defaultPanel: PanelId = 'seo') {
     showLinkSuggestions,
     showIaBriefPanel,
     showBlocksPanel,
+    showEnrichPanel,
     hasActivePanel,
   }
 }

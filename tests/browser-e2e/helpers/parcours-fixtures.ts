@@ -21,9 +21,9 @@ import { test, expect, type Page } from '@playwright/test'
 import { query } from '../../../server/db/client.js'
 import {
   makeTestRunId,
-  taggedName,
   getOrCreateTestSilo,
   createTestCocoon,
+  createTestCocoonArticle,
   cleanupTestFixtures,
 } from '../../helpers/db-fixtures.js'
 import { openMoteur, scanAndLockCaptain, selectArticleByTitle } from './moteur-ui.js'
@@ -127,34 +127,29 @@ export function useParcours(): ParcoursCtx {
     const cocoon = await createTestCocoon(ctx.runId, silo.id, 'Cocon parcours')
     ctx.cocoonName = cocoon.nom
 
-    // 1. Les articles, créés par l'endpoint de création en lot (chemin réel).
-    const payload = LEVELS.map(level => ({
-      title: taggedName(SEEDS[level].base, ctx.runId),
-      type: level,
-      slug: `test-${ctx.runId}-${level}`,
-      suggestedKeyword: taggedKeyword(SEEDS[level].keyword, ctx.runId),
-      painPoint: SEEDS[level].painPoint,
-      painIntentExpected: 'commercial' as const,
-    }))
-    const created = await api<Array<{ id: number; title: string; slug: string }>>('/articles/batch-create', {
-      method: 'POST',
-      body: JSON.stringify({ cocoonName: ctx.cocoonName, articles: payload }),
-    })
-    if (!created.ok || !created.data || created.data.length !== LEVELS.length) {
-      throw new Error(`création des articles impossible (HTTP ${created.status}, ${created.data?.length ?? 0} créés)`)
+    // 1. Les articles, en SQL et dans l'ordre du cocon (C7) : le pilier, puis
+    //    l'intermédiaire né d'une de ses sections, puis le spécialisé né d'une
+    //    section de l'intermédiaire. La création unitaire (`POST /cocoons/:id/articles`)
+    //    exige un parent rédigé et un mot-clé mesuré : elle a ses propres tests.
+    const DB_TYPE: Record<ParcoursLevel, 'Pilier' | 'Intermédiaire' | 'Spécialisé'> = {
+      pilier: 'Pilier', intermediaire: 'Intermédiaire', specifique: 'Spécialisé',
     }
-
-    LEVELS.forEach((level, i) => {
-      const row = created.data![i]
-      ctx.articles[level] = {
-        id: row.id,
-        title: row.title,
-        slug: row.slug,
-        level,
-        keyword: payload[i].suggestedKeyword,
-        painPoint: payload[i].painPoint,
-      }
-    })
+    let parentId: number | null = null
+    for (const level of LEVELS) {
+      const keyword = taggedKeyword(SEEDS[level].keyword, ctx.runId)
+      const row = await createTestCocoonArticle(ctx.runId, cocoon.id, {
+        base: SEEDS[level].base,
+        type: DB_TYPE[level],
+        slug: `test-${ctx.runId}-${level}`,
+        parentId,
+        parentSection: parentId === null ? null : `Section ${SEEDS[level].keyword}`,
+        suggestedKeyword: keyword,
+        painPoint: SEEDS[level].painPoint,
+        painIntentExpected: 'commercial',
+      })
+      ctx.articles[level] = { id: row.id, title: row.titre, slug: row.slug, level, keyword, painPoint: SEEDS[level].painPoint }
+      parentId = row.id
+    }
 
     // 2. La stratégie du cocon — c'est elle que lit la barre du haut du Moteur.
     const strategy = {

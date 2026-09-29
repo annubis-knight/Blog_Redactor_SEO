@@ -70,7 +70,7 @@ const proposedArticleRowStub = {
   name: 'ProposedArticleRow',
   template: '<div class="proposed-article-row-stub" />',
   props: ['article', 'index', 'compositionResult', 'groupColor', 'structuralWarnings', 'availableParents'],
-  emits: ['regenerate-title', 'regenerate-keyword', 'regenerate-slug', 'select-keyword', 'select-title', 'select-slug', 'toggle-accept', 'remove', 'change-parent'],
+  emits: ['regenerate-title', 'regenerate-keyword', 'regenerate-slug', 'select-keyword', 'select-title', 'select-slug', 'remove', 'change-parent'],
 }
 
 const addArticleMenuStub = {

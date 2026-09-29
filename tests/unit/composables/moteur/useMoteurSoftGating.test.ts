@@ -2,7 +2,8 @@
  * Vague 3 — Tests isolés useMoteurSoftGating.
  *
  * Référence FR PRD : FR-MOT-FREE-NAV (gating souple Phase ②/③), FR-MOT-CHECKS
- * (5 checks Moteur), FR-DIS-* (Discovery accessible si keywords pas validés).
+ * (6 checks Moteur), FR-DIS-* (Discovery accessible si keywords pas validés),
+ * FR-HN-TAB (la Structure Hn validée = 4ᵉ verrou de la phase ②).
  *
  * Tests les invariants du composable sans monter MoteurView. Toutes les
  * dépendances sont injectées (refs, stores) pour rendre le test indépendant.
@@ -17,6 +18,7 @@ import type { SelectedArticle } from '../../../../shared/types/index'
 import {
   MOTEUR_CAPITAINE_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
   MOTEUR_LEXIQUE_VALIDATED,
 } from '../../../../shared/constants/workflow-checks.constants.js'
 
@@ -38,7 +40,7 @@ describe('useMoteurSoftGating', () => {
     setActivePinia(createPinia())
   })
 
-  it('AC.I.4 — finalisationUnlocked = true ssi les 3 checks Phase ② sont posés', () => {
+  it('AC.I.4 — finalisationUnlocked = true ssi les 4 checks Phase ② sont posés (FR-HN-TAB)', () => {
     const articleProgressStore = useArticleProgressStore()
     const keywordsStore = useKeywordsStore()
     const selectedArticle = ref<SelectedArticle | null>(makeArticle(1))
@@ -54,24 +56,33 @@ describe('useMoteurSoftGating', () => {
 
     expect(api.finalisationUnlocked.value).toBe(false)
 
-    // 1/3 → false
+    // 1/4 → false
     articleProgressStore.progressMap['1'].completedChecks = [MOTEUR_CAPITAINE_LOCKED]
     expect(api.finalisationUnlocked.value).toBe(false)
 
-    // 2/3 → false
+    // 2/4 → false
     articleProgressStore.progressMap['1'].completedChecks = [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED]
     expect(api.finalisationUnlocked.value).toBe(false)
 
-    // 3/3 → true
+    // 3/4 sans la Structure → false (l'ancien trio ne suffit plus)
     articleProgressStore.progressMap['1'].completedChecks = [
       MOTEUR_CAPITAINE_LOCKED,
       MOTEUR_LIEUTENANTS_LOCKED,
       MOTEUR_LEXIQUE_VALIDATED,
     ]
+    expect(api.finalisationUnlocked.value).toBe(false)
+
+    // 4/4 → true
+    articleProgressStore.progressMap['1'].completedChecks = [
+      MOTEUR_CAPITAINE_LOCKED,
+      MOTEUR_LIEUTENANTS_LOCKED,
+      MOTEUR_HN_LOCKED,
+      MOTEUR_LEXIQUE_VALIDATED,
+    ]
     expect(api.finalisationUnlocked.value).toBe(true)
   })
 
-  it('AC.I.5 — isCaptaineLocked / isLieutenantsLocked / isLexiqueValidated reflètent les checks', () => {
+  it('AC.I.5 — isCaptaineLocked / isLieutenantsLocked / isStructureLocked / isLexiqueValidated reflètent les checks', () => {
     const articleProgressStore = useArticleProgressStore()
     const keywordsStore = useKeywordsStore()
     const selectedArticle = ref<SelectedArticle | null>(makeArticle(1))
@@ -87,7 +98,12 @@ describe('useMoteurSoftGating', () => {
 
     expect(api.isCaptaineLocked.value).toBe(true)
     expect(api.isLieutenantsLocked.value).toBe(false)
+    expect(api.isStructureLocked.value).toBe(false)
     expect(api.isLexiqueValidated.value).toBe(true)
+
+    // FR-HN-TAB : isStructureLocked suit le check `hn_locked`
+    articleProgressStore.progressMap['1'].completedChecks = [MOTEUR_CAPITAINE_LOCKED, MOTEUR_HN_LOCKED]
+    expect(api.isStructureLocked.value).toBe(true)
   })
 
   it('AC.I.5.bis — sans article sélectionné, tous les flags sont false', () => {
@@ -99,6 +115,7 @@ describe('useMoteurSoftGating', () => {
 
     expect(api.isCaptaineLocked.value).toBe(false)
     expect(api.isLieutenantsLocked.value).toBe(false)
+    expect(api.isStructureLocked.value).toBe(false)
     expect(api.isLexiqueValidated.value).toBe(false)
     expect(api.finalisationUnlocked.value).toBe(false)
   })
@@ -118,8 +135,11 @@ describe('useMoteurSoftGating', () => {
     const api = useMoteurSoftGating({ selectedArticle, articleProgressStore, keywordsStore })
 
     const title = api.finalisationButtonTitle.value
-    // Le titre doit mentionner les 2 checks manquants (lieutenants + lexique)
-    expect(title.toLowerCase()).toMatch(/lieutenant|lexique/i)
+    // Le titre doit mentionner les 3 checks manquants (lieutenants + structure + lexique)
+    expect(title).toContain('Lieutenants à verrouiller')
+    expect(title).toContain('Structure à valider')
+    expect(title).toContain('Lexique à valider')
+    expect(title).not.toContain('Capitaine')
   })
 
   it('AC.I.7 — isDiscoveryAllowed = true si pas d\'article ou article sans keyword', () => {

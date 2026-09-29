@@ -6,31 +6,34 @@ import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
 import { apiPost, apiGet, expectSuccessOrKnownError } from '../helpers/api-client.js'
 import { query } from '../../server/db/client.js'
+import { grantCheck } from '../helpers/gates.js'
+import { dataForSeoConfigured } from '../helpers/external-sources.js'
 
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Tab moteur/lieutenants — SERP analysis', () => {
-  it('POST /serp/analyze sans body → 400/500', async () => {
-    if (requireServer().skip) return
+  it('POST /serp/analyze sans body → 400/500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const res = await apiPost('/serp/analyze', {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST /serp/analyze OK → { keyword, competitors[] }', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /serp/analyze OK → { keyword, competitors[] }', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const res = await apiPost<{ keyword: string; competitors: unknown[] }>('/serp/analyze', {
       keyword: `test-${ctx.runId}-l-serp`,
     })
-    if (!expectSuccessOrKnownError(res)) return
+    if (!expectSuccessOrKnownError(res)) skip()
     expect(res.data?.keyword).toBeDefined()
     expect(Array.isArray(res.data?.competitors)).toBe(true)
   })
 
-  it('POST /serp/analyze?articleId=X retourne OK (persistance DB-first en arrière-plan)', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /serp/analyze?articleId=X retourne OK (persistance DB-first en arrière-plan)', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'SerpA Cocon')
@@ -48,8 +51,8 @@ describe('Tab moteur/lieutenants — SERP analysis', () => {
 })
 
 describe('Tab moteur/lieutenants — Propositions IA (E2)', () => {
-  it('POST /keywords/:captain/propose-lieutenants (stream) renvoie SSE', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/:captain/propose-lieutenants (stream) renvoie SSE', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/propose-lieutenants`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -65,8 +68,8 @@ describe('Tab moteur/lieutenants — Propositions IA (E2)', () => {
 
   it.todo('Persistance backend AVANT done event (E2) — nécessite DB probe pendant stream, complexe')
 
-  it('Re-validation < 7j : 2ème call propose-lieutenants plus rapide', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('Re-validation < 7j : 2ème call propose-lieutenants plus rapide', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const kw = `test-${ctx.runId}-ttl-lt`
     const payload = {
       articleTitle: 'Test',
@@ -96,8 +99,8 @@ describe('Tab moteur/lieutenants — Propositions IA (E2)', () => {
 })
 
 describe('Tab moteur/lieutenants — Lecture DB-first', () => {
-  it('GET /articles/:id/lieutenant-explorations retourne pour article neuf', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/lieutenant-explorations retourne pour article neuf', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LDB Cocon')
     const article = await ctx.createArticle(cocoon.id, 'LDB Article')
@@ -106,8 +109,8 @@ describe('Tab moteur/lieutenants — Lecture DB-first', () => {
     expect(res.status).toBe(200)
   })
 
-  it('GET /articles/:id/explorations renvoie lieutenants[] pour article neuf', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/explorations renvoie lieutenants[] pour article neuf', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LExp Cocon')
     const article = await ctx.createArticle(cocoon.id, 'LExp Article')
@@ -119,8 +122,8 @@ describe('Tab moteur/lieutenants — Lecture DB-first', () => {
 })
 
 describe('Tab moteur/lieutenants — Archive (D3)', () => {
-  it('POST /articles/:id/lieutenants/archive idempotent (aucun lieutenant)', async () => {
-    if (requireServer().skip) return
+  it('POST /articles/:id/lieutenants/archive idempotent (aucun lieutenant)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LArch Cocon')
     const article = await ctx.createArticle(cocoon.id, 'LArch Article')
@@ -129,8 +132,8 @@ describe('Tab moteur/lieutenants — Archive (D3)', () => {
     expect([200, 204]).toContain(res.status)
   })
 
-  it('POST /articles/:id/lieutenants/archive avec keywords[] → 200/204', async () => {
-    if (requireServer().skip) return
+  it('POST /articles/:id/lieutenants/archive avec keywords[] → 200/204', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LArchBulk Cocon')
@@ -142,8 +145,8 @@ describe('Tab moteur/lieutenants — Archive (D3)', () => {
     expect([200, 204]).toContain(res.status)
   })
 
-  it('GET /articles/:id/explorations ne retourne pas les lieutenants archivés', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/explorations ne retourne pas les lieutenants archivés', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost, apiGet } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LArchGet Cocon')
@@ -157,8 +160,8 @@ describe('Tab moteur/lieutenants — Archive (D3)', () => {
 })
 
 describe('Tab moteur/lieutenants — Lock + outline', () => {
-  it('Lock lieutenants : PUT /articles/:id/keywords avec lieutenants[] persiste', async () => {
-    if (requireServer().skip) return
+  it('Lock lieutenants : PUT /articles/:id/keywords avec lieutenants[] persiste', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPut } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LLock Tab Cocon')
@@ -180,40 +183,44 @@ describe('Tab moteur/lieutenants — Lock + outline', () => {
     expect(dbRes.rows[0]?.lieutenants.length).toBe(3)
   })
 
-  it('MOTEUR_LIEUTENANTS_LOCKED check ajouté via /progress/check', async () => {
-    if (requireServer().skip) return
-    const { apiPost, apiGet } = await import('../helpers/api-client.js')
+  it('MOTEUR_LIEUTENANTS_LOCKED check ajouté via /progress/check', async ({ skip }) => {
+    if (requireServer().skip) skip()
+    const { apiGet } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LLCheck Cocon')
     const article = await ctx.createArticle(cocoon.id, 'LLCheck Article')
 
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lieutenants_locked' })
+    // Étape gardée : elle passe sa porte, comme pour un utilisateur qui assume (FR-LIE-LOCK-GATE).
+    await grantCheck(article.id, 'moteur:lieutenants_locked')
     const res = await apiGet<{ completed_checks?: string[]; completedChecks?: string[] }>(`/articles/${article.id}/progress`)
     const checks = res.data as { completedChecks?: string[]; completed_checks?: string[] }
     const list = checks.completedChecks ?? checks.completed_checks ?? []
     expect(list).toContain('moteur:lieutenants_locked')
   })
 
-  it('hnStructure persistée dans article_keywords (pas propagée à article_content.outline automatiquement)', async () => {
-    if (requireServer().skip) return
+  it('hnStructure persistée dans article_keywords (pas propagée à article_content.outline automatiquement)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPut } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'HnStruct Cocon')
     const article = await ctx.createArticle(cocoon.id, 'HnStruct Article')
 
-    const hn = [{ level: 'H2', title: 'Section A' }, { level: 'H2', title: 'Section B' }]
-    await apiPut(`/articles/${article.id}/keywords`, {
+    const hn = [{ level: 2, text: 'Section A' }, { level: 2, text: 'Section B' }]
+    const res = await apiPut(`/articles/${article.id}/keywords`, {
       capitaine: `test-${ctx.runId}-hn`,
       lieutenants: [],
       lexique: [],
       rootKeywords: [],
       hnStructure: hn,
     })
+    expect(res.status).toBe(200)
     const dbRes = await query<{ hn_structure: unknown }>(
       `SELECT hn_structure FROM article_keywords WHERE article_id = $1`,
       [article.id],
     )
-    expect(dbRes.rows[0]?.hn_structure).toBeDefined()
+    expect(dbRes.rows[0]?.hn_structure).toEqual(hn)
+    const content = await query<{ outline: unknown }>(`SELECT outline FROM article_content WHERE article_id = $1`, [article.id])
+    expect(content.rows[0]?.outline ?? null, 'le sommaire n’est écrit qu’à la validation de la structure').toBeNull()
   })
 })
 

@@ -1,3 +1,16 @@
+/**
+ * AUTHORITY: PostgreSQL `internal_links` (matrice du maillage interne).
+ * READS FROM: internal_links, articles (loadArticlesDb : titres, slugs, cocons,
+ *             parent_id / parent_section pour la famille d'un article, C7).
+ * WRITES TO: internal_links (upsertLinks : PUT /api/links ; l'action contextuelle
+ *            « lien interne » de l'éditeur y enregistre aussi ses liens ;
+ *            pruneStaleLinks retire les liens absents du texte enregistré,
+ *            appelé par article-content.service.saveArticleContent).
+ * CONSUMERS: server/routes/links.routes.ts (matrice, suggestions, orphelins),
+ *            gate.service.publishCocoonLinks (liens vers des articles non publiés),
+ *            useLinkingStore (panneau de maillage, useContextualActions).
+ * RELATED FR: FR-RED-LINKING-MANUAL (suggestions : le parent et les enfants d'office).
+ */
 import { pool } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import { loadArticlesDb } from '../infra/data.service.js'
@@ -10,6 +23,7 @@ import type {
   CrossCocoonOpportunity,
 } from '../../../shared/types/linking.types.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
+import type { Article } from '../../../shared/types/index.js'
 
 const _DEFAULT_MATRIX: LinkingMatrix = {
   links: [],
@@ -101,6 +115,27 @@ export async function upsertLinks(newLinks: InternalLink[]): Promise<LinkingMatr
   return getMatrix()
 }
 
+/**
+ * La matrice suit le texte : une fois le contenu de `sourceId` enregistré, un
+ * lien qui n'y figure plus (ni `#article-<id>`, ni `/<slug>`) sort de
+ * `internal_links`. Sans cela, un lien retiré de l'éditeur restait dans la
+ * matrice, et la publication le signalait encore (recette réelle C8).
+ */
+export async function pruneStaleLinks(sourceId: number, html: string): Promise<number> {
+  const ids = [...html.matchAll(/href="#article-(\d+)"/g)].map(m => Number(m[1]))
+  const slugs = [...html.matchAll(/href="\/([a-z0-9-]+)"/g)].map(m => m[1]!)
+  const res = await pool.query(
+    `DELETE FROM internal_links l
+      WHERE l.source_id = $1
+        AND NOT (l.target_id = ANY($2::int[]))
+        AND NOT EXISTS (SELECT 1 FROM articles a WHERE a.id = l.target_id AND a.slug = ANY($3::text[]))`,
+    [sourceId, ids, slugs],
+  )
+  const removed = res.rowCount ?? 0
+  if (removed > 0) log.info('[linking] liens retirés du texte : sortis de la matrice', { sourceId, removed })
+  return removed
+}
+
 /** Get links for a specific article (as source or target) */
 export function getLinksForArticle(
   matrix: LinkingMatrix,
@@ -154,6 +189,44 @@ export function bestContiguousAnchor(title: string, content: string): string | n
   return null
 }
 
+/**
+ * Le maillage de la famille (C7, FR-RED-LINKING-MANUAL) : un parent propose un
+ * lien vers chacun de ses enfants — la section qui l'annonce doit y renvoyer —
+ * et un enfant, vers son parent. Proposé même si la cible n'est pas encore
+ * publiée : la raison le signale (la publication le rappellera, 🟠).
+ * L'ancre est prise telle quelle dans le texte ; sans elle, pas de suggestion.
+ */
+export function familySuggestions(
+  source: Article,
+  articles: Article[],
+  content: string,
+  existingTargets: Set<number>,
+): LinkSuggestion[] {
+  const out: LinkSuggestion[] = []
+  const relatives: Array<{ target: Article; relation: 'enfant' | 'parent' }> = [
+    ...articles.filter(a => a.parentId === source.id).map(target => ({ target, relation: 'enfant' as const })),
+    ...articles.filter(a => a.id === source.parentId).map(target => ({ target, relation: 'parent' as const })),
+  ]
+  for (const { target, relation } of relatives) {
+    if (target.id === source.id || existingTargets.has(target.id)) continue
+    const keyword = target.captainKeywordLocked ?? target.suggestedKeyword
+    const anchor = bestContiguousAnchor(target.title, content)
+      ?? (keyword && content.toLowerCase().includes(keyword.toLowerCase()) ? keyword : null)
+    if (!anchor) continue
+    const section = relation === 'enfant' ? target.parentSection : source.parentSection
+    const where = section ? ` (section « ${section} »)` : ''
+    const unpublished = target.status !== 'publié' ? ' — pas encore publié : le lien sera cassé tant qu’il n’est pas en ligne' : ''
+    out.push({
+      targetId: target.id,
+      targetTitle: target.title,
+      targetType: target.type,
+      suggestedAnchor: anchor,
+      reason: `${relation === 'enfant' ? 'Article enfant' : 'Article parent'}${where}${unpublished}`,
+    })
+  }
+  return out
+}
+
 /** Suggest internal links for an article based on content analysis */
 export async function suggestLinks(articleId: number, content: string): Promise<LinkSuggestion[]> {
   log.info(`Suggesting links for article ${articleId}`)
@@ -163,11 +236,15 @@ export async function suggestLinks(articleId: number, content: string): Promise<
   // Find source article and its cocoon
   let sourceCocoonName: string | null = null
   let sourceType: ArticleLevel | null = null
+  let source: Article | null = null
+  let sourceCocoonArticles: Article[] = []
   for (const cocoon of cocoons) {
     const found = cocoon.articles.find((a) => a.id === articleId)
     if (found) {
       sourceCocoonName = cocoon.name
       sourceType = found.type
+      source = found
+      sourceCocoonArticles = cocoon.articles
       break
     }
   }
@@ -184,6 +261,10 @@ export async function suggestLinks(articleId: number, content: string): Promise<
   const written = await loadWrittenArticleIds()
 
   const contentLower = content.toLowerCase()
+
+  // La famille d'abord (C7) : parent et enfants, même pas encore rédigés.
+  const family = source ? familySuggestions(source, sourceCocoonArticles, content, existingTargets) : []
+  for (const f of family) existingTargets.add(f.targetId)
 
   // Look for potential link targets in the same cocoon first, then others
   for (const cocoon of cocoons) {
@@ -227,7 +308,7 @@ export async function suggestLinks(articleId: number, content: string): Promise<
     return aIntra - bIntra
   })
 
-  return suggestions.slice(0, 10)
+  return [...family, ...suggestions].slice(0, 10)
 }
 
 /** Detect orphan articles (no incoming links) */

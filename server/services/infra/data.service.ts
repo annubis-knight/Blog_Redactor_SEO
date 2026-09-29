@@ -3,6 +3,8 @@ import { log } from '../../utils/logger.js'
 import { measureDb } from '../../utils/db-telemetry.js'
 import { microContextDbSchema } from '../../../shared/schemas/article-micro-context.schema.js'
 import { articleTypeDbToLevel, articleLevelToDbType } from '../../../shared/utils/article-level.js'
+import { parseKeywordType } from '../../../shared/utils/keyword-type.js'
+import { nextArticlePhase } from '../../../shared/utils/article-phase.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 import type {
   Article,
@@ -89,6 +91,8 @@ function rowToArticle(row: Record<string, unknown>): Article {
     captainKeywordLocked: (row.captain_keyword_locked as string | null) ?? null,
     painPoint: (row.pain_point as string | null) ?? null,
     painIntentExpected: (row.pain_intent_expected as Article['painIntentExpected'] | null) ?? null,
+    parentId: (row.parent_id as number | null) ?? null,
+    parentSection: (row.parent_section as string | null) ?? null,
     createdAt: row.created_at ? (row.created_at as Date).toISOString() : undefined,
     updatedAt: row.updated_at ? (row.updated_at as Date).toISOString() : undefined,
   }
@@ -101,7 +105,7 @@ function rowToArticle(row: Record<string, unknown>): Article {
 /**
  * AUTHORITY: PostgreSQL `articles` table (jointe à `silos` + `cocoons`)
  * READS FROM: GET /api/cocoons, GET /api/silos (via getSilos), GET /api/cocoons/:id/articles
- * WRITES TO: (lecture seule — les mutations passent par addArticlesToCocoon / updateArticle)
+ * WRITES TO: (lecture seule — les mutations passent par insertCocoonArticle / updateArticle)
  * CONSUMERS:
  *   - cocoon.articles            → liste complète (LinkingMatrix, BriefStructureStep,
  *                                   useArticleProposals, sélecteur article Moteur)
@@ -118,6 +122,7 @@ export async function loadArticlesDb(): Promise<Cocoon[]> {
       a.completed_checks, a.check_timestamps,
       a.seo_score, a.geo_score, a.meta_title, a.meta_description,
       a.suggested_keyword, a.captain_keyword_locked, a.pain_point, a.pain_intent_expected,
+      a.parent_id, a.parent_section,
       a.created_at, a.updated_at
     FROM silos s
     JOIN cocoons c ON c.silo_id = s.id
@@ -290,6 +295,13 @@ export async function getArticleBySlug(slug: string): Promise<{ article: Article
 
 export async function updateArticleStatus(id: number, status: ArticleStatus): Promise<void> {
   log.info('updateArticleStatus', { id, status })
+  if (status === 'publié') {
+    // La phase suit la publication : « Articles publiés » la lit (épopée qualité SEO, P2).
+    const current = await pool.query(`SELECT phase FROM articles WHERE id = $1`, [id])
+    const phase = nextArticlePhase(current.rows[0]?.phase, 'published')
+    await pool.query(`UPDATE articles SET status = $1, phase = $2 WHERE id = $3`, [status, phase, id])
+    return
+  }
   await pool.query(`UPDATE articles SET status = $1 WHERE id = $2`, [status, id])
 }
 
@@ -350,15 +362,16 @@ export async function addArticleCheck(id: number, check: string): Promise<Articl
   return (await getArticleProgress(id)) ?? { phase: 'proposed', completedChecks: [], checkTimestamps: {} }
 }
 
-export async function removeArticleCheck(id: number, check: string): Promise<ArticleProgress> {
+/** Retire des étapes en une fois (l'étape demandée et celles qui en dépendent). */
+export async function removeArticleChecks(id: number, checks: string[]): Promise<ArticleProgress> {
   await pool.query(`
     UPDATE articles
     SET
-      completed_checks = array_remove(completed_checks, $1),
-      check_timestamps = check_timestamps - $1
+      completed_checks = ARRAY(SELECT c FROM unnest(completed_checks) AS c WHERE c <> ALL($1::text[])),
+      check_timestamps = check_timestamps - $1::text[]
     WHERE id = $2
-  `, [check, id])
-  log.debug(`removeArticleCheck: removed "${check}" for ${id}`)
+  `, [checks, id])
+  log.debug(`removeArticleChecks: removed ${JSON.stringify(checks)} for ${id}`)
   return (await getArticleProgress(id)) ?? { phase: 'proposed', completedChecks: [], checkTimestamps: {} }
 }
 
@@ -394,11 +407,26 @@ export async function updateArticleInCocoon(
   return (res.rowCount ?? 0) > 0
 }
 
-export async function removeArticleFromCocoon(id: number): Promise<boolean> {
-  // Set cocoon_id to NULL — article stays in DB
-  const res = await pool.query(`UPDATE articles SET cocoon_id = NULL WHERE id = $1`, [id])
+/**
+ * Détache un article de son cocon : il reste en base (`cocoon_id` NULL). Un
+ * article dont des enfants sont encore dans le cocon est refusé — ils perdraient
+ * leur parent (C7). Détaché, un enfant quitte l'arbre et libère sa section.
+ */
+export async function removeArticleFromCocoon(id: number): Promise<'removed' | 'not-found' | 'has-children'> {
+  const children = await pool.query<{ n: number }>(
+    `SELECT count(*)::int AS n FROM articles WHERE parent_id = $1 AND cocoon_id IS NOT NULL`,
+    [id],
+  )
+  if (Number(children.rows[0]?.n) > 0) {
+    log.info('removeArticleFromCocoon refusé : enfants dans le cocon', { id, children: children.rows[0]?.n })
+    return 'has-children'
+  }
+  const res = await pool.query(
+    `UPDATE articles SET cocoon_id = NULL, parent_id = NULL, parent_section = NULL WHERE id = $1`,
+    [id],
+  )
   log.info('removeArticleFromCocoon', { id })
-  return (res.rowCount ?? 0) > 0
+  return (res.rowCount ?? 0) > 0 ? 'removed' : 'not-found'
 }
 
 /**
@@ -452,86 +480,93 @@ export async function addCocoonToSilo(siloName: string, cocoonName: string): Pro
   return { id: cocoonDbId, name: cocoonName, siloName, articles: [], publishedArticles: [], stats: emptyStats }
 }
 
-export async function addArticlesToCocoon(
-  cocoonName: string,
-  articles: {
+/**
+ * Les enfants d'un article dans le cocon : la section du parent dont chacun est
+ * né, et son mot-clé (capitaine, sinon mot-clé suggéré). Pour la passe
+ * « Résumer » et les suggestions de maillage (C7).
+ */
+export async function getArticleChildren(
+  articleId: number,
+): Promise<Array<{ id: number; title: string; parentSection: string | null; keyword: string | null; status: ArticleStatus }>> {
+  const res = await pool.query(`
+    SELECT a.id, a.titre, a.parent_section, a.status,
+           COALESCE(NULLIF(TRIM(ak.capitaine), ''), a.captain_keyword_locked, a.suggested_keyword) AS keyword
+    FROM articles a
+    LEFT JOIN article_keywords ak ON ak.article_id = a.id
+    WHERE a.parent_id = $1
+    ORDER BY a.id
+  `, [articleId])
+  return (res.rows as Array<{ id: number; titre: string; parent_section: string | null; keyword: string | null; status: ArticleStatus }>)
+    .map(r => ({ id: r.id, title: r.titre, parentSection: r.parent_section, keyword: r.keyword, status: r.status }))
+}
+
+/**
+ * Insère UN article dans un cocon (seul chemin d'écriture, cf.
+ * `cocoon-article.service.ts`, qui vérifie la hiérarchie avant). Renvoie
+ * `'slug-taken'` si l'adresse est déjà prise : l'appelant le dit à l'utilisateur.
+ */
+export async function insertCocoonArticle(
+  cocoonId: number,
+  article: {
     title: string
     type: ArticleLevel
-    slug?: string
-    suggestedKeyword?: string | null
-    painPoint?: string | null
-    painIntentExpected?: PainIntentExpected | null
-  }[],
-): Promise<Article[]> {
-  const cocoonRes = await pool.query(`SELECT id FROM cocoons WHERE nom = $1`, [cocoonName])
-  if (cocoonRes.rows.length === 0) throw new Error(`Cocoon "${cocoonName}" not found`)
-  const cocoonId = cocoonRes.rows[0].id
-
-  // Get next available ID
-  const maxRes = await pool.query(`SELECT COALESCE(MAX(id), 0) as max_id FROM articles`)
-  let nextId = (maxRes.rows[0].max_id as number) + 1
-
-  const created: Article[] = []
-  const _now = new Date().toISOString()
-
-  for (const article of articles) {
-    const slug = article.slug?.trim() || article.title
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-
-    // `articles.id` n'a pas de séquence : le numéro est calculé à la main
-    // (MAX(id)+1). Deux créations simultanées — deux onglets ouverts, un
-    // double-clic sur « Tout valider » — tombent alors sur le même, et
-    // l'insertion viole la clé primaire. L'article était silencieusement
-    // sauté ; on relit le maximum et on retente.
-    let insere = false
-    for (let essai = 0; essai < 5 && !insere; essai++) {
-      try {
-        const res = await pool.query(`
-          INSERT INTO articles (id, cocoon_id, titre, type, slug, topic, status, phase, completed_checks, check_timestamps, suggested_keyword, pain_point, pain_intent_expected)
-          VALUES ($1, $2, $3, $4, $5, NULL, 'à rédiger', 'proposed', '{}', '{}', $6, $7, $8)
-          ON CONFLICT (slug) DO NOTHING
-          RETURNING *
-        `, [
-          nextId,
-          cocoonId,
-          article.title,
-          // Conversion canonical → DB : la colonne `articles.type` impose le
-          // format PascalCase français (CHECK constraint).
-          articleLevelToDbType(article.type),
-          slug,
-          article.suggestedKeyword ?? null,
-          article.painPoint ?? null,
-          article.painIntentExpected ?? null,
-        ])
-
-        insere = true
-        if (res.rows.length > 0) {
-          created.push(rowToArticle(res.rows[0]))
-          nextId++
-        } else {
-          // Slug déjà pris : l'appelant le voit à l'absence de la ligne.
-          log.warn('addArticlesToCocoon — slug déjà utilisé', { slug })
-        }
-      } catch (err) {
-        const message = (err as Error).message
-        if (/articles_pkey|duplicate key/i.test(message)) {
-          const relu = await pool.query(`SELECT COALESCE(MAX(id), 0) as max_id FROM articles`)
-          nextId = (relu.rows[0].max_id as number) + 1
-          log.debug('addArticlesToCocoon — identifiant repris', { slug, nextId, essai: essai + 1 })
-          continue
-        }
-        log.warn('addArticlesToCocoon — skip article', { slug, error: message })
-        insere = true
+    slug: string
+    parentId: number | null
+    parentSection: string | null
+    suggestedKeyword: string | null
+    painPoint: string | null
+    painIntentExpected: PainIntentExpected | null
+  },
+): Promise<Article | 'slug-taken'> {
+  // `articles.id` n'a pas de séquence : le numéro est calculé à la main
+  // (MAX(id)+1). Deux créations simultanées tombent alors sur le même, et
+  // l'insertion viole la clé primaire : on relit le maximum et on retente.
+  for (let essai = 0; essai < 5; essai++) {
+    const maxRes = await pool.query(`SELECT COALESCE(MAX(id), 0) as max_id FROM articles`)
+    const nextId = (maxRes.rows[0].max_id as number) + 1
+    try {
+      const res = await pool.query(`
+        INSERT INTO articles (id, cocoon_id, titre, type, slug, topic, status, phase, completed_checks, check_timestamps,
+                              suggested_keyword, pain_point, pain_intent_expected, parent_id, parent_section)
+        VALUES ($1, $2, $3, $4, $5, NULL, 'à rédiger', 'proposed', '{}', '{}', $6, $7, $8, $9, $10)
+        ON CONFLICT (slug) DO NOTHING
+        RETURNING *
+      `, [
+        nextId,
+        cocoonId,
+        article.title,
+        // Conversion canonical → DB : la colonne `articles.type` impose le
+        // format PascalCase français (CHECK constraint).
+        articleLevelToDbType(article.type),
+        article.slug,
+        article.suggestedKeyword,
+        article.painPoint,
+        article.painIntentExpected,
+        article.parentId,
+        article.parentSection,
+      ])
+      if (res.rows.length === 0) {
+        log.warn('insertCocoonArticle — slug déjà utilisé', { slug: article.slug })
+        return 'slug-taken'
       }
+      log.info('insertCocoonArticle', { cocoonId, id: nextId, type: article.type, parentId: article.parentId })
+      return rowToArticle(res.rows[0])
+    } catch (err) {
+      const message = (err as Error).message
+      if (!/articles_pkey/i.test(message)) throw err
+      log.debug('insertCocoonArticle — identifiant repris', { slug: article.slug, essai: essai + 1 })
     }
   }
+  throw new Error(`insertCocoonArticle — aucun identifiant libre après 5 essais (${article.slug})`)
+}
 
-  log.info('addArticlesToCocoon', { cocoonName, count: created.length })
-  return created
+/**
+ * Place un article existant sous un parent, dans une section (K8). La
+ * hiérarchie est vérifiée avant par `cocoon-article.service.ts`.
+ */
+export async function setArticleParent(id: number, parentId: number, parentSection: string): Promise<void> {
+  await pool.query(`UPDATE articles SET parent_id = $1, parent_section = $2 WHERE id = $3`, [parentId, parentSection, id])
+  log.info('setArticleParent', { id, parentId, parentSection })
 }
 
 export async function getKeywordsByCocoon(cocoonName: string): Promise<Keyword[] | null> {
@@ -540,12 +575,24 @@ export async function getKeywordsByCocoon(cocoonName: string): Promise<Keyword[]
     [cocoonName]
   )
   if (res.rows.length === 0) return null
-  return res.rows.map(r => ({
+  return res.rows.map(rowToKeyword)
+}
+
+/**
+ * Lecture tolérante du type : le Cerveau a longtemps écrit le niveau d'article
+ * en minuscules (`'pilier'`) au lieu du `KeywordType` (`'Pilier'`), et les
+ * lecteurs ne trouvaient alors jamais le mot-clé pilier (épopée qualité SEO, K2).
+ * Une valeur inconnue est gardée telle quelle et signalée, pas remplacée.
+ */
+function rowToKeyword(r: { mot_clef: string; cocoon_name: string; type_mot_clef: string | null; statut: string | null }): Keyword {
+  const type = parseKeywordType(r.type_mot_clef)
+  if (!type) log.warn('keywords_seo — type de mot-clé inconnu', { keyword: r.mot_clef, type: r.type_mot_clef })
+  return {
     keyword: r.mot_clef,
     cocoonName: r.cocoon_name,
-    type: r.type_mot_clef,
-    status: r.statut ?? 'suggested',
-  }))
+    type: type ?? (r.type_mot_clef as Keyword['type']),
+    status: (r.statut ?? 'suggested') as Keyword['status'],
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -555,23 +602,22 @@ export async function getKeywordsByCocoon(cocoonName: string): Promise<Keyword[]
 export async function loadKeywordsDb(): Promise<Keyword[]> {
   log.info('loadKeywordsDb() — fetching from PG')
   const res = await pool.query(`SELECT mot_clef, cocoon_name, type_mot_clef, statut FROM keywords_seo ORDER BY id`)
-  return res.rows.map(r => ({
-    keyword: r.mot_clef,
-    cocoonName: r.cocoon_name,
-    type: r.type_mot_clef,
-    status: r.statut ?? 'suggested',
-  }))
+  return res.rows.map(rowToKeyword)
 }
 
-export async function addKeyword(keyword: Keyword): Promise<{ success: boolean; duplicate?: boolean }> {
-  // Check duplicate
+export async function addKeyword(
+  keyword: Keyword,
+): Promise<{ success: boolean; duplicate?: boolean; existingCocoon?: string | null }> {
+  // Un même mot-clé visé par deux cocons se fait concurrence : le doublon est
+  // refusé pour tout le site, et on renvoie le cocon qui l'utilise déjà.
   const existing = await pool.query(
-    `SELECT id FROM keywords_seo WHERE LOWER(mot_clef) = LOWER($1)`,
+    `SELECT id, cocoon_name FROM keywords_seo WHERE LOWER(mot_clef) = LOWER($1) LIMIT 1`,
     [keyword.keyword]
   )
   if (existing.rows.length > 0) {
-    log.warn('addKeyword — doublon détecté', { keyword: keyword.keyword })
-    return { success: false, duplicate: true }
+    const existingCocoon = (existing.rows[0].cocoon_name as string | null) ?? null
+    log.warn('addKeyword — doublon détecté', { keyword: keyword.keyword, existingCocoon })
+    return { success: false, duplicate: true, existingCocoon }
   }
 
   await pool.query(
@@ -1120,6 +1166,20 @@ export async function saveArticleMicroContext(id: number, data: Omit<ArticleMicr
   microContextDbSchema.parse({ micro_contexts: [{ id, ...data }] })
 
   return { id, ...data }
+}
+
+/**
+ * Enregistre la longueur visée par le premier jet quand l'utilisateur n'en a
+ * choisi aucune : la porte du premier jet juge ensuite contre cette même valeur
+ * (R16). Un choix déjà fait n'est jamais écrasé.
+ */
+export async function retainTargetWordCount(id: number, words: number): Promise<void> {
+  await pool.query(`
+    INSERT INTO article_micro_contexts (article_id, target_word_count)
+    VALUES ($1, $2)
+    ON CONFLICT (article_id) DO UPDATE
+    SET target_word_count = COALESCE(article_micro_contexts.target_word_count, EXCLUDED.target_word_count)
+  `, [id, words])
 }
 
 /** Reset caches (no-op for PG — kept for compatibility) */

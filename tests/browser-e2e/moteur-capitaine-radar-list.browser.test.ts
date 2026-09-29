@@ -25,6 +25,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { test as testWithCtx } from './helpers/test-fixtures'
 import { dismissLoadPrompt, openMoteur, selectArticleByTitle } from './helpers/moteur-ui'
+import { passThroughGate } from './helpers/gate-alarm'
 
 /** Sélectionne la première entrée de la liste (clavier : les mots du mot-clé captent le clic). */
 async function selectFirstEntry(page: Page): Promise<void> {
@@ -58,8 +59,23 @@ testWithCtx.describe('Capitaine — UI radar-list (mode workflow)', () => {
     await selectArticleByTitle(page, article.titre)
     await dismissLoadPrompt(page)
 
-    await expect(page.locator('[data-testid="radar-list-empty"]'), 'la liste vide s’explique')
-      .toContainText(/Aucun mot-clé/i, { timeout: 20000 })
+    try {
+      await expect(page.locator('[data-testid="radar-list-empty"]'), 'la liste vide s’explique')
+        .toContainText(/Aucun mot-clé/i, { timeout: 20000 })
+    } catch (err) {
+      // Échec intermittent en CI, jamais reproduit en local : on dit ce que
+      // l'écran montrait à la place, pour trancher entre une carte apparue
+      // toute seule et une liste absente de la page.
+      const list = page.locator('[data-testid="radar-list"]')
+      const cartes = await page.locator('[data-testid^="radar-list-item-"]').evaluateAll(
+        nodes => nodes.map(n => `${n.getAttribute('data-testid')} « ${(n.textContent ?? '').trim().slice(0, 60)} »`),
+      )
+      const onglet = await page.locator('[data-testid^="wf-item-"][aria-current="page"], [data-testid^="wf-item-"].active')
+        .first().getAttribute('data-testid').catch(() => null)
+      throw new Error(
+        `${(err as Error).message}\n— liste présente : ${await list.count() > 0} ; cartes : ${cartes.length ? cartes.join(' | ') : 'aucune'} ; onglet actif : ${onglet ?? 'inconnu'}`,
+      )
+    }
   })
 
   testWithCtx('aucun reliquat de l’ancienne UI carrousel', async ({ page, ctx }) => {
@@ -160,7 +176,7 @@ testWithCtx.describe('Barre du haut — le mot-clé passe de suggéré à verrou
     const lock = page.locator('[data-testid="radar-card-lock"]').first()
     await expect(lock).toBeVisible({ timeout: 30000 })
 
-    await lock.click()
+    await passThroughGate(page, 'captain-lock', () => lock.click())
     await expect(lock).toHaveAttribute('aria-pressed', 'true', { timeout: 15000 })
     await expect(chip, 'verrouillé : le mot-clé n’est plus une suggestion')
       .not.toHaveClass(/is-suggested/, { timeout: 20000 })

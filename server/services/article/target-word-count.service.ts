@@ -1,20 +1,25 @@
 /**
+ * AUTHORITY: `shared/constants/article-type-rules.ts` (longueur visée et bornes par type)
+ * READS FROM: moyenne SERP des concurrents, sommaire, IA (conseil contextualisé)
+ * WRITES TO: rien (la valeur retenue est enregistrée par le micro-contexte)
+ * CONSUMERS: POST /articles/:id/recommend-word-count → brief (contentLengthRecommendation),
+ *            LieutenantsPanel ; même valeur par défaut que la rédaction (targetWordsFor)
+ * RELATED FR: FR-INFRA-TYPE-RULES-SSOT, FR-CER-WORD-COUNT-RECOMMEND
+ *
  * Service de calcul du targetWordCount conseillé pour un article.
  *
  * Logique :
  *   1. Récupère la moyenne SERP des concurrents (depuis content-gap.service ou keyword_metrics)
- *   2. Applique une base par type d'article (Pilier > Intermédiaire > Spécialisé)
+ *   2. Applique la longueur visée du type d'article (source unique)
  *   3. Passe SERP avg + base type + structure HN à une petite IA pour conseil contextualisé
  *   4. Retourne { recommended, breakdown } — l'utilisateur peut toujours override
  *
- * Bornes :
- *   - Pilier : 1800-3500
- *   - Intermédiaire : 1200-2500
- *   - Spécialisé : 800-1500
+ * Bornes : `wordsMin` / `wordsMax` de ARTICLE_TYPE_RULES (plus aucune copie ici).
  */
 import { log } from '../../utils/logger.js'
 import { classifyWithTool } from '../external/ai-provider.service.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
+import { ARTICLE_TYPE_RULES } from '../../../shared/constants/article-type-rules.js'
 
 export interface TargetWordCountInput {
   articleType: ArticleLevel
@@ -30,7 +35,8 @@ export interface TargetWordCountInput {
 export interface TargetWordCountResult {
   recommended: number
   breakdown: {
-    typeBase: { min: number; max: number; midpoint: number }
+    /** Bornes et longueur visée du type (source unique). */
+    typeBase: { min: number; max: number; target: number }
     competitorsAvg: number | null
     aiSuggestion: number | null
     finalRecommendation: number
@@ -40,18 +46,14 @@ export interface TargetWordCountResult {
   usage?: import('../external/claude.service.js').ApiUsage
 }
 
-const TYPE_BASE: Record<ArticleLevel, { min: number; max: number }> = {
-  pilier: { min: 1800, max: 3500 },
-  intermediaire: { min: 1200, max: 2500 },
-  specifique: { min: 800, max: 1500 },
-}
-
-function midpoint(min: number, max: number): number {
-  return Math.round((min + max) / 2)
+/** Bornes et longueur visée du type : la source unique (FR-INFRA-TYPE-RULES-SSOT). */
+function typeBase(type: ArticleLevel): { min: number; max: number; target: number } {
+  const r = ARTICLE_TYPE_RULES[type]
+  return { min: r.wordsMin, max: r.wordsMax, target: r.targetWords }
 }
 
 function clampToBounds(value: number, type: ArticleLevel): number {
-  const { min, max } = TYPE_BASE[type]
+  const { min, max } = typeBase(type)
   return Math.max(min, Math.min(max, Math.round(value)))
 }
 
@@ -59,9 +61,11 @@ function clampToBounds(value: number, type: ArticleLevel): number {
  * Calcule sans IA (fallback rapide). Combine SERP + base type, clampé aux bornes.
  * Utilisé si l'IA est indisponible ou si la SERP n'a pas été analysée.
  */
-function computeHeuristic(input: TargetWordCountInput): { value: number; reasoning: string } {
-  const base = TYPE_BASE[input.articleType]
-  const baseMid = midpoint(base.min, base.max)
+export function computeHeuristicTarget(input: TargetWordCountInput): { value: number; reasoning: string } {
+  const base = typeBase(input.articleType)
+  // La longueur visée du type — la même que la rédaction et l'écran (elle
+  // valait le milieu des bornes : 2 650 affichés pour 2 500 rédigés).
+  const baseMid = base.target
 
   if (input.competitorsAvgWordCount && input.competitorsAvgWordCount > 0) {
     // Pondération 60% SERP / 40% base type
@@ -76,7 +80,7 @@ function computeHeuristic(input: TargetWordCountInput): { value: number; reasoni
   // Pas de SERP : juste la base type
   return {
     value: baseMid,
-    reasoning: `Heuristique : médiane base ${input.articleType} (${base.min}-${base.max}) = ${baseMid}`,
+    reasoning: `Heuristique : longueur visée ${input.articleType} (bornes ${base.min}-${base.max}) = ${baseMid}`,
   }
 }
 
@@ -85,7 +89,7 @@ function computeHeuristic(input: TargetWordCountInput): { value: number; reasoni
  * Si l'appel échoue (quota/erreur), on retombe sur l'heuristique.
  */
 async function askAi(input: TargetWordCountInput): Promise<{ value: number; reasoning: string; usage?: import('../external/claude.service.js').ApiUsage } | null> {
-  const base = TYPE_BASE[input.articleType]
+  const base = typeBase(input.articleType)
 
   const hnBlock = input.hnStructure && input.hnStructure.length > 0
     ? input.hnStructure.map(h => `${h.level} : ${h.title}`).join('\n')
@@ -149,8 +153,7 @@ async function askAi(input: TargetWordCountInput): Promise<{ value: number; reas
 export async function recommendTargetWordCount(
   input: TargetWordCountInput,
 ): Promise<TargetWordCountResult> {
-  const base = TYPE_BASE[input.articleType]
-  const baseMid = midpoint(base.min, base.max)
+  const base = typeBase(input.articleType)
 
   // L'IA donne le meilleur résultat quand elle a SERP + sommaire — on la sollicite
   // dans ce cas. Sinon, l'heuristique est suffisamment fiable.
@@ -172,14 +175,14 @@ export async function recommendTargetWordCount(
     }
   }
 
-  const heuristic = computeHeuristic(input)
+  const heuristic = computeHeuristicTarget(input)
   const finalValue = aiSuggestion ?? heuristic.value
   const finalReasoning = aiSuggestion !== null ? aiReasoning : heuristic.reasoning
 
   return {
     recommended: finalValue,
     breakdown: {
-      typeBase: { min: base.min, max: base.max, midpoint: baseMid },
+      typeBase: base,
       competitorsAvg: input.competitorsAvgWordCount,
       aiSuggestion,
       finalRecommendation: finalValue,

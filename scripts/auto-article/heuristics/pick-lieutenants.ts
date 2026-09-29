@@ -16,12 +16,11 @@
 
 import { topicalAffinity } from '../text.js'
 import type { CanonicalArticleType, RadarCandidate } from '../types.js'
+import { ARTICLE_TYPE_RULES } from '../../../shared/constants/article-type-rules.js'
 
-const LIEUTENANT_MAX: Record<CanonicalArticleType, number> = {
-  pilier: 8,
-  intermediaire: 5,
-  specifique: 3,
-}
+// Lieutenants retenus : le même maximum qu'à l'écran (FR-INFRA-TYPE-RULES-SSOT).
+// Le mode automatique en gardait 8 pour un pilier quand l'écran en garde 5.
+const LIEUTENANT_MAX = (type: CanonicalArticleType): number => ARTICLE_TYPE_RULES[type].maxLieutenants
 
 export const SERP_WEIGHT = 0.6
 export const MARKET_WEIGHT = 0.4
@@ -60,6 +59,6 @@ export function pickLieutenants(
       if (b.marketScore !== a.marketScore) return b.marketScore - a.marketScore
       return a.keyword.localeCompare(b.keyword)
     })
-    .slice(0, LIEUTENANT_MAX[type])
+    .slice(0, LIEUTENANT_MAX(type))
     .map((c) => c.keyword)
 }

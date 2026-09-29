@@ -33,7 +33,16 @@ export interface ApiUsage {
   cacheCreationTokens: number
   model: string
   estimatedCost: number
+  /**
+   * Pourquoi le modèle s'est arrêté (flux seulement) : `max_tokens` = coupé au
+   * plafond, le texte est incomplet (FR-RED-DRAFT-SINGLE-PASS).
+   */
+  stopReason?: StopReason
+  /** Résultats réels de la recherche web (FR-RED-ENRICH-SOURCES). */
+  webSources?: Array<{ url: string; title: string; pageAge: string | null }>
 }
+
+export type StopReason = 'end' | 'max_tokens' | 'other'
 
 /** DB CRUD telemetry event — surfaced to the activity pile to make persistence visible. */
 export interface DbOp {

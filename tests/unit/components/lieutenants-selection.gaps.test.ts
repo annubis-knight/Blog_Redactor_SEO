@@ -6,17 +6,18 @@
  * Ce fichier ajoute les TROUS identifiés Sprint 18-bis (2026-04-27) :
  *
  * - handleAssistAdd : ajout d'un keyword depuis le basket via KeywordAssistPanel
- * - saveHnStructure : persistance de l'outline depuis HN structure
+ * - verrouillage du premier lieutenant (FR-HN-TAB, M7) : décisions enregistrées,
+ *   mais ni structure Hn, ni sommaire (outline), ni longueur conseillée — ils
+ *   partent à la validation de la structure (onglet Structure, `useStructureHn`)
  * - refreshSERP : reset partiel + relance d'analyse
  * - hasEverAnalyzed : F5 soft gate qui ne s'applique qu'au premier passage
- * - recommendAndPropagateWordCount : appel post-lock vers /recommend-word-count
  * - restoreLockedLieutenants : 2 chemins (richLieutenants + flat lieutenants)
  *
  * Les API externes (DataForSEO SERP, Claude propose-lieutenants) sont mockées
  * via apiPost et useStreaming pour éviter de gaspiller des crédits.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
 import LieutenantsPanel from '../../../src/components/moteur/LieutenantsPanel.vue'
 import type { SelectedArticle, SerpAnalysisResult } from '../../../shared/types/index'
@@ -169,12 +170,6 @@ function mountLieutenants(propsOverride: Partial<typeof baseProps> = {}) {
           props: ['serpResultsByKeyword', 'activeSerpTab', 'activeSerpTabResult', 'displayedCompetitors', 'serpResult', 'sliderValue', 'isLoading', 'canAnalyze', 'iaIsStreaming', 'serpDoneCount', 'serpTotalCount', 'serpPendingKeywords', 'serpCurrentKeyword', 'iaChunks', 'currentStep'],
           emits: ['analyze', 'refresh', 'update:slider-value', 'update:active-serp-tab'],
         },
-        LieutenantH2Structure: {
-          name: 'LieutenantH2Structure',
-          template: '<div class="hn-stub"></div>',
-          props: ['hnStructure', 'activeHnRecurrence', 'hnRecurrence', 'serpResultsByKeyword', 'activeHnTab', 'hnSaved', 'isSavingHn'],
-          emits: ['save-hn', 'update:active-hn-tab'],
-        },
         LieutenantProposals: {
           name: 'LieutenantProposals',
           template: '<div class="prop-stub"></div>',
@@ -242,64 +237,54 @@ describe('LieutenantsPanel — handleAssistAdd (basket)', () => {
 })
 
 // ============================================================================
-// Trou B — saveHnStructure
+// Trou B — verrouillage du premier lieutenant : plus de structure (FR-HN-TAB, M7)
 // ============================================================================
-describe('LieutenantsPanel — saveHnStructure', () => {
-  it.skip('emit save-hn depuis LieutenantH2Structure persiste l\'outline + saveDecisions (Sprint 18 — test obsolète : isLocked passé en computed Sprint 13, le mock store ne reflète pas correctement la transition isLocked false→true au setProps. À réécrire pour le nouveau flow checkbox=lock immédiat)', async () => {
-    // Pré-condition : hnStructure non vide en store DB + au moins un lieutenant
-    // en status='locked' pour que isLocked (computed) soit true et que le
-    // watcher restaure hnStructure dans la ref locale du composable.
-    // Sprint 13 : isLocked est computed dérivé de richLieutenants.some(l.status === 'locked').
-    mockStoreKeywords.value!.hnStructure = [
-      { level: 2, text: 'H2 a', children: [] },
-      { level: 2, text: 'H2 b', children: [] },
-    ]
-    mockStoreKeywords.value!.richLieutenants = [
-      { keyword: 'lt-locked', status: 'locked', reasoning: 'r', sources: ['serp'],
-        suggestedHnLevel: 2, score: 50, kpis: null, lockedAt: '2026-01-01T00:00:00Z' },
-    ]
-    const wrapper = mountLieutenants({ initialLocked: true })
-    await nextTick()
-    // Switch d'article pour déclencher le watcher → restoration du hnStructure local
-    await wrapper.setProps({ selectedArticle: { ...ARTICLE, id: 2 } })
-    await nextTick()
-    await nextTick()
+// Avant C6, la transition « aucun → un lieutenant verrouillé » écrivait aussi la
+// structure Hn, le sommaire (`PUT /articles/:id { outline }`) et la longueur
+// conseillée (`POST /articles/:id/recommend-word-count`). Tout cela part
+// désormais à la validation de la structure (onglet Structure, useStructureHn).
+// Les anciens tests `saveHnStructure` (émission `save-hn`) et
+// `recommendAndPropagateWordCount au lock` n'ont plus d'objet ici.
+describe('LieutenantsPanel — verrouillage sans structure (FR-HN-TAB, M7)', () => {
+  it('verrouiller le premier lieutenant enregistre les décisions, sans structure, sommaire ni longueur conseillée', async () => {
+    const storedStructure = [{ level: 2, text: 'H2 déjà validé', children: [] }]
+    mockStoreKeywords.value!.hnStructure = storedStructure
+    const wrapper = mountLieutenants()
+    await flushPromises()
+    expect(mockSaveDecisions).not.toHaveBeenCalled()
 
-    const hn = wrapper.findComponent({ name: 'LieutenantH2Structure' })
-    hn.vm.$emit('save-hn')
-    await nextTick()
-    await nextTick()
+    // Transition « aucun → un lieutenant verrouillé » (checkbox = lock immédiat).
+    mockStoreKeywords.value = {
+      ...mockStoreKeywords.value!,
+      richLieutenants: [
+        { keyword: 'lt-locked', status: 'locked', reasoning: 'r', sources: ['serp'], suggestedHnLevel: 2, score: 50, kpis: null },
+      ],
+      lieutenants: ['lt-locked'],
+    }
+    await flushPromises()
 
-    // PUT articles/{id} avec outline (id=2 après le switch)
-    const putCalls = mockApiPut.mock.calls
-    const putOutline = putCalls.find(c => String(c[0]).includes('/articles/2'))
-    expect(putOutline).toBeDefined()
-    expect((putOutline as unknown[])[1]).toMatchObject({ outline: expect.any(Object) })
-
-    // saveDecisions appelé sur l'id courant (2)
-    expect(mockSaveDecisions).toHaveBeenCalledWith(2)
+    expect(mockSaveDecisions).toHaveBeenCalledWith(1)
+    expect(wrapper.emitted('lieutenants-updated')).toBeTruthy()
+    // Ni sommaire écrit…
+    expect(mockApiPut).not.toHaveBeenCalled()
+    // … ni longueur conseillée demandée…
+    expect(mockApiPost.mock.calls.filter(c => String(c[0]).includes('recommend-word-count'))).toHaveLength(0)
+    // … ni structure écrasée (vidée) dans le store avant l'enregistrement.
+    expect(mockStoreKeywords.value!.hnStructure).toEqual(storedStructure)
   })
 
-  it('saveHnStructure no-op si hnStructure vide', async () => {
-    // 2026-05-08 — `isLocked` au niveau panel SUPPRIME. Pour que
-    // LieutenantH2Structure soit rendu (v-if="serpResult || lieutenantCards.length > 0"),
-    // on configure le store avec lieutenants flat ET richLieutenants pour que
-    // restoreLockedLieutenants() peuple lieutenantCards.
-    mockStoreKeywords.value!.hnStructure = []
+  it('le panneau ne rend plus de composant de structure Hn', async () => {
     mockStoreKeywords.value!.richLieutenants = [
-      { keyword: 'lt-locked', status: 'locked', reasoning: 'r', sources: ['serp'],
-        suggestedHnLevel: 2, score: 50, kpis: null },
+      { keyword: 'lt-locked', status: 'locked', reasoning: 'r', sources: ['serp'], suggestedHnLevel: 2, score: 50, kpis: null },
     ]
     mockStoreKeywords.value!.lieutenants = ['lt-locked']
+    mockStoreKeywords.value!.hnStructure = [{ level: 2, text: 'H2 a', children: [] }]
     const wrapper = mountLieutenants({ initialLocked: true })
-    await nextTick()
-    await nextTick()
+    await flushPromises()
 
-    const hn = wrapper.findComponent({ name: 'LieutenantH2Structure' })
-    hn.vm.$emit('save-hn')
-    await nextTick()
-
-    expect(mockApiPut).not.toHaveBeenCalled()
+    expect(wrapper.findComponent({ name: 'LieutenantProposals' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'LieutenantH2Structure' }).exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('H2 a')
   })
 })
 
@@ -372,66 +357,6 @@ describe('LieutenantsPanel — hasEverAnalyzed (F5 soft gate)', () => {
     mockStoreKeywords.value!.richLieutenants = []
     const wrapper = mountLieutenants({ isCaptaineLocked: true })
     expect(wrapper.find('.soft-gate-message').exists()).toBe(false)
-  })
-})
-
-// ============================================================================
-// Trou E — recommendAndPropagateWordCount (post-lock)
-// ============================================================================
-describe('LieutenantsPanel — recommendAndPropagateWordCount au lock', () => {
-  it.skip('lock déclenche POST /articles/:id/recommend-word-count en arrière-plan (Sprint 17 — bouton lock-btn supprimé, à réécrire pour passer par toggleLieutenant + watcher dérivé)', async () => {
-    // Préparer un état lockable : SERP fait + cards sélectionnées.
-    // Sprint 1 (2026-05-04) — Bloc 6 a retiré l'auto-trigger SERP au lock
-    // Capitaine, et ma refonte du sprint 1 conditionne le rendu de
-    // LieutenantProposals à `serpResult || isLocked || lieutenantCards.length`.
-    // On force serpResult sur la VM pour monter la section.
-    mockApiPost.mockResolvedValueOnce(SERP_RESULT) // SERP captain
-    const wrapper = mountLieutenants({ initialLocked: false })
-    await nextTick()
-    ;(wrapper.vm as unknown as { serpResult: SerpAnalysisResult }).serpResult = SERP_RESULT
-    await nextTick()
-    await nextTick()
-
-    // Force des cards via IA proposal terminée
-    iaStreaming.startStream.mockImplementation((_url: string, _body: unknown, opts: any) => {
-      opts.onDone({
-        totalGenerated: 2,
-        selectedLieutenants: [{ keyword: 'lt-1', reasoning: 'r', sources: [], suggestedHnLevel: 2, score: 50 }],
-        eliminatedLieutenants: [],
-        hnStructure: [{ level: 2, text: 'H2', children: [] }],
-        contentGapInsights: '',
-      })
-    })
-
-    // Le watcher serpResult va auto-trigger proposeLieutenants
-    // mais on a déjà les SERP en place via mockApiPost. On simule juste le clic lock.
-    // Pour le test, on appelle directement la méthode publique via un stub minimal :
-    // À défaut, on vérifie que la chaîne d'appel apiPost contient bien un appel à recommend-word-count
-    // après un lock simulé.
-
-    // Au lock : on s'attend à ce que apiPost soit appelé avec /recommend-word-count
-    mockApiPost.mockClear()
-    mockApiPost.mockResolvedValue({ recommended: 2500, breakdown: { competitorsAvg: 2300, aiSuggestion: 2700, reasoning: 'estimation' } })
-    mockApiGet.mockResolvedValue(null) // pas de targetWordCount existant
-
-    // Trigger lock via instance
-    const _vm = wrapper.vm as unknown as { lockLieutenants: () => Promise<void>; selectedCards: { value: Map<string, unknown> }; serpResult?: unknown }
-    // Hack : il faut une selectedCard pour que lockLieutenants ne return early
-    // On utilise findComponent + emit toggle pour passer par le canal réel
-    const proposals = wrapper.findComponent({ name: 'LieutenantProposals' })
-    proposals.vm.$emit('toggle', { keyword: 'lt1', reasoning: 'r', sources: [], suggestedHnLevel: 2, score: 50 })
-    await nextTick()
-
-    // Maintenant clic lock
-    const lockBtn = wrapper.find('[data-testid="lock-btn"]')
-    expect(lockBtn.exists(), 'le bouton lock doit exister apres toggle').toBe(true)
-    expect((lockBtn.element as HTMLButtonElement).disabled, 'le bouton lock ne doit pas etre disabled').toBe(false)
-    await lockBtn.trigger('click')
-    await nextTick()
-    await nextTick()
-
-    const recoCalls = mockApiPost.mock.calls.filter(c => String(c[0]).includes('recommend-word-count'))
-    expect(recoCalls.length).toBeGreaterThan(0)
   })
 })
 

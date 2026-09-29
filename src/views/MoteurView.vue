@@ -6,6 +6,7 @@ import { useKeywordsStore } from '@/stores/keyword/keywords.store'
 import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import { useDiscoveryPanel } from '@/composables/keyword/useDiscoveryPanel'
 import { useArticleResults } from '@/composables/editor/useArticleResults'
 import { useRadarExplorationStore } from '@/stores/article/radar-exploration.store'
@@ -14,6 +15,7 @@ import { apiGet } from '@/services/api.service'
 import type { RadarCacheStatus } from '@/composables/keyword/useResonanceScore'
 import { log } from '@/utils/logger'
 import type { SelectedArticle, Article } from '@shared/types/index.js'
+import { parseArticleLevel } from '@shared/utils/article-level.js'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import MoteurContextRecap from '@/components/moteur/MoteurContextRecap.vue'
@@ -38,6 +40,7 @@ import RadarPanel from '@/components/intent/RadarPanel.vue'
 // Phase ② Valider
 import CaptainPanel from '@/components/moteur/CaptainPanel.vue'
 import LieutenantsPanel from '@/components/moteur/LieutenantsPanel.vue'
+import StructureHnPanel from '@/components/moteur/StructureHnPanel.vue'
 import LexiquePanel from '@/components/moteur/LexiquePanel.vue'
 import FinalisationPanel from '@/components/moteur/FinalisationPanel.vue'
 
@@ -93,6 +96,7 @@ const {
   selectedArticle,
   cocoonName,
   articleProgressStore,
+  gateAlarm: useGateAlarmStore(),
 })
 
 const breadcrumbItems = computed(() => [
@@ -168,6 +172,7 @@ const TAB_LABELS: Record<string, string> = {
   radar: 'Radar',
   capitaine: 'Capitaine',
   lieutenants: 'Lieutenants',
+  structure: 'Structure',
   lexique: 'Lexique',
   finalisation: 'Finalisation',
 }
@@ -236,7 +241,7 @@ function handleSelectArticle(article: SelectedArticle | null) {
     loadCachedResults(article.id)
 
     // au sélection d'article. Discovery est exclu (modèle seed-based,
-    // cf. docs/moteur-data-flow.md §8bis). L'utilisateur garde le bouton
+    // cf. design/data-flows/moteur.md, « Discovery — phase Générer »). L'utilisateur garde le bouton
     // manuel via TabLoadPrompt en filet de secours.
     // Le radarRef peut être null au tout premier mount avant que Vue n'ait
     // résolu le ref : on attend un nextTick pour être sûr.
@@ -313,11 +318,12 @@ const captainKeyword = computed(() =>
   articleKeywordsStore.keywords?.capitaine ?? selectedArticle.value?.keyword ?? null,
 )
 
-const articleLevelForLieutenants = computed(() => {
-  if (!selectedArticle.value) return null
-  const typeMap: Record<string, string> = { Pilier: 'pilier', Cluster: 'intermediaire', Support: 'specifique' }
-  return (typeMap[selectedArticle.value.type ?? ''] ?? 'intermediaire') as 'pilier' | 'intermediaire' | 'specifique'
-})
+// M12 — l'ancienne table { Pilier, Cluster, Support } ne reconnaissait aucun
+// niveau réel : les lieutenants d'un pilier étaient proposés comme pour un
+// intermédiaire. `parseArticleLevel` lit les deux formats (base et code).
+const articleLevelForLieutenants = computed(() =>
+  selectedArticle.value ? parseArticleLevel(selectedArticle.value.type) : null,
+)
 
 // --- Suggested keywords from strategy for CaptainPanel ---
 const suggestedKeywordsForArticle = computed(() => {
@@ -493,8 +499,8 @@ onMounted(() => {
         </button>
       </div>
 
-      <!--
-           "Continuer vers {TabSuivant}" remplace ce banner d'attention. -->
+      <!-- Le bouton du bas « Continuer vers {onglet suivant} » invite à passer
+           à l'étape d'après (FR-MOT-PHASE-TRANSITION). -->
 
       <!-- BasketStrip supprimé 2026-05-11 (chantier radar-dbfirst-refactor, FR-MOT-BASKET-DEPRECATED).
            Les keywords accumulés vivent désormais en DB via radar_explorations. -->
@@ -597,6 +603,20 @@ onMounted(() => {
           />
         </div>
 
+        <!-- Phase ② Valider — Structure (FR-HN-TAB) : naît des lieutenants retenus,
+             validée par la porte serveur hn-lock. -->
+        <div v-if="visitedTabs.structure" v-show="activeTab === 'structure'" class="tab-content">
+          <StructureHnPanel
+            :selected-article="selectedArticle"
+            :mode="'workflow'"
+            :captain-keyword="captainKeyword"
+            :article-level="articleLevelForLieutenants"
+            :cocoon-slug="cocoonSlug"
+            @check-completed="emitCheckCompleted"
+            @check-removed="handleCheckRemoved"
+          />
+        </div>
+
         <!-- Phase ② Valider — Lexique (gating souple : nécessite Capitaine verrouillé) -->
         <div v-if="visitedTabs.lexique" v-show="activeTab === 'lexique'" class="tab-content">
           <div v-if="!isCaptaineLocked" class="soft-gate-message">
@@ -616,10 +636,10 @@ onMounted(() => {
           />
         </div>
 
-        <!-- Phase ③ Finaliser — récap lecture seule (Capitaine + Lieutenants + Lexique)
+        <!-- Phase ③ Finaliser — récap lecture seule (Capitaine + Lieutenants + Structure + Lexique)
              Bloc 2 — onglet dédié remplaçant l'ancienne modale. Toujours
              accessible via la nav, mais le bouton "Continuer vers la Rédaction"
-             est désactivé tant que les 3 verrous Phase ② ne sont pas posés. -->
+             est désactivé tant que les 4 verrous Phase ② ne sont pas posés. -->
         <div v-if="visitedTabs.finalisation" v-show="activeTab === 'finalisation'" class="tab-content">
           <FinalisationPanel
             :selected-article="selectedArticle"
@@ -630,7 +650,7 @@ onMounted(() => {
 
       <!-- Bottom navigation -->
       <!-- Bloc 2 — bouton "Continuer vers la Rédaction" sur le dernier onglet
-           (finalisation). Désactivé tant que les 3 checks Phase ② manquent ;
+           (finalisation). Désactivé tant que les 4 checks Phase ② manquent ;
            le tooltip natif HTML liste ce qui manque encore. -->
       <div class="bottom-nav">
         <RouterLink :to="`/cocoon/${cocoonId}`" class="btn-back">&larr; Retour au cocon</RouterLink>

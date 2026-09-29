@@ -57,11 +57,22 @@ const mockKeywords = ref<{ articleId: number; capitaine: string; lieutenants: st
 const mockSaveDecisions = vi.fn().mockResolvedValue(undefined)
 const mockInitEmpty = vi.fn()
 
+// Comme le vrai store : ajouter ou retirer un terme modifie le lexique en mémoire
+// (le panneau enregistre désormais ce qu'il coche, FR-LEX-PRECHECK-PERSISTE).
+// Sans ces deux fonctions, le clic levait une erreur en arrière-plan : le test
+// passait, mais Vitest sortait en échec (CI du 2026-09-25).
+function mockLexique(update: (lexique: string[]) => string[]) {
+  if (!mockKeywords.value) return
+  mockKeywords.value = { ...mockKeywords.value, lexique: update(mockKeywords.value.lexique) }
+}
+
 vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
     get keywords() { return mockKeywords.value },
     saveDecisions: mockSaveDecisions,
     initEmpty: mockInitEmpty,
+    addLexiqueTerm: (term: string) => mockLexique(l => (l.includes(term) ? l : [...l, term])),
+    removeLexiqueTerm: (term: string) => mockLexique(l => l.filter(t => t !== term)),
   }),
 }))
 
@@ -170,15 +181,20 @@ describe('LexiquePanel — handleAssistAdd (basket)', () => {
     expect(after.length).toBe(before.length + 1)
   })
 
-  it('handleAssistAdd no-op quand isLocked=true', async () => {
-    const wrapper = mountLexique({ initialLocked: true })
-    await nextTick()
-    await wrapper.find('.assist-add').trigger('click')
-    await nextTick()
+  // FR-LEX-CHECKBOX-LOCK-IMMEDIATE — la sélection reste ajustable à tout moment :
+  // un lexique déjà retenu accepte un terme de plus, et ce terme est enregistré
+  // (il était refusé, puis, en C3, ajouté à l'écran seulement).
+  it('un terme ajouté alors que le lexique est déjà retenu est enregistré', async () => {
+    mockKeywords.value = { articleId: 1, capitaine: 'seo', lieutenants: [], lexique: ['garantie'] }
+    const wrapper = mountLexique()
+    await flushPromises()
+    mockSaveDecisions.mockClear()
 
-    const assist = wrapper.findComponent({ name: 'KeywordAssistPanel' })
-    const exclude = assist.props('excludeKeywords') as string[]
-    expect(exclude).not.toContain('kw-from-basket')
+    await wrapper.find('.assist-add').trigger('click')
+    await flushPromises()
+
+    expect(mockKeywords.value?.lexique).toEqual(['garantie', 'kw-from-basket'])
+    expect(mockSaveDecisions).toHaveBeenCalledWith(1)
   })
 })
 
@@ -228,11 +244,17 @@ describe('LexiquePanel — extractCustomKeyword (D4)', () => {
     expect((input.element as HTMLInputElement).value).toBe('')
   })
 
-  it.skip('input désactivé si isLocked=true (Sprint 17 — sémantique inversée : l\'utilisateur peut étendre sa sélection même avec des termes déjà cochés)', async () => {
-    const wrapper = mountLexique({ initialLocked: true })
-    await nextTick()
-    const input = wrapper.find('.custom-keyword-input')
-    expect((input.element as HTMLInputElement).disabled).toBe(true)
+  // 2026-09-25 (épopée qualité SEO, C2 · T2) : réécrit dans le sens de
+  // l'exigence (le test d'origine attendait un champ bloqué par le verrou).
+  it('« Tester un mot-clé » reste ouvert quand des termes sont déjà retenus (FR-LEX-MULTI-KEYWORD)', async () => {
+    mockKeywords.value = { articleId: 1, capitaine: 'seo', lieutenants: [], lexique: ['garantie'] }
+    const wrapper = mountLexique()
+    await flushPromises()
+
+    const input = wrapper.get('.custom-keyword-input')
+    expect((input.element as HTMLInputElement).disabled).toBe(false)
+    await input.setValue('autre keyword')
+    expect((wrapper.get('.btn-secondary').element as HTMLButtonElement).disabled).toBe(false)
   })
 })
 
@@ -430,13 +452,8 @@ describe('LexiquePanel — hasEverValidated (F5 soft gate)', () => {
     const btn = wrapper.find('[data-testid="btn-extract"]')
     expect((btn.element as HTMLButtonElement).disabled).toBe(true)
   })
-
-  it.skip('canExtract=false si déjà locked (Sprint 17 — sémantique inversée : extraction reste possible pour étendre la sélection, FR-LEX-CHECKBOX-LOCK-IMMEDIATE)', async () => {
-    const wrapper = mountLexique({ initialLocked: true })
-    await nextTick()
-    const btn = wrapper.find('[data-testid="btn-extract"]')
-    expect((btn.element as HTMLButtonElement).disabled).toBe(true)
-  })
+  // 2026-09-25 (C2 · T2) : « canExtract=false si déjà locked » retiré — l'extraction
+  // reste possible avec des termes retenus (test « F5 soft gate » ci-dessus).
 })
 
 // MOCK_IA_RECS doit être déclaré ici en bas pour éviter une référence en avant
