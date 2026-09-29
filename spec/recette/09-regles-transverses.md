@@ -69,7 +69,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 
 **Tu dois voir :**
 - après le geste 1, une pile vide ; en haut, « DataForSEO SANDBOX », la dépense de la fenêtre, le plafond (« $2.00 » sur ton poste, « $0.50 » si rien n'est réglé) et « (30min) » ;
-- après le geste 2, un bloc « Suggestion Claude : » avec un texte préparé (en MOCK, il commence par « TPE et PME locales »), et dans la pile une ligne « Suggestion stratégie » : coût « < $0.001 » (l'IA simulée ne coûte rien), modèle « mock-provider-v1 », jetons « entrés→sortis », heure ;
+- après le geste 2, un bloc « Suggestion Claude : » avec un texte préparé (en MOCK, il cite le cocon : « Pour « Recette <date> », visez les dirigeants de TPE et de PME… », précédé de ta réponse si l'étape en a une), et dans la pile une ligne « Suggestion stratégie » : coût « < $0.001 » (l'IA simulée ne coûte rien), modèle « mock-provider-v1 », jetons « entrés→sortis », heure ;
 - après le geste 3, plusieurs lignes violettes marquées « keywords » : un symbole, le nom d'une table, « select (n row) » et une durée en ms ;
 - les lignes les plus récentes en haut ; repliée, la pastille affiche le total et le nombre d'appels ;
 - la croix retire cette seule ligne ; après le rechargement, la pile est vide ;
@@ -288,7 +288,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 
 **Tu dois voir :**
 - au geste 3, la mention « (cache) » juste après le nombre de concurrents : les Lieutenants relisent le relevé fait pour le Lexique, sans relire les pages ;
-- en MOCK, trois propositions sous « Lieutenants proposes par l'IA » : « prix <capitaine> » (85), « <capitaine> avis » (78), « comment choisir <capitaine> » (72) ;
+- en MOCK, six propositions pour l'enfant intermédiaire, notées de 88 à 53 : d'abord les questions « Autres questions » reçues (factices en MOCK), puis des variantes du capitaine (« prix <capitaine> », « <capitaine> avis », « comment choisir <capitaine> »…) ; cinq sous « Lieutenants proposes par l'IA », la sixième dans « Autres candidats (1) » ;
 - au geste 4, le message du geste 1 ne revient pas, et « Extraire le Lexique » est proposé.
 
 **C'est un bug si :**
@@ -301,7 +301,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 **Exigences :** FR-INFRA-VERIFIER-SHARED, FR-INFRA-API-WRAPPER
 
 **Gestes :**
-1. Onglet « Lieutenants » de l'enfant : coche **une seule** proposition, celle notée 85. Appelons-la A.
+1. Onglet « Lieutenants » de l'enfant : coche **une seule** proposition, la mieux notée (88 en MOCK). Appelons-la A.
 2. Un bandeau apparaît. Clique **« Voir pourquoi / décider »**.
 3. Appuie sur Échap. Rouvre l'alarme, puis clique sur le fond sombre, à côté de la fenêtre. Appuie plusieurs fois sur Tab.
 4. Clique **« Revenir corriger »**.
@@ -325,7 +325,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 1. Rouvre l'alarme (« Voir pourquoi / décider »). Dans « Votre raison », tape une vingtaine d'espaces.
 2. Efface-les. Dans « Pourquoi passer outre ? », choisis « Longue traîne assumée ». Tape `Niche locale assumé` (19 caractères).
 3. Ajoute un `e` à la fin (20 caractères), puis clique **« Je prends la responsabilité et je continue »**.
-4. Décoche A et coche à la place la proposition notée 78. Appelons-la B.
+4. Décoche A et coche à la place la deuxième mieux notée (81 en MOCK). Appelons-la B.
 5. Décoche B et recoche A.
 6. Coche aussi B : A et B sont cochées.
 
@@ -350,12 +350,12 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 
 **Gestes :**
 1. Dans la barre de tri des Lieutenants, clique **« Score IA »** (↓), puis une deuxième fois (↑), puis une troisième.
-2. Déplie « Autres candidats (1) ».
+2. Déplie « Autres candidats ».
 3. Recharge la page et reviens sur les Lieutenants de l'enfant. Si l'invite « Charger Lieutenants » apparaît, clique « DB ».
 
 **Tu dois voir :**
-- ↓ : 85, 78, 72 ; ↑ : 72, 78, 85 ; au 3ᵉ clic, l'ordre d'origine ; le compteur « 2 / … sélectionnés » ne bouge pas ;
-- le candidat écarté affiche « — » (au survol : « Score IA non fourni »), jamais 0 ;
+- ↓ : du plus fort au plus faible (en MOCK, 88, 81, 74, 67, 60) ; ↑ : l'inverse ; au 3ᵉ clic, l'ordre d'origine ; le compteur « 2 / … sélectionnés » ne bouge pas ;
+- dans « Autres candidats », un candidat sans score IA affiche « — » (au survol : « Score IA non fourni »), jamais 0 ;
 - après le rechargement, les propositions du meilleur score au moins bon, A et B toujours cochées.
 
 **C'est un bug si :**

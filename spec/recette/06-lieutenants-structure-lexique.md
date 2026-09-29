@@ -170,7 +170,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 
 **⚠ Défaut connu :** l'analyse part d'elle-même après chaque extraction, y compris l'extraction lancée seule à l'ouverture de l'onglet : un appel à l'IA part sans clic. Et le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
-> En MOCK, l'IA simulée ne donne aucun avis par terme : ni badge « IA recommandé », ni « Termes manquants », et le panneau reste « à lancer ». Le résumé affiché est « Le lexique actuel est complet sur l'intention mais manque les termes de réassurance (garanties, certifications). » Les badges se vérifient en RÉEL (LEX-R1).
+> En MOCK, l'IA simulée donne un avis par terme reçu : après l'analyse, chaque terme porte « IA recommandé » ou « IA optionnel », avec sa raison en info-bulle, et « Termes manquants : » s'affiche sous le résumé (« N termes analysés pour « <capitaine> » : X recommandés, Y écartés. … »). Le panneau « Analyse IA Lexique », lui, reste « à lancer » : c'est le défaut connu ci-dessus, pas la simulation. La pertinence des badges se juge en RÉEL (LEX-R1).
 
 ### LEX-5 — Trois tris, appliqués aux trois listes
 **Exigences :** FR-LEX-SORT ⚠
@@ -248,7 +248,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - changer d'onglet coche ou décoche un terme, ou change le total ;
 - après rechargement, un onglet ou une case cochée manque.
 
-> En MOCK, « Analyse IA en cours... » peut repartir à chaque changement d'onglet : l'IA simulée enregistre un avis vide, que l'écran redemande (écart signalé). L'absence d'appel se vérifie en RÉEL (LEX-R2). « Tester un mot-clé » n'affiche pas de fenêtre de coût : c'est une limite connue.
+> « Analyse IA en cours... » peut repartir en revenant sur un onglet analysé pendant la session : l'écran relit l'avis gardé à l'ouverture de l'onglet Lexique, pas celui qu'il vient d'obtenir (écart signalé). Après un rechargement, un onglet déjà analysé ne relance plus rien. S'il relance quand même en MOCK, il avait été analysé avec l'ancienne réponse simulée, qui enregistrait un avis vide : une analyse suffit à le remplacer. L'absence d'appel se vérifie aussi en RÉEL (LEX-R2). « Tester un mot-clé » n'affiche pas de fenêtre de coût : c'est une limite connue.
 
 **⚠ Défaut connu :** FR-LEX-MULTI-KEYWORD-TABS — l'extraction du capitaine n'ajoute son onglet qu'au rechargement ; entre-temps, « Tester un mot-clé » paraît sélectionné au-dessus des listes du capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -309,9 +309,9 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 
 **Tu dois voir :**
 - sans clic, « Analyse IA en cours... » dans la liste, et le texte brut de l'IA qui défile dans le panneau « Suggestions IA Lieutenants » (très vite en MOCK) ;
-- puis « Lieutenants proposes par l'IA », le badge du type, le compteur « 0 / 3 sélectionnés » et, en MOCK, trois cartes : « prix <capitaine> » (85), « <capitaine> avis » (78), « comment choisir <capitaine> » (72), chacune avec « H2 » et une raison ;
+- puis « Lieutenants proposes par l'IA », le badge du type, le compteur « 0 / 6 sélectionnés » et, en MOCK, cinq cartes notées de 88 à 60 (les questions « Autres questions » reçues, puis « prix <capitaine> », « <capitaine> avis », « comment choisir <capitaine> »…), chacune avec « H2 » ou « H3 », ses pastilles de source et une raison, puis « Autres candidats (1) » ;
 - aucune carte cochée ;
-- le panneau « Suggestions IA Lieutenants » sous la liste et sous les deux sections « Sources IA », sans aucune case à cocher, avec « 3 propositions générées par l'IA. » et « Régénérer les suggestions » ;
+- le panneau « Suggestions IA Lieutenants » sous la liste et sous les deux sections « Sources IA », sans aucune case à cocher, avec « 6 propositions générées par l'IA. » et « Régénérer les suggestions » ;
 - aucune structure H1/H2/H3 dans l'onglet : elle est dans l'onglet Structure.
 
 **C'est un bug si :**
@@ -319,7 +319,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - une carte ou une case apparaît dans le panneau violet ;
 - une liste de titres H1/H2/H3 s'affiche dans l'onglet.
 
-> En MOCK, l'IA simulée ne donne ni sources, ni niveau H3, ni failles de contenu, et seulement trois candidats : pas de pastilles, pas d'« Autres candidats », pas de « Failles de contenu ». Tout cela se vérifie en RÉEL (LIE-R1).
+> En MOCK, l'IA simulée donne ses sources, un niveau H2 ou H3 et des failles de contenu (« Les concurrents analysés … détaillent peu … »), et autant de candidats que le type en demande (6 pour un intermédiaire) : pastilles, « Autres candidats » et « Failles de contenu » se voient donc aussi en MOCK. Leur pertinence se juge en RÉEL (LIE-R1).
 
 ### LIE-5 — Les sources de l'IA, repliées
 **Exigences :** FR-LIE-SECTIONS-FOLDABLE
@@ -346,7 +346,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 3. Clique **« Score IA »** trois fois, puis **« A-Z »** deux fois.
 
 **Tu dois voir :**
-- sur chaque carte, un score sur 100, infobulle « Score IA: 85/100 » (par exemple) ;
+- sur chaque carte, un score sur 100, infobulle « Score IA: 88/100 » (par exemple) ;
 - la carte ajoutée : raison « Proposé depuis votre panier », « H2 », non cochée, score « — » avec l'infobulle « Score IA non fourni » ;
 - « Score IA » : du plus fort au plus faible (↓), puis l'inverse (↑), puis l'ordre d'origine ;
 - la carte « — » toujours en bas, dans les deux sens ;
@@ -356,7 +356,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - un score absent s'affiche « 0 » ;
 - la carte « — » remonte en tête.
 
-> Les pastilles de provenance se vérifient en RÉEL (LIE-R1).
+> En MOCK, chaque carte porte déjà ses pastilles de provenance ; leur justesse se vérifie en RÉEL (LIE-R1).
 
 ### LIE-7 — Le curseur ne coûte rien
 **Exigences :** FR-LIE-SLIDER-INTELLIGENT ⚠
@@ -643,7 +643,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 **Tu dois voir :**
 - « ✅ Prêt pour la Rédaction », et plus de ligne « Étapes restantes » ;
 - « Capitaine » : le mot-clé verrouillé ;
-- « Lieutenants (3) » : chaque lieutenant avec « H2 » et sa raison (en MOCK, par exemple « Question de budget posée avant tout achat : forte intention. ») ;
+- « Lieutenants (3) » : chaque lieutenant avec « H2 » ou « H3 » et sa raison (en MOCK, par exemple « Question de budget posée avant tout achat : forte intention, présente chez les concurrents. ») ;
 - « Structure (4 H2) » : le H1, puis les H2 et H3 dans l'ordre de lecture, les H3 en retrait ;
 - « Lexique (2 termes) » : tes deux termes en pastilles, autant que le compteur de l'onglet Lexique ;
 - rien d'autre de cliquable que les titres des sections et les deux boutons vers la Rédaction ; les points de l'article inchangés après tes clics.

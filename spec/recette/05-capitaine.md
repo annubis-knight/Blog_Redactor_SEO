@@ -169,7 +169,7 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 - déplié : le bandeau du verdict, puis le texte de l'avis ;
 - la fenêtre « Régénérer l'avis expert IA ? Cela consommera un appel Claude. » ; « Annuler » ne change rien ; « OK » relance l'avis (le bouton affiche « Analyse en cours… », puis de nouveau « Régénérer ») ;
 - dans « Coûts API », une ligne « Analyse IA capitaine » par avis demandé ;
-- en MOCK, l'avis est un court texte simulé (« [Mock provider] Réponse simulée. … Fin de la réponse simulée. ») : ses trois parties se vérifient en RÉEL (CAP-R3).
+- en MOCK, l'avis préparé suit déjà les trois parties (« 1. Potentiel éditorial », « 2. Opportunités et risques », « 3. Recommandation »), cite `agence web`, le niveau de l'article et sa douleur, sans aucun chiffre ; son fond se juge en RÉEL (CAP-R3).
 
 **C'est un bug si :**
 - l'avis n'a pas été demandé d'office : l'en-tête replié dit « Cliquez pour lancer l'analyse IA. » alors que l'étude est finie ;
