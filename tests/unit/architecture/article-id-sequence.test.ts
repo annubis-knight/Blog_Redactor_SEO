@@ -27,7 +27,7 @@ const read = (path: string) => readFileSync(join(ROOT, path), 'utf8')
 /** Le bloc `CREATE TABLE "articles" (…);` du snapshot. */
 function articlesTable(schema: string): string {
   const start = schema.indexOf('CREATE TABLE "articles" (')
-  expect(start, 'la table articles doit figurer dans schema.sql').toBeGreaterThanOrEqual(0)
+  expect(start, 'la table articles doit figurer dans schema.sql').not.toBe(-1)
   return schema.slice(start, schema.indexOf(');', start))
 }
 
