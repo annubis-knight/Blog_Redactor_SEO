@@ -77,7 +77,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 **⚠ Défaut connu :** FR-LEX-PRECHECK-SERP — pendant l'analyse lancée, « Lancer l'analyse SERP » reste cliquable : un second clic confirmé relance une analyse payante. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### FIN-1 — Le récapitulatif vide dit ce qui manque
-**Exigences :** FR-FIN-RECAP, FR-FIN-CHECK, FR-FIN-LINK-REDACTION
+**Exigences :** FR-FIN-RECAP, FR-FIN-CHECK, FR-FIN-LINK-REDACTION ⚠
 
 **Gestes :**
 1. Dans le groupe « 3 Finaliser », clique **Finalisation**.
@@ -100,6 +100,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 > - *Étapes accordées* : la ligne « Étapes restantes » de cet onglet, ou les petits points de l'article dans « Articles suggérés » (infobulles « Capitaine », « Lieutenants », « Structure », « Lexique » ; plein = accordé).
 > - *Recharger* : F5, puis, si besoin, rouvre le nouvel enfant dans « Articles suggérés » et l'onglet indiqué. Si une invite de chargement apparaît en bas avec un bouton « DB », clique-le.
 > - *Coûts API* : la pastille en bas à gauche de l'écran (un montant · « N appels ») s'ouvre sur le panneau « Coûts API », qui liste aussi les messages de l'outil.
+
+**⚠ Défaut connu :** FR-FIN-LINK-REDACTION — « Aller à la Rédaction → » transmet l'article choisi, mais la page Rédaction l'ignore : on arrive sur la liste du cocon, pas sur l'article. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LEX-2 — Le Lexique marche sans les Lieutenants et annonce l'analyse payante
 **Exigences :** FR-LEX-PRECHECK-SERP ⚠, FR-LEX-SCRAPE-DEDIE
@@ -654,7 +656,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - ouvrir ou replier une section change une étape.
 
 ### FIN-3 — Les deux boutons vers la Rédaction suivent la même règle
-**Exigences :** FR-FIN-LINK-REDACTION, FR-FIN-CHECK
+**Exigences :** FR-FIN-LINK-REDACTION ⚠, FR-FIN-CHECK
 
 **Gestes :**
 1. Survole **« Aller à la Rédaction → »**, puis, en bas, **« Continuer vers la Rédaction → »**.
@@ -675,6 +677,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - un bouton grisé ouvre la Rédaction ;
 - la Rédaction s'ouvre sur un autre article ;
 - un verrou manque au retour.
+
+**⚠ Défaut connu :** FR-FIN-LINK-REDACTION — « Aller à la Rédaction → » transmet l'article choisi, mais la page Rédaction l'ignore : on arrive sur la liste du cocon, pas sur l'article. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### FIN-4 — Un verrou retiré ailleurs se voit aussitôt
 **Exigences :** FR-FIN-RECAP, FR-FIN-CHECK, FR-HN-TAB ⚠, FR-LIE-SERP-ANALYZE ⚠

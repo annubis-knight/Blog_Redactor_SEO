@@ -1,3 +1,4 @@
+// Parcours utilisateur suivis : PU-04 (spec/parcours/, NFR-TEST-PARCOURS-TRACE).
 /**
  * Interactions internes — cartes du Capitaine (tech-spec-parcours-8-temps).
  *

@@ -1,3 +1,4 @@
+// Parcours utilisateur suivis : PU-03 (spec/parcours/, NFR-TEST-PARCOURS-TRACE).
 /**
  * Parcours « 8 temps » — sous-phase Lexique (tech-spec-parcours-8-temps).
  *

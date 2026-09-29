@@ -1,3 +1,4 @@
+// Parcours utilisateur suivis : PU-06 (spec/parcours/, NFR-TEST-PARCOURS-TRACE).
 import { describe, it, expect } from 'vitest'
 import { runPipeline, type OrchestratorDeps } from '../../../../scripts/auto-article/orchestrator.js'
 import { createContext } from '../../../../scripts/auto-article/context.js'

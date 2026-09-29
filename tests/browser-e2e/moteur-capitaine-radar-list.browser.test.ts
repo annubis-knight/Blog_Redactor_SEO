@@ -1,3 +1,4 @@
+// Parcours utilisateur suivis : PU-04 (spec/parcours/, NFR-TEST-PARCOURS-TRACE).
 /**
  * Browser E2E — Capitaine : UI radar-list + CaptainSidePanel.
  *

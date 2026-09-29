@@ -22,43 +22,9 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { REQUIREMENT_ID as ID, readRequirementStatuses, withoutCodeBlocks } from '../../helpers/spec-requirements'
 
 const ROOT = join(__dirname, '..', '..', '..')
-const ID = String.raw`(?:N?FR)-[A-Z0-9]+(?:-[A-Z0-9]+)+`
-
-type Status = 'active' | 'non-tenue' | 'prevue' | 'retiree'
-
-/** Retire les blocs de code : leurs exemples ne sont ni des exigences ni des vérifications. */
-function withoutCodeBlocks(text: string): string {
-  return text.replace(/```[\s\S]*?```/g, '')
-}
-
-function statusOf(line: string): Status | null {
-  const value = line.replace(/^\*\*Statut :\*\*\s*/, '').trim().toLowerCase()
-  if (value.startsWith('active')) return 'active'
-  if (value.startsWith('non tenue')) return 'non-tenue'
-  if (value.startsWith('prévue')) return 'prevue'
-  if (value.startsWith('retirée')) return 'retiree'
-  return null
-}
-
-/** Les exigences écrites (`### ID — Titre`) et leur statut. */
-function readRequirements(): Map<string, Status> {
-  const lines = withoutCodeBlocks(readFileSync(join(ROOT, 'spec/requirements.md'), 'utf8')).split(/\r?\n/)
-  const heading = new RegExp(`^### (${ID}) — `)
-  const requirements = new Map<string, Status>()
-  let current: string | null = null
-  for (const line of lines) {
-    const match = heading.exec(line)
-    if (match) { current = match[1]!; continue }
-    if (current && line.startsWith('**Statut :**')) {
-      const status = statusOf(line)
-      if (status) requirements.set(current, status)
-      current = null
-    }
-  }
-  return requirements
-}
 
 interface Check { file: string; title: string; ids: Array<{ id: string; warned: boolean }>; describesDefect: boolean }
 interface Exclusion { file: string; id: string; reason: string }
@@ -101,7 +67,7 @@ function readRecette(): { checks: Check[]; exclusions: Exclusion[] } {
   return { checks, exclusions }
 }
 
-const requirements = readRequirements()
+const requirements = readRequirementStatuses(ROOT)
 const { checks, exclusions } = readRecette()
 const verified = new Set(checks.flatMap(c => c.ids.map(i => i.id)))
 const excluded = new Set(exclusions.map(e => e.id))

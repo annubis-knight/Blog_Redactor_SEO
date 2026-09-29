@@ -149,7 +149,7 @@ dans la liste des alternatives **sans appel IA**, `r` régénère (brief et empl
    et de la douleur. Étape `moteur:discovery_done`. L'onglet Discovery de l'écran n'est pas utilisé.
 2. `POST /keywords/radar/scan` sur ces mots-clés, le mot-clé pressenti en tête. Étape `moteur:radar_done`.
 3. `pickRadarCandidates` garde les meilleurs par Score Marché : 12 pour un pilier, 8 pour un
-   intermédiaire, 5 pour un spécialisé. Une carte sans mesure (`kpis` absent) est écartée.
+   intermédiaire, 5 pour un spécialisé. Une carte sans mesure (`kpis` absent) serait écartée, mais le serveur renvoie toujours un objet `kpis` (`keyword-radar.service.ts`) : ce filtre ne se déclenche jamais (écart relevé le 2026-09-29).
 
 **Valider** (`moteur-valider.ts`). Chaque décision est **enregistrée d'abord**
 (`PUT /articles/:id/keywords`), puis son étape est demandée (`POST /articles/:id/progress/check`,

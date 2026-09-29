@@ -15,23 +15,28 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 
 ## Vérifications
 
-### CAP-1 — À la première visite, le mot-clé de l'article est étudié d'office
-**Exigences :** FR-CAP-SCAN ⚠
+### CAP-1 — À la première visite, le mot-clé de l'article attend ton clic
+**Exigences :** FR-CAP-SCAN ⚠, FR-MOT-NO-AUTO-ACTION ⚠
+
+Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot-clé de l'article est proposé, et c'est toi qui lances son étude.
 
 **Gestes :**
 1. Sur la page du cocon « Recette <date> », clique la carte **« Moteur »**. Ouvre **« Articles suggérés »** et clique l'article enfant créé à l'étape 7 du parcours express.
-2. Le Moteur ouvre l'onglet **Capitaine** (sinon, clique-le dans la barre du haut). Attends la fin de « Validation en cours... ».
-3. Clique l'onglet **Discovery** : sous le champ « Mot-clé racine », la ligne « Article : … · Douleur : … » donne la douleur de l'article. Note-la, puis reviens sur **Capitaine**.
+2. Le Moteur ouvre l'onglet **Capitaine** (sinon, clique-le dans la barre du haut). Regarde l'onglet **avant de toucher à quoi que ce soit**.
+3. Clique **« Analyser »** pour étudier le mot-clé proposé, puis attends la fin de l'étude.
+4. Clique l'onglet **Discovery** : sous le champ « Mot-clé racine », la ligne « Article : … · Douleur : … » donne la douleur de l'article. Note-la, puis reviens sur **Capitaine**.
 
 **Tu dois voir :**
-- le champ « Tester un mot-clé capitaine… » déjà rempli avec le mot-clé de l'article ;
-- une seule carte, ce mot-clé : d'abord « Validation en cours... », puis la ligne d'indicateurs « vol », « KD », « CPC », « PAA » (en « pts ») et, à droite, un anneau avec « Score Pertinence » dessous ;
+- au geste 2, le champ « Tester un mot-clé capitaine… » déjà rempli avec le mot-clé de l'article, et **aucune étude en cours** ;
+- après ton clic, une seule carte, ce mot-clé, avec la ligne d'indicateurs « vol », « KD », « CPC », « PAA » (en « pts ») et, à droite, un anneau avec « Score Pertinence » dessous ;
 - une mesure inconnue affichée « — », jamais « 0 ».
 
 **C'est un bug si :**
-- la liste reste sur « Aucun mot-clé à valider pour cet article. » ;
-- la carte reste bloquée sur « Validation en cours... » ;
+- une étude démarre au geste 2, sans ton clic (payant en RÉEL) ;
+- après ton clic, la carte reste bloquée en cours d'étude ;
 - le mot-clé apparaît deux fois.
+
+**⚠ Défaut connu :** FR-MOT-NO-AUTO-ACTION — aujourd'hui, le mot-clé de l'article est encore étudié d'office dès l'ouverture de l'onglet (« Validation en cours... » sans clic). C'est attendu tant que le défaut n'est pas corrigé. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -458,7 +463,7 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 **⚠ Défaut connu :** FR-CAP-LIST-SIDEPANEL — après un envoi depuis le Radar, le Capitaine verrouillé n'est plus marqué ni en tête, et les candidats déjà étudiés quittent la liste ; sur un article qui avait déjà des candidats, les autres cartes envoyées n'apparaissent qu'à la réouverture. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-20 — Hors connexion : une étude qui échoue, des mesures récentes réutilisées
-**Exigences :** FR-CAP-SCAN ⚠, FR-CAP-ROOTS ⚠
+**Exigences :** FR-CAP-SCAN ⚠, FR-CAP-ROOTS ⚠, FR-CAP-INPUT ⚠
 
 **Gestes :**
 1. Coupe ta connexion internet (Wi-Fi ou câble). L'outil tourne sur ton poste : l'écran reste utilisable.
@@ -481,6 +486,8 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 **⚠ Défaut connu :** dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CAP-INPUT — ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-21 — Un article sans point de douleur
 **Exigences :** FR-CAP-PAINPOINT-FALLBACK ⚠

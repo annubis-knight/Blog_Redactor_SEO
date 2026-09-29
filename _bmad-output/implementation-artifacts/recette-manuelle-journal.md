@@ -155,3 +155,26 @@ Taille : XS < 15 min, S < 1 h, M ≈ demi-journée, L = plus.
 7. **Code mort à retirer :** le verrou Discovery/Radar, l'audit du cocon et son alerte, le bouton « Envoyer aux Lieutenants » jamais affiché — S.
 
 **Hors exigence :** le vert du top 10 de Search Console ne s'affiche jamais, parce que la classe orange passe par-dessus. Correctif XS, aucune exigence en jeu.
+
+## Décisions d'Arnaud — 2026-09-29 (suite)
+
+Les 3 choix laissés à Arnaud, qu'il m'a ensuite délégués (« simple, efficace, facile à appliquer »), et ses réponses aux questions nées des parcours utilisateur (`spec/parcours/`) :
+
+| Sujet | Décision | Où c'est écrit |
+|---|---|---|
+| Mots-clés plus courts au Capitaine | Ils restent rangés sous la carte du mot-clé long, avec leurs chiffres, aussi à la réouverture ; ils ne deviennent jamais candidats d'office ; un bouton « Prendre celui-ci » en fait un candidat en un clic | à écrire avec le correctif (`FR-CAP-ROOTS`, `FR-CAP-LOCK-INTEGRITY`) |
+| « Courte-traîne IA » (Discovery) | Même demande que « IA Claude » : la section en double est à retirer | à écrire avec le correctif (`FR-DIS-LONGTAIL-GENERATION`) |
+| États d'un article | Un seul cycle, vu pareil partout : Suggéré → Validé → Rédigé → Publié. La base en a deux aujourd'hui (statut et phase) ; elle reste la seule source (pas de fichier par article) | à écrire avec le correctif (`FR-MOT-RECAP-PUBLISHED`, `FR-RED-PROGRESS`, `FR-DASH-NAV`) |
+| Étude du mot-clé à l'ouverture du Capitaine | Au clic, jamais d'office | `FR-MOT-NO-AUTO-ACTION` (non tenue), recette CAP-1 réécrite |
+| Analyse « IA Brief » | Gardée avec l'article, réaffichée sans repayer | `FR-RED-BRIEF` (critère changé, non tenue) |
+| Chiffres et exemples réels | « Tout doit être prouvé » : lien vers la source trouvée par une vraie recherche, sinon « [à sourcer : …] » | nouvelle `FR-RED-REAL-CLAIMS-PROVEN` (non tenue : « Statistique sourcée », « Exemple PME »), recette RED-R6 |
+| Identité PropulSite | L'outil sert seulement le blog de PropulSite : l'identité écrite dans les consignes de l'IA est voulue | `spec/01-produit.md` corrigé |
+| Rappel « parent à réexporter » | Non. Arnaud veut plutôt que la vérification du cocon comprenne le maillage entre articles et montre les manques ; il envisage d'écrire aussi les articles en markdown avec un en-tête (frontmatter) pour faciliter les liens | **à brainstormer** (voir ci-dessous) |
+| Règles du mode automatique | Plus tard | à faire : aucune exigence ne décrit le robot (pauses, options, arrêts) |
+
+### À brainstormer : le maillage vérifié à l'échelle du cocon
+
+Idée d'Arnaud : une vérification du cocon qui lit les liens entre ses articles (qui renvoie vers qui, quelle section n'a pas son lien, quel enfant n'est pas cité par son parent), et des articles aussi écrits en markdown avec un en-tête, en plus ou à côté du HTML. Points à trancher ensemble :
+- ce que la vérification actuelle du contenu fait déjà (liens internes du contenu enregistré, pages exportées, fantômes) et ce qui manque ;
+- markdown en plus du HTML, ou à sa place ; qui fait foi entre le fichier et la base (règle du projet : la base de données seule) ;
+- ce que l'en-tête contiendrait (parent, section, enfants, mot-clé, état) et comment il resterait synchronisé.

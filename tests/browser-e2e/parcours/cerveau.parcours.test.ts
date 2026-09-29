@@ -1,3 +1,4 @@
+// Parcours utilisateur suivis : PU-01 (spec/parcours/, NFR-TEST-PARCOURS-TRACE).
 /**
  * Parcours Cerveau — de la page blanche aux articles créés en base.
  *
