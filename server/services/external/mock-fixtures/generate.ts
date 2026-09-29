@@ -7,9 +7,12 @@
  *   - generate/specialises (articles spécialisés ciblant PAA)
  *   - generate/article (HTML par section, stream)
  *   - generate/article-meta (meta title + description)
- *   - generate/micro-context-suggest (angle + tone + directives)
  *   - generate/humanize-section
- *   - generate/reduce-section
+ *
+ * Le micro-contexte vit dans `contexte.ts` et la réduction dans
+ * `reduce-section.ts` : leur demande embarque un titre ou une section saisis,
+ * qui peuvent citer « radar » ou « lexique » ; ces fichiers sont importés avant
+ * les réponses reconnues à un mot du message (NFR-COST-AI-MOCK).
  */
 import { registerStreamFixture, registerToolFixture } from '../mock-registry.js'
 
@@ -62,25 +65,6 @@ registerToolFixture('generate_specialised_articles', ({ userPrompt }) => {
 // ---------------------------------------------------------------------------
 // Stream fixtures
 // ---------------------------------------------------------------------------
-
-// micro-context-suggest
-registerStreamFixture(
-  'micro-context-suggest',
-  ({ userPrompt }) => /micro[-\s]context|angle.*diff[eé]renciant|tone.*directive/i.test(userPrompt),
-  () => {
-    const json = {
-      angle: 'Approche pratique avec mini-cas concrets et checklist actionnable en fin d\'article.',
-      tone: 'Pédagogique, direct, sans jargon. Tutoiement amical mais professionnel.',
-      directives: [
-        'Inclure 1 mini-cas client par grand chapitre',
-        'Terminer par une checklist actionnable',
-        'Pas de promesses absolues — toujours nuancer',
-      ],
-      targetWordCount: 1800,
-    }
-    return JSON.stringify(json, null, 2)
-  },
-)
 
 // generate/outline — sommaire structuré (JSON { sections: [{level,title}] })
 registerStreamFixture(
@@ -136,20 +120,6 @@ registerStreamFixture(
       .replace(/\bleads\b/g, 'prospects')
       .replace(/\blead\b/g, 'prospect')
       .replace(/\bfeedback\b/g, 'retour')
-  },
-)
-
-// reduce-section
-registerStreamFixture(
-  'reduce-section',
-  ({ userPrompt }) => /r[eé]duire.*section|raccourcir|trim/i.test(userPrompt),
-  ({ userPrompt }) => {
-    const htmlMatch = userPrompt.match(/<h2>[\s\S]+?<\/(?:p|ul|ol)>/)
-    const html = htmlMatch?.[0] ?? '<p>Contenu réduit.</p>'
-    // Garde le H2 + 1 seul paragraphe synthétique
-    const titleMatch = html.match(/<h2>([^<]+)<\/h2>/)
-    const title = titleMatch?.[1] ?? 'Section'
-    return `<h2>${title}</h2>\n<p>Version condensée : on ne garde que l'essentiel. Action principale : auditer puis prioriser.</p>\n`
   },
 )
 

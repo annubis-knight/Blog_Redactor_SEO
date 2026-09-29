@@ -5,8 +5,15 @@
  * pour produire des combinaisons longue-traine a partir des mots-cles
  * racines Radar. Le mock retourne un set determine de suggestions stables
  * et pertinentes pour les tests E2E et unit (AI_PROVIDER=mock).
+ *
+ * FR-RAD-LONGTAIL-GENERATE : le service place les mots-cles racines dans la
+ * CONSIGNE (`radar-long-tail-suggest.md`, variable {{radar_keywords_with_kpis}}),
+ * pas dans le message utilisateur. L'ancienne fixture les cherchait dans le
+ * message : la liste revenait toujours vide, et cette reponse vide etait mise en
+ * cache 7 jours. Garde par tests/unit/services/mock-moteur-panneaux.test.ts.
  */
 import { registerToolFixture } from '../mock-registry.js'
+import { promptField, promptSection } from './prompt-fields.js'
 
 interface LongTailSuggestion {
   keyword: string
@@ -15,16 +22,16 @@ interface LongTailSuggestion {
   derivedFromRoots: string[]
 }
 
-registerToolFixture('suggest_long_tail', ({ userPrompt }) => {
-  // Le service injecte les mots-cles racines dans le userPrompt via la variable
-  // {{radar_keywords_with_kpis}}. On les extrait ici par regex simple pour
-  // produire des suggestions plausibles, deterministes, et basees sur les
-  // entrees reelles du test.
-  const keywordMatches = userPrompt.match(/- "([^"]+)"/g) ?? []
-  const roots = keywordMatches
-    .map(m => m.replace(/^- "/, '').replace(/"$/, '').trim())
-    .filter(k => k.length > 0)
-    .slice(0, 6)
+/** Lignes `- "mot-clé"` du bloc des mots-cles racines de la consigne. */
+function motsClesRacines(systemPrompt: string, userPrompt: string): string[] {
+  const bloc = promptSection(systemPrompt, 'Mots-cles racines disponibles dans l\'onglet Radar') ?? userPrompt
+  return [...bloc.matchAll(/^- "([^"]+)"/gm)].map(m => m[1]!.trim()).filter(k => k.length > 0)
+}
+
+registerToolFixture('suggest_long_tail', ({ systemPrompt, userPrompt }) => {
+  const roots = motsClesRacines(systemPrompt, userPrompt).slice(0, 6)
+  const titre = promptField(systemPrompt, 'Titre de l\'article')
+  const pourArticle = titre && titre !== '(non defini)' ? ` pour l'article « ${titre} »` : ''
 
   if (roots.length < 2) {
     return { suggestions: [] }
@@ -43,7 +50,7 @@ registerToolFixture('suggest_long_tail', ({ userPrompt }) => {
       const combined = mergeNaturally(a, b)
       out.push({
         keyword: combined,
-        rationale: `Combine "${a}" et "${b}" pour cibler une intention precise alignee avec la douleur de l'article.`,
+        rationale: `Combine "${a}" et "${b}" pour cibler une intention precise alignee avec la douleur de l'article${pourArticle}.`,
         preferenceScore: Math.max(score--, 4),
         derivedFromRoots: [a, b],
       })
