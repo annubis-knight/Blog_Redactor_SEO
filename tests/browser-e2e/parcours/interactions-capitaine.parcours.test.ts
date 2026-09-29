@@ -141,8 +141,11 @@ test('Capitaine — le conseil IA se déplie, se lance et affiche son texte', as
   }
   await expect(panneau.locator('[data-testid="ai-advice-markdown"]'), 'le conseil rédigé s’affiche')
     .toBeVisible({ timeout: 120000 })
+  // « Pas vide » = un vrai texte, d'au moins cinq mots. L'ancien motif (20 caractères
+  // d'affilée sans espace) ne passait qu'avec un long mot-clé de test recopié par la
+  // réponse par défaut ; un conseil rédigé en français n'en contient pas.
   await expect(panneau.locator('[data-testid="ai-advice-markdown"]'), 'le conseil n’est pas vide')
-    .toContainText(/\S{20,}/, { timeout: 60000 })
+    .toContainText(/\S+(?:\s+\S+){4,}/, { timeout: 60000 })
 
   // Repli / dépli une fois le conseil arrivé.
   await toggle.click()

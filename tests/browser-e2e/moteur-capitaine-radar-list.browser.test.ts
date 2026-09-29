@@ -54,6 +54,9 @@ testWithCtx.describe('Capitaine — UI radar-list (mode workflow)', () => {
   })
 
   testWithCtx('un article sans mot-clé suggéré affiche l’état vide de la liste', async ({ page, ctx }) => {
+    // Assez de marge pour que le diagnostic d'échec ci-dessous s'écrive : avec les
+    // 30 s par défaut, il était coupé après l'attente de 20 s (CI du 2026-09-29).
+    testWithCtx.setTimeout(90_000)
     const article = await ctx.createArticle('RadarList Empty Browser', 'Pilier', { withKeyword: false })
     await openMoteur(page, article.cocoonId)
     await selectArticleByTitle(page, article.titre)
