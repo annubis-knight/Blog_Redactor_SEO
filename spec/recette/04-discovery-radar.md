@@ -585,7 +585,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 ## En mode RÉEL (payant)
 
 Passe le bouton en **RÉEL**. Trois précautions avant de commencer :
-- **Le MOCK a laissé des traces relues en RÉEL** : la découverte sauvegardée (bandeau « Dernière analyse… »), les suggestions DataForSEO de la racine (gardées 24 h), les questions PAA des mots-clés scannés (gardées 1 jour) et les longues traînes simulées (gardées 7 jours pour les mêmes mots-clés). Prends donc une **autre racine** et des **mots-clés jamais scannés aujourd'hui**.
+- **Rien de ce que le MOCK a gardé n'est relu en RÉEL** : la découverte sauvegardée, les suggestions DataForSEO, les longues traînes et les réponses gardées ne servent qu'au mode qui les a obtenues, et les mesures de mots-clés faites en MOCK (volumes, questions PAA) sont effacées au passage en RÉEL. Chaque mot-clé déjà vu en MOCK est donc remesuré, et payé : garde peu de mots-clés.
 - **Chaque case cochée à l'unité dans Discovery lance, 5 s plus tard, une étude Capitaine payante.** Clique « Annuler » dans la notification si tu n'en veux pas, ou coche par « Tout ».
 - **Aucun geste de ce module n'annonce son coût avant de partir.** Suis la dépense dans la pastille des coûts, en bas à gauche : dépliée, elle montre « Coûts API », la ligne « DataForSEO » marquée « PROD » (dépense / plafond sur 30 min) et une ligne par appel d'IA. Garde 3 ou 4 mots-clés au Radar : chacun coûte une page de résultats Google, plus une par question PAA.
 

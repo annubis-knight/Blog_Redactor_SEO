@@ -453,7 +453,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 
 Ces vérifications coûtent de quelques centimes à quelques dizaines de centimes. Passe le bouton en **RÉEL** seulement pour elles, et repasse en **MOCK** à la fin.
 
-> **Attention :** l'outil garde aussi les mesures faites en MOCK, pendant 7 jours, sans les distinguer des vraies. En RÉEL, teste des mots-clés que tu n'as **jamais** testés, même en MOCK : sinon, tu verras les chiffres factices du bac à sable, sans nouvel appel.
+> **Attention :** le passage en RÉEL efface les mesures de mots-clés faites en MOCK : un mot-clé déjà testé en MOCK est remesuré, et payé, à sa première étude en RÉEL. De retour en MOCK, les vérifications qui relisent une mesure la refont, gratuitement.
 
 ### INFRA-R1 — Une même mesure n'est payée qu'une fois
 **Mode :** RÉEL (payant)

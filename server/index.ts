@@ -102,6 +102,7 @@ app.listen(PORT, () => {
   // Verify PostgreSQL connection
   pool.query('SELECT 1').then(() => {
     log.info('PostgreSQL connected')
+    void import('./services/keyword/keyword-metrics.service.js').then(m => m.purgeSandboxMeasuresIfReal()) // FR-EXT-DATAFORSEO-SANDBOX : démarrage en réel → mesures simulées effacées
   }).catch((err) => {
     log.error('PostgreSQL connection failed', {
       message: err.message || '(no message)',

@@ -7,6 +7,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
+// Le passage en réel efface les mesures simulées (FR-EXT-DATAFORSEO-SANDBOX) :
+// la base est simulée ici, la purge est gardée par sandbox-measures-purge.test.ts.
+vi.mock('../../../server/db/client', () => ({
+  query: vi.fn(async () => ({ rows: [], rowCount: 0 })),
+  pool: {},
+}))
+vi.mock('../../../server/utils/logger', () => ({
+  log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
+
 const { default: router } = await import('../../../server/routes/runtime-mode.routes')
 const { setRuntimeMode } = await import('../../../server/services/infra/runtime-mode.service')
 
