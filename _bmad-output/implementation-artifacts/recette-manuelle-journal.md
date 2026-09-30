@@ -372,3 +372,44 @@ Sauvegardes prises : `data/_backup_pg_20260930-0234.sql` (avant la recette), `da
 ### Prochaine étape proposée
 
 Trier ces écarts comme le 2026-09-29 : défauts nouveaux → exigences « non tenue (ce qui manque) » ; défauts disparus → retour à « active » après confirmation ; phrases de recette à corriger. Puis corriger dans l'ordre : l'argent (F1, avis IA repayés, appels en double), les pertes de données (F4, score écrit ailleurs, RED-3), la publication (graves 6 et 7), puis le reste.
+
+## Corrections du 2026-09-30 et rejeu à l'écran
+
+Arnaud : « lance les 4 lots en correction… implémentation, review, test, validation ». Chaque lot a suivi la même boucle : exigence écrite ou complétée dans `spec/requirements.md`, test rouge qui cite son ID, correctif, doc, CI verte (unitaires, intégration, Playwright), fusion dans `main`. Puis un cinquième lot pour les textes d'écran.
+
+| Lot | PR | Tech-spec | Ce qui est corrigé |
+|---|---|---|---|
+| 4 — petits défauts | #10 | `tech-spec-lot4-petits.md` | Pictogrammes d'intention vides, niveaux affichés par leur code, « Suggérer par IA » muet, sommaire (Échap, glisser sur le H1), bloc « Titre H2 », réponse simulée « émarrer », robot `auto:article` (cocon cible), page « Cocon introuvable » |
+| 1 — l'argent | #11 | `tech-spec-lot1-argent.md` | F1 (le badge suit le mode effectif), avis IA du Capitaine enregistré, Lexique qui ne part plus seul, appels en double, filtre de pertinence au-delà de 500 mots-clés, mesures du Radar partagées |
+| 3 — publication | #12 | `tech-spec-lot3-publication.md` | Dérogations non redemandées (empreinte), « Bloc coupé » à tort, export (liens internes, H1, image du gabarit), aperçu, liens de l'éditeur, cartes d'enrichissement, textes des alarmes |
+| 2 — données | #13 | `tech-spec-lot2-donnees.md` | F4 (« Structure validée » gardée), écritures parasites au choix d'un article, score SEO sur le bon article, texte / méta / sommaire d'un autre article, Radar, Lieutenants, candidats du Capitaine (racines) |
+| 5 — textes d'écran | #14 | `tech-spec-lot5-libelles.md` | Valideur léger d'accents sur le texte de l'interface (68 libellés + une vingtaine relus à la main), compteurs accordés (« 1 article »), raison Discovery en français, niveau en toutes lettres au Lexique et au Capitaine, coût compté une fois (Radar, metas, content gap) |
+
+### Rejeu à l'écran sur `main` (MOCK, navigateur neuf)
+
+Serveur relancé depuis `main` avec le bac à sable forcé ; profil de navigateur vierge.
+
+| Point | Résultat |
+|---|---|
+| F1 — badge dans un navigateur neuf, sans forçage du mode | ✅ « MOCK », et le serveur dit `effective: mock` sans forçage |
+| F4 — choisir, changer, rechoisir l'article #1336 quatre fois | ✅ `moteur:hn_locked` gardé ; les autres articles non touchés |
+| Avis IA du Capitaine | ✅ demandé une fois (au clic), enregistré, revenu sans nouvel appel après un changement d'article |
+| Lexique — ouvrir l'onglet deux fois | ✅ aucune extraction ni analyse IA lancée |
+| Score SEO — passer de #1335 à #1336 sans recharger | ✅ #1335 reçoit ses propres scores, rien d'écrit sur l'autre article |
+| Pictogramme d'intention d'une carte Radar | ✅ visible |
+| « Articles suggérés » du Moteur | ✅ « Pilier », « Intermédiaire », « Spécialisé » |
+| `/cocoon/999999` | ✅ « Cocon introuvable : il n'existe pas, ou il a été supprimé. », sans « Réessayer » |
+| Compteurs (tableau de bord, cocon vide, Radar) | ✅ « 0 article », « 1 article », « 0 mot-clé », « 1 mot-clé » |
+| Cadenas d'un titre de la Structure | ✅ « Verrouiller — … » puis « Déverrouiller — … » (aucune écriture en base) |
+| Lexique | ✅ badge « Intermédiaire » ; « Différenciateur (30-70%) — N termes » |
+| Discovery — bandeau de reprise | ✅ « Dernière analyse du 30/09/2026 · 824 mots-clés · analyse IA incluse », « Rafraîchir » |
+| Lieutenants et brief de la Rédaction | ✅ « Résultats SERP », « Lieutenants proposés par l'IA », « Contexte stratégique », « Angle différenciant », « Consignes spécifiques », « Suggérer par IA » |
+
+Trouvé pendant ce rejeu et corrigé dans le lot 5 : le Lexique montrait encore le niveau sous son code (« INTERMEDIAIRE »).
+
+### Ce qui reste
+
+- **Exigences encore « non tenue »** après les lots : FR-CAP-AI-PANEL, FR-LEX-AI-PANEL, FR-CAP-ROOTS (une racine sans étude enregistrée revient sans indicateurs), FR-INFRA-LIEUTENANT-EXPLORATIONS, FR-RAD-AI-SUGGESTIONS, FR-EXT-DATAFORSEO-SANDBOX (données du bac à sable gardées comme réelles : le Lexique de l'article #1336 montre « pizza », « london »…), FR-INFRA-COST-LOG-STORE (opérations en base).
+- **RÉEL (payant)** et **Search Console** : toujours non faits.
+- **Données de test** : la liste ci-dessus, plus une découverte `test-…-persist-disc` écrite par une suite de tests lancée en local contre le serveur de dev. Tant qu'elles restent, `verify:content` échoue en local (#1335 et #1337 visent la même recherche). Nettoyage **en attente de l'accord d'Arnaud**.
+- **Titres de section de Discovery** « Intent Modifiers » et « Prepositions » : laissés tels quels, à trancher.
