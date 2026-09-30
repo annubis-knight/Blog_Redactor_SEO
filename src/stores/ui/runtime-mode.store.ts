@@ -1,13 +1,20 @@
 /**
- * AUTHORITY: localStorage `runtime-mode` (front) + GET/POST /api/runtime-mode (back)
- * READS FROM: GET /api/runtime-mode au boot (hydratation),
- *             localStorage en pré-hydratation optimiste
- * WRITES TO: POST /api/runtime-mode au clic du toggle navbar
- * CONSUMERS: AppNavbar.vue (toggle visuel)
+ * AUTHORITY: le mode effectif du serveur (GET /api/runtime-mode, `effective`) ;
+ *            localStorage `runtime-mode` garde le dernier choix de l'utilisateur.
+ * READS FROM: GET /api/runtime-mode au boot (hydratation), puis au retour du
+ *             focus, quand l'onglet redevient visible et à intervalle régulier
+ *             (resynchronisation, FR-INFRA-RUNTIME-MODE) ;
+ *             localStorage en pré-hydratation optimiste.
+ * WRITES TO: POST /api/runtime-mode au clic du toggle navbar, et quand le
+ *            serveur a perdu le choix de l'utilisateur (redémarrage).
+ * CONSUMERS: AppNavbar.vue (badge MOCK / RÉEL).
+ * RELATED FR: FR-INFRA-RUNTIME-MODE, NFR-COST-AI-MOCK.
  *
  * Toggle global mock/réel — un seul switch couvre AI provider + DataForSEO
  * sandbox côté serveur. Quand l'utilisateur n'a pas explicitement basculé,
  * `override` reste `null` et le serveur retombe sur les valeurs `.env`.
+ * Le badge affiche toujours le mode EFFECTIF du serveur : c'est celui qui
+ * décide de la facturation.
  */
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
@@ -17,6 +24,9 @@ import { log } from '@/utils/logger'
 export type RuntimeMode = 'mock' | 'real'
 
 const STORAGE_KEY = 'runtime-mode'
+
+/** Intervalle de resynchronisation du badge (un GET local, sans coût). */
+export const RUNTIME_MODE_RESYNC_MS = 15_000
 
 interface RuntimeModeState {
   override: RuntimeMode | null
@@ -47,24 +57,57 @@ export const useRuntimeModeStore = defineStore('runtime-mode', () => {
   const effective = ref<RuntimeMode>(override.value ?? 'real')
   const isHydrated = ref(false)
 
-  /** Hydrate depuis le serveur. Si le front a un override en localStorage qui
-   *  diffère du serveur (cas restart serveur), on force le serveur à reprendre
-   *  la valeur du front. */
-  async function hydrate(): Promise<void> {
+  let inFlight: Promise<void> | null = null
+
+  async function syncFromServer(): Promise<void> {
     try {
       const data = await apiGet<RuntimeModeState>('/runtime-mode')
       const local = readLocalStorage()
-      if (local !== null && local !== data.override) {
-        // Restart serveur : front avait un override, serveur l'a perdu → on le repousse.
+      if (local !== null && data.override === null) {
+        // Redémarrage du serveur : il a perdu le choix de l'utilisateur → on le lui rend.
         await setMode(local)
       } else {
+        // Le serveur fait foi. S'il porte un autre choix que le nôtre (posé par
+        // le mode automatique ou un autre onglet), on l'adopte au lieu de le
+        // renverser : repousser l'ancien choix pourrait faire payer un run lancé
+        // en simulé.
         override.value = data.override
         effective.value = data.effective
+        if (data.override !== null && data.override !== local) writeLocalStorage(data.override)
       }
     } catch (err) {
       log.warn('runtime-mode hydrate failed', err)
     } finally {
       isHydrated.value = true
+    }
+  }
+
+  /** Hydrate depuis le serveur (une seule requête à la fois). */
+  function hydrate(): Promise<void> {
+    if (!inFlight) {
+      inFlight = syncFromServer().finally(() => { inFlight = null })
+    }
+    return inFlight
+  }
+
+  /**
+   * Resynchronise le badge sans rechargement de la page : au retour du focus,
+   * quand l'onglet redevient visible, et toutes les `intervalMs`. Couvre le
+   * redémarrage du serveur en cours de session. Renvoie la fonction d'arrêt.
+   */
+  function startAutoResync(intervalMs: number = RUNTIME_MODE_RESYNC_MS): () => void {
+    if (typeof window === 'undefined') return () => {}
+    const onFocus = () => { void hydrate() }
+    const onVisibility = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') void hydrate()
+    }
+    window.addEventListener('focus', onFocus)
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility)
+    const timer = window.setInterval(() => { void hydrate() }, intervalMs)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility)
+      window.clearInterval(timer)
     }
   }
 
@@ -92,5 +135,5 @@ export const useRuntimeModeStore = defineStore('runtime-mode', () => {
     return setMode(next)
   }
 
-  return { override, effective, isHydrated, hydrate, setMode, toggle }
+  return { override, effective, isHydrated, hydrate, startAutoResync, setMode, toggle }
 })

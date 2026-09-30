@@ -116,8 +116,11 @@ async function mountLexique() {
     props: baseProps,
     global: { stubs },
   })
-  // Wait for the immediate watcher to hydrate from DB and fetch tfidf.
+  // Le watcher immédiat ne fait que relire la base ; l'extraction part sur le
+  // clic « Extraire le Lexique » (FR-MOT-NO-AUTO-ACTION).
   await nextTick()
+  await new Promise(resolve => setTimeout(resolve, 50))
+  await wrapper.find('[data-testid="btn-extract"]').trigger('click')
   await new Promise(resolve => setTimeout(resolve, 50))
   await nextTick()
   return wrapper

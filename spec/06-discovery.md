@@ -68,7 +68,7 @@ Affichage :
 - Les mots-clés arrivés plus tard (source lente, courte-traîne) sont jugés à leur tour, sans rejuger les autres.
 - Une racine dont aucun mot n'a trois lettres n'est pas filtrée.
 
-Si plus de 90 % d'au moins 20 mots-clés passent le filtre, un avertissement s'affiche : « Attention : le filtrage de pertinence semble ne pas avoir fonctionné (x/N mots-clés conservés). Les appels API de scoring ont probablement échoué. Vérifiez votre clé API Claude ou relancez la découverte. »
+Si plus de 90 % d'au moins 20 mots-clés passent le filtre, un avertissement s'affiche : « Attention : le filtrage de pertinence semble ne pas avoir fonctionné (x/N mots-clés conservés). Les appels API de scoring ont probablement échoué. Vérifiez votre clé API Claude ou relancez la découverte. » Il ne s'affiche pas en mode « MOCK » : le filtre simulé garde presque tout, ce n'est pas une panne.
 
 **Limite actuelle :** « pertinents » compte des mots-clés uniques, « hors-sujet masqués » compte chaque apparition dans une section. Les deux ne s'additionnent pas pour donner le total.
 

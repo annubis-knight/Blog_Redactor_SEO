@@ -31,10 +31,14 @@ describe('DataForSEO — budget et bac à sable', () => {
   afterEach(() => {
     delete process.env.DATAFORSEO_SANDBOX
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   it('en production, le budget de la fenêtre finit par refuser l’appel', async () => {
     process.env.DATAFORSEO_SANDBOX = 'false'
+    // Mode effectif « réel » : une IA simulée mettrait aussi DataForSEO en bac à
+    // sable (FR-INFRA-RUNTIME-MODE, une seule autorité).
+    vi.stubEnv('AI_PROVIDER', 'claude')
     vi.stubGlobal('fetch', mockFetchOk())
     const { fetchDataForSeo } = await import('../../../server/services/external/dataforseo/_client.js')
 

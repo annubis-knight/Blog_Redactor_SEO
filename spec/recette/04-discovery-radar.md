@@ -117,8 +117,8 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 - ensuite : « X pertinents / N total » et, s'il masque quelque chose, « N hors-sujet masqués » ; les sections touchées affichent « (visibles/total) » ;
 - filtre décoché : tout réapparaît aussitôt, sans barre de calcul ; les mots-clés hors-sujet sont grisés ;
 - filtre recoché : les mêmes mots-clés sont de nouveau masqués, toujours sans calcul ;
-- en MOCK, le filtre simulé n'écarte presque rien : l'avertissement « Attention : le filtrage de pertinence semble ne pas avoir fonctionné (x/N mots-clés conservés). Les appels API de scoring ont probablement échoué. Vérifiez votre clé API Claude ou relancez la découverte. » s'affiche souvent. C'est attendu : il signale que plus de 90 % d'au moins 20 mots-clés ont passé le filtre ;
-- avec « lyon » : le filtre simulé écarte les noms de grandes villes ; les suggestions Google, qui contiennent toutes « lyon », sont masquées, « Filtrage 2/2 » apparaît, et l'avertissement disparaît.
+- en MOCK, le filtre simulé n'écarte presque rien, et l'avertissement « Attention : le filtrage de pertinence semble ne pas avoir fonctionné… Vérifiez votre clé API Claude… » ne s'affiche **pas** : il est réservé au mode réel, où plus de 90 % d'au moins 20 mots-clés passés signale une vraie panne ;
+- avec « lyon » : le filtre simulé écarte les noms de grandes villes ; les suggestions Google, qui contiennent toutes « lyon », sont masquées, et « Filtrage 2/2 » apparaît.
 
 **C'est un bug si :**
 - décocher ou recocher le filtre relance un calcul (barre « Filtrage ») ;

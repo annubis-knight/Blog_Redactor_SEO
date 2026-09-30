@@ -117,6 +117,90 @@ describe('FR-INFRA-RUNTIME-MODE — store Pinia', () => {
       await s.hydrate()
       expect(s.isHydrated).toBe(true)
     })
+
+    it('F1 : sans override, le badge affiche le mode EFFECTIF du serveur (celui qui décide de la facturation)', async () => {
+      mockApiGet.mockResolvedValueOnce({
+        override: null,
+        effective: 'mock',
+        envAiProvider: 'mock',
+        envDataforseoSandbox: false,
+      })
+      const s = useRuntimeModeStore()
+      await s.hydrate()
+      expect(s.effective).toBe('mock')
+      expect(mockApiPost).not.toHaveBeenCalled()
+    })
+
+    it('un choix posé ailleurs (mode automatique) est adopté, jamais renversé', async () => {
+      // Le navigateur se souvenait de « real » ; le mode automatique a passé le
+      // serveur en « mock ». Repousser « real » ferait payer le run simulé.
+      localStorage.setItem(STORAGE_KEY, 'real')
+      mockApiGet.mockResolvedValueOnce({
+        override: 'mock',
+        effective: 'mock',
+        envAiProvider: 'claude',
+        envDataforseoSandbox: false,
+      })
+      const s = useRuntimeModeStore()
+      await s.hydrate()
+      expect(mockApiPost).not.toHaveBeenCalled()
+      expect(s.override).toBe('mock')
+      expect(s.effective).toBe('mock')
+      expect(localStorage.getItem(STORAGE_KEY)).toBe('mock')
+    })
+
+    it('deux resynchronisations simultanées ne font qu’une requête', async () => {
+      mockApiGet.mockResolvedValue({ override: null, effective: 'real', envAiProvider: 'claude', envDataforseoSandbox: false })
+      const s = useRuntimeModeStore()
+      await Promise.all([s.hydrate(), s.hydrate()])
+      expect(mockApiGet).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('startAutoResync() — le badge suit le serveur sans rechargement (FR-INFRA-RUNTIME-MODE)', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('redémarrage du serveur en cours de session : le badge se resynchronise seul, à intervalle', async () => {
+      vi.useFakeTimers()
+      localStorage.setItem(STORAGE_KEY, 'mock')
+      const s = useRuntimeModeStore()
+      // 1er passage : le serveur a toujours le choix « mock ».
+      mockApiGet.mockResolvedValue({ override: 'mock', effective: 'mock', envAiProvider: 'claude', envDataforseoSandbox: false })
+      await s.hydrate()
+      const stop = s.startAutoResync(1000)
+
+      // Le serveur redémarre et perd l'override : sa config le met en réel.
+      mockApiGet.mockResolvedValue({ override: null, effective: 'real', envAiProvider: 'claude', envDataforseoSandbox: false })
+      mockApiPost.mockResolvedValueOnce({ override: 'mock', effective: 'mock' })
+      await vi.advanceTimersByTimeAsync(1000)
+
+      expect(mockApiPost, 'le choix de l’utilisateur est rendu au serveur').toHaveBeenCalledWith('/runtime-mode', { mode: 'mock' })
+      expect(s.effective).toBe('mock')
+      stop()
+    })
+
+    it('au retour du focus, le badge relit le serveur', async () => {
+      const s = useRuntimeModeStore()
+      mockApiGet.mockResolvedValue({ override: null, effective: 'mock', envAiProvider: 'mock', envDataforseoSandbox: false })
+      const stop = s.startAutoResync(60_000)
+      window.dispatchEvent(new Event('focus'))
+      await vi.waitFor(() => expect(s.effective).toBe('mock'))
+      expect(mockApiGet).toHaveBeenCalledTimes(1)
+      stop()
+    })
+
+    it('arrêté, il ne relit plus rien', async () => {
+      vi.useFakeTimers()
+      const s = useRuntimeModeStore()
+      mockApiGet.mockResolvedValue({ override: null, effective: 'real', envAiProvider: 'claude', envDataforseoSandbox: false })
+      const stop = s.startAutoResync(1000)
+      stop()
+      window.dispatchEvent(new Event('focus'))
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(mockApiGet).not.toHaveBeenCalled()
+    })
   })
 
   describe('setMode() — bascule explicite', () => {

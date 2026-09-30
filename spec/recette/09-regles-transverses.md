@@ -34,7 +34,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 - base arrêtée, le serveur ne démarre pas, ou l'échec n'est suivi d'aucune piste.
 
 ### INFRA-2 — Le bouton MOCK / RÉEL pilote vraiment le serveur
-**Exigences :** FR-INFRA-RUNTIME-MODE ⚠
+**Exigences :** FR-INFRA-RUNTIME-MODE
 
 **Gestes :**
 1. En bas à gauche, clique la pastille des coûts (un montant, puis « n appels ») : elle se déplie en panneau « Coûts API ». Repère la ligne « DataForSEO » et sa mention.
@@ -47,15 +47,13 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 - l'infobulle « Sources : MOCK (cliquer pour passer en réel) » ;
 - en MOCK, la mention « SANDBOX » dans la pile ; après le clic, le bouton « RÉEL » et, en 15 secondes au plus, la mention « PROD » ;
 - après chaque rechargement, le même mode qu'avant ;
-- après la relance du geste 5, la page se recharge d'elle-même : toujours « MOCK » et « SANDBOX ».
+- après la relance du geste 5, sans que tu recharges la page : au plus 15 secondes après le retour du serveur, toujours « MOCK » et « SANDBOX » (la page renvoie son choix au serveur ; si elle se recharge d'elle-même, c'est aussi bon).
 
 **C'est un bug si :**
 - le bouton et la mention de la pile se contredisent plus de 15 secondes (« MOCK » avec « PROD », ou « RÉEL » avec « SANDBOX ») ;
 - un rechargement change le mode.
 
-> Si ton fichier d'environnement règle déjà le mode simulé, le serveur redémarre en MOCK de toute façon : le défaut ci-dessous ne peut pas se voir.
-
-**⚠ Défaut connu :** la resynchronisation n'a lieu qu'au chargement de la page : après un redémarrage du serveur en cours de session, le badge garde « MOCK » alors que le serveur est revenu à sa configuration. Au geste 5, si la page ne se recharge pas d'elle-même, la pile affiche alors « PROD » à côté d'un bouton « MOCK » ; un rechargement remet tout en « MOCK » / « SANDBOX ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+> Si ton fichier d'environnement règle déjà le mode simulé (IA simulée ou bac à sable), le serveur redémarre en MOCK de toute façon, et reste « MOCK » / « SANDBOX » pendant toute la relance.
 
 ### INFRA-3 — La pile « Coûts API » compte l'IA et la base, et s'efface
 **Exigences :** FR-INFRA-COST-LOG-STORE ⚠, FR-INFRA-API-WRAPPER, NFR-OBS-COST-LOG, NFR-OBS-DBOPS-TRACK ⚠
@@ -481,7 +479,7 @@ Ces vérifications coûtent de quelques centimes à quelques dizaines de centime
 
 **⚠ Défaut connu :** tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie : si le geste 2 affiche « KD — » et « CPC — », le geste 3 fait monter le montant. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
-**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-R2 — Le plafond de dépense bloque l'appel avant de l'envoyer
 **Mode :** RÉEL (payant)

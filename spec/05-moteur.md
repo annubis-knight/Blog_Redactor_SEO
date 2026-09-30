@@ -158,7 +158,7 @@ Toutes les autres actions payantes partent d'un geste : « Découvrir », « Cou
 
 Seule l'analyse SERP du Lexique annonce son coût avant de partir (« ~$0.003 »). Pour les autres, la dépense se lit après coup dans la pile « Coûts API » (décision du 2026-09-29 : pas d'annonce généralisée).
 
-**Limite actuelle.** Ouvrir l'onglet Lexique, Capitaine verrouillé, relit en base l'extraction du lexique. Si elle manque mais que les pages concurrentes sont déjà lues, l'outil recalcule l'extraction sur place. Dès qu'une extraction est affichée sans recommandations enregistrées, l'analyse IA du lexique part seule, et elle est payante (détail : [Moteur — Lexique](11-lexique.md)).
+Ouvrir l'onglet Lexique, Capitaine verrouillé, relit en base l'extraction du lexique et l'avis de l'IA ; ce qui manque attend un clic (« Extraire le Lexique », « Analyser avec l'IA »). Choisir un article propose son mot-clé au Capitaine sans l'étudier : l'étude part sur « Analyser » (détail : [Moteur — Capitaine](08-capitaine.md), [Moteur — Lexique](11-lexique.md)).
 
 **Réutilisation avant paiement :**
 

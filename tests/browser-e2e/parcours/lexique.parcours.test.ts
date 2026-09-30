@@ -2,10 +2,11 @@
 /**
  * Parcours « 8 temps » — sous-phase Lexique (tech-spec-parcours-8-temps).
  *
- *   ① déclencheur   Capitaine verrouillé, SERP lue, puis « Extraire le Lexique »
+ *   ① déclencheur   Capitaine verrouillé, SERP lue, puis « Extraire le Lexique » ;
+ *                   l'analyse IA part sur « Analyser avec l'IA », jamais seule
  *   ② mémoire       les onglets par mot-clé source sont relus en base
- *   ③ service(s)    POST /serp/tfidf (calcul local sur les pages lues), puis le
- *                   flux IA ai-lexique-upfront
+ *   ③ service(s)    POST /serp/tfidf (calcul local sur les pages lues), puis, au
+ *                   clic, le flux IA ai-lexique-upfront
  *   ④ réponse       trois listes de termes, puis les recommandations de l'IA
  *   ⑤ mise en forme un terme n'a jamais de densité inventée ; une décision IA
  *                   illisible ne donne pas de badge
@@ -105,7 +106,19 @@ for (const level of LEVELS) {
         'un terme de la réponse doit être visible').toBeVisible({ timeout: 15000 })
     })
 
-    await test.step('④ + ⑦ — l’analyse IA pose ses badges, ou explique son échec', async () => {
+    await test.step('① + ④ + ⑦ — « Analyser avec l’IA » : l’analyse pose ses badges, ou explique son échec', async () => {
+      // FR-LEX-AI-PANEL / FR-MOT-NO-AUTO-ACTION : l'analyse IA ne part que sur
+      // un clic, jamais d'elle-même après l'extraction.
+      const panneauIa = page.locator('[data-testid="ai-panel-suggestion"]', { hasText: 'Analyse IA Lexique' }).first()
+      await expect(panneauIa, 'le panneau « Analyse IA Lexique » suit les termes extraits').toBeVisible({ timeout: 30000 })
+      await expect(page.locator('[data-testid="ia-loading"]'), 'aucune analyse IA partie seule').toHaveCount(0)
+      if (await panneauIa.locator('[data-testid="ai-panel-collapsed"]').count() > 0) {
+        await panneauIa.locator('[data-testid="ai-panel-toggle"]').click()
+      }
+      const lancer = panneauIa.locator('[data-testid="ai-trigger-primary"]')
+      await expect(lancer, 'le bouton « Analyser avec l’IA » est proposé').toBeEnabled({ timeout: 15000 })
+      await lancer.click()
+
       const panneau = page.locator(
         '[data-testid="ia-summary"], [data-testid="lexique-ai-stats"], [data-testid="ia-error"], [data-testid="ia-loading"]',
       )

@@ -20,7 +20,7 @@ Qui crée ou met à jour cette donnée :
 | Geste | Chemin | Écriture |
 |---|---|---|
 | « Envoyer au Radar » (Discovery) | `DiscoveryPanel` émet `send-to-radar` → [`useMoteurCrossTabState.handleSendToRadar`](../../src/composables/moteur/useMoteurCrossTabState.ts) → `radarStore.addKeywordsBatch` (non attendu) | `POST /api/articles/:id/radar-exploration/keywords` → `addKeywordsBatchToRadarExploration` |
-| Même envoi, second passage | [`RadarPanel.vue`](../../src/components/intent/RadarPanel.vue), watcher `injectedKeywords` (`immediate`) → `addKeywordsBatch` si `useDbFirst` | même route ; sans effet si déjà présents |
+| Même envoi, second passage | [`RadarPanel.vue`](../../src/components/intent/RadarPanel.vue), watcher `injectedKeywords` (`immediate`) → `addKeywordsBatch` si `useDbFirst` | repris par le store si le premier envoi est encore en cours (`batchesInFlight`, un seul `POST`) ; sinon même route, sans effet si déjà présents |
 | Saisie « Ajouter un mot-clé à scanner… » | `RadarPanel.handleManualAdd` → `radarStore.addKeyword` | `POST /api/articles/:id/radar-exploration/keyword` → `addKeywordToRadarExploration` |
 | Croix d'une puce | `RadarPanel.handleRemoveKeyword` → `radarStore.removeKeyword` | `DELETE /api/articles/:id/radar-exploration/keyword?keyword=` → `removeKeywordFromRadarExploration` |
 | Fin d'un scan réussi | [`useKeywordRadar`](../../src/composables/keyword/useResonanceScore.ts) `scan` → `_saveToExploration` | `POST /api/articles/:id/radar-exploration` → `saveRadarExploration` **réécrit** la liste avec celle qui vient d'être scannée (le paramètre `keywords` de `scan`, en mode `workflow` la liste du store) |

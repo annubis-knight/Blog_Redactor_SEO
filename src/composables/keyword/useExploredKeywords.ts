@@ -1,3 +1,13 @@
+/**
+ * AUTHORITY: PostgreSQL `captain_explorations` (écrite côté serveur par
+ *            POST /keywords/:kw/scan quand `articleId` est fourni) et
+ *            `keyword_metrics` (mesures partagées entre articles).
+ * READS FROM: POST /keywords/:kw/scan (étude d'un candidat, de ses racines) ;
+ *             historique relu par CaptainPanel (`restoreFromHistory`, sans appel).
+ * WRITES TO: rien directement : l'étude enregistre l'exploration côté serveur.
+ * CONSUMERS: CaptainPanel.vue (liste des candidats, racines, avis IA).
+ * RELATED FR: FR-CAP-INPUT, FR-CAP-SCAN, FR-CAP-ROOTS, FR-MOT-NO-AUTO-ACTION.
+ */
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { extractRoots } from '@/composables/keyword/useCapitaineScan'
@@ -93,6 +103,15 @@ export function hydrateCardFromValidation(keyword: string, response: ScanRespons
   return out
 }
 
+/**
+ * Une variante racine est « mesurée » quand son étude a rendu ses indicateurs.
+ * Les racines relues de la base arrivent sans indicateurs (liste vide) : il
+ * faut les étudier avant de les afficher (FR-CAP-ROOTS).
+ */
+export function isVariantMeasured(variant: KeywordRootVariant): boolean {
+  return variant.validation.kpis.length > 0
+}
+
 function createEntry(card: RadarCard): ExploredKeywordEntry {
   const wordCount = card.keyword.trim().split(/\s+/).length
   return {
@@ -113,6 +132,34 @@ export function useExploredKeywords() {
   const entries = ref<ExploredKeywordEntry[]>([])
   const currentIndex = ref(0)
   let loadVersion = 0
+
+  /**
+   * Études (`POST /keywords/:kw/scan`) en cours, par mot-clé normalisé. Un
+   * double-clic sur « Analyser » envoyait deux études du même mot-clé, payées
+   * deux fois en réel si la première n'avait pas encore rempli le cache
+   * (recette 2026-09-30, Capitaine point 3) : la seconde demande est ignorée.
+   */
+  const scansInFlight = new Set<string>()
+  const normalizeKeyword = (keyword: string) => keyword.trim().toLowerCase()
+
+  function isScanning(keyword: string): boolean {
+    return scansInFlight.has(normalizeKeyword(keyword))
+  }
+
+  /** Une étude, marquée « en cours » jusqu'à sa réponse (réussie ou non). */
+  async function scanOnce(keyword: string, body: Record<string, unknown>): Promise<ScanResponse> {
+    const key = normalizeKeyword(keyword)
+    scansInFlight.add(key)
+    try {
+      return await apiPost<ScanResponse>(
+        `/keywords/${encodeURIComponent(keyword)}/scan`,
+        body,
+        { contract: captainScanContract },
+      )
+    } finally {
+      scansInFlight.delete(key)
+    }
+  }
 
   const isActive = computed(() => entries.value.length > 0)
   const count = computed(() => entries.value.length)
@@ -151,10 +198,9 @@ export function useExploredKeywords() {
     await Promise.allSettled(
       roots.map(async (rootKw) => {
         try {
-          const rootResponse = await apiPost<ScanResponse>(
-            `/keywords/${encodeURIComponent(rootKw)}/scan`,
+          const rootResponse = await scanOnce(
+            rootKw,
             { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
-            { contract: captainScanContract },
           )
           if (thisVersion !== loadVersion) return
           const rootCard = hydrateCardFromValidation(rootKw, rootResponse)
@@ -196,10 +242,9 @@ export function useExploredKeywords() {
     await Promise.allSettled(
       dedupedCards.map(async (card, i) => {
         try {
-          const response = await apiPost<ScanResponse>(
-            `/keywords/${encodeURIComponent(card.keyword)}/scan`,
+          const response = await scanOnce(
+            card.keyword,
             { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
-            { contract: captainScanContract },
           )
           if (thisVersion !== loadVersion) return
           patch(i, { validation: response, originalCard: card, isLoading: false })
@@ -241,8 +286,12 @@ export function useExploredKeywords() {
 
   // Add single keyword to carousel and validate, with deduplication by keyword
   async function addEntry(keyword: string, level: ArticleLevel, articleTitle?: string, articleId?: number, painPoint?: string) {
+    const normalizedKeyword = normalizeKeyword(keyword)
+    if (scansInFlight.has(normalizedKeyword)) {
+      log.debug('[useExploredKeywords] addEntry ignoré : étude déjà en cours pour ce mot-clé', { keyword })
+      return
+    }
     const thisVersion = ++loadVersion
-    const normalizedKeyword = keyword.trim().toLowerCase()
 
     const existingIndex = entries.value.findIndex(
       e => e.originalCard.keyword.trim().toLowerCase() === normalizedKeyword,
@@ -255,10 +304,9 @@ export function useExploredKeywords() {
       currentIndex.value = existingIndex
       // Re-scan pour rafraîchir les scores (le caller s'attend à une validation fraîche).
       try {
-        const response = await apiPost<ScanResponse>(
-          `/keywords/${encodeURIComponent(keyword)}/scan`,
+        const response = await scanOnce(
+          keyword,
           { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
-          { contract: captainScanContract },
         )
         if (thisVersion !== loadVersion) return
         const hydratedCard = hydrateCardFromValidation(keyword, response)
@@ -288,10 +336,9 @@ export function useExploredKeywords() {
 
     // Validate
     try {
-      const response = await apiPost<ScanResponse>(
-        `/keywords/${encodeURIComponent(keyword)}/scan`,
+      const response = await scanOnce(
+        keyword,
         { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
-        { contract: captainScanContract },
       )
       if (thisVersion !== loadVersion) return
       const hydratedCard = hydrateCardFromValidation(keyword, response)
@@ -324,8 +371,8 @@ export function useExploredKeywords() {
     const entry = entries.value[entryIndex]
     if (!entry) throw new Error('Entry introuvable')
 
-    if (entry.rootVariants.has(newRootKeyword)) {
-      const existing = entry.rootVariants.get(newRootKeyword)!
+    const existing = entry.rootVariants.get(newRootKeyword)
+    if (existing && isVariantMeasured(existing)) {
       entries.value[entryIndex] = {
         ...entry,
         card: existing.card,
@@ -334,6 +381,10 @@ export function useExploredKeywords() {
       }
       return
     }
+    // Racine relue de la base sans ses mesures (FR-CAP-ROOTS) : on l'étudie
+    // comme une combinaison nouvelle. L'afficher telle quelle montrait « — »
+    // partout sans rien dire, et un échec d'étude restait muet (recette
+    // 2026-09-30, CAP-20 geste 4).
 
     const pending = new Set(entry.pendingVariants)
     pending.add(newRootKeyword)
@@ -342,10 +393,9 @@ export function useExploredKeywords() {
     const thisVersion = loadVersion
 
     try {
-      const response = await apiPost<ScanResponse>(
-        `/keywords/${encodeURIComponent(newRootKeyword)}/scan`,
+      const response = await scanOnce(
+        newRootKeyword,
         { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
-        { contract: captainScanContract },
       )
       if (thisVersion !== loadVersion) return
 
@@ -486,6 +536,7 @@ export function useExploredKeywords() {
     count,
     loadCards,
     addEntry,
+    isScanning,
     addRootVariantToEntry,
     restoreFromHistory,
     next,

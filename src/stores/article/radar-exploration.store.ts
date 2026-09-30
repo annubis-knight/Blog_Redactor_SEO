@@ -11,6 +11,7 @@
  *   - useKeywordRadar (composable scan)
  *   - KeywordAssistPanel (Capitaine/Lieutenants/Lexique — Sprint D)
  * RELATED FR:
+ *   - FR-DIS-SEND-TO-RADAR (un envoi identique en cours n'est pas renvoyé)
  *   - FR-RAD-DB-FIRST (source de vérité unique radar_explorations)
  *   - FR-RAD-MANUAL-ADD (input texte unitaire)
  *   - FR-MOT-BASKET-DEPRECATED (remplace useMoteurBasketStore pour les keywords Radar)
@@ -120,7 +121,28 @@ export const useRadarExplorationStore = defineStore('radar-exploration', () => {
     }
   }
 
-  async function addKeywordsBatch(keywords: Array<{ keyword: string; reasoning?: string }>): Promise<number> {
+  /**
+   * Envois en cours, par article + liste de mots-clés. « Envoyer au Radar → »
+   * écrit la liste deux fois dans la même seconde (MoteurView, puis le watcher
+   * `injectedKeywords` du Radar) : la seconde demande identique reprend la
+   * première au lieu de repartir (recette 2026-09-30, 01-T7). Un nouvel envoi
+   * après la réponse repart normalement.
+   */
+  const batchesInFlight = new Map<string, Promise<number>>()
+
+  function addKeywordsBatch(keywords: Array<{ keyword: string; reasoning?: string }>): Promise<number> {
+    const key = `${articleId.value}|${keywords.map(k => k.keyword.trim().toLowerCase()).sort().join('|')}`
+    const pending = batchesInFlight.get(key)
+    if (pending) {
+      log.debug('[radar-exploration] addKeywordsBatch — envoi identique déjà en cours, repris', { count: keywords.length })
+      return pending
+    }
+    const run = sendKeywordsBatch(keywords).finally(() => { batchesInFlight.delete(key) })
+    batchesInFlight.set(key, run)
+    return run
+  }
+
+  async function sendKeywordsBatch(keywords: Array<{ keyword: string; reasoning?: string }>): Promise<number> {
     if (articleId.value === null) {
       // BUG diagnostic 2026-05-11 : silent fail historique qui a fait perdre des
       // keywords envoyés depuis Discovery → Radar quand le store n'était pas

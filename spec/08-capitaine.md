@@ -34,7 +34,7 @@ Chaque candidat reçoit deux notes sur 100, qui répondent à deux questions dif
 *Exigences : FR-CAP-PERSIST, FR-CAP-SCAN, FR-CAP-PAA-JUDGE-HAIKU*
 
 - À la sélection d'un article, l'outil relit ses candidats en base, avec leurs indicateurs et leur Score Pertinence recalculé.
-- Si l'article n'a encore aucun candidat, l'outil étudie d'office le premier mot-clé suggéré par la stratégie pour ce titre, ou à défaut le mot-clé de l'article. Le champ de saisie est pré-rempli avec ce mot-clé (ou le Capitaine déjà verrouillé).
+- Si l'article n'a encore aucun candidat, le champ de saisie est pré-rempli avec le premier mot-clé suggéré par la stratégie pour ce titre, ou à défaut le mot-clé de l'article (ou le Capitaine déjà verrouillé). Rien n'est étudié avant ton clic sur « Analyser » (décision du 2026-09-29) : la liste reste vide.
 - En entrant dans l'onglet, l'outil lance le jugement IA des questions PAA de l'article (voir plus bas), une fois par article et par session.
 - Liste vide : « Aucun mot-clé à valider pour cet article. »
 
@@ -142,13 +142,13 @@ Contenu, de haut en bas :
 2. « Aller à la carte verrouillée », quand un autre candidat est verrouillé : fait défiler la liste jusqu'à lui.
 3. **KPIs marché** en lecture seule : Volume (« n rech/m »), Difficulté, CPC (« n,nn € »), Intent, PAA (« n questions »), Autocomplete (« n matches ») ; « — » si absent. Note : « Ces indicateurs alimentent le Score KPI affiché dans l'onglet Radar. »
    - Limites : Intent affiche « — » pour tout candidat étudié hors Radar. « Autocomplete » montre le nombre de suggestions pour une carte venue du Radar, et la position du mot-clé pour un candidat étudié au Capitaine.
-4. **Racines** : pour un mot-clé d'au moins 3 mots dont le volume n'est pas vert, jusqu'à 5 racines (troncatures depuis la fin, au moins 2 mots significatifs) sont étudiées d'office. Chacune montre son Score Pertinence dans un petit anneau ; « Moyenne n/100 » les résume (vert ≥ 65, orange ≥ 40). Un clic sur une racine l'affiche à la place du mot-clé. Une racine en échec est marquée « (échec) » ; sans racine : « Aucune racine ».
+4. **Racines** : pour un mot-clé d'au moins 3 mots dont le volume n'est pas vert, jusqu'à 5 racines (troncatures depuis la fin, au moins 2 mots significatifs) sont étudiées d'office. Chacune montre son Score Pertinence dans un petit anneau ; « Moyenne n/100 » les résume (vert ≥ 65, orange ≥ 40). Un clic sur une racine l'affiche à la place du mot-clé. Une racine relue de la base sans ses mesures est étudiée à ce clic ; si l'étude échoue : « Impossible de valider "…" », et la carte garde son mot-clé. Une racine en échec est marquée « (échec) » ; sans racine : « Aucune racine ».
 5. **« Avis expert IA »** : bannière de verdict, puis l'avis rédigé en trois parties (potentiel éditorial, opportunités et risques, recommandation), affiché au fil de la génération. « Régénérer » demande confirmation : « Régénérer l'avis expert IA ? Cela consommera un appel Claude. »
 
 Fonctionnement de l'avis :
-- Il est demandé d'office pour **chaque** candidat dès que son étude aboutit, pas seulement pour le candidat sélectionné.
+- Il est demandé d'office à la fin d'une étude que tu as lancée (« Analyser », Entrée, envoi depuis le Radar, recalcul de la Pertinence), une seule fois par candidat. Choisir un article, rouvrir l'onglet ou recharger la page ne le demande jamais.
 - Il reçoit le mot-clé, le niveau, le point de douleur et les deux scores de l'étude. La stratégie du cocon ne lui est pas transmise.
-- Il n'est pas enregistré : chaque réouverture de l'article le redemande pour chaque candidat.
+- Il est enregistré avec le candidat : à la réouverture, il est réaffiché sans nouvel appel. Un candidat sans avis (étude plus ancienne, avis en échec) affiche « Analyser avec l'IA » : l'avis part sur ce clic, jamais seul.
 
 ## Verrouiller le Capitaine
 *Exigences : FR-CAP-LOCK-RADIO, FR-CAP-LOCK-GATE, FR-CAP-CHECK, FR-CAP-LOCK-INTEGRITY*
