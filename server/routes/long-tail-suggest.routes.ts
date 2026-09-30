@@ -42,13 +42,15 @@ router.post('/articles/:id/radar-exploration/long-tail', async (req, res) => {
       return
     }
 
-    const { suggestions, fromCache } = await generateLongTailSuggestions({
+    const { suggestions, fromCache, usage } = await generateLongTailSuggestions({
       ...inputParse.data,
       articleId,
     })
 
     // Frontière serveur : suggestions dans la forme promise au panneau longue traîne.
-    res.json({ data: parseContract(longTailSuggestionsContract, { suggestions, fromCache }, 'server') })
+    // `usage` (absent sur cache) : `apiPost` l'inscrit une fois dans la pile « Coûts API »
+    // (FR-INFRA-COST-LOG-STORE).
+    res.json({ data: { ...parseContract(longTailSuggestionsContract, { suggestions, fromCache }, 'server'), usage } })
   } catch (err) {
     if (err instanceof LongTailSuggestionsValidationError) {
       log.warn(`POST long-tail — AI invalid output: ${err.message}`)

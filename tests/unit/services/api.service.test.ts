@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { apiGet, apiPost, apiStream } from '../../../src/services/api.service'
+import { useCostLogStore } from '../../../src/stores/ui/cost-log.store'
 
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
@@ -179,6 +180,23 @@ describe('api.service — apiStream (FR-INFRA-API-STREAM)', () => {
     const out = await apiStream('/generate/action', {})
     expect(out.aborted).toBe(true)
     expect(out.errorMessage).toBeNull()
+  })
+
+  // FR-INFRA-COST-LOG-STORE — une écriture faite pendant un flux (propositions
+  // de lieutenants, tri du Lexique) arrive dans la pile comme celle d'une réponse JSON.
+  it('FR-INFRA-COST-LOG-STORE — les écritures en base jointes au « done » arrivent dans la pile, le coût une fois', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      body: makeSseStream([
+        'event: done\ndata: {"outline":{},"usage":{"model":"mock-provider-v1","inputTokens":10,"outputTokens":5,"estimatedCost":0},"dbOps":[{"operation":"upsert","table":"lieutenant_explorations","rowCount":6,"ms":4}]}\n\n',
+      ]),
+    })
+    await apiStream('/keywords/seo/propose-lieutenants', {})
+    const entries = useCostLogStore().entries
+    expect(entries.filter(e => e.level === 'db')).toEqual([
+      expect.objectContaining({ label: 'Proposition lieutenants', operation: 'upsert', table: 'lieutenant_explorations', rowCount: 6 }),
+    ])
+    expect(entries.filter(e => e.level === 'api')).toHaveLength(1)
   })
 
   it('NFR-OBS-KNOWN-ERRORS — surface DATAFORSEO_QUOTA_EXCEEDED en toast', async () => {

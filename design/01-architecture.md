@@ -80,7 +80,7 @@ Versions résolues du verrou (`package-lock.json`) : vue 3.5.29, pinia 3.0.4, vu
 | `server/prompts/` | 39 consignes IA `.md` + 11 actions de l'éditeur dans `actions/`. |
 | `server/db/` | `client.ts` (pool `pg`), `cache-helpers.ts`, `schema.sql` (photo), `bootstrap.sql` (schéma rejouable), `changes/` (changements datés), `migrations/_archive/` (historique). |
 | `server/utils/` | `prompt-loader.ts`, `error-handler.ts`, `api-error.ts`, `logger.ts`, `stream-usage.ts`, `ai-json-parser.ts`, `db-telemetry.ts`, `json-storage.ts`. |
-| `server/middleware/` | `db-telemetry.middleware.ts` : testé, **non monté** par `server/index.ts`. |
+| `server/middleware/` | `db-telemetry.middleware.ts` : monté par `server/index.ts` sur `/api` ; joint les écritures en base de chaque requête à sa réponse (`dbOps`). |
 | [`../shared/`](../shared/) | Le langage commun, importé par l'écran, le serveur et le robot (cf. ci-dessous). |
 | [`../scripts/`](../scripts/) | `auto-article/` (le robot), outils de base (`db-*.ts`), `verify-content.ts`, `prompts-reference.ts`, `test-snapshot.ts` / `test-check.ts`, `kill-port.mjs`, `preview-article.mjs` ; le reste est de la maintenance ponctuelle. |
 | [`../tests/`](../tests/) | Tests hors du code source (cf. [Outillage](07-tests-et-outillage.md)). |
@@ -121,10 +121,12 @@ Alias : `@` → `src/`, `@shared` → `shared/` (`vite.config.ts`).
 
 ### Réponses de l'API
 
-- **Succès :** `{ data: T }`. Exemple : `GET /api/health` → `{ data: { status: 'ok' } }`. Une route
-  qui écrit peut joindre `dbOps` (à la racine ou dans `data`) : les écritures mesurées par
-  `measureDb` ([`../server/utils/db-telemetry.ts`](../server/utils/db-telemetry.ts)), affichées
-  dans la pile d'activité de l'écran. Un `usage` (jetons, coût IA) y est affiché de même.
+- **Succès :** `{ data: T }`. Exemple : `GET /api/health` → `{ data: { status: 'ok' } }`. Une réponse
+  qui a écrit en base porte `dbOps` à la racine : les écritures de la requête, jointes par
+  [`../server/middleware/db-telemetry.middleware.ts`](../server/middleware/db-telemetry.middleware.ts),
+  après celles qu'une route déclare elle-même avec `measureDb`
+  ([`../server/utils/db-telemetry.ts`](../server/utils/db-telemetry.ts)) ; affichées dans la pile
+  d'activité de l'écran. Un `usage` (jetons, coût IA) y est affiché de même.
 - **Erreur :** `{ error: { code, message, details? } }`. Codes transverses, posés par
   [`../server/utils/error-handler.ts`](../server/utils/error-handler.ts) — `errorHandler` et
   `respondWithError` ([`api-error.ts`](../server/utils/api-error.ts)) :

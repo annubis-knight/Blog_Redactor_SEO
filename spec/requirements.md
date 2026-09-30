@@ -2005,10 +2005,10 @@ Au démarrage, le serveur doit tester la connexion à la base et dire clairement
 - Service arrêté, mot de passe refusé ou base absente : le journal donne une piste de correction adaptée.
 
 ### FR-INFRA-COST-LOG-STORE — Pile d'activité de la session
-**Statut :** non tenue (seules les lectures et écritures des mots-clés d'article et des explorations Capitaine / Lieutenants remontent dans la pile ; les autres opérations en base n'y apparaissent pas. Et le coût de la génération des longues traînes et du jugement des questions PAA ne remonte pas à l'écran)
+**Statut :** active
 Une pile d'activité, visible dans l'interface, doit accumuler les appels IA (modèle, jetons, coût estimé), les opérations en base (type, table, lignes, durée) et les messages d'erreur connus ; l'utilisateur voit le coût total de sa session et peut vider la pile.
-- Chaque appel IA, diffusé ou non, ajoute sa ligne de coût, une seule : un appel n'est jamais compté deux fois.
-- Chaque écriture significative en base ajoute sa ligne.
+- Chaque action qui fait appel à l'IA, diffusée ou non, ajoute sa ligne de coût, une seule, dont le libellé dit l'action : quand l'action fait plusieurs appels (un par candidat, une reprise), leurs coûts y sont additionnés ; un appel n'est jamais compté deux fois. Une réponse servie par la mémoire, sans appel, n'ajoute pas de ligne de coût.
+- Chaque écriture significative en base ajoute sa ligne. Significative : toute écriture (ajout, mise à jour, remplacement, suppression) faite pour traiter une action de l'écran, qu'elle réponde d'un bloc ou au fil de l'eau. Une ligne par table et par type d'écriture, avec les lignes touchées et la durée additionnées. Les lectures n'en ajoutent pas (sauf le chargement des mots-clés et des explorations d'un article), ni les nettoyages de fond du serveur.
 - Le coût cumulé est affiché ; la pile se vide d'un clic et se vide au rechargement de la page.
 
 ### FR-INFRA-PAA-EXPLORATIONS — Les questions PAA testées sont gardées par article
@@ -2475,7 +2475,7 @@ Une pile d'activité toujours accessible doit montrer ce que l'outil fait en arr
 - Elle ne contient pas le contenu des requêtes.
 
 ### NFR-OBS-DBOPS-TRACK — Opérations en base visibles par requête
-**Statut :** non tenue (seules quelques routes des explorations Capitaine et Lieutenants rapportent leurs opérations ; aucun seuil d'alerte)
+**Statut :** non tenue (les réponses ne rapportent que leurs écritures en base, pas leurs lectures, sauf celles des mots-clés et des explorations d'un article ; aucun seuil d'alerte)
 Chaque réponse du serveur doit rapporter les opérations faites en base pour la traiter, afin de repérer une route qui en ferait trop.
 - Toute réponse rapporte ses opérations en base (type, table, lignes, durée).
 - La pile d'activité les affiche.

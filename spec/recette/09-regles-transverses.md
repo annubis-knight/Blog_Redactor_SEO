@@ -56,7 +56,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 > Si ton fichier d'environnement règle déjà le mode simulé (IA simulée ou bac à sable), le serveur redémarre en MOCK de toute façon, et reste « MOCK » / « SANDBOX » pendant toute la relance.
 
 ### INFRA-3 — La pile « Coûts API » compte l'IA et la base, et s'efface
-**Exigences :** FR-INFRA-COST-LOG-STORE ⚠, FR-INFRA-API-WRAPPER, NFR-OBS-COST-LOG, NFR-OBS-DBOPS-TRACK ⚠
+**Exigences :** FR-INFRA-COST-LOG-STORE, FR-INFRA-API-WRAPPER, NFR-OBS-COST-LOG, NFR-OBS-DBOPS-TRACK ⚠
 
 **Gestes :**
 1. Déplie la pile et clique **« Effacer »**.
@@ -80,9 +80,9 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 
 > Les erreurs connues (quota DataForSEO, quota de l'IA, IA surchargée) ajouteraient une ligne rouge avec la marche à suivre. Elles ne se provoquent pas en recette.
 
-**⚠ Défaut connu :** seules les lectures et écritures des mots-clés d'article et des explorations Capitaine / Lieutenants remontent dans la pile ; les autres opérations en base n'y apparaissent pas (valider un sommaire n'ajoute aucune ligne). Et le coût de la génération des longues traînes et du jugement des questions PAA ne remonte pas à l'écran (voir INFRA-10). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+> Ailleurs dans la recette : une action qui écrit en base ajoute ses lignes violettes (« insert », « update », « upsert » ou « delete », une par table), vérifiées en INFRA-17 ; au Radar, « ✨ Suggérer des combinaisons » (RAD-12) ajoute une ligne de coût « Longues traînes du Radar », sauf si la même liste revient de la mémoire.
 
-**⚠ Défaut connu :** seules quelques actions des explorations Capitaine et Lieutenants rapportent leurs opérations en base ; aucun seuil ne signale une action trop gourmande. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** les actions ne rapportent que leurs écritures en base, pas leurs lectures (sauf le chargement des mots-clés et des explorations d'un article) ; aucun seuil ne signale une action trop gourmande. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-4 — La stratégie du cocon est gardée, la même pour tous ses articles
 **Exigences :** FR-INFRA-COCOON-STRATEGIES ⚠
@@ -210,7 +210,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 **⚠ Défaut connu :** le premier jet n'a pas de bouton d'arrêt (son bouton affiche « Génération en cours... » et reste inactif) ; un arrêt côté écran ne coupe pas la génération côté serveur, qui continue et se facture. Ne relance pas le premier jet du pilier pour le voir : il remplacerait son texte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-10 — Une découverte de mots-clés se reprend sans être refaite
-**Exigences :** FR-INFRA-KEYWORD-DISCOVERIES, FR-INFRA-COST-LOG-STORE ⚠
+**Exigences :** FR-INFRA-KEYWORD-DISCOVERIES, FR-INFRA-COST-LOG-STORE
 
 **Gestes :**
 1. Moteur, article enfant, onglet « Discovery ». Dans « Mot-clé racine », tape le mot-clé de l'enfant, puis **« Découvrir »**. Attends que les sections se remplissent.
@@ -230,8 +230,6 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 - le bandeau manque après le rechargement ;
 - « Charger » relance une recherche (sections en attente, nouvelles lignes d'IA) ;
 - le bandeau revient après « Rafraîchir ».
-
-**⚠ Défaut connu :** le coût de la génération des longues traînes et du jugement des questions PAA ne remonte pas à l'écran : au geste 5, aucune ligne n'apparaît dans la pile. Et seules les opérations en base des mots-clés d'article et des explorations Capitaine / Lieutenants y apparaissent. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-11 — Le capitaine de l'enfant garde ses questions PAA
 **Exigences :** FR-INFRA-PAA-EXPLORATIONS
@@ -366,23 +364,24 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 **⚠ Défaut connu :** « Tout réinitialiser » n'archive les lieutenants qu'à l'écran (vérifié en INFRA-18). Et un lieutenant ajouté depuis le panneau d'aide n'est enregistré qu'une fois coché. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-17 — Une seule liste d'étapes, lue partout ; retirer le capitaine retire la structure
-**Exigences :** FR-INFRA-WORKFLOW-CHECKS-CONSTANTS ⚠, NFR-INT-COMPLETED-CHECKS-SSOT
+**Exigences :** FR-INFRA-WORKFLOW-CHECKS-CONSTANTS ⚠, NFR-INT-COMPLETED-CHECKS-SSOT, FR-INFRA-COST-LOG-STORE
 
 **Gestes :**
-1. Onglet « Structure » de l'enfant : **« Générer la structure »**, puis **« Valider la structure »**. Si une alarme s'ouvre, lis-la et réponds-y.
+1. Onglet « Structure » de l'enfant : **« Générer la structure »**. Déplie la pile « Coûts API » et clique **« Effacer »**, puis **« Valider la structure »**. Si une alarme s'ouvre, lis-la et réponds-y.
 2. Survole les pastilles de l'enfant dans « Articles suggérés ». Ouvre l'onglet « Finalisation ».
 3. Onglet « Capitaine » : clique le cadenas de la carte verrouillée (infobulle « Déverrouiller »). Dans « Déverrouiller le Capitaine ? », clique **« Les garder »**.
 4. Regarde de nouveau les pastilles, l'onglet « Structure » et l'onglet « Finalisation ». Recharge la page et regarde encore.
 5. Survole les pastilles du pilier.
 
 **Tu dois voir :**
-- après le geste 1 : « ✅ Structure validée : elle sert de sommaire à la rédaction. » ; les pastilles « Capitaine », « Lieutenants » et « Structure » pleines ; dans « Finalisation », « Étapes restantes : Lexique à valider » ;
+- après le geste 1 : « ✅ Structure validée : elle sert de sommaire à la rédaction. » ; les pastilles « Capitaine », « Lieutenants » et « Structure » pleines ; dans « Finalisation », « Étapes restantes : Lexique à valider » ; dans la pile, au moins une ligne violette d'écriture : « update » ou « upsert », le nom de la table écrite, le nombre de lignes et une durée ;
 - après le geste 3 : les pastilles « Capitaine » **et** « Structure » vides, « Lieutenants » toujours pleine ; plus de « ✅ Structure validée » ; dans « Finalisation », « Étapes restantes : Capitaine à verrouiller, Structure à valider, Lexique à valider » ;
 - le même état après le rechargement ;
 - le pilier n'a que six pastilles (deux pour « Explorer », quatre pour « Valider »), bien qu'il soit « Rédigé » dans l'arbre du Cerveau.
 
 **C'est un bug si :**
 - la structure reste validée après le déverrouillage du capitaine ;
+- valider la structure n'ajoute aucune ligne violette à la pile ;
 - les pastilles, l'onglet « Structure » et « Finalisation » se contredisent ;
 - le rechargement change l'état.
 

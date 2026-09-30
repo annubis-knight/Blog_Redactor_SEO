@@ -32,6 +32,14 @@ export default mergeConfig(
         // Portes de qualité côté serveur, I/O simulées (recette du 2026-09-30) :
         // dérogation par point, « Google ne suggère pas », pistes des lieutenants.
         'tests/unit/services/gate.service.test.ts',
+        // Pile d'activité (FR-INFRA-COST-LOG-STORE, lot 6) : écritures en base
+        // de toutes les routes, coût des longues traînes et du jugement PAA.
+        'tests/unit/utils/db-telemetry-middleware.test.ts',
+        'tests/unit/routes/ai-cost-usage.routes.test.ts',
+        'tests/unit/services/long-tail-suggest.service.test.ts',
+        'tests/unit/services/captain-paa-judge.service.test.ts',
+        'tests/unit/services/api.service.test.ts',
+        'tests/unit/composables/cost-log-long-tail-paa-judge.test.ts',
         // Réponses simulées (NFR-COST-AI-MOCK) : consigne réelle, bon choix de
         // réponse, forme acceptée par le contrat ou le parseur consommateur.
         'tests/unit/services/mock-captain-ai-panel.test.ts',

@@ -24,8 +24,21 @@ vi.mock('../../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
+// Base et score de pertinence simulés pour runPaaJudgmentsForArticle (FR-INFRA-COST-LOG-STORE).
+const { mockPoolQuery, mockComputeRelevance } = vi.hoisted(() => ({
+  mockPoolQuery: vi.fn(),
+  mockComputeRelevance: vi.fn(),
+}))
+vi.mock('../../../server/db/client.js', () => ({
+  pool: { query: (...args: unknown[]) => mockPoolQuery(...args) },
+}))
+vi.mock('../../../server/services/keyword/captain-relevance.service.js', () => ({
+  computeRelevanceForCaptainTab: (...args: unknown[]) => mockComputeRelevance(...args),
+}))
+
 import {
   judgePaaForKeyword,
+  runPaaJudgmentsForArticle,
   HaikuJudgmentError,
   PAA_JUDGE_TOOL,
 } from '../../../server/services/keyword/captain-paa-judge.service'
@@ -212,5 +225,72 @@ describe('moteur:captain-paa-judge — la réponse brute de Haiku passe un contr
   it('une réponse sans score global emprunte le chemin « Haiku indisponible »', async () => {
     mockClassifyWithTool.mockResolvedValue({ result: { paaJudgments: [], summary: 'x' }, usage })
     await expect(judgePaaForKeyword(makeInput())).rejects.toThrow(/Haiku PAA judgment failed/)
+  })
+})
+
+// FR-INFRA-COST-LOG-STORE — recette 2026-09-30 : le coût du jugement n'était
+// écrit que dans le journal du serveur ; la pile « Coûts API » ne le voyait pas.
+// Une ouverture du Capitaine = une demande = une ligne, coûts des candidats additionnés.
+describe('FR-INFRA-COST-LOG-STORE — runPaaJudgmentsForArticle rend le coût de ses appels', () => {
+  const usageA = { model: 'claude-haiku-4-5-20251001', inputTokens: 800, outputTokens: 250, cacheReadTokens: 0, cacheCreationTokens: 0, estimatedCost: 0.002 }
+  const usageB = { model: 'claude-haiku-4-5-20251001', inputTokens: 600, outputTokens: 150, cacheReadTokens: 10, cacheCreationTokens: 0, estimatedCost: 0.0014 }
+
+  function givenArticle(painPoint: string) {
+    mockPoolQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM articles')) return { rows: [{ titre: 'Titre', pain_point: painPoint, pain_intent_expected: null }] }
+      if (sql.includes('FROM captain_explorations')) return { rows: [{ keyword: 'kwA', root_keywords: [] }, { keyword: 'kwB', root_keywords: [] }] }
+      if (sql.includes('FROM paa_explorations')) {
+        return { rows: [
+          { keyword: 'kwA', question: 'Question A ?', answer: 'a' },
+          { keyword: 'kwB', question: 'Question B ?', answer: 'b' },
+        ] }
+      }
+      throw new Error(`requête inattendue : ${sql}`)
+    })
+  }
+
+  beforeEach(() => {
+    mockPoolQuery.mockReset()
+    mockComputeRelevance.mockReset()
+    mockComputeRelevance.mockResolvedValue({ cards: new Map() })
+  })
+
+  it('additionne le coût des jugements de tous les candidats en un seul usage', async () => {
+    givenArticle('Convertir vraiment les visiteurs en clients.')
+    mockClassifyWithTool.mockImplementation(async (_system: string, user: string) => (user.includes('kwB')
+      ? { result: makeBlock(['partiel']), usage: usageB }
+      : { result: makeBlock(['pertinent']), usage: usageA }))
+
+    const out = await runPaaJudgmentsForArticle(42)
+
+    expect(out.usage).toEqual({
+      model: 'claude-haiku-4-5-20251001',
+      inputTokens: 1400,
+      outputTokens: 400,
+      cacheReadTokens: 10,
+      cacheCreationTokens: 0,
+      estimatedCost: expect.closeTo(0.0034, 10),
+    })
+  })
+
+  it('un jugement payé mais illisible compte quand même dans le coût', async () => {
+    givenArticle('Convertir vraiment les visiteurs en clients.')
+    mockClassifyWithTool.mockImplementation(async (_system: string, user: string) => (user.includes('kwB')
+      ? { result: { paaJudgments: [], summary: 'x' }, usage: usageB }
+      : { result: makeBlock(['pertinent']), usage: usageA }))
+
+    const out = await runPaaJudgmentsForArticle(42)
+
+    expect(Object.keys(out.judgments)).toEqual(['kwA'])
+    expect(out.usage?.inputTokens).toBe(1400)
+  })
+
+  it('sans douleur, aucun appel à l’IA et aucun coût', async () => {
+    givenArticle('')
+
+    const out = await runPaaJudgmentsForArticle(42)
+
+    expect(mockClassifyWithTool).not.toHaveBeenCalled()
+    expect(out.usage).toBeNull()
   })
 })

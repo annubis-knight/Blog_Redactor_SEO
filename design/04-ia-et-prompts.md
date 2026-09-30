@@ -306,12 +306,10 @@ Détail : [Intégrations externes](18-integrations.md#retour-du-coût-et-des-err
 Une recherche web ajoute beaucoup de jetons d'entrée (le texte des pages trouvées) : la passe « sources » est
 la plus chère. Les frais propres à la recherche ne sont pas comptés.
 
-**Limite connue.** Deux appels ne remontent pas leur coût, contrairement à `FR-INFRA-COST-LOG-STORE` et
-`FR-EXT-AI-MULTI-PROVIDER` (« chaque appel IA, diffusé ou non, ajoute sa ligne de coût ») :
-
-- les longues traînes : `long-tail-suggest.service.ts` ne garde pas l'`usage` de `classifyWithTool` ;
-- le jugement des PAA : `captain-paa-judge.service.ts` écrit le coût dans le journal du serveur, pas dans
-  la réponse.
+Une action qui fait plusieurs appels rend un seul `usage`, additionné : le jugement des PAA
+(`captain-paa-judge.service.ts`, un appel par candidat) comme la reprise de la relecture. Une réponse servie
+par un cache (longues traînes : `long-tail-suggest.service.ts`) ne rend pas d'`usage` : rien n'a été payé.
+Avant le lot 6 (recette du 2026-09-30), ces deux appels ne remontaient pas leur coût.
 
 ### Régler les modèles
 

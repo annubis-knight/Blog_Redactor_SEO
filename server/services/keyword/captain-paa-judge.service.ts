@@ -6,9 +6,11 @@
  * WRITES TO: rien (read-only, retour HTTP uniquement)
  * CONSUMERS: server/services/keyword/captain-relevance.service.ts (signal 2),
  *            server/services/infra/data.service.ts (orchestration parallèle),
- *            src/components/intent/RadarKeywordCard.vue (badge + "PAA pts" mode capitaine)
+ *            src/components/intent/RadarKeywordCard.vue (badge + "PAA pts" mode capitaine),
+ *            pile « Coûts API » (`usage` additionné des appels, via la réponse HTTP)
  * RELATED FR: FR-CAP-PAA-JUDGE-HAIKU, FR-CAP-PAA-BADGE-SINGLE,
- *             FR-CAP-PAA-JUDGE-CACHE-SESSION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON
+ *             FR-CAP-PAA-JUDGE-CACHE-SESSION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON,
+ *             FR-INFRA-COST-LOG-STORE
  *
  * Voir tech-spec : _bmad-output/implementation-artifacts/tech-spec-captain-paa-pertinence-unify.md
  */
@@ -21,6 +23,7 @@ import { loadPrompt } from '../../utils/prompt-loader.js'
 import { log } from '../../utils/logger.js'
 import { pool } from '../../db/client.js'
 import type { PaaJudgmentBlock } from '../../../shared/types/captain-paa-judgment.types.js'
+import type { ApiUsage } from '../../../shared/types/index.js'
 import type {
   PainIntentExpected,
   RelevanceScoreLiveResult,
@@ -143,7 +146,7 @@ export async function judgePaaForKeyword(input: {
   painPoint: string
   articleTitle: string
   painIntentExpected: PainIntentExpected | null
-}): Promise<PaaJudgmentBlock | null> {
+}, onUsage?: (usage: ApiUsage) => void): Promise<PaaJudgmentBlock | null> {
   if (!input.painPoint || input.painPoint.length < PAIN_POINT_MIN_LENGTH) {
     log.info('[captain-paa-judge] skip — no-pain', {
       articleId: input.articleId,
@@ -180,6 +183,9 @@ export async function judgePaaForKeyword(input: {
       PAA_JUDGE_TOOL,
       { model: DEFAULT_HAIKU_MODEL },
     )
+    // L'appel est payé dès qu'il a répondu, même si sa réponse est ensuite
+    // écartée : son coût part vers la pile « Coûts API » (FR-INFRA-COST-LOG-STORE).
+    onUsage?.(usage)
     // Frontière de la source : la réponse de l'IA est mise en forme dès sa
     // réception (jugements illisibles écartés, scores bornés). Inutilisable →
     // ContractViolationError → chemin « Haiku indisponible » ci-dessous.
@@ -232,6 +238,8 @@ export async function judgePaaForKeyword(input: {
 export async function runPaaJudgmentsForArticle(articleId: number): Promise<{
   judgments: Record<string, PaaJudgmentBlock>
   relevanceScores: Record<string, RelevanceScoreLiveResult>
+  /** Coût additionné des appels Haiku ; `null` si aucun appel n'est parti. */
+  usage: ApiUsage | null
 }> {
   const tTotal = Date.now()
 
@@ -267,6 +275,7 @@ export async function runPaaJudgmentsForArticle(articleId: number): Promise<{
   // Appels Haiku parallèles
   const judgmentsMap = new Map<string, PaaJudgmentBlock>()
   const overridesMap = new Map<string, number>()
+  const usages: ApiUsage[] = []
   await Promise.all(
     captainRes.rows.map(async (row) => {
       const keyword = row.keyword as string
@@ -279,7 +288,7 @@ export async function runPaaJudgmentsForArticle(articleId: number): Promise<{
           painPoint,
           articleTitle,
           painIntentExpected,
-        })
+        }, usage => usages.push(usage))
         if (judgment !== null) {
           judgmentsMap.set(keyword, judgment)
           overridesMap.set(keyword, judgment.overallPaaScore)
@@ -333,7 +342,24 @@ export async function runPaaJudgmentsForArticle(articleId: number): Promise<{
     totalMs: Date.now() - tTotal,
   })
 
-  return { judgments, relevanceScores }
+  return { judgments, relevanceScores, usage: sumUsages(usages) }
+}
+
+/**
+ * Une ouverture du Capitaine = une demande = une ligne dans la pile « Coûts API » :
+ * les appels (un par candidat) sont additionnés, chacun compté une fois.
+ */
+function sumUsages(usages: ApiUsage[]): ApiUsage | null {
+  if (usages.length === 0) return null
+  const total = (pick: (u: ApiUsage) => number | undefined) => usages.reduce((sum, u) => sum + (pick(u) ?? 0), 0)
+  return {
+    model: [...new Set(usages.map(u => u.model).filter(Boolean))].join(' + '),
+    inputTokens: total(u => u.inputTokens),
+    outputTokens: total(u => u.outputTokens),
+    cacheReadTokens: total(u => u.cacheReadTokens),
+    cacheCreationTokens: total(u => u.cacheCreationTokens),
+    estimatedCost: total(u => u.estimatedCost),
+  }
 }
 
 /** Helper exporté pour tests unitaires uniquement. */

@@ -44,6 +44,10 @@ const URL_LABELS: [RegExp, string][] = [
   [/\/keywords\/radar\/generate/, 'Génération keywords radar'],
   [/\/keywords\/[^/]+\/validate/, 'Validation mot-clé'],
 
+  // Radar et Capitaine (JSON wrappé, FR-INFRA-COST-LOG-STORE)
+  [/\/articles\/\d+\/radar-exploration\/long-tail$/, 'Longues traînes du Radar'],
+  [/\/articles\/\d+\/captain\/judge-paa$/, 'Jugement des questions PAA'],
+
   // Services transverses
   [/\/content-gap\/analyze/, 'Analyse content gap'],
   [/\/articles\/\d+\/recommend-word-count/, 'Conseil longueur article'],

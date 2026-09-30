@@ -2,8 +2,10 @@
  * AUTHORITY: PostgreSQL `radar_explorations.scan_result.longTailSuggestions` (+ cache `api_cache`)
  * READS FROM: api_cache (clé = sha256 des entrées), articles → cocon (stratégie injectée par loadPrompt)
  * WRITES TO: radar_explorations (persistLongTailSuggestions), api_cache (TTL 7 j)
- * CONSUMERS: POST /articles/:id/radar-exploration/long-tail, onglet Radar (useLongTailSuggestions)
- * RELATED FR: FR-INFRA-PROMPT-LAYERS (stratégie du cocon enfin transmise au prompt)
+ * CONSUMERS: POST /articles/:id/radar-exploration/long-tail, onglet Radar (useLongTailSuggestions),
+ *            pile « Coûts API » (`usage` de l'appel IA, `null` sur cache)
+ * RELATED FR: FR-INFRA-PROMPT-LAYERS (stratégie du cocon enfin transmise au prompt),
+ *             FR-INFRA-COST-LOG-STORE (coût de la génération rendu à l'écran)
  *
  * Service de generation de longues-traines pour l'onglet Radar.
  *
@@ -35,6 +37,7 @@ import {
   type LongTailSuggestRequest,
 } from '../../../shared/schemas/long-tail-suggestions.schema.js'
 import { combineRoots } from './long-tail-combinator.service.js'
+import type { ApiUsage } from '../../../shared/types/index.js'
 
 // ---------------------------------------------------------------------------
 // Erreurs
@@ -61,6 +64,11 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7j
 export interface GenerateResult {
   suggestions: LongTailSuggestion[]
   fromCache: boolean
+  /**
+   * Coût de l'appel IA, pour la pile « Coûts API » (FR-INFRA-COST-LOG-STORE) ;
+   * `null` quand le cache a répondu : rien n'a été payé.
+   */
+  usage: ApiUsage | null
 }
 
 export async function generateLongTailSuggestions(
@@ -92,7 +100,7 @@ export async function generateLongTailSuggestions(
       // les suggestions sont en DB (ex: regen avec les memes inputs apres un
       // changement d'article).
       await persistLongTailSuggestions(articleId, cachedParse.data.suggestions)
-      return { suggestions: cachedParse.data.suggestions, fromCache: true }
+      return { suggestions: cachedParse.data.suggestions, fromCache: true, usage: null }
     }
     log.warn(`[long-tail-suggest] cache hit but invalid schema, falling back to IA`)
   }
@@ -123,7 +131,7 @@ export async function generateLongTailSuggestions(
 
   const userPrompt = `Genere les suggestions longue-traine pour l'article "${input.articleTitle}".`
 
-  const { result } = await classifyWithTool<LongTailSuggestionsResponse>(
+  const { result, usage } = await classifyWithTool<LongTailSuggestionsResponse>(
     systemPrompt,
     userPrompt,
     {
@@ -170,7 +178,7 @@ export async function generateLongTailSuggestions(
   await setCached(CACHE_TYPE, cacheKey, parsed.data, CACHE_TTL_MS)
   log.info(`[long-tail-suggest] generated articleId=${articleId} count=${parsed.data.suggestions.length} fromCache=false`)
 
-  return { suggestions: parsed.data.suggestions, fromCache: false }
+  return { suggestions: parsed.data.suggestions, fromCache: false, usage }
 }
 
 /**
