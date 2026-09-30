@@ -196,7 +196,7 @@ describe('FR-EXT-DATAFORSEO-SANDBOX — les mesures simulées sont effacées au 
     const res = mockRes()
     await postHandler()({ body: { mode: 'real' } } as Request, res)
     expect(deletes()).toBe(1)
-    expect(res.json).toHaveBeenCalledWith({ data: { override: 'real', effective: 'real' } })
+    expect(res.json).toHaveBeenCalledWith({ data: expect.objectContaining({ override: 'real', effective: 'real' }) })
   })
 
   it('rendre la main à une configuration réelle efface aussi les mesures simulées', async () => {

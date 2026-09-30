@@ -409,7 +409,23 @@ Trouvé pendant ce rejeu et corrigé dans le lot 5 : le Lexique montrait encore 
 
 ### Ce qui reste
 
-- **Exigences encore « non tenue »** après les lots : FR-CAP-AI-PANEL, FR-LEX-AI-PANEL, FR-CAP-ROOTS (une racine sans étude enregistrée revient sans indicateurs), FR-INFRA-LIEUTENANT-EXPLORATIONS, FR-RAD-AI-SUGGESTIONS, FR-EXT-DATAFORSEO-SANDBOX (données du bac à sable gardées comme réelles : le Lexique de l'article #1336 montre « pizza », « london »…), FR-INFRA-COST-LOG-STORE (opérations en base).
+- **Exigences encore « non tenue »** après les lots : FR-CAP-AI-PANEL, FR-LEX-AI-PANEL, FR-CAP-ROOTS (une racine sans étude enregistrée revient sans indicateurs), FR-INFRA-LIEUTENANT-EXPLORATIONS, FR-RAD-AI-SUGGESTIONS, FR-EXT-DATAFORSEO-SANDBOX (données du bac à sable gardées comme réelles : le Lexique de l'article #1336 montre « pizza », « london »…), FR-INFRA-COST-LOG-STORE (opérations en base). → **Corrigées par le lot 6** (ci-dessous).
 - **RÉEL (payant)** et **Search Console** : toujours non faits.
-- **Données de test** : la liste ci-dessus, plus une découverte `test-…-persist-disc` écrite par une suite de tests lancée en local contre le serveur de dev. Tant qu'elles restent, `verify:content` échoue en local (#1335 et #1337 visent la même recherche). Nettoyage **en attente de l'accord d'Arnaud**.
+- **Données de test** : la liste ci-dessus, plus une découverte `test-…-persist-disc` écrite par une suite de tests lancée en local contre le serveur de dev. → **Nettoyées le 30/09 à 18 h 05 avec l'accord d'Arnaud** : cocons 28026 à 28031, articles 1337, 1342, 1344 à 1346, 1348, 1350 et 1353 (le vrai cocon 2 retrouve son état), 3 mots-clés de pool, 158 mesures factices du 30/09 et la découverte de test. Gardés : le cocon 28025 comme banc d'essai, et 13 mesures du 30/09 dont les résultats Google sont plus anciens. Sauvegarde : `data/_backup_pg_20260930-1805.sql`. `verify:content` : 0 erreur.
 - **Titres de section de Discovery** « Intent Modifiers » et « Prepositions » : laissés tels quels, à trancher.
+
+## Lot 6 — les 7 défauts restants (2026-09-30, soir)
+
+Arnaud a choisi de corriger les 7. Quatre agents en parallèle sur des fichiers répartis, une seule branche et une seule PR ; aucune correction ajoutée en route (ce qui a été vu est noté dans `tech-spec-lot6-restes.md`). Les 7 exigences repassent **active** ; `spec/requirements.md` compte 113 exigences « non tenue » sur 286 (130 avant les lots, 120 après le lot 5).
+
+| Exigence | Ce qui est corrigé |
+|---|---|
+| FR-CAP-AI-PANEL | L'avis IA du Capitaine reçoit la stratégie du cocon ; la confirmation dit « sans appel payant » en simulé et nomme le vrai fournisseur en réel |
+| FR-CAP-ROOTS | À la réouverture, une racine déjà mesurée revient avec ses indicateurs et son Score Pertinence, sans appel ; racines rangées de la plus longue à la plus courte |
+| FR-RAD-AI-SUGGESTIONS | « Marquer comme candidats Capitaine » envoie les cartes au Capitaine ; « P — » au Radar est voulu (exigence alignée) |
+| FR-LEX-AI-PANEL | Une seule analyse affichée, celle du mot-clé affiché, identique après un rechargement et au retour sur l'onglet |
+| FR-INFRA-LIEUTENANT-EXPLORATIONS | « Tout réinitialiser » archive en base ; un lieutenant ajouté depuis le panneau d'aide est enregistré aussitôt |
+| FR-EXT-DATAFORSEO-SANDBOX | Caches et découvertes rangés par mode ; nouvelle colonne `keyword_metrics.from_sandbox` (accord d'Arnaud) : les mesures simulées sont effacées au passage en réel. Deux limites écrites et validées : l'historique propre à chaque article, et une mesure en cours pendant la bascule |
+| FR-INFRA-COST-LOG-STORE | Toutes les écritures en base arrivent dans la pile (middleware monté) ; coût des longues traînes et du jugement des questions PAA affiché |
+
+Changement de schéma : `server/db/changes/2026-09-30-keyword-metrics-from-sandbox.sql`, appliqué à la base de développement (sauvegarde `data/_backup_pg_20260930-2026.sql`), `schema.sql` et `bootstrap.sql` régénérés.
