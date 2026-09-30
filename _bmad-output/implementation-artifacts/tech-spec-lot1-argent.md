@@ -3,7 +3,7 @@ title: 'Tech-spec — Recette 2026-09-30, lot 1 : l’argent'
 name: tech-spec-lot1-argent
 type: tech-spec
 status: in-review
-version: 1.0.0
+version: 1.1.0
 last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md (FR-INFRA-RUNTIME-MODE, NFR-COST-AI-MOCK, FR-EXT-DATAFORSEO-SANDBOX, FR-MOT-NO-AUTO-ACTION, FR-CAP-AI-PANEL, FR-CAP-INPUT, FR-CAP-ROOTS, FR-LEX-AI-PANEL, FR-DIS-RELEVANCE-FILTER, FR-DIS-SEND-TO-RADAR, FR-INFRA-COST-LOG-STORE, NFR-COST-CACHE-FIRST, FR-INFRA-KEYWORD-METRICS, FR-MOT-CACHE-CASCADE, FR-INFRA-LIEUTENANT-EXPLORATIONS)
@@ -69,6 +69,12 @@ Tout ce qui pouvait faire payer sans que l'utilisateur le sache ou le veuille, r
 
 - **INFRA-18 :** `handleUnlockArchive` lisait le nombre après `archiveLockedLieutenants` (qui vide la liste) → « 0 lieutenant(s) archivé(s) ». Compté avant ; le `saveKeywords` redondant (deux `PUT` concurrents) est retiré, `performUnlock` enregistre seul. Test : `captain-ai-advice-persist.test.ts`. Exigences : FR-INFRA-LIEUTENANT-EXPLORATIONS (partie « message 0 » retirée ; l'archivage non enregistré en base reste non tenu), FR-CAP-PERSIST (partie « deux enregistrements concurrents » retirée).
 - **CAP-20 geste 4 :** la cause n'était pas un échec muet mais une racine relue de la base **sans mesures** (`richRootKeywords.kpis = []`) : un clic l'affichait « — » sans l'étudier. `isVariantMeasured` : une racine sans mesures est étudiée au clic (mot de la carte ou colonne de détail), et un échec affiche « Impossible de valider "…" ». Test : `useExploredKeywords-roots-reopen.test.ts`. Exigence : FR-CAP-ROOTS, statut précisé (la colonne de détail relue reste sans mesures tant qu'aucun clic ne les étudie).
+
+## 8. Bandeau MOCK de Discovery (laissé par le lot 4)
+
+- **Constat :** UI-5 : en MOCK, « le filtrage de pertinence semble ne pas avoir fonctionné… vérifiez votre clé API Claude », alors que c'est le filtre simulé qui garde presque tout.
+- **Décision :** l'avertissement ne s'affiche qu'en réel (`showFilteringSuspect` de `DiscoveryPanel.vue` lit le mode effectif du badge).
+- **Test :** `tests/unit/components/keyword-discovery-tab.test.ts`. **Exigence :** critère ajouté à FR-DIS-RELEVANCE-FILTER.
 
 ## Hors lot, signalé
 
