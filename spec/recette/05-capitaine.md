@@ -157,7 +157,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 **⚠ Défaut connu :** l'intention s'affiche « — » pour tout mot-clé étudié hors Radar ; la ligne « Autocomplete » montre tantôt un nombre de suggestions, tantôt une position (ici, la place du mot-clé dans les suggestions de Google, 0 s'il n'y est pas : `zqxw vitrine kvj` affiche « 0 matches »). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-7 — L'avis de l'IA sur un candidat
-**Exigences :** FR-CAP-AI-PANEL ⚠
+**Exigences :** FR-CAP-AI-PANEL
 
 **Gestes :**
 1. Ouvre le panneau d'`agence web`. En bas, lis l'en-tête « Avis expert IA » et la phrase dessous, puis clique l'en-tête pour le déplier.
@@ -170,16 +170,15 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - sous « Avis expert IA » : « Analyse Capitaine basée sur les KPIs marché et la pertinence. » ;
 - l'avis déjà prêt, demandé d'office dès la fin de l'étude : replié, l'en-tête dit « Cliquez pour voir les suggestions IA. » ;
 - déplié : le bandeau du verdict, puis le texte de l'avis ;
-- la fenêtre « Régénérer l'avis expert IA ? Cela consommera un appel Claude. » ; « Annuler » ne change rien ; « OK » relance l'avis (le bouton affiche « Analyse en cours… », puis de nouveau « Régénérer ») ;
+- la fenêtre « Régénérer l'avis expert IA ? Mode simulé : la réponse sera simulée, sans appel payant. » (badge sur MOCK ; en RÉEL : « … Cela consommera un appel Claude. », ou le nom du fournisseur d'IA du moment) ; « Annuler » ne change rien ; « OK » relance l'avis (le bouton affiche « Analyse en cours… », puis de nouveau « Régénérer ») ;
 - dans « Coûts API », une ligne « Analyse IA capitaine » par avis demandé ;
 - en MOCK, l'avis préparé suit déjà les trois parties (« 1. Potentiel éditorial », « 2. Opportunités et risques », « 3. Recommandation »), cite `agence web`, le niveau de l'article et sa douleur, sans aucun chiffre ; son fond se juge en RÉEL (CAP-R3).
 
 **C'est un bug si :**
 - l'avis n'a pas été demandé d'office : l'en-tête replié dit « Cliquez pour lancer l'analyse IA. » alors que l'étude est finie ;
 - « Régénérer » relance sans rien demander, ou « Annuler » relance quand même ;
+- badge sur MOCK, la fenêtre annonce « un appel Claude » (rien n'est facturé en simulé) ;
 - l'avis reste vide, sans texte ni message d'erreur.
-
-**⚠ Défaut connu :** la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-8 — Le verdict d'un candidat
 **Exigences :** FR-CAP-SCAN ⚠
@@ -205,7 +204,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 **⚠ Défaut connu :** dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-9 — Mots cliquables et racines d'un mot-clé long
-**Exigences :** FR-CAP-ROOTS ⚠
+**Exigences :** FR-CAP-ROOTS
 
 **Gestes :**
 1. Sur la carte `création site internet toulouse`, survole « création », « site », puis « toulouse ».
@@ -219,7 +218,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 **Tu dois voir :**
 - « création » et « site » ne sont pas cliquables (info-bulle « Mot ancré dans la racine du capitaine — non modifiable ») ; « toulouse » est coloré comme terme local (info-bulle « Terme local — peu pris en compte dans les KPI. Alt+clic pour changer le tag. ») ;
 - chaque clic grise le mot retiré, et la carte montre la combinaison restante, étudiée : « création site internet », puis « création site », chacune avec son propre Score Pertinence dans l'anneau ;
-- dans « Racines » : les racines étudiées, chacune avec un petit anneau (info-bulle « Score Pertinence : n/100 · verdict … »), et « Moyenne n/100 » (vert à partir de 65, orange à partir de 40, rouge en dessous) ; un clic sur une racine l'affiche sur la carte ;
+- dans « Racines » : les racines étudiées, de la plus longue à la plus courte, chacune avec un petit anneau (info-bulle « Score Pertinence : n/100 · verdict … »), et « Moyenne n/100 » (vert à partir de 65, orange à partir de 40, rouge en dessous) ; un clic sur une racine l'affiche sur la carte ;
 - à l'étape 5, la carte revient au mot-clé complet ;
 - `agence web` (2 mots) : aucun mot cliquable, et « Aucune racine » ;
 - les étiquettes : « internet » passe en local, puis en persona, puis sans étiquette ; les notes ne bougent pas, les étiquettes sont un simple repère ;
@@ -230,8 +229,6 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - une combinaison ne montre pas ses propres indicateurs, ou reste sur « Validation… » ;
 - la « Moyenne » ne correspond pas aux anneaux des racines notées (une racine « — » ne compte pas) ;
 - afficher une combinaison ajoute une carte à la liste, ou remet des notes à « — ».
-
-**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-10 — Verrouiller passe d'abord par la porte
 **Exigences :** FR-CAP-LOCK-GATE
@@ -329,7 +326,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 **⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-14 — Rouvrir l'article : tout est retrouvé, sans doublon
-**Exigences :** FR-CAP-PERSIST ⚠, FR-CAP-AI-PANEL ⚠, FR-CAP-LIST-SIDEPANEL ⚠, FR-CAP-LOCK-INTEGRITY ⚠
+**Exigences :** FR-CAP-PERSIST ⚠, FR-CAP-AI-PANEL, FR-CAP-LIST-SIDEPANEL ⚠, FR-CAP-LOCK-INTEGRITY ⚠
 
 **Gestes :**
 1. Note le nombre de cartes, la carte verrouillée, et « vol », « KD », « CPC » de deux cartes. Sélectionne une carte (panneau ouvert).
@@ -350,14 +347,14 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - aucune carte verte alors que le point « Capitaine » de l'article est plein ;
 - une mesure a changé (par exemple un « — » devenu « 0 »).
 
-**⚠ Défaut connu :** la provenance radar / longue traîne / saisie n'est pas enregistrée ; un écran dont les mots-clés ne sont pas encore chargés peut envoyer un Capitaine vide et des listes vides, qui effacent les décisions enregistrées (défaut latent) ; l'avis de l'IA est rédigé sans la stratégie du cocon. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** la provenance radar / longue traîne / saisie n'est pas enregistrée ; un écran dont les mots-clés ne sont pas encore chargés peut envoyer un Capitaine vide et des listes vides, qui effacent les décisions enregistrées (défaut latent). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-CAP-LIST-SIDEPANEL — après un envoi depuis le Radar, le Capitaine verrouillé n'est plus marqué ni en tête, et les candidats déjà étudiés quittent la liste ; sur un article qui avait déjà des candidats, les autres cartes envoyées n'apparaissent qu'à la réouverture. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-15 — Les racines après réouverture
-**Exigences :** FR-CAP-ROOTS ⚠
+**Exigences :** FR-CAP-ROOTS
 
 **Gestes :**
 1. Ouvre le panneau de `création site internet toulouse` : section « Racines ».
@@ -365,15 +362,15 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 3. Sur la carte, clique « toulouse », puis reclique-le.
 
 **Tu dois voir :**
-- les racines mesurées à la CAP-9, chacune avec son Score Pertinence, et « Moyenne n/100 » ;
+- les racines de la plus longue à la plus courte, chacune avec son Score Pertinence dès qu'elle a été mesurée (à la CAP-9, ou pour un autre article : l'outil relit ses mesures sans rien redemander), et « Moyenne n/100 » ;
+- s'il y en a une que l'outil n'a jamais mesurée : anneau « — », info-bulle « Racine pas encore étudiée : aucune mesure en base. Un clic l’étudie. » ; ne la clique pas ici (en RÉEL, son étude est payante) ;
 - un clic sur une racine l'affiche sur la carte, avec ses indicateurs (« vol », « KD », « CPC ») et son verdict dans le panneau ;
 - même chose en cliquant les mots de la carte ; le second clic sur « toulouse » ramène le mot-clé complet.
 
 **C'est un bug si :**
 - les racines n'ont plus de note (« — » partout) et « Moyenne » a disparu ;
-- une racine mesurée à la CAP-9 s'affiche avec « — » partout et un verdict « GRAY ».
-
-**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+- une racine mesurée à la CAP-9 s'affiche avec « — » partout et un verdict « GRAY » ;
+- la réouverture ajoute des lignes dans « Coûts API » (aucune étude ne part sans clic).
 
 ### CAP-16 — Le Score Pertinence ne change pas entre l'étude et la réouverture
 **Exigences :** FR-CAP-RELEVANCE-LIVE ⚠, FR-CAP-RELEVANCE-INPUTS, FR-CAP-RELEVANCE-INTENT-SIGNAL
@@ -461,7 +458,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 **⚠ Défaut connu :** FR-CAP-LIST-SIDEPANEL — après un envoi depuis le Radar, le Capitaine verrouillé n'est plus marqué ni en tête, et les candidats déjà étudiés quittent la liste ; sur un article qui avait déjà des candidats, les autres cartes envoyées n'apparaissent qu'à la réouverture. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-20 — Hors connexion : une étude qui échoue, des mesures récentes réutilisées
-**Exigences :** FR-CAP-SCAN ⚠, FR-CAP-ROOTS ⚠, FR-CAP-INPUT ⚠
+**Exigences :** FR-CAP-SCAN ⚠, FR-CAP-ROOTS, FR-CAP-INPUT ⚠
 
 **Gestes :**
 1. Coupe ta connexion internet (Wi-Fi ou câble). L'outil tourne sur ton poste : l'écran reste utilisable.
@@ -482,8 +479,6 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - après l'étape 5, la carte reste sur « Erreur : … ».
 
 **⚠ Défaut connu :** dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
-
-**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-CAP-INPUT — ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -576,7 +571,7 @@ Passe le bouton en **RÉEL**, travaille sur l'article enfant (sauf mention), et 
 **⚠ Défaut connu :** dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-R3 — L'avis de l'IA, en trois parties
-**Exigences :** FR-CAP-AI-PANEL ⚠
+**Exigences :** FR-CAP-AI-PANEL
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Étudie un mot-clé neuf. Ouvre aussitôt son panneau et déplie « Avis expert IA ».
@@ -586,18 +581,17 @@ Passe le bouton en **RÉEL**, travaille sur l'article enfant (sauf mention), et 
 **Tu dois voir :**
 - le texte qui s'écrit petit à petit ;
 - trois parties : « Potentiel éditorial », « Opportunités et risques », « Recommandation » ;
-- un avis en français, qui parle du mot-clé, du type d'article et de sa douleur, sans citer les notes chiffrées ;
+- un avis en français, qui parle du mot-clé, du type d'article et de sa douleur, sans citer les notes chiffrées, et qui s'accorde avec la stratégie du cocon (cible, angle, promesse validés au Cerveau) ;
 - dans « Coûts API », une ligne « Analyse IA capitaine » avec son modèle et son coût ;
 - après le rechargement, l'avis réaffiché sans nouvelle ligne payante.
 
 **C'est un bug si :**
 - l'avis est vide, en anglais, ou sans ses trois parties ;
-- il cite les notes brutes (« 72/100 »).
-
-**⚠ Défaut connu :** la stratégie du cocon n'est pas transmise (l'avis n'en parle jamais). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+- il cite les notes brutes (« 72/100 ») ;
+- il contredit la stratégie du cocon (une autre cible, un autre angle).
 
 ### CAP-R4 — Les racines d'un mot-clé peu cherché sont étudiées d'office
-**Exigences :** FR-CAP-ROOTS ⚠
+**Exigences :** FR-CAP-ROOTS
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Étudie `création site vitrine artisan plombier toulouse`.
@@ -605,13 +599,12 @@ Passe le bouton en **RÉEL**, travaille sur l'article enfant (sauf mention), et 
 
 **Tu dois voir :**
 - si son volume est sous le seuil vert de l'article (200 recherches par mois pour un intermédiaire, 30 pour un spécialisé) : les racines s'étudient seules, au plus 5, chacune un début du mot-clé d'au moins 2 mots significatifs (de « création site vitrine artisan plombier » à « création site ») ;
+- rangées de la plus longue à la plus courte, quel que soit l'ordre où leurs études aboutissent ;
 - chacune avec son anneau, et « Moyenne n/100 » ; une racine en échec marquée « (échec) ».
 
 **C'est un bug si :**
 - aucune racine alors que le volume est sous le seuil ;
 - une racine n'est pas un début du mot-clé, ou plus de 5 racines.
-
-**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ## Hors recette
 

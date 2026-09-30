@@ -4,6 +4,7 @@ import type { ScanResponse } from '@shared/types/index.js'
 import type { RadarCard, KeywordRootVariant } from '@shared/types/intent.types.js'
 import ScoreRing from '@/components/shared/ScoreRing.vue'
 import { averageScores } from '@shared/score/index.js'
+import { isVariantMeasured } from '@/composables/keyword/useExploredKeywords'
 
 /**
  * Étape 3E — Sidebar latérale qui liste les variantes "racines" du capitaine
@@ -42,6 +43,17 @@ function relevanceTotalOf(v: { card: RadarCard }): number | null {
   return v.card.relevanceScore?.total ?? null
 }
 
+/**
+ * Infobulle d'une racine. Une racine que la base n'a jamais mesurée reste
+ * « — » : l'infobulle le dit, et dit qu'un clic l'étudie (FR-CAP-ROOTS).
+ */
+function variantTitle(v: KeywordRootVariant): string {
+  const total = relevanceTotalOf(v)
+  if (total !== null) return `Score Pertinence : ${total}/100 · verdict ${v.validation.verdict.level}`
+  if (!isVariantMeasured(v)) return 'Racine pas encore étudiée : aucune mesure en base. Un clic l’étudie.'
+  return `Score Pertinence indisponible · verdict ${v.validation.verdict.level}`
+}
+
 // Moyenne sur les seules racines notées (FR-INFRA-KPI-CONSISTENCY) :
 // une racine sans score ne tire plus la moyenne vers le bas.
 const rootsAverageScore = computed(() => {
@@ -70,7 +82,7 @@ const rootsAverageColor = computed(() => {
         :key="variant.keyword"
         class="roots-sidebar__item"
         :class="{ 'roots-sidebar__item--active': variant.keyword === activeKeyword }"
-        :title="variant.card.relevanceScore?.total != null ? `Score Pertinence : ${variant.card.relevanceScore.total}/100 · verdict ${variant.validation.verdict.level}` : `Score Pertinence indisponible · verdict ${variant.validation.verdict.level}`"
+        :title="variantTitle(variant)"
         data-testid="root-sidebar-item"
         @click="handleSelect(variant)"
       >

@@ -76,9 +76,9 @@ Page du cocon › « Rédaction » : la carte de l'article porte son statut (« 
 ## Ce qui peut mal tourner
 
 ### La page est rechargée en plein travail
-**Exigences :** FR-CAP-ROOTS ⚠, FR-LIE-CHECKBOX-COUNT ⚠, FR-RAD-LONGTAIL-UI ⚠, FR-LEX-AI-PANEL ⚠, FR-RED-BRIEF ⚠
+**Exigences :** FR-CAP-ROOTS, FR-LIE-CHECKBOX-COUNT ⚠, FR-RAD-LONGTAIL-UI ⚠, FR-LEX-AI-PANEL ⚠, FR-RED-BRIEF ⚠
 
-Un rechargement ne doit rien faire perdre de ce qui est enregistré. Aujourd'hui, plusieurs affichages ne reviennent pas : les racines d'un Capitaine reviennent sans indicateurs ni Score Pertinence ; les suggestions de longue traîne du Radar et leurs cases disparaissent ; le panneau d'analyse IA du Lexique perd son résumé et ses termes manquants. L'analyse « IA Brief », elle, n'est pas gardée par choix : elle repart à l'ouverture du panneau.
+Un rechargement ne doit rien faire perdre de ce qui est enregistré : les racines d'un Capitaine reviennent avec leurs mesures connues et leur Score Pertinence, sans appel. Aujourd'hui, plusieurs affichages ne reviennent pas : les suggestions de longue traîne du Radar et leurs cases disparaissent ; le panneau d'analyse IA du Lexique perd son résumé et ses termes manquants. L'analyse « IA Brief », elle, n'est pas gardée par choix : elle repart à l'ouverture du panneau.
 
 ### L'onglet a été fermé pendant l'écriture du premier jet
 **Exigences :** FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-RED-SEO-SCORE-PERSIST ⚠, FR-RED-DRAFT-SINGLE-PASS
@@ -91,7 +91,7 @@ Le texte est enregistré à la fin de chaque chapitre : en rouvrant l'article, l
 Reprendre, c'est souvent enchaîner plusieurs articles : chacun s'ouvre avec son propre texte, son sommaire et ses scores, sans recharger la page. Un article sans texte ouvert juste après un autre montre « Aucun sommaire disponible… » et un écran vide : rien du précédent ne s'affiche, ne s'enregistre dans le nouvel article ni ne réécrit le score du précédent.
 
 ### Rouvrir le Moteur refait payer des avis déjà obtenus
-**Exigences :** FR-MOT-NO-AUTO-ACTION, FR-CAP-AI-PANEL ⚠, FR-CAP-PAA-JUDGE-HAIKU ⚠
+**Exigences :** FR-MOT-NO-AUTO-ACTION, FR-CAP-AI-PANEL, FR-CAP-PAA-JUDGE-HAIKU ⚠
 
 Rouvrir un article ne doit que relire la base ; une seule exception est admise, le jugement des questions « Autres questions posées » à l'ouverture du Capitaine, une fois par article et par session. L'avis expert de l'IA sur chaque candidat est gardé et réaffiché sans nouvel appel ; celui qui manque attend « Analyser avec l'IA ». L'onglet Lexique relit son extraction et son analyse IA sans rien relancer. Le jugement des questions, lui, est repayé après chaque rechargement alors que son résultat n'est pas affiché.
 
@@ -114,10 +114,8 @@ Rouvrir un article ne doit que relire la base ; une seule exception est admise, 
 - FR-LIE-SERP-ANALYZE — la pile d'activité annonce « Scraping ~N URLs via DataForSEO » même quand l'analyse est relue en base ; « Tout relancer (SERP + IA) » ne relance rien pendant 7 jours : il relit l'analyse et les propositions gardées, et doit s'appeler « Recharger l'analyse ».
 - FR-INFRA-KEYWORD-METRICS — tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie ; un « Rafraîchir » raté date quand même la mesure du jour, et pour un mot-clé sans volume connu la fiche vide remplace la réponse gardée.
 - FR-RED-OUTLINE — les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique.
-- FR-CAP-ROOTS — à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte.
 - FR-LIE-CHECKBOX-COUNT — le compteur affiche les cases cochées sur le nombre de propositions générées ; aucune fourchette conseillée par type d'article n'est affichée ni signalée.
 - FR-RAD-LONGTAIL-UI — au rechargement, suggestions et cases cochées ne reviennent pas à l'écran.
 - FR-LEX-AI-PANEL — l'analyse part d'elle-même après chaque extraction, y compris l'extraction lancée seule à l'ouverture de l'onglet ; le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer », après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles ; le résumé et les termes manquants enregistrés ne s'affichent plus après un rechargement, et un changement d'onglet montre ceux de la dernière analyse, faite sur un autre mot-clé.
 - FR-RED-SEO-SCORE-PERSIST — un premier jet interrompu enregistre le texte sans remettre les scores à « inconnu » : l'ancien score reste en base, à l'écran comme en mode automatique.
-- FR-CAP-AI-PANEL — la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur.
 - FR-CAP-PAA-JUDGE-HAIKU — le jugement est calculé mais ni ses pastilles ni la note qu'il corrige n'atteignent la liste du Capitaine ; ce jugement est pourtant payé à chaque ouverture du Capitaine après un rechargement : il est à suspendre tant que son affichage n'est pas branché.

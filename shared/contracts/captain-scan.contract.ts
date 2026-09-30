@@ -79,7 +79,7 @@ const scanVerdictSchema: z.ZodType<ScanVerdict, unknown> = z.looseObject({
   autoNoGo: withFallback(z.boolean(), false, 'verdict.autoNoGo'),
 })
 
-const paaQuestionScanSchema: z.ZodType<PaaQuestionScan, unknown> = z.looseObject({
+export const paaQuestionScanSchema: z.ZodType<PaaQuestionScan, unknown> = z.looseObject({
   question: z.string().min(1),
   answer: nullableText('paaQuestions.answer'),
   match: withFallback(z.enum(PAA_MATCHES).optional(), undefined, 'paaQuestions.match'),

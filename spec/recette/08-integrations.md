@@ -99,7 +99,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 6. Dans « Tester un mot-clé capitaine… », tape `zqxw plomberie kvj`, puis Entrée. Clique sur sa carte et relis « KPIs marché ».
 
 **Tu dois voir :**
-- la question « Régénérer l'avis expert IA ? Cela consommera un appel Claude. ». En MOCK, aucun appel Claude ne part malgré ce texte ;
+- la question « Régénérer l'avis expert IA ? Mode simulé : la réponse sera simulée, sans appel payant. » : en MOCK, rien de payant ne part, et la question le dit (en RÉEL, elle nomme le fournisseur : « … Cela consommera un appel Claude. ») ;
 - un avis qui arrive presque aussitôt : un texte préparé à partir de la demande (trois parties, « 1. Potentiel éditorial »…, qui citent le capitaine), le même aux gestes 3 et 4 ;
 - dans la pile, une ligne « Analyse IA capitaine » par avis, avec le modèle « mock-provider-v1 » et le coût « < $0.001 » ;
 - dans « KPIs marché » : « Volume » en « rech/m », « Difficulté », « CPC » en €. Ce sont des valeurs factices du bac à sable, souvent les mêmes d'un mot-clé à l'autre, même pour le mot-clé absurde ;

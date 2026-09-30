@@ -100,9 +100,21 @@ export interface RichCaptain {
 export interface RichRootKeyword {
   keyword: string
   parentKeyword: string                     // the captain keyword this root derives from
+  /**
+   * Relecture (GET /articles/:id/keywords) : vide quand la racine a sa propre
+   * étude pour l'article (l'écran relit alors cette étude) ou quand la base ne
+   * l'a jamais mesurée ; sinon ses mesures connues de `keyword_metrics`,
+   * relues sans appel (FR-CAP-ROOTS).
+   */
   kpis: KpiSummary[]
   articleLevel: ArticleLevel
   timestamp: string                         // ISO 8601
+  /** Questions PAA connues de la racine (relecture, FR-CAP-ROOTS). */
+  paaQuestions?: PaaQuestionScan[]
+  /** Score Pertinence calculé à la relecture, jamais enregistré (FR-CAP-ROOTS). */
+  relevanceScore?: RelevanceScoreResult | null
+  /** Cause d'un Score Pertinence absent (FR-CAP-RELEVANCE-UNAVAILABLE-REASON). */
+  relevanceUnavailableReason?: RelevanceUnavailableReason | null
 }
 
 // ---- Rich lieutenant types ----

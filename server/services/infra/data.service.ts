@@ -44,6 +44,7 @@ import type { PaaQuestionScan } from '../../../shared/types/keyword-validate.typ
 import type { PainIntentExpected } from '../../../shared/types/scoring.types.js'
 import { computeRelevanceForCaptainTab } from '../keyword/captain-relevance.service.js'
 import { captainKpisFromMetricsRow, scoreCaptainPaa } from '../keyword/captain-kpis.js'
+import { rootStudiesFromMetrics, type RootStudyFromMetrics } from '../keyword/captain-root-studies.js'
 import { parseContractList } from '../../../shared/contracts/core.js'
 import { captainScanEntryContract } from '../../../shared/contracts/captain-scan.contract.js'
 
@@ -665,7 +666,7 @@ export async function getArticleKeywords(id: number): Promise<{ data: ArticleKey
   // envoyé des keywords du Radar au Capitaine sans encore en verrouiller un.
   // Sans cette hydratation, le carousel Capitaine reste vide au reload
   // alors que `captain_explorations` contient déjà ses explorations.
-  const { data: exploredKeywords, dbOps: captainOps } = await getCaptainExplorations(id)
+  const { data: exploredKeywords, dbOps: captainOps, rootStudies } = await getCaptainExplorations(id)
   ops.push(...captainOps)
   const { data: richLieutenants, dbOps: lieutOps } = await getLieutenantExplorations(id)
   ops.push(...lieutOps)
@@ -702,10 +703,12 @@ export async function getArticleKeywords(id: number): Promise<{ data: ArticleKey
       rootKeywords: row?.root_keywords ?? [],
       hnStructure: Array.isArray(row?.hn_structure) ? row.hn_structure : [],
       richCaptain,
+      // Racine sans étude à elle : ses mesures connues, relues sans appel (FR-CAP-ROOTS).
       richRootKeywords: exploredKeywords.flatMap(v =>
         (v.rootKeywords ?? []).map(rk => ({
           keyword: rk, parentKeyword: v.keyword,
           kpis: [], articleLevel: v.articleLevel, timestamp: '',
+          ...rootStudies.get(rk),
         }))
       ),
       richLieutenants: richLieutenants.length ? richLieutenants : undefined,
@@ -767,7 +770,10 @@ export async function saveArticleKeywords(id: number, data: Partial<Omit<Article
 // Captain Explorations (captain_explorations + paa_explorations tables)
 // ---------------------------------------------------------------------------
 
-export async function getCaptainExplorations(articleId: number): Promise<{ data: CaptainScanEntry[]; dbOps: DbOp[] }> {
+/** `rootStudies` : racines sans étude à elles que `keyword_metrics` connaît (FR-CAP-ROOTS). */
+export async function getCaptainExplorations(articleId: number): Promise<{
+  data: CaptainScanEntry[]; dbOps: DbOp[]; rootStudies: Map<string, RootStudyFromMetrics>
+}> {
   const tTotal = Date.now()
   log.debug('[getCaptainExplorations] démarrage', { articleId })
   const ops: DbOp[] = []
@@ -962,6 +968,8 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
       paaJudgment: null,
     }
   })
+  const rootStudies = rootStudiesFromMetrics(res.rows, relevanceResult)
+
   // Frontière relecture : chaque entrée sort dans la forme promise aux écrans ;
   // une entrée inutilisable est écartée et signalée, les autres sont servies.
   const data = parseContractList(captainScanEntryContract, rawEntries, 'db')
@@ -972,7 +980,7 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     withMarketScore: data.filter(e => e.marketScore !== null).length,
     totalMs: Date.now() - tTotal,
   })
-  return { data, dbOps: ops }
+  return { data, dbOps: ops, rootStudies }
 }
 
 export async function saveCaptainExploration(

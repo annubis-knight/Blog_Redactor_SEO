@@ -7,8 +7,10 @@
  *             localStorage en pré-hydratation optimiste.
  * WRITES TO: POST /api/runtime-mode au clic du toggle navbar, et quand le
  *            serveur a perdu le choix de l'utilisateur (redémarrage).
- * CONSUMERS: AppNavbar.vue (badge MOCK / RÉEL).
- * RELATED FR: FR-INFRA-RUNTIME-MODE, NFR-COST-AI-MOCK.
+ * CONSUMERS: AppNavbar.vue (badge MOCK / RÉEL) ; `aiProvider` + `effective` :
+ *            confirmation de régénération de l'avis du Capitaine
+ *            (useAiCallNotice → CaptainSidePanel, CaptainPanel).
+ * RELATED FR: FR-INFRA-RUNTIME-MODE, NFR-COST-AI-MOCK, FR-CAP-AI-PANEL.
  *
  * Toggle global mock/réel — un seul switch couvre AI provider + DataForSEO
  * sandbox côté serveur. Quand l'utilisateur n'a pas explicitement basculé,
@@ -31,6 +33,8 @@ export const RUNTIME_MODE_RESYNC_MS = 15_000
 interface RuntimeModeState {
   override: RuntimeMode | null
   effective: RuntimeMode
+  /** Fournisseur d'IA qui répondrait maintenant (`getProvider` du serveur). */
+  aiProvider?: string | null
 }
 
 function readLocalStorage(): RuntimeMode | null {
@@ -55,6 +59,8 @@ function writeLocalStorage(mode: RuntimeMode | null): void {
 export const useRuntimeModeStore = defineStore('runtime-mode', () => {
   const override = ref<RuntimeMode | null>(readLocalStorage())
   const effective = ref<RuntimeMode>(override.value ?? 'real')
+  /** `null` tant que le serveur ne l'a pas dit : la confirmation dit alors « un appel à l'IA ». */
+  const aiProvider = ref<string | null>(null)
   const isHydrated = ref(false)
 
   let inFlight: Promise<void> | null = null
@@ -73,6 +79,7 @@ export const useRuntimeModeStore = defineStore('runtime-mode', () => {
         // en simulé.
         override.value = data.override
         effective.value = data.effective
+        aiProvider.value = data.aiProvider ?? null
         if (data.override !== null && data.override !== local) writeLocalStorage(data.override)
       }
     } catch (err) {
@@ -114,6 +121,7 @@ export const useRuntimeModeStore = defineStore('runtime-mode', () => {
   async function setMode(mode: RuntimeMode | null): Promise<void> {
     const previousOverride = override.value
     const previousEffective = effective.value
+    const previousProvider = aiProvider.value
     override.value = mode
     effective.value = mode ?? 'real'
     writeLocalStorage(mode)
@@ -121,10 +129,12 @@ export const useRuntimeModeStore = defineStore('runtime-mode', () => {
       const data = await apiPost<RuntimeModeState>('/runtime-mode', { mode })
       override.value = data.override
       effective.value = data.effective
+      aiProvider.value = data.aiProvider ?? null
     } catch (err) {
       log.error('runtime-mode setMode failed — rolling back', err)
       override.value = previousOverride
       effective.value = previousEffective
+      aiProvider.value = previousProvider
       writeLocalStorage(previousOverride)
       throw err
     }
@@ -135,5 +145,5 @@ export const useRuntimeModeStore = defineStore('runtime-mode', () => {
     return setMode(next)
   }
 
-  return { override, effective, isHydrated, hydrate, startAutoResync, setMode, toggle }
+  return { override, effective, aiProvider, isHydrated, hydrate, startAutoResync, setMode, toggle }
 })

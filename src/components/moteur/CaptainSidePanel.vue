@@ -11,6 +11,7 @@ import type { ExploredKeywordEntry } from '@/composables/keyword/useExploredKeyw
 import type { VerdictLevel, ScanResponse } from '@shared/types/index.js'
 import type { RadarCard, KeywordRootVariant } from '@shared/types/intent.types.js'
 import { plural } from '@/utils/plural'
+import { useAiCallNotice } from '@/composables/ui/useAiCallNotice'
 
 const props = defineProps<{
   entry: ExploredKeywordEntry | null
@@ -60,6 +61,11 @@ const aiState = computed<AiPanelState>(() => {
 const verdictConfig = computed(() =>
   props.verdictSummary ? VERDICT_CONFIG[props.verdictSummary.level] : null,
 )
+
+// La confirmation dit ce qui va vraiment se passer : le fournisseur d'IA du
+// moment, ou « sans appel payant » en mode simulé (FR-CAP-AI-PANEL).
+const aiCallNotice = useAiCallNotice()
+const regenConfirmMessage = computed(() => `Régénérer l'avis expert IA ? ${aiCallNotice.value}`)
 
 // Largeur redimensionnable persistée (mêmes bornes/clé localStorage que l'éditeur).
 const { panelWidth, isResizing, onPointerDown } = useResizablePanel()
@@ -195,7 +201,7 @@ useEventListener(document, 'pointerdown', (event: PointerEvent) => {
           subtitle="Analyse Capitaine basée sur les KPIs marché et la pertinence."
           :state="aiState"
           :error="aiError"
-          regen-confirm-message="Régénérer l'avis expert IA ? Cela consommera un appel Claude."
+          :regen-confirm-message="regenConfirmMessage"
           @trigger="$emit('ai-regenerate')"
         >
           <!-- Slot par défaut : state==='success'. Verdict en tête puis markdown. -->

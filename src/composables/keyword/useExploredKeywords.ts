@@ -3,7 +3,9 @@
  *            POST /keywords/:kw/scan quand `articleId` est fourni) et
  *            `keyword_metrics` (mesures partagées entre articles).
  * READS FROM: POST /keywords/:kw/scan (étude d'un candidat, de ses racines) ;
- *             historique relu par CaptainPanel (`restoreFromHistory`, sans appel).
+ *             historique relu par CaptainPanel (`restoreFromHistory`, sans appel) :
+ *             `richCaptain.exploredKeywords` et `richRootKeywords` (une racine sans
+ *             étude à elle revient avec ses mesures `keyword_metrics`, FR-CAP-ROOTS).
  * WRITES TO: rien directement : l'étude enregistre l'exploration côté serveur.
  * CONSUMERS: CaptainPanel.vue (liste des candidats, racines, avis IA).
  * RELATED FR: FR-CAP-INPUT, FR-CAP-SCAN, FR-CAP-ROOTS, FR-MOT-NO-AUTO-ACTION.
@@ -194,26 +196,28 @@ export function useExploredKeywords() {
     if (roots.length === 0 || volumeColor === 'green') return
 
     patch(entryIndex, { isLoadingRoots: true })
+    // Études en parallèle, rangées ensuite dans l'ordre des racines (de la plus
+    // longue à la plus courte), et non dans l'ordre où elles aboutissent
+    // (FR-CAP-ROOTS, recette du 2026-09-30).
+    const studies = await Promise.allSettled(
+      roots.map(rootKw => scanOnce(
+        rootKw,
+        { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
+      )),
+    )
+    if (thisVersion !== loadVersion) return
     const variants = new Map<string, KeywordRootVariant>()
     const failed: string[] = []
-    await Promise.allSettled(
-      roots.map(async (rootKw) => {
-        try {
-          const rootResponse = await scanOnce(
-            rootKw,
-            { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
-          )
-          if (thisVersion !== loadVersion) return
-          const rootCard = hydrateCardFromValidation(rootKw, rootResponse)
-          variants.set(rootKw, { keyword: rootKw, card: rootCard, validation: rootResponse })
-        } catch {
-          failed.push(rootKw)
-        }
-      }),
-    )
-    if (thisVersion === loadVersion) {
-      patch(entryIndex, { rootVariants: variants, isLoadingRoots: false, failedRoots: failed })
-    }
+    studies.forEach((study, i) => {
+      const rootKw = roots[i]!
+      if (study.status === 'rejected') {
+        failed.push(rootKw)
+        return
+      }
+      const rootCard = hydrateCardFromValidation(rootKw, study.value)
+      variants.set(rootKw, { keyword: rootKw, card: rootCard, validation: study.value })
+    })
+    patch(entryIndex, { rootVariants: variants, isLoadingRoots: false, failedRoots: failed })
   }
 
   async function loadCards(cards: RadarCard[], level: ArticleLevel, articleTitle?: string, articleId?: number, painPoint?: string) {
@@ -488,8 +492,12 @@ export function useExploredKeywords() {
       const rootVariants = new Map<string, KeywordRootVariant>()
       const rootsForKeyword = richRootKeywords?.filter(r => r.parentKeyword === h.keyword) ?? []
       for (const root of rootsForKeyword) {
+        // Sa propre étude pour l'article d'abord ; sinon ce que le serveur sait
+        // d'elle (mesures communes relues sans appel, FR-CAP-ROOTS) ; sinon
+        // rien : elle sera étudiée au clic (`isVariantMeasured`).
         const ownStudy = root.kpis.length === 0 ? studied.get(root.keyword.trim().toLowerCase()) : undefined
-        const rootKpis = (ownStudy?.kpis ?? root.kpis).map(s => scoreKpi(s.name, s.rawValue, config))
+        const known = ownStudy ?? root
+        const rootKpis = known.kpis.map(s => scoreKpi(s.name, s.rawValue, config))
         const rootVerdict = computeVerdict(rootKpis)
         const rootResponse: ScanResponse = {
           keyword: root.keyword,
@@ -498,11 +506,14 @@ export function useExploredKeywords() {
           verdict: rootVerdict,
           fromCache: true,
           cachedAt: null,
-          ...(ownStudy
-            ? { paaQuestions: ownStudy.paaQuestions, marketScore: ownStudy.marketScore ?? undefined, relevanceScore: ownStudy.relevanceScore ?? null }
-            : {}),
+          paaQuestions: known.paaQuestions,
+          marketScore: ownStudy?.marketScore ?? undefined,
+          relevanceScore: known.relevanceScore ?? null,
         }
         const rootCard = hydrateCardFromValidation(root.keyword, rootResponse)
+        if (known.relevanceUnavailableReason !== undefined) {
+          rootCard.relevanceUnavailableReason = known.relevanceUnavailableReason
+        }
         rootVariants.set(root.keyword, { keyword: root.keyword, card: rootCard, validation: rootResponse })
       }
 
