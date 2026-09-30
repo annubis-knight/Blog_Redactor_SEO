@@ -13,8 +13,9 @@
  * (`Selection article impossible : fixture incompatible MoteurContextRecap`)
  * parce que le socle ouvrait un cocon inexistant et ne posait pas de stratégie.
  * Réveillés, ils ont révélé trois attentes périmées, corrigées ici :
- *   1. un article issu de la stratégie arrive AVEC son mot-clé suggéré : la
- *      liste n'est donc pas vide (l'état vide se teste avec `withKeyword: false`) ;
+ *   1. un article issu de la stratégie arrive AVEC son mot-clé suggéré. Depuis
+ *      la décision du 2026-09-29 (FR-MOT-NO-AUTO-ACTION, recette CAP-1), ce
+ *      mot-clé attend dans le champ : rien n'est étudié avant « Analyser » ;
  *   2. `is-suggested` vit sur `.tree-article-keyword`, pas sur le bouton parent ;
  *   3. le tiroir n'apparaît qu'après sélection d'une carte, pas d'un article.
  *
@@ -28,8 +29,21 @@ import { test as testWithCtx } from './helpers/test-fixtures'
 import { dismissLoadPrompt, openMoteur, selectArticleByTitle } from './helpers/moteur-ui'
 import { passThroughGate } from './helpers/gate-alarm'
 
-/** Sélectionne la première entrée de la liste (clavier : les mots du mot-clé captent le clic). */
-async function selectFirstEntry(page: Page): Promise<void> {
+/** Étudie le mot-clé proposé (geste explicite : Entrée dans le champ), comme l'utilisateur. */
+async function studyKeyword(page: Page, keyword: string | null): Promise<void> {
+  const field = page.locator('[data-testid="keyword-input"] input').first()
+  await expect(field, 'le champ Capitaine doit être présent').toBeVisible({ timeout: 15000 })
+  await field.fill(keyword ?? 'mot cle de secours')
+  await Promise.all([
+    page.waitForResponse(r => /\/api\/keywords\/.+\/scan$/.test(r.url()) && r.request().method() === 'POST', { timeout: 60000 }),
+    field.press('Enter'),
+  ])
+  await expect(page.locator('[data-testid="radar-list-item-0-loading"]'), 'fin de l’étude').toHaveCount(0, { timeout: 60000 })
+}
+
+/** Étudie le mot-clé, puis sélectionne la première entrée (clavier : les mots du mot-clé captent le clic). */
+async function selectFirstEntry(page: Page, keyword: string | null): Promise<void> {
+  await studyKeyword(page, keyword)
   const item = page.locator('[data-testid="radar-list-item-0"]')
   await expect(item, 'une entrée à valider doit être listée').toBeVisible({ timeout: 20000 })
   await item.focus()
@@ -37,17 +51,25 @@ async function selectFirstEntry(page: Page): Promise<void> {
 }
 
 testWithCtx.describe('Capitaine — UI radar-list (mode workflow)', () => {
-  testWithCtx('un article issu de la stratégie arrive avec son mot-clé à valider', async ({ page, ctx }) => {
+  testWithCtx('un article issu de la stratégie propose son mot-clé, sans l’étudier d’office', async ({ page, ctx }) => {
     const article = await ctx.createArticle('RadarList Browser')
+    const etudes: string[] = []
+    page.on('request', r => {
+      if (/\/api\/keywords\/.+\/(scan|ai-panel)$/.test(r.url()) && r.method() === 'POST') etudes.push(r.url())
+    })
     await openMoteur(page, article.cocoonId)
     await selectArticleByTitle(page, article.titre)
 
     await expect(page.locator('[data-testid="captain-layout"]')).toBeVisible()
     await expect(page.locator('[data-testid="radar-list"]')).toBeVisible()
 
-    // Le mot-clé proposé par le Cerveau est présenté, non validé.
-    await expect(page.locator('[data-testid="radar-list-item-0"]'), 'le mot-clé suggéré est listé')
-      .toBeVisible({ timeout: 20000 })
+    // FR-MOT-NO-AUTO-ACTION (recette CAP-1) : le mot-clé proposé par le Cerveau
+    // attend dans le champ ; ni étude ni avis de l'IA ne partent sans clic.
+    await expect(page.locator('[data-testid="keyword-input"] input').first(), 'le mot-clé suggéré est proposé')
+      .toHaveValue(article.suggestedKeyword ?? '', { timeout: 20000 })
+    await page.waitForTimeout(2000)
+    expect(etudes, 'aucune étude ni avis IA d’office').toEqual([])
+    await expect(page.locator('[data-testid="radar-list-item-0"]'), 'rien n’est étudié avant « Analyser »').toHaveCount(0)
 
     // Tant qu'aucune carte n'est sélectionnée, le tiroir de détail n'existe pas
     // (2026-04-30 : v-if sur entry, au lieu d'un drawer vide).
@@ -96,7 +118,7 @@ testWithCtx.describe('Capitaine — tiroir de détail', () => {
     const article = await ctx.createArticle('SidePanel Mount Browser')
     await openMoteur(page, article.cocoonId)
     await selectArticleByTitle(page, article.titre)
-    await selectFirstEntry(page)
+    await selectFirstEntry(page, article.suggestedKeyword)
 
     const sidePanel = page.locator('[data-testid="side-panel"]')
     await expect(sidePanel, 'le tiroir s’ouvre sur la carte sélectionnée').toBeVisible({ timeout: 15000 })
@@ -116,7 +138,7 @@ testWithCtx.describe('Capitaine — tiroir de détail', () => {
     const article = await ctx.createArticle('ClosePanel Browser')
     await openMoteur(page, article.cocoonId)
     await selectArticleByTitle(page, article.titre)
-    await selectFirstEntry(page)
+    await selectFirstEntry(page, article.suggestedKeyword)
 
     await expect(page.locator('[data-testid="side-panel"]')).toBeVisible({ timeout: 15000 })
     await page.locator('[data-testid="side-panel-close"]').click()
