@@ -348,8 +348,9 @@ describe('LieutenantsPanel', () => {
     it('article level apparaît dans le DOM via LieutenantProposals header', async () => {
       const w = await mountWithResults({ articleLevel: 'intermediaire' })
       // Le badge est rendu dans LieutenantProposals (container principal),
-      // pas dans LieutenantsPanel. On vérifie sa présence dans le DOM rendu.
-      expect(w.html().toLowerCase()).toContain('intermediaire')
+      // pas dans LieutenantsPanel. On vérifie sa présence dans le DOM rendu,
+      // en toutes lettres (FR-CER-AIGUILLAGE).
+      expect(w.find('.level-badge').text()).toBe('Intermédiaire')
     })
 
     it('legacy `.lieutenants-header` n\'existe plus dans le DOM', () => {

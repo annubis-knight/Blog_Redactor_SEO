@@ -320,7 +320,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 **⚠ Défaut connu :** FR-MOT-CACHE-PANEL-COUNT — la puce Radar affiche « C 1 » dès qu'un scan est connu, même enregistré, et le bouton « C 1 » de l'invite ne recharge rien. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### MOT-13 — Lieutenants : le seuil dépend du niveau, l'étape suit les cases
-**Exigences :** FR-MOT-WORKFLOW-GATING-DUAL, FR-MOT-CHECKS, FR-MOT-CROSS-TAB-PAYLOAD, FR-MOT-MODE-BIMODAL ⚠
+**Exigences :** FR-MOT-WORKFLOW-GATING-DUAL, FR-MOT-CHECKS, FR-MOT-CROSS-TAB-PAYLOAD, FR-MOT-MODE-BIMODAL ⚠, FR-CER-AIGUILLAGE
 
 **Gestes :**
 1. Onglet **Lieutenants** de l'enfant : clique **« Analyser SERP »** et attends les propositions.
@@ -330,7 +330,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 
 **Tu dois voir :**
 - l'analyse part du Capitaine verrouillé : le premier onglet de résultats porte son mot-clé. En MOCK, les propositions viennent des questions « Autres questions » reçues (factices en MOCK), puis du capitaine (« prix … », « … avis », « comment choisir … ») ;
-- le badge de niveau « intermediaire » à côté de « Lieutenants proposes par l'IA » ;
+- le badge de niveau « Intermédiaire », en toutes lettres (affiché en capitales), à côté de « Lieutenants proposes par l'IA » ;
 - avec une seule case : le bandeau « Étape non validée. 1 lieutenant pour un article Intermédiaire : le minimum conseillé est 2. », avec « Voir pourquoi / décider ». Le point « Lieutenants » reste vide ;
 - avec deux cases : le bandeau disparaît et le point « Lieutenants » se remplit ;
 - le seuil suit le niveau : le pilier demandait 3 lieutenants au parcours express (« … pour un article Pilier : le minimum conseillé est 3. ») ;
@@ -339,7 +339,8 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 **C'est un bug si :**
 - le point « Lieutenants » se remplit avec une seule case cochée ;
 - le bandeau reste affiché avec deux cases ;
-- les lieutenants retenus manquent dans la Structure ou le Lexique.
+- les lieutenants retenus manquent dans la Structure ou le Lexique ;
+- le badge de niveau montre le code (« intermediaire »).
 
 **⚠ Défaut connu :** le panneau Lexique n'a pas de mode libre, et aucun écran n'utilise le mode libre : seul le mode guidé d'un article se vérifie ici. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 

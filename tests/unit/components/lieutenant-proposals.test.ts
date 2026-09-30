@@ -277,3 +277,21 @@ describe('LieutenantProposals', () => {
     expect(order).toEqual(['fort', 'faible', 'sans-score'])
   })
 })
+
+// FR-CER-AIGUILLAGE — le niveau s'affiche en toutes lettres, jamais sous son code
+// (recette du 2026-09-30 : badge « intermediaire » près de « Lieutenants proposes par l'IA »).
+describe('LieutenantProposals — badge du niveau en toutes lettres (FR-CER-AIGUILLAGE)', () => {
+  it.each([
+    ['pilier', 'Pilier'],
+    ['intermediaire', 'Intermédiaire'],
+    ['specifique', 'Spécialisé'],
+  ] as const)('%s → « %s »', (level, label) => {
+    const wrapper = mount(LieutenantProposals, {
+      props: { ...BASE, lieutenantCards: [makeLt('prix budget')], totalGenerated: 1, articleLevel: level },
+      global: GLOBAL,
+    })
+    const badge = wrapper.get('.level-badge')
+    expect(badge.text()).toBe(label)
+    expect(badge.attributes('title')).toBe(`Niveau de l'article : ${label}`)
+  })
+})
