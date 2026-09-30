@@ -380,8 +380,10 @@ router.post('/articles/:id/captain/judge-paa', async (req, res) => {
   const id = parseInt(req.params.id, 10)
   if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } }); return }
   try {
-    const result = await runPaaJudgmentsForArticle(id)
-    res.json({ data: parseContract(captainPaaJudgeContract, result, 'server') })
+    const { usage, ...judged } = await runPaaJudgmentsForArticle(id)
+    // `usage` (coût additionné des appels Haiku, absent sans appel) : `apiPost`
+    // l'inscrit une fois dans la pile « Coûts API » (FR-INFRA-COST-LOG-STORE).
+    res.json({ data: { ...parseContract(captainPaaJudgeContract, judged, 'server'), usage } })
   } catch (err) {
     log.error(`POST /api/articles/${id}/captain/judge-paa — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to compute Haiku PAA judgments' } })

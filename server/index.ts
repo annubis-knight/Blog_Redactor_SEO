@@ -30,11 +30,15 @@ import runtimeModeRoutes from './routes/runtime-mode.routes.js'
 import gatesRoutes from './routes/gates.routes.js'
 import costStatusRoutes from './routes/cost-status.routes.js'
 import { setContractReporter } from '../shared/contracts/core.js'
+import { dbTelemetryMiddleware, patchPoolForTelemetry } from './middleware/db-telemetry.middleware.js'
 
 // Contrats d'affichage : chaque correction ou refus est journalisé (NFR-INT-DISPLAY-CONTRACTS).
 setContractReporter(event => {
   log.warn(`[contrat ${event.contract}] ${event.kind} · ${event.field} — ${event.detail}`, { boundary: event.boundary })
 })
+
+// Écritures en base de chaque requête → champ `dbOps` de sa réponse → pile d'activité (FR-INFRA-COST-LOG-STORE).
+patchPoolForTelemetry()
 
 const app = express()
 const PORT = process.env.PORT || 3400
@@ -56,6 +60,9 @@ app.use((req, res, next) => {
   }
   next()
 })
+
+// Après la lecture du corps JSON, avant toutes les routes : chaque requête porte son relevé d'écritures.
+app.use('/api', dbTelemetryMiddleware)
 
 // Health check
 app.get('/api/health', (_req, res) => {

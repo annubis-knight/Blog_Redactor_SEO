@@ -24,9 +24,9 @@ synced_with:
 Le premier indice est sur la carte, le panneau ou le bandeau de l'action qui a échoué. Une cause reconnue s'affiche en français : « Quota DataForSEO atteint. Rechargez vos crédits puis relancez. », « Plafond de dépense DataForSEO atteint (… sur 30min). », « Le modèle IA (…) est surchargé. Nouvelle tentative dans quelques instants. ». Les autres causes arrivent en message court, parfois générique et en anglais (au Capitaine, « Erreur : Keyword validation failed »), jamais avec une trace technique. Certains échecs ne disent rien du tout, par exemple une suggestion ratée au Cerveau ou des valeurs restées à « — » : l'étape suivante aide à les comprendre.
 
 ### 2. Déplier la pile « Coûts API »
-**Exigences :** NFR-OBS-COST-LOG, FR-INFRA-COST-LOG-STORE ⚠
+**Exigences :** NFR-OBS-COST-LOG, FR-INFRA-COST-LOG-STORE
 
-En bas à gauche, la pastille (un montant, puis « N appels ») se déplie en « Coûts API ». Une erreur connue y ajoute une ligne rouge avec la marche à suivre : « Quota DataForSEO atteint », « Quota IA atteint », « Modèle IA surchargé » ; chaque ligne d'IA donne le modèle qui a réellement répondu et son coût. En tête, la bande « DataForSEO » affiche « dépensé / plafond (30min) », une barre qui passe sur fond jaune au-delà de 80 % du plafond, et « SANDBOX » ou « PROD ». La pile se vide au rechargement de la page : lis-la avant de recharger.
+En bas à gauche, la pastille (un montant, puis « N appels ») se déplie en « Coûts API ». Une erreur connue y ajoute une ligne rouge avec la marche à suivre : « Quota DataForSEO atteint », « Quota IA atteint », « Modèle IA surchargé » ; chaque ligne d'IA donne le modèle qui a réellement répondu et son coût. Chaque action qui écrit en base y ajoute ses lignes violettes (type d'écriture, table, nombre de lignes) : un enregistrement qui n'a rien écrit (« 0 row ») se voit là. En tête, la bande « DataForSEO » affiche « dépensé / plafond (30min) », une barre qui passe sur fond jaune au-delà de 80 % du plafond, et « SANDBOX » ou « PROD ». La pile se vide au rechargement de la page : lis-la avant de recharger.
 
 ### 3. Vérifier le mode : « MOCK » ou « RÉEL »
 **Exigences :** FR-INFRA-RUNTIME-MODE, NFR-CFG-DATAFORSEO-SANDBOX
@@ -94,7 +94,6 @@ Avant le premier mot, l'outil réessaie puis passe au fournisseur d'IA suivant. 
 
 - NFR-OBS-KNOWN-ERRORS — le dépassement du budget DataForSEO n'est pas inscrit dans la pile d'activité ; une erreur inconnue affiche son message brut, pas un message générique ; au Cerveau, l'échec d'une suggestion, d'une fusion, d'une sous-question, d'un enrichissement, d'une régénération ou de l'enregistrement par « Suivant » n'affiche rien ; l'échec de « Remplir les champs avec Claude » et un aperçu refusé s'expliquent en anglais.
 - FR-INFRA-ERROR-HANDLER — la plupart des routes interceptent leurs erreurs et renvoient un 500 générique ; seules quelques-unes traduisent les erreurs connues en 429 / 503.
-- FR-INFRA-COST-LOG-STORE — seules les lectures et écritures des mots-clés d'article et des explorations Capitaine / Lieutenants remontent dans la pile ; les autres opérations en base n'y apparaissent pas. Et le coût de la génération des longues traînes et du jugement des questions PAA ne remonte pas à l'écran.
 - FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ».
 - FR-EXT-AI-FALLBACK — la bascule n'est écrite que dans le journal du serveur ; la pile d'activité montre seulement le modèle qui a répondu ; un fournisseur de secours sans clé configurée arrête la chaîne au lieu de passer au suivant, et l'utilisateur lit un message technique en anglais à la place de la vraie cause.
 - FR-EXT-GEMINI — le modèle par défaut, Gemini 2.0 Flash, n'est plus servi par Google : sans réglage, Gemini échoue et la chaîne passe à OpenRouter.
