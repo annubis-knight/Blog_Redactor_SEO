@@ -165,7 +165,7 @@ Le cadenas d'une carte verrouille son mot-clé d'origine (jamais la racine affic
 | verdict NO-GO | 🔴 | « Le verdict du mot-clé est NO-GO : aucun signal de demande (volume, questions, suggestions). » |
 | SERP commerciale ou transactionnelle, article informationnel | 🔴 | « Google traite cette requête comme commerciale (on compare des prestataires), alors que l'article vise une intention informationnelle (on cherche à comprendre). » |
 | autre écart d'intention | 🟠 | même forme de message |
-| aucune suggestion Google | 🟠 | « Google ne suggère pas cette requête quand on commence à la taper. » |
+| Google ne suggère pas la requête : la valeur « Autocomplete » du panneau vaut 0 (des suggestions seulement approchées ne comptent pas) | 🟠 | « Google ne suggère pas cette requête quand on commence à la taper. » |
 
    - L'intention attendue est celle de l'article ; à défaut, un pilier est traité comme un guide (informationnel). Une intention inconnue ne lève rien.
    - Sous les points 🔴 et sous l'écart d'intention 🟠, « À la place : » propose jusqu'à 5 autres candidats de l'article, avec leur volume (« mot-clé (n recherches/mois) »), du plus recherché au moins recherché.

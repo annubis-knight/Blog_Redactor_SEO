@@ -32,6 +32,16 @@ describe('rewriteInternalLinks', () => {
     expect(rewritten).toEqual(['prix-site-internet-tpe'])
   })
 
+  // FR-RED-EXPORT-HTML — recette du 2026-09-30 : l'éditeur a enregistré des
+  // liens internes en nouvel onglet + nofollow ; le fichier publié les suit.
+  it('un lien interne enregistré en nofollow + nouvel onglet est publié sans eux', () => {
+    const { html } = rewriteInternalLinks(
+      '<p>Voir <a target="_blank" rel="noopener noreferrer nofollow" class="internal-link" href="#article-42">nos tarifs</a>.</p>',
+      KNOWN,
+    )
+    expect(html).toBe('<p>Voir <a href="/blog/prix-site-internet-tpe" class="internal-link">nos tarifs</a>.</p>')
+  })
+
   it('convertit un lien posé par le robot (/slug + data-slug)', () => {
     const { html } = rewriteInternalLinks(
       '<p><a href="/prix-site-internet-tpe" data-slug="prix-site-internet-tpe">prix</a></p>',

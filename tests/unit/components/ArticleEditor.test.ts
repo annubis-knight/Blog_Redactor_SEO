@@ -50,17 +50,8 @@ vi.mock('@tiptap/vue-3', () => ({
   },
 }))
 
-vi.mock('@tiptap/starter-kit', () => ({ default: {} }))
-vi.mock('@tiptap/extension-link', () => ({
-  default: { configure: vi.fn().mockReturnValue({}) },
-}))
-vi.mock('@tiptap/extension-placeholder', () => ({
-  default: { configure: vi.fn().mockReturnValue({}) },
-}))
-vi.mock('../../../src/components/editor/tiptap/extensions/content-valeur', () => ({ ContentValeur: {} }))
-vi.mock('../../../src/components/editor/tiptap/extensions/content-reminder', () => ({ ContentReminder: {} }))
-vi.mock('../../../src/components/editor/tiptap/extensions/answer-capsule', () => ({ AnswerCapsule: {} }))
-vi.mock('../../../src/components/editor/tiptap/extensions/internal-link', () => ({ InternalLink: {} }))
+// Les extensions réelles sont testées à part (editor-extensions.test.ts).
+vi.mock('../../../src/components/editor/tiptap/editor-extensions', () => ({ createEditorExtensions: vi.fn(() => []) }))
 
 // Mock shared html-utils — pass-through for simplicity
 vi.mock('@shared/html-utils', () => ({

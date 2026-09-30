@@ -40,7 +40,7 @@ erDiagram
 | `cocoon_strategies` | `cocoon_id` (CASCADE) | Stratégie du cocon et carte indicative (JSONB) | `strategy/cocoon-strategy.service.ts` |
 | `theme_config` | `id` | Identité du site (JSONB, une ligne) | `strategy/theme-config.service.ts` |
 | `internal_links` | `id` ; unique `(source_id, target_id, position)` ; sans clé étrangère | Liens internes (ancre, raison, date de validation) | `article/linking.service.ts` |
-| `gate_waivers` | `id` ; unique `(article_id, gate_id, rule, input_hash)` ; CASCADE | Dérogations aux portes (niveau, catégorie, raison, empreinte) | `gates/gate.service.ts` |
+| `gate_waivers` | `id` ; unique `(article_id, gate_id, rule, input_hash)` ; CASCADE | Dérogations aux portes (niveau, catégorie, raison ; `input_hash` = empreinte du point dérogé, ou de toute la porte avant le 2026-09-30) | `gates/gate.service.ts` |
 
 **Explorations par article** (historique des essais du Moteur)
 
@@ -171,7 +171,7 @@ Pour chaque table de `schema.sql` : l'exigence qui en fait l'autorité, qui l'é
 | `keyword_serp_scrapes` | NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION | FR-LIE-SERP-ANALYZE | FR-LEX-TFIDF, FR-LIE-SCRAPE-DEDIE, FR-LEX-PRECHECK-SERP | FK sur `keyword_serp_results` |
 | `keywords_seo` | FR-INFRA-KEYWORDS-SEO | FR-CER-AIGUILLAGE, FR-CER-COCOON-PROGRESSIVE | pool du Cerveau, audit du cocon | pas de FK : relié par `cocoon_name` |
 | `lexique_explorations` | [Moteur — Lexique](15-lieutenants-structure-lexique.md) | FR-LEX-TFIDF (analyse TF-IDF, `lexique-analysis.service`), FR-LEX-AI-PANEL | FR-LEX-METIER-ONLY (termes génériques écartés), FR-MOT-EXPLORATION-COUNTS | `UNIQUE (article_id, source_keyword)` |
-| `lieutenant_explorations` | FR-INFRA-LIEUTENANT-EXPLORATIONS | FR-LIE-PROPOSE-AI, FR-LIE-CHECKBOX-LOCK-IMMEDIATE | FR-LIE-PROPOSE-AI, FR-MOT-EXPLORATION-COUNTS | séquence `lieutenant_proposals_id_seq` héritée |
+| `lieutenant_explorations` | FR-INFRA-LIEUTENANT-EXPLORATIONS | FR-LIE-PROPOSE-AI, FR-LIE-CHECKBOX-LOCK-IMMEDIATE | FR-LIE-PROPOSE-AI, FR-MOT-EXPLORATION-COUNTS, FR-LIE-LOCK-GATE | séquence `lieutenant_proposals_id_seq` héritée |
 | `local_entities` | FR-INFRA-LOCAL-ENTITIES | chargement hors application | FR-INFRA-PROMPT-LAYERS (repères de la zone) | une entité sans `region` = référentiel par défaut |
 | `paa_explorations` | FR-INFRA-PAA-EXPLORATIONS | FR-CAP-PERSIST | FR-CAP-PERSIST, FR-CAP-PAA-JUDGE-HAIKU, FR-MOT-EXPLORATION-COUNTS | distinct du cache PAA commun |
 | `radar_explorations` | FR-RAD-PERSIST | FR-RAD-PERSIST, FR-RAD-LONGTAIL-GENERATE | FR-RAD-PERSIST, FR-CAP-PERSIST, FR-MOT-EXPLORATION-COUNTS | 1:1 avec `articles`, JSONB `scan_result` |

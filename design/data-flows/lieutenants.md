@@ -2,7 +2,7 @@
 name: lieutenants
 description: Lieutenants d'un article — les mots-clés secondaires (futurs H2/H3) proposés par l'IA à partir des pages concurrentes, cochés par l'utilisateur, enregistrés à la fois dans `article_keywords.lieutenants` (décision) et `lieutenant_explorations` (propositions et statuts), gardés par la porte `lieutenants-lock`.
 type: "string[] (article_keywords.lieutenants TEXT[]) + RichLieutenant[] ({ keyword, status: suggested|locked|eliminated|archived, reasoning, sources, suggestedHnLevel, score, kpis, exploredAt }) dans lieutenant_explorations"
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 related_fr: [FR-LIE-SERP-ANALYZE, FR-LIE-EXTRACT-HEADINGS, FR-LIE-PROPOSE-AI, FR-LIE-GEOFUNNEL-RULE, FR-LIE-AI-FRONTIER, FR-LIE-CHECKBOX-LOCK-IMMEDIATE, FR-LIE-CHECKBOX-COUNT, FR-LIE-CHECK, FR-LIE-LOCK-GATE, FR-LIE-SCRAPE-DEDIE, FR-INFRA-LIEUTENANT-EXPLORATIONS, FR-MOT-EXPLORATIONS-HYDRATATION, FR-MOT-CHECK-RECONCILIATION, FR-MOT-CROSS-TAB-PAYLOAD, FR-CAP-LOCK-RADIO, FR-HN-TAB, NFR-INT-SERP-ONCE]
 synced_with: [design/data-flows/keywords.md, design/data-flows/moteur.md]
 ---
@@ -72,7 +72,7 @@ Mémoire :
 ### Calcul / tri / filtre / agrégat
 
 - **Tri serveur des propositions** — `filterLieutenants` : `compareScores(score)`, `null` en bas, coupe à `maxLieutenants` ([`shared/constants/article-type-rules.ts`](../../shared/constants/article-type-rules.ts)). La relecture (`getLieutenantExplorations`) trie `score DESC NULLS LAST`. L'écran retrie avec `useSortableList` (`null` en bas).
-- **Porte `lieutenants-lock`** — `lieutenants-too-few` (🔴, `minLieutenants`), `lieutenant-cannibalization:<mot>` (🔴), `lieutenant-shared:<mot>` (🟠), `lieutenant-is-captain:<mot>` (🟠), sur `article_keywords.lieutenants`. Rejouée par `publishGate` à la publication.
+- **Porte `lieutenants-lock`** — `lieutenants-too-few` (🔴, `minLieutenants` ; « À la place : » = `unselectedLieutenants`, les propositions `lieutenant_explorations` encore `suggested`, les mieux notées d'abord), `lieutenant-cannibalization:<mot>` (🔴), `lieutenant-shared:<mot>` (🟠), `lieutenant-is-captain:<mot>` (🟠), sur `article_keywords.lieutenants`. Rejouée par `publishGate` à la publication.
 - **Porte `hn-lock`** — lit la liste plate pour `hn-lieutenant-missing:<lieutenant>` (🟠).
 - **Autres articles du cocon** — `getCocoonExistingLieutenants` (prompt de l'IA) et les revendications de `lieutenantsGate` lisent la liste plate de chaque article.
 - **Rédaction** — `buildKeywordContext` ([`server/routes/generate/_helpers.ts`](../../server/routes/generate/_helpers.ts)) écrit « Lieutenants (H2, H3) : … » à partir de `article_keywords`.

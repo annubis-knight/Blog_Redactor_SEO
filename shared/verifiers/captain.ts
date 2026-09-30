@@ -23,8 +23,13 @@ export interface CaptainGateInput {
   level: ArticleLevel
   /** Volume mensuel ; `null` = jamais mesuré ou donnée absente. */
   volume: number | null
-  /** Nombre de suggestions Google ; `null` = pas récupéré. */
-  autocompleteCount: number | null
+  /**
+   * Place de la requête dans les suggestions Google, la valeur « Autocomplete »
+   * du panneau du Capitaine (`captainAutocompletePosition`) : 0 = Google ne la
+   * suggère pas (ses suggestions approchées ne comptent pas) ; `null` = jamais
+   * récupéré.
+   */
+  autocompletePosition: number | null
   verdict: 'GO' | 'ORANGE' | 'NO-GO' | 'GRAY' | null
   /** Intention dominante de la SERP (DataForSEO) ; `null` = inconnue. */
   serpIntent: PainIntentExpected | null
@@ -104,7 +109,7 @@ export function verifyCaptain(input: CaptainGateInput): GateIssue[] {
     })
   }
 
-  if (input.autocompleteCount === 0) {
+  if (input.autocompletePosition === 0) {
     issues.push({
       rule: 'captain-autocomplete-empty',
       level: 'attention',

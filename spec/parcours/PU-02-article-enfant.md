@@ -59,7 +59,7 @@ Page Rédaction du cocon : l'enfant est dans la colonne « Intermédiaire », «
 Dans l'éditeur de l'enfant, le panneau « Maillage » (« Suggestions de maillage ») propose d'abord la famille : le parent, avec « Article parent (section « … ») » et « Ancre : « … » », une expression déjà présente dans le texte. L'utilisateur place le curseur dans la zone du texte où se trouve l'ancre, puis clique « ✓ » : l'ancre devient un lien. Autre geste : sélectionner quelques mots, « ✦ », « 🔗 Lien interne », puis « Choisir l'article cible ». Le lien entre dans la matrice « Maillage » de l'accueil.
 
 ### 9. Publier l'enfant
-**Exigences :** FR-RED-PUBLISH-GATE, FR-RED-EXPORT-HTML ⚠, FR-RED-PROGRESS ⚠
+**Exigences :** FR-RED-PUBLISH-GATE, FR-RED-EXPORT-HTML, FR-RED-PROGRESS ⚠
 
 « Visualiser l'article », puis « Exporter HTML » : la porte de publication rejoue les contrôles de l'enfant, avec les règles de son niveau (par exemple 2 500 mots au plus pour un intermédiaire). Un lien vers un article pas encore publié y serait un point 🟠 ; le parent l'étant déjà, le lien vers lui passe. Une fois la porte passée, un fichier HTML se télécharge et l'enfant devient « Publié ».
 
@@ -111,5 +111,4 @@ Si un lieutenant de l'enfant est le Capitaine du pilier, la porte des lieutenant
 - FR-RED-DRAFT-SINGLE-PASS — une panne de rédaction n'affiche aucun message, ni dans la rédaction guidée ni dans l'éditeur ; l'échec de la méta, d'une réduction ou d'une humanisation n'en affiche pas non plus.
 - FR-RED-LINKING-MANUAL — dans la rédaction guidée, « Appliquer » une suggestion ne fait rien ; dans l'éditeur, l'ancre n'est cherchée que dans la zone active : ailleurs, « Appliquer » ne fait rien, sans message, et la suggestion reste affichée.
 - FR-RED-CONTEXTUAL-ACTIONS — l'éditeur n'envoie pas le mot-clé de l'article : « Optimiser mot-clé » et les autres actions travaillent sans lui ; les blocs « Sources chiffrées » et « Exemples réels » retirent les liens absents de la recherche sans dire combien ; l'échec d'une action s'affiche sous l'éditeur, caché par le voile ; « Convertir en liste » montre ses balises dans la fenêtre de résultat.
-- FR-RED-EXPORT-HTML — le fichier téléchargé perd tous les liens internes posés dans l'éditeur (celui de l'enfant vers son parent comme celui du parent vers l'enfant), et son H1 est le titre de l'article, pas le H1 jugé par la porte ; réexporter après une correction, sans recharger l'aperçu, télécharge la version chargée à l'ouverture de l'onglet, pas celle que la porte vient d'accepter.
 - FR-INFRA-KEYWORDS-SEO — aucun écran affiché ne permet de remplacer, de changer le statut ni de supprimer un mot-clé du pool ; le pool ne s'alimente qu'à la création d'un article ; le remplacement d'un mot-clé ne vérifie pas qu'un autre cocon l'utilise déjà, seul l'ajout le refuse ; un mot-clé déjà présent dans le pool de son propre cocon est refusé comme s'il appartenait à un autre cocon.

@@ -32,6 +32,24 @@ describe('detectNonFrenchSentences', () => {
   it('ignore les phrases trop courtes pour juger', () => {
     expect(detectNonFrenchSentences('<p>Check this.</p>')).toEqual([])
   })
+
+  // Recette du 2026-09-30 (RED-22) — FR-RED-PUBLISH-GATE : une phrase anglaise
+  // courte, avec un seul mot-outil anglais, passait inaperçue.
+  it('repère une phrase anglaise courte, sans aucun mot-outil français ni accent', () => {
+    const html = '<p>Il est important de noter que chaque prospect compte. We help small businesses grow online.</p>'
+    expect(detectNonFrenchSentences(html)).toEqual(['We help small businesses grow online.'])
+  })
+
+  it('ne prend pas pour de l’anglais une phrase française courte sans accent', () => {
+    for (const phrase of [
+      'Chiffre d’affaires : 3 000 euros par an.',
+      'Mobile first, SEO, UX : tout compte ici.',
+      'Google Business Profile, Search Console, Analytics.',
+      'Un an plus tard, tout roule.',
+    ]) {
+      expect(detectNonFrenchSentences(`<p>${phrase}</p>`), phrase).toEqual([])
+    }
+  })
 })
 
 describe('detectRepeatedParagraphs', () => {

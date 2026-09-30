@@ -4,7 +4,10 @@
  *
  * Une passe propose, chapitre par chapitre, une version enrichie ; l'utilisateur
  * accepte ou refuse. Avant de montrer la proposition, on la juge :
- *   ⛔ proposition vide ou coupée ; titres H1 à H3 modifiés (H1 et H2 pour une
+ *   ⛔ proposition vide ou coupée — par l'arrêt du modèle, ou par un défaut du
+ *      texte que la publication refuserait (bloc coupé en plein mot, texte hors
+ *      paragraphe… : `validateArticleContent`, la même règle qu'à la
+ *      publication) ; titres H1 à H3 modifiés (H1 et H2 pour une
  *      réécriture, qui peut refaire ses H3) — une passe enrichit, elle ne
  *      restructure pas ; bloc posé à la main (tableau, image, lien, marqueur)
  *      perdu ; tableau sans en-tête ; image sans texte alternatif ; FAQ sans
@@ -20,6 +23,7 @@
  * bloc perdu n'y est qu'une attention (🟠).
  */
 import { detectNonFrenchSentences, detectUnsourcedFigures } from '../text-quality.js'
+import { validateArticleContent, type ContentIssue } from '../content-validators.js'
 import { distinctRules } from './publish.js'
 import type { GateIssue } from './gate.js'
 import { ARTICLE_TYPE_RULES, CHILD_SUMMARY_WORDS } from '../constants/article-type-rules.js'
@@ -116,6 +120,28 @@ function lostElements(before: string, after: string): string[] {
   })
 }
 
+/**
+ * Défauts ⛔ du texte que la publication refuserait (`validateArticleContent`,
+ * règle `truncated-block` et les autres), apportés par la proposition : ceux
+ * que le chapitre avait déjà ne lui sont pas imputés. Recette du 2026-09-30
+ * (express 10 a) : un résumé fini en plein mot s'acceptait, puis rendait
+ * l'article impubliable.
+ */
+function publishBlockers(before: string, after: string): GateIssue[] {
+  const key = (i: ContentIssue): string => `${i.rule}|${i.excerpt ?? ''}`
+  const errors = (html: string): ContentIssue[] => validateArticleContent(html).filter(i => i.severity === 'error' && i.rule !== 'content-empty')
+  const existing = new Set(errors(before).map(key))
+  return errors(after)
+    .filter(i => !existing.has(key(i)))
+    .map(i => ({
+      rule: `enrich-${i.rule}`,
+      level: 'technique' as const,
+      message: `${i.message} La publication le refuserait.`,
+      risk: 'Accepté, ce défaut rendrait l’article impubliable : il faudrait le corriger à la main.',
+      excerpt: i.excerpt,
+    }))
+}
+
 export function verifyEnrichment(input: EnrichmentInput): GateIssue[] {
   const { pass, before, after } = input
   const issues: GateIssue[] = []
@@ -126,6 +152,7 @@ export function verifyEnrichment(input: EnrichmentInput): GateIssue[] {
   if (input.truncated) {
     issues.push({ rule: 'enrich-truncated', level: 'technique', message: 'La proposition a été coupée avant la fin.', risk: 'Le chapitre accepté perdrait sa fin.' })
   }
+  issues.push(...publishBlockers(before, after))
   // Le HTML, pas le seul texte : une image ou un tableau ajouté change le chapitre.
   const squash = (html: string): string => html.replace(/\s+/g, ' ').replace(/>\s+</g, '><').trim()
   if (squash(after) === squash(before)) {

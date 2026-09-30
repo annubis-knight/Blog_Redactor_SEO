@@ -2,19 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import type { Editor } from '@tiptap/core'
-import StarterKit from '@tiptap/starter-kit'
-import Link from '@tiptap/extension-link'
-import Image from '@tiptap/extension-image'
-import { TableKit } from '@tiptap/extension-table'
-import Placeholder from '@tiptap/extension-placeholder'
-import { ContentValeur } from './tiptap/extensions/content-valeur'
-import { ContentReminder } from './tiptap/extensions/content-reminder'
-import { AnswerCapsule } from './tiptap/extensions/answer-capsule'
-import { InternalLink } from './tiptap/extensions/internal-link'
-import { ToSource } from './tiptap/extensions/to-source'
-import { DragHandle } from './tiptap/extensions/drag-handle'
-import { DynamicBlock } from './tiptap/extensions/dynamic-block'
-import { DynamicBlockDrop } from './tiptap/extensions/dynamic-block-drop'
+import { createEditorExtensions } from './tiptap/editor-extensions'
 import { removeEmptyElements, splitArticleSections } from '@shared/html-utils'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import { log } from '@/utils/logger'
@@ -43,29 +31,14 @@ function processAndSplit(html: string) {
 
 const initialSections = processAndSplit(props.content)
 
-// --- Shared TipTap extensions factory ---
+// --- Extensions TipTap, chacune une seule fois (liens internes sans nofollow) ---
 function createExtensions(placeholder: string) {
-  return [
-    StarterKit,
-    Link.configure({ openOnClick: false }),
-    // Passes d'enrichissement : sans ces extensions, un tableau ou une image
-    // accepté disparaissait au premier rendu (FR-RED-ENRICH-PASSES).
-    TableKit.configure({ table: { resizable: false } }),
-    Image.configure({ inline: false, allowBase64: false }),
-    Placeholder.configure({ placeholder }),
-    ContentValeur,
-    ContentReminder,
-    AnswerCapsule,
-    InternalLink,
-    ToSource,
-    DynamicBlock,
-    DynamicBlockDrop.configure({
-      articleId: props.articleId,
-      getKeyword: () => props.keyword || undefined,
-      getKeywords: () => props.keywords ?? [],
-    }),
-    DragHandle,
-  ]
+  return createEditorExtensions({
+    placeholder,
+    articleId: props.articleId,
+    getKeyword: () => props.keyword || undefined,
+    getKeywords: () => props.keywords ?? [],
+  })
 }
 
 // --- Track active (focused) editor for toolbar/bubble menu ---

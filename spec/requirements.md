@@ -278,7 +278,7 @@ L'outil doit faire naître chaque enfant d'une section (un chapitre titré H2) d
 - Une section est un chapitre du texte du parent, hors introduction, conclusion et FAQ ; tant que le parent n'a pas de texte, un chapitre de sa structure validée.
 - Une section ne donne qu'un enfant ; une section déjà prise, ou que le parent n'a pas, est refusée (⛔). Deux titres se comparent sans tenir compte de la casse, des espaces ni de la ponctuation finale.
 - L'enfant connaît la section qui l'annonce et ce qu'elle en dit : ses mots-clés candidats, sa structure et son premier jet la reçoivent.
-- À la publication du parent, une section dont est né un enfant et qui dépasse 250 mots est un risque 🔴 ; une telle section disparue est une attention 🟠. La passe « Résumer » propose un résumé de 150 à 250 mots.
+- À la publication du parent, une section dont est né un enfant et qui dépasse 250 mots est un risque 🔴 ; une telle section disparue est une attention 🟠. La passe « Résumer » propose un résumé de 150 à 250 mots, et seulement pour une section qui en dépasse 250 : une section déjà résumée n'est pas reproposée.
 
 ### FR-CER-KEYWORD-REAL-DATA — Le mot-clé d'un nouvel article se choisit sur des données réelles
 **Statut :** active
@@ -911,7 +911,8 @@ Un article doit avoir zéro ou un Capitaine verrouillé ; verrouiller un autre c
 ### FR-CAP-LOCK-GATE — Verrouiller un Capitaine risqué déclenche l'alarme
 **Statut :** active
 Le verrouillage doit passer par une porte : un mot-clé risqué ouvre l'alarme graduée, qui explique le risque et propose d'autres candidats. L'utilisateur corrige ou passe outre par écrit (cf. FR-INFRA-GATE-WAIVER).
-- 🔴 volume inconnu ou nul ; 🔴 verdict NO-GO ; 🔴 SERP commerciale ou transactionnelle pour un article informationnel ; 🟠 tout autre écart d'intention ; 🟠 aucune suggestion Google.
+- 🔴 volume inconnu ou nul ; 🔴 verdict NO-GO ; 🔴 SERP commerciale ou transactionnelle pour un article informationnel ; 🟠 tout autre écart d'intention ; 🟠 Google ne suggère pas la requête.
+- « Google ne suggère pas la requête » se juge sur la valeur « Autocomplete » que montre le panneau du Capitaine : des suggestions seulement approchées (d'autres requêtes) ne comptent pas.
 - L'intention attendue est celle du Cerveau ; à défaut, un pilier vaut « informationnel » ; une intention inconnue ne lève aucune alerte.
 - L'alarme propose au plus 5 autres candidats de l'article dont le volume est mesuré et non nul, du plus recherché au moins recherché.
 - La porte est vérifiée avant tout changement : en cas de retour, rien n'est verrouillé ni enregistré ; si la vérification échoue, un message le dit et rien n'est verrouillé.
@@ -1123,7 +1124,7 @@ Dès qu'un lieutenant est coché, l'outil doit demander l'étape « Lieutenants 
 ### FR-LIE-LOCK-GATE — Des lieutenants en nombre suffisant et sans cannibalisation
 **Statut :** active
 La porte des lieutenants doit refuser trop peu de lieutenants et un lieutenant qui est déjà le mot-clé principal d'un autre article du cocon (un groupe d'articles liés autour d'un même sujet) : deux pages sur le même mot-clé se font concurrence dans Google (cannibalisation). La vérification est silencieuse.
-- 🔴 Moins de lieutenants que le minimum du type : 3 pour un pilier, 2 pour un intermédiaire, 1 pour un spécialisé.
+- 🔴 Moins de lieutenants que le minimum du type : 3 pour un pilier, 2 pour un intermédiaire, 1 pour un spécialisé ; l'alarme propose « À la place : » jusqu'à cinq propositions non cochées, les mieux notées d'abord.
 - 🔴 Un lieutenant est le capitaine d'un autre article du cocon ; 🟠 il est lieutenant d'un autre article ; 🟠 il est identique au capitaine de l'article. Chaque lieutenant en conflit se déroge séparément.
 - Les lieutenants sont enregistrés avant la vérification ; la porte juge ce qui est enregistré.
 - Tant que la porte refuse, un bandeau « Étape non validée. » donne la première raison et un bouton « Voir pourquoi / décider » ouvre l'alarme graduée.
@@ -1405,10 +1406,10 @@ L'outil doit empêcher qu'un chiffre non garanti du premier jet soit présenté 
 ### FR-RED-ENRICH-PASSES — Enrichir l'article par passes successives
 **Statut :** active
 L'outil doit proposer, une fois le premier jet écrit, des passes qui enrichissent l'article chapitre par chapitre, chaque proposition vérifiée et soumise à l'accord de l'utilisateur.
-- Six passes (Sources, Exemples, Tableaux, Images, FAQ, Résumer), lancées une à une, chacune visant seulement les chapitres où elle a un sens ; quand il n'y a rien à faire, le panneau le dit sans appeler l'IA.
+- Six passes (Sources, Exemples, Tableaux, Images, FAQ, Résumer), lancées une à une, chacune visant seulement les chapitres où elle a un sens ; quand il n'y a rien à faire, le panneau le dit sans appeler l'IA. Exemples, Tableaux et Images visent le corps de l'article : ni le chapeau, ni un chapitre « Introduction », ni la FAQ, ni la conclusion.
 - Chaque passe voit l'article entier (jusqu'à 30 000 caractères de texte) et la stratégie de l'article, à défaut celle du cocon.
-- Chaque proposition est vérifiée : ⛔ la rend impossible à accepter (vide, coupée, titres modifiés, bloc ou lien perdu, tableau sans en-tête, image sans texte alternatif, FAQ mal formée).
-- Rien ne change sans « Accepter » ; accepter remplace un seul chapitre (la FAQ s'insère avant la conclusion) et enregistre l'article ; un chapitre modifié depuis la proposition n'est jamais écrasé.
+- Chaque proposition est vérifiée : ⛔ la rend impossible à accepter (vide, coupée, titres modifiés, bloc ou lien perdu, tableau sans en-tête, image sans texte alternatif, FAQ mal formée). « Coupée » suit la règle de la publication : une proposition qui y serait refusée (bloc coupé en plein mot, texte hors paragraphe…) l'est dès l'acceptation.
+- Rien ne change sans « Accepter » ; accepter remplace un seul chapitre (la FAQ s'insère avant la conclusion) et enregistre l'article ; un chapitre modifié depuis la proposition n'est jamais écrasé. Un chapitre seulement réaffiché par l'éditeur, sans changement de l'utilisateur, n'est pas « modifié depuis ».
 - Une image proposée est une place « à fournir », que la publication refuse tant qu'elle n'est pas remplacée.
 
 ### FR-RED-ENRICH-SOURCES — Des sources françaises, datées, avec leur lien
@@ -1485,6 +1486,7 @@ L'outil doit utiliser une même longueur visée pour l'affichage, la rédaction,
 **Statut :** non tenue (un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement)
 L'outil doit offrir un éditeur de texte enrichi, en trois zones (introduction, corps, conclusion), qui garde le travail de l'utilisateur.
 - Mise en forme : gras, italique, H2, H3, listes, citation, lien, annuler / rétablir ; les blocs spéciaux, liens internes, marqueurs « à sourcer », tableaux et images survivent à l'enregistrement et au rechargement.
+- Un lien interne s'enregistre sans « nofollow » ni ouverture dans un nouvel onglet ; un clic sur un lien, dans l'éditeur, n'ouvre aucun onglet.
 - Le bouton « Image » remplace l'image sélectionnée ou en insère une, par une adresse « https://… » ou « /… » et un texte alternatif obligatoires ; toute autre saisie est refusée avec un message.
 - L'éditeur enregistre de lui-même toutes les 30 secondes s'il y a des modifications ; Ctrl+S et « Sauvegarder » enregistrent aussitôt.
 - L'état d'enregistrement est visible : « Sauvegarde en cours... », « ✓ Sauvegardé … », « ⚠ Modifications non sauvegardées » (y compris après un échec).
@@ -1554,19 +1556,20 @@ L'outil doit tenir la phase de chaque article dans un ensemble fermé qui n'avan
 ### FR-RED-PUBLISH-GATE — On ne publie pas un article qu'un expert refuserait
 **Statut :** active
 L'outil doit faire passer toute publication par une porte qui rejoue les contrôles du texte, de la méta, du SEO et des étapes amont, avant de marquer l'article publié et de produire le fichier.
-- ⛔ : défauts du texte (vide, bloc coupé, IA qui parle d'elle-même, texte hors paragraphe, restes de mise en forme, balise interdite, titre vide, saut de niveau, plusieurs H1), méta absente, trop longue ou coupée, image encore « à fournir ».
-- 🔴 : capitaine absent en entier du H1 ou du meta title, autres écarts SEO, texte au-delà du plafond de son type (3 500 / 2 500 / 1 500 mots), passages « à sourcer » restants, chaque chiffre sans source, phrase non française ou paragraphe répété, section dont est né un enfant de plus de 250 mots.
-- 🟠 : autres avertissements, section dont est né un enfant disparue, lien vers un article non publié, chaque dérogation encore valable des portes capitaine, lieutenants, structure et lexique, à reconfirmer.
+- ⛔ : défauts du texte (vide, bloc coupé, IA qui parle d'elle-même, texte hors paragraphe, restes de mise en forme, balise interdite, titre vide, saut de niveau, plusieurs H1), méta absente, trop longue ou coupée, image encore « à fournir ». Le libellé d'une cellule de tableau sans point final n'est pas un bloc coupé.
+- 🔴 : capitaine absent en entier du H1 ou du meta title, autres écarts SEO, texte au-delà du plafond de son type (3 500 / 2 500 / 1 500 mots), passages « à sourcer » restants, chaque chiffre sans source, phrase non française (courte comprise) ou paragraphe répété, section dont est né un enfant de plus de 250 mots.
+- 🟠 : autres avertissements, section dont est né un enfant disparue, lien vers un article non publié, chaque dérogation encore valable des portes capitaine, lieutenants, structure et lexique, à reconfirmer ; un point du texte dérogé au premier jet (même extrait) n'est pas redemandé en 🔴 : sa dérogation revient en 🟠, à relire. Chaque dérogation réaffichée dit le point en clair et la raison donnée (ou qu'elle a été lue, pour un 🟠), jamais le nom interne d'une règle.
 - Les portes capitaine, lieutenants, structure et lexique sont rejouées sur les données du jour ; la porte du premier jet ne l'est pas.
 - Refusée, la publication ne marque rien et ne télécharge rien, et l'écran le dit ; après dérogation, elle reprend d'elle-même. Les autres changements de statut ne sont pas contrôlés.
 
 ### FR-RED-EXPORT-HTML — Aperçu et fichier HTML de l'article
-**Statut :** non tenue (le fichier téléchargé perd tous les liens internes posés dans l'éditeur, et son H1 est le titre de l'article, pas le H1 jugé par la porte ; réexporter après une correction, sans recharger l'aperçu, télécharge la version chargée à l'ouverture de l'onglet, pas celle que la porte vient d'accepter)
+**Statut :** active
 L'outil doit produire un aperçu fidèle de la page publiée et, une fois la porte passée, le fichier HTML à publier.
 - L'aperçu s'ouvre depuis l'éditeur (« Visualiser l'article ») dès que le texte, le meta title et la meta description existent.
 - Le fichier contient la méta, les données structurées de l'article, un sommaire, et un seul H1.
-- Les liens internes vers un article rédigé pointent vers son adresse de blog ; les autres sont retirés, leur texte gardé.
+- Les liens internes vers un article rédigé pointent vers son adresse de blog, sans « nofollow » ni nouvel onglet ; les autres sont retirés, leur texte gardé. L'aperçu montre les mêmes liens.
 - Le H1 publié est celui que la porte de publication a jugé.
+- Le fichier téléchargé est le texte que la porte vient de juger, même si l'aperçu n'a pas été rechargé depuis une correction ; l'aperçu se recharge ensuite.
 
 ### Retirées (FR-RED)
 
@@ -2057,13 +2060,15 @@ Une règle de qualité doit être écrite une seule fois et évaluée par le ser
 - L'audit du projet signale tout article rédigé que la porte de publication refuserait, avec le nombre de points par niveau.
 
 ### FR-INFRA-GATE-WAIVER — Passer outre en prenant sa responsabilité, par écrit
-**Statut :** non tenue (le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis)
+**Statut :** active
 Quand une porte signale un point, l'utilisateur doit pouvoir passer outre (déroger) point par point, par écrit, pour les seules données examinées : c'est l'alarme graduée, commune à toutes les portes.
 - 🟠 : cocher « J'ai lu » suffit. 🔴 : une catégorie (longue traîne assumée, donnée manquante dans l'outil, mot-clé de marque, autre) et une raison d'au moins 20 caractères. ⛔ : aucune dérogation possible.
-- Le serveur revérifie chaque dérogation et refuse, avec son motif, une raison trop courte ou une alerte qui n'existe plus.
-- Une dérogation ne couvre qu'un point et tombe dès que les données vérifiées changent ; un point qui vise plusieurs éléments se déroge élément par élément.
+- Le serveur revérifie chaque dérogation et refuse, avec son motif, une raison trop courte, une alerte qui n'existe plus, ou une réponse à un point qui a changé depuis que l'utilisateur l'a lu.
+- Une dérogation couvre un point et les données de ce point : elle tombe seulement si ce point change (retoucher un mot ailleurs dans l'article ne la fait pas tomber) ; un point qui vise plusieurs éléments se déroge élément par élément. Pour les portes du Moteur, les données d'un point sont le choix jugé (capitaine et ses mesures, lieutenants, structure, lexique).
+- L'alarme dit ce qu'il faut pour continuer : une case « J'ai lu » pour chaque 🟠, une raison pour chaque 🔴.
 - Chaque dérogation est enregistrée (moment, porte, point, niveau, catégorie, raison) ; l'auteur ne l'est pas (outil mono-utilisateur).
-- À la publication, les dérogations encore valables des portes Capitaine, Lieutenants, Structure et Lexique sont réaffichées pour reconfirmation ; l'audit du projet les liste toutes.
+- À la publication, les dérogations encore valables des portes Capitaine, Lieutenants, Structure et Lexique sont réaffichées pour reconfirmation, comme celles du premier jet dont le point est encore dans le texte ; l'audit du projet les liste toutes.
+- Une dérogation posée avant le 2026-09-30 (sur toute la porte) reste valable tant que les données de la porte n'ont pas changé.
 
 ### Retirées (FR-INFRA)
 

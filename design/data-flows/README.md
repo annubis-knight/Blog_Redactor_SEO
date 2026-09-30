@@ -50,6 +50,12 @@ Si la fiche existe : la relire, vérifier dans le code ce qu'on va toucher, et l
 |---|---|---|
 | [seo](./seo.md) | Scores SEO et GEO : calcul en direct, enregistrement avec le texte noté | écran pendant la rédaction ; `articles.seo_score` / `geo_score` entre deux sessions |
 
+**Portes de qualité**
+
+| Fiche | Donnée | Autorité |
+|---|---|---|
+| [gate-waivers](./gate-waivers.md) | Dérogations : passer outre un point 🟠 / 🔴, pour ce point et ses données ; réaffichées à la publication | `gate_waivers` (`input_hash` = empreinte du point) |
+
 Fichier à part : [`_template.md`](./_template.md), le modèle d'une fiche.
 
 ## Comment écrire une fiche

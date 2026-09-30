@@ -31,6 +31,12 @@ interface RewriteResult {
 
 const LINK_RE = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi
 const HREF_RE = /\shref\s*=\s*"([^"]*)"/i
+/**
+ * Un lien interne s'ouvre dans l'onglet courant et se suit (pas de `nofollow`) :
+ * l'éditeur en a enregistré avec `target="_blank"` et `rel="… nofollow"`
+ * (extension Link en double, recette du 2026-09-30) ; l'export les retire.
+ */
+const NEW_TAB_ATTRS_RE = /\s(?:target|rel)\s*=\s*"[^"]*"/gi
 
 /** Ramène tous les liens internes à `/blog/<slug>`. */
 export function rewriteInternalLinks(html: string, options: RewriteOptions = {}): RewriteResult {
@@ -57,7 +63,7 @@ export function rewriteInternalLinks(html: string, options: RewriteOptions = {})
     }
 
     rewritten.push(slug)
-    const cleanedAttrs = attrs.replace(HREF_RE, '')
+    const cleanedAttrs = attrs.replace(HREF_RE, '').replace(NEW_TAB_ATTRS_RE, '')
     return `<a href="${blogPath(slug)}"${cleanedAttrs}>${inner}</a>`
   })
 

@@ -434,7 +434,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 
 **Tu dois voir :**
 - pendant la passe, « Chapitre n/N — … » avec « Arrêter », et les autres passes grisées ;
-- une carte par chapitre du corps (ni introduction, ni FAQ, ni dernier chapitre), au statut « à relire » ;
+- une carte par chapitre du corps (ni chapeau, ni chapitre « Introduction », ni FAQ, ni dernier chapitre), au statut « à relire » ;
 - « Avant » et « Proposé » ; en MOCK, un tableau à deux colonnes, « Étape pour … » et « Quand s’y mettre » ;
 - au geste 3 : le statut « chapitre modifié depuis » et « Le chapitre a changé depuis cette proposition : relancez la passe pour ne rien écraser. » ; ton mot est toujours là ;
 - au geste 4 : un tableau dans ce seul chapitre, et l'article enregistré aussitôt ; la carte refusée passe « refusée » sans rien toucher ;
@@ -444,6 +444,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 **C'est un bug si :**
 - le chapitre modifié est écrasé ;
 - un autre chapitre que celui de la carte change ;
+- une carte passe « chapitre modifié depuis » alors que personne n'a touché son chapitre (par exemple celui qui porte le lien interne de RED-17) ;
+- une carte vise le chapitre « Introduction » ;
 - un tableau disparaît après F5.
 
 ### RED-19 — La FAQ
@@ -532,6 +534,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - 🔴 « Chiffre sans source : « 40 % des artisans… » », et une seconde alerte pour la phrase à « 1 500 € » : une par phrase ; aucune pour « Selon l'Insee… », ni pour « 3 étapes » ;
 - 🔴 « 1 passage « à sourcer » reste dans l’article. » ;
 - 🔴 « Phrase qui n’est pas en français : « We help small businesses grow online. » » ;
+- aucun ⛔ « Bloc coupé avant la fin d'une phrase » pour les cellules des tableaux acceptés en RED-18 ;
 - 🔴, si la section dont est né l'enfant dépasse 250 mots : « La section « … » compte N mots alors que l’article « … » traite ce sujet : résumez-la en 150 à 250 mots (passe « Résumer ») et renvoyez vers lui. » ;
 - 🟠 « Le lien vers « … » mène à un article pas encore publié. », avec « J’ai lu » ;
 - 🟠 ta dérogation de l'étape 4 du parcours express, à reconfirmer ;
@@ -541,12 +544,14 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 
 **C'est un bug si :**
 - un fichier se télécharge ;
+- une cellule de tableau est signalée comme bloc coupé ;
+- la phrase anglaise n'est pas signalée ;
 - les deux phrases chiffrées ne donnent qu'une alerte ;
 - la phrase « Selon l'Insee… » est signalée ;
 - le lien vers l'enfant n'est pas signalé.
 
 ### RED-23 — Corriger, republier, et lire le fichier exporté
-**Exigences :** FR-RED-EXPORT-HTML ⚠, FR-RED-ENRICH-PASSES, FR-RED-PUBLISH-GATE
+**Exigences :** FR-RED-EXPORT-HTML, FR-RED-ENRICH-PASSES, FR-RED-PUBLISH-GATE
 
 **Gestes :**
 1. Ne recharge pas l'onglet d'aperçu. Dans l'éditeur, efface le paragraphe chiffré, le marqueur « [à sourcer : … ] » et la phrase anglaise.
@@ -556,16 +561,15 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 5. Recharge l'onglet d'aperçu (F5). Exporte de nouveau, ouvre ce second fichier et affiche son code source (Ctrl+U).
 
 **Tu dois voir :**
-- au geste 2 : une carte pour le chapitre dont est né l'enfant ; « Proposé » : un résumé de 150 à 250 mots qui, en MOCK, finit par « Pour aller au bout du sujet, lisez notre article « … » : il détaille chaque étape. » ; des 🟠 si des sous-parties ou un lien partent : lis-les ;
-- au geste 4 : l'alarme n'a plus que des 🟠 ; le fichier `article-<numéro>.html` se télécharge ;
-- au geste 5 : l'aperçu montre un fil d'Ariane, un seul H1, un sommaire, puis le texte à jour ; dans le code source, le titre de page (meta title), la meta description, un bloc de données structurées (« application/ld+json ») et une seule balise « <h1 ».
+- au geste 2 : une carte pour chaque chapitre dont est né un enfant et qui dépasse encore 250 mots (un chapitre déjà résumé n'est pas reproposé) ; « Proposé » : un résumé de 150 à 250 mots en phrases entières qui, en MOCK, finit par « Pour aller au bout du sujet, lisez notre article « … » : il détaille chaque étape. » ; aucun ⛔ ; des 🟠 si des sous-parties ou un lien partent : lis-les ;
+- au geste 4 : l'alarme n'a plus que des 🟠, sans « Paragraphe répété » venu des phrases de renvoi ; le fichier `article-<numéro>.html` se télécharge, avec le texte corrigé (sans le paragraphe chiffré ni la phrase anglaise), bien que l'aperçu n'ait pas été rechargé ; l'aperçu se recharge ensuite ;
+- au geste 5 : l'aperçu montre un fil d'Ariane, un seul H1, un sommaire, puis le texte à jour ; dans le code source, le titre de page (meta title), la meta description, un bloc de données structurées (« application/ld+json ») et une seule balise « <h1 », qui finit par « — recette » ; le texte du lien vers l'enfant, sans lien (l'enfant n'est pas rédigé ; un lien vers un article rédigé pointerait vers « /blog/<son adresse> », sans « nofollow ») ; aucune image « outStr_Arrow ».
 
 **C'est un bug si :**
 - le fichier du geste 4 contient encore le paragraphe chiffré ou la phrase anglaise : l'onglet non rechargé a téléchargé l'ancienne version, alors que la porte a jugé la nouvelle ;
-- le fichier a plus d'un H1 ;
+- le fichier a plus d'un H1, ou son H1 n'a pas « — recette » ;
+- un résumé finit en plein mot, ou « Résumer » repropose une section déjà résumée ;
 - l'alarme du geste 4 garde un 🔴 que tu as corrigé.
-
-**⚠ Défaut connu :** le fichier téléchargé perd tous les liens internes posés dans l'éditeur, et son H1 est le titre de l'article, pas le H1 jugé par la porte. Au geste 5, le H1 n'a pas « — recette » ; le texte du lien vers l'enfant est là, sans lien (ici c'est normal, l'enfant n'étant pas rédigé ; le défaut touche aussi les liens vers un article rédigé). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-24 — La phase de l'article suit ce qui s'est passé
 **Exigences :** FR-RED-PROGRESS ⚠

@@ -28,7 +28,7 @@ const PASSES: Array<{ id: EnrichmentPass; label: string; hint: string; empty: st
   { id: 'tableaux', label: 'Tableaux', hint: 'Quand un chapitre compare ou énumère', empty: 'Aucun chapitre à enrichir.' },
   { id: 'images', label: 'Images', hint: 'Où placer une image, et ce qu’elle montre', empty: 'Aucun chapitre à enrichir.' },
   { id: 'faq', label: 'FAQ', hint: 'Les questions qui restent après la lecture', empty: 'L’article a déjà sa foire aux questions.' },
-  { id: 'resumes', label: 'Résumer', hint: 'Les chapitres devenus des articles : un résumé de 150 à 250 mots qui y renvoie', empty: 'Aucun chapitre n’a encore donné naissance à un article : rien à résumer.' },
+  { id: 'resumes', label: 'Résumer', hint: 'Les chapitres devenus des articles : un résumé de 150 à 250 mots qui y renvoie', empty: 'Rien à résumer : aucun chapitre n’a encore donné naissance à un article, ou chacun est déjà résumé (250 mots au plus).' },
 ]
 
 const STATUS_LABELS: Record<ProposalStatus, string> = {
