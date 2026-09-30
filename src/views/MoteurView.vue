@@ -16,6 +16,7 @@ import type { RadarCacheStatus } from '@/composables/keyword/useResonanceScore'
 import { log } from '@/utils/logger'
 import type { SelectedArticle, Article } from '@shared/types/index.js'
 import { parseArticleLevel } from '@shared/utils/article-level.js'
+import { moteurWorkingKeyword } from '@shared/utils/article-keyword.js'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import MoteurContextRecap from '@/components/moteur/MoteurContextRecap.vue'
@@ -84,7 +85,12 @@ const cocoon = computed(() =>
 const cocoonName = computed(() => cocoon.value?.name ?? '')
 
 // --- Article sync ---
+// Au choix d'un article, ses mots-clés et ses étapes sont relus (lecture seule) ;
+// les onglets ne sont montés qu'une fois `articleReady` (FR-MOT-CHECK-RECONCILIATION).
 const {
+  articleReady,
+  articleLoadError,
+  reloadSelectedArticle,
   capitainesMap,
   explorationCounts,
   refreshCapitainesMap,
@@ -96,6 +102,7 @@ const {
   selectedArticle,
   cocoonName,
   articleProgressStore,
+  articleKeywordsStore,
   gateAlarm: useGateAlarmStore(),
 })
 
@@ -220,38 +227,15 @@ function handleSelectArticle(article: SelectedArticle | null) {
   // Clear previous analysis results then reload cached ones for the new article
   clearResults()
 
-  // Fetch article-level keywords (capitaine, lieutenants, lexique).
-  // Bloc 3 — fetchKeywordsMerge au lieu de fetchKeywords : la variante merge
-  // fusionne sans écraser l'état mémoire et déclenche correctement la
-  // restauration du container Capitaine (exploredKeywords). fetchKeywords
-  // (replace) provoquait une race condition avec une stub-entry du watcher
-  // CaptainPanel, laissant souvent 0-1 carte affichée alors que la DB
-  // en contenait davantage.
-  //
-  // bleed-through pendant la fenêtre async : entre l'instant `selectedArticle`
-  // change et la résolution du fetch, `articleKeywordsStore.keywords` contient
-  // encore les keywords de l'article précédent. Sans reset, `getDisplayedKeyword`
-  // / `displayedCaptainKeyword` peuvent matcher la mauvaise garde `articleId`
-  // si l'ancien et le nouveau articleId entrent en collision (LRU, refresh
-  // partiel). Reset = état neutre, helpers retombent sur la prop figée jusqu'à
-  // ce que le fetch peuple le store avec le bon `articleId`.
+  // Les mots-clés (capitaine, lieutenants, lexique) et les étapes de l'article
+  // sont vidés puis relus par useMoteurArticleSync, quel que soit le chemin de
+  // sélection ; les onglets attendent `articleReady` pour se monter, dans un
+  // conteneur propre à l'article. Aucun panneau ne juge donc ses étapes sur un
+  // store vide ou sur les données de l'article précédent (recette du
+  // 2026-09-30, F4). Le Radar relit lui-même son exploration enregistrée à
+  // son montage (FR-RAD-PERSIST).
   if (article) {
-    articleKeywordsStore.$reset()
-    articleKeywordsStore.fetchKeywordsMerge(article.id)
     loadCachedResults(article.id)
-
-    // au sélection d'article. Discovery est exclu (modèle seed-based,
-    // cf. design/data-flows/moteur.md, « Discovery — phase Générer »). L'utilisateur garde le bouton
-    // manuel via TabLoadPrompt en filet de secours.
-    // Le radarRef peut être null au tout premier mount avant que Vue n'ait
-    // résolu le ref : on attend un nextTick pour être sûr.
-    void Promise.resolve().then(() => {
-      if (radarRef.value && selectedArticle.value?.id === article.id) {
-        radarRef.value.mergeFromRadarSource(article.id).catch((err: unknown) => {
-          log.warn('[MoteurView] auto-load radar failed', { error: (err as Error).message })
-        })
-      }
-    })
 
     // Check discovery + radar cache for this article's seed keyword
     const seed = article.keyword || pilierKeyword.value
@@ -261,9 +245,6 @@ function handleSelectArticle(article: SelectedArticle | null) {
         .then(status => { radarCacheStatus.value = status })
         .catch(() => { radarCacheStatus.value = null })
     }
-
-  } else {
-    articleKeywordsStore.$reset()
   }
 
   // If switching to a validated article while on an optional (discovery/radar) tab, redirect
@@ -314,9 +295,14 @@ const { clearResults, loadCachedResults } = useArticleResults({
 // (Soft gating computeds moved to useMoteurSoftGating composable above)
 
 // --- Lieutenants props ---
-const captainKeyword = computed(() =>
-  articleKeywordsStore.keywords?.capitaine ?? selectedArticle.value?.keyword ?? null,
-)
+// Capitaine enregistré, à défaut mot-clé de l'article : un Capitaine vide ('',
+// après un déverrouillage ou pour un article jamais étudié) n'est pas un
+// mot-clé (FIN-4, FR-LIE-SERP-ANALYZE). Les données d'un autre article ne comptent pas.
+const captainKeyword = computed(() => {
+  const kw = articleKeywordsStore.keywords
+  const stored = kw && kw.articleId === selectedArticle.value?.id ? kw.capitaine : null
+  return moteurWorkingKeyword(stored, selectedArticle.value?.keyword)
+})
 
 // M12 — l'ancienne table { Pilier, Cluster, Support } ne reconnaissait aucun
 // niveau réel : les lieutenants d'un pilier étaient proposés comme pour un
@@ -522,19 +508,32 @@ onMounted(() => {
           @clear-cache="clearExternalCacheForArticle"
         />
         <!--
-             Mêmes codes visuels que le TabCachePanel (extension naturelle). -->
-        <TabLoadPrompt
-          v-if="tabLoadPromptCurrent"
-          :prompt="tabLoadPromptCurrent"
-          :is-loading="tabLoadPromptIsLoading"
-          @load-db="tabLoadPrompt.loadFromDb"
-          @load-cache="tabLoadPrompt.loadFromCache"
-          @dismiss="tabLoadPrompt.dismiss"
-        />
+             Mêmes codes visuels que le TabCachePanel (extension naturelle).
+             Posée à droite du bandeau (au-dessus sur un écran étroit), hors de
+             son gabarit : le bandeau garde la même place et la même hauteur sur
+             tous les onglets (FR-UI-MOTEUR-SHARED, recette du 2026-09-30, UI-7). -->
+        <div v-if="tabLoadPromptCurrent" class="cache-bar__prompt" data-testid="cache-bar-prompt">
+          <TabLoadPrompt
+            :prompt="tabLoadPromptCurrent"
+            :is-loading="tabLoadPromptIsLoading"
+            @load-db="tabLoadPrompt.loadFromDb"
+            @load-cache="tabLoadPrompt.loadFromCache"
+            @dismiss="tabLoadPrompt.dismiss"
+          />
+        </div>
       </div>
 
-      <!-- Tab content (only when article is selected) -->
-      <template v-if="selectedArticle">
+      <!-- Tab content (only when article is selected) — montés une fois les
+           données de l'article relues, dans un conteneur propre à l'article
+           (FR-MOT-CHECK-RECONCILIATION : choisir un article ne fait que relire). -->
+      <div v-if="selectedArticle && articleLoadError" class="article-load-error" role="alert" data-testid="moteur-article-load-error">
+        <p class="article-load-error__text">{{ articleLoadError }}</p>
+        <button type="button" class="btn btn-primary" @click="reloadSelectedArticle">Réessayer</button>
+      </div>
+      <p v-else-if="selectedArticle && !articleReady" class="article-loading" role="status" data-testid="moteur-article-loading">
+        Lecture des données de l’article…
+      </p>
+      <div v-else-if="selectedArticle" :key="selectedArticle.id" class="tab-panels" data-testid="moteur-tab-panels">
         <!-- Phase ① Générer — Discovery -->
         <!--  -->
         <div v-if="visitedTabs.discovery" v-show="activeTab === 'discovery'" class="tab-content">
@@ -646,7 +645,7 @@ onMounted(() => {
             @navigate-redaction="navigateToRedaction"
           />
         </div>
-      </template>
+      </div>
 
       <!-- Bottom navigation -->
       <!-- Bloc 2 — bouton "Continuer vers la Rédaction" sur le dernier onglet
@@ -682,20 +681,23 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-/* --- Sticky cache bar : TabCachePanel + TabLoadPrompt côte à côte ---
-   Le wrapper porte le sticky bottom + fond blanc opaque + ombre. Les enfants
-   gardent leur DA verte (gradient + border-radius) pour rester visuellement
-   solidaires. */
+/* --- Bandeau fixe « Résultats déjà calculés » (TabCachePanel) ---
+   Le wrapper porte le fixed bottom + fond blanc opaque + ombre. Les enfants
+   gardent leur DA verte (gradient + border-radius).
+   Même place et même hauteur sur tous les onglets (UI-7) : centré par
+   `left: 0; right: 0; margin: auto` sur toute la largeur de l'écran (un
+   `left: 50%` + `translateX(-50%)` limitait sa largeur à la moitié de l'écran,
+   et il passait sur deux lignes dès qu'une invite s'ajoutait) ; l'invite
+   « Charger … » se pose à côté, hors de son gabarit. */
 .cache-bar {
   position: fixed;
-  left: 50%;
+  left: 0;
+  right: 0;
   bottom: 0.75rem;
-  transform: translateX(-50%);
-  z-index: 50;
+  margin: 0 auto;
+  width: max-content;
   max-width: min(1200px, calc(100vw - 2rem));
-  display: inline-flex;
-  align-items: stretch;
-  gap: 0.5rem;
+  z-index: 50;
   padding: 0.25rem;
   background: rgba(255, 255, 255, 0.96);
   border-radius: 12px;
@@ -706,6 +708,29 @@ onMounted(() => {
   pointer-events: auto;
 }
 .cache-bar:hover { opacity: 1; }
+
+.cache-bar__prompt {
+  position: absolute;
+  left: calc(100% + 0.5rem);
+  bottom: 0;
+  width: max-content;
+  max-width: 24rem;
+  padding: 0.25rem;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+/* Écran étroit : l'invite passe au-dessus du bandeau, calée à droite, plutôt
+   que de sortir de l'écran. */
+@media (max-width: 1200px) {
+  .cache-bar__prompt {
+    left: auto;
+    right: 0;
+    bottom: calc(100% + 0.375rem);
+    max-width: min(24rem, calc(100vw - 2rem));
+  }
+}
 
 /* --- Article gate --- */
 .article-gate {
@@ -720,6 +745,31 @@ onMounted(() => {
 .article-gate-message {
   margin: 0;
   font-size: 0.875rem;
+  color: var(--color-text);
+}
+
+/* --- Lecture des données de l'article choisi --- */
+.article-loading {
+  margin: 0 0 1rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.article-load-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-block-error-bg, #fef2f2);
+  border: 1px solid var(--color-error, #ef4444);
+  border-radius: 8px;
+}
+
+.article-load-error__text {
+  margin: 0;
+  font-size: 0.8125rem;
   color: var(--color-text);
 }
 

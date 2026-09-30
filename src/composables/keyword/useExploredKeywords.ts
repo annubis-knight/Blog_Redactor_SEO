@@ -18,6 +18,7 @@ import type { ScanResponse, ArticleLevel, VerdictLevel } from '@shared/types/ind
 import type { CaptainScanEntry, RichRootKeyword } from '@shared/types/keyword.types.js'
 import type { RadarCard, RadarPaaItem, KeywordRootVariant } from '@shared/types/intent.types.js'
 import { captainScanContract } from '@shared/contracts/captain-scan.contract.js'
+import { candidatesFromHistory } from '@shared/captain-candidates.js'
 
 export interface ExploredKeywordEntry {
   card: RadarCard
@@ -452,7 +453,11 @@ export function useExploredKeywords() {
       })
     }
 
-    entries.value = dedupedHistory.map(h => {
+    // Une étude enregistrée qui est la racine d'un autre candidat reste rangée
+    // sous lui, jamais en carte à part (FR-CAP-LOCK-INTEGRITY) ; ses mesures
+    // enregistrées servent à sa ligne de racine (FR-CAP-ROOTS).
+    const studied = new Map(dedupedHistory.map(h => [h.keyword.trim().toLowerCase(), h]))
+    entries.value = candidatesFromHistory(dedupedHistory).map(h => {
       const kpis = h.kpis.map(s => scoreKpi(s.name, s.rawValue, config))
       const verdict = computeVerdict(kpis)
 
@@ -483,7 +488,8 @@ export function useExploredKeywords() {
       const rootVariants = new Map<string, KeywordRootVariant>()
       const rootsForKeyword = richRootKeywords?.filter(r => r.parentKeyword === h.keyword) ?? []
       for (const root of rootsForKeyword) {
-        const rootKpis = root.kpis.map(s => scoreKpi(s.name, s.rawValue, config))
+        const ownStudy = root.kpis.length === 0 ? studied.get(root.keyword.trim().toLowerCase()) : undefined
+        const rootKpis = (ownStudy?.kpis ?? root.kpis).map(s => scoreKpi(s.name, s.rawValue, config))
         const rootVerdict = computeVerdict(rootKpis)
         const rootResponse: ScanResponse = {
           keyword: root.keyword,
@@ -492,6 +498,9 @@ export function useExploredKeywords() {
           verdict: rootVerdict,
           fromCache: true,
           cachedAt: null,
+          ...(ownStudy
+            ? { paaQuestions: ownStudy.paaQuestions, marketScore: ownStudy.marketScore ?? undefined, relevanceScore: ownStudy.relevanceScore ?? null }
+            : {}),
         }
         const rootCard = hydrateCardFromValidation(root.keyword, rootResponse)
         rootVariants.set(root.keyword, { keyword: root.keyword, card: rootCard, validation: rootResponse })

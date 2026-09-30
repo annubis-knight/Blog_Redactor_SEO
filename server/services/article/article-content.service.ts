@@ -5,9 +5,10 @@
  * WRITES TO: article_content, articles (méta, scores notés à l'écran, phase qui ne
  *            recule jamais) ; internal_links via linking.pruneStaleLinks (la
  *            matrice suit le texte enregistré).
- * CONSUMERS: routes articles (PUT /articles/:id, GET /articles/:id/content), route
+ * CONSUMERS: routes articles (PUT /articles/:id, GET et DELETE /articles/:id/content), route
  *            du premier jet, portes (draft, publish), mode automatique.
- * RELATED FR: FR-RED-SEO-SCORE-PERSIST, FR-RED-LINKING-MANUAL, FR-RED-DRAFT-SINGLE-PASS
+ * RELATED FR: FR-RED-SEO-SCORE-PERSIST, FR-RED-LINKING-MANUAL, FR-RED-DRAFT-SINGLE-PASS,
+ *             FR-RED-EDITOR-TIPTAP (« Supprimer le contenu » : clearArticleContent)
  */
 import { pool } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
@@ -109,5 +110,24 @@ export async function saveArticleContent(
   }
 
   log.debug(`saveArticleContent: ${id} saved`, { fields: Object.keys(updates) })
+  return getArticleContent(id)
+}
+
+/**
+ * « Supprimer le contenu » (FR-RED-EDITOR-TIPTAP) : efface le texte, la méta et
+ * les scores notés ; le sommaire et le brief restent, la phase ne recule pas.
+ * `saveArticleContent` ne peut pas le faire : un contenu `null` y veut dire
+ * « inchangé », pour qu'un écran pas encore chargé n'efface jamais un texte
+ * (recette du 2026-09-30, RED-26 : le texte revenait au rechargement).
+ */
+export async function clearArticleContent(id: number): Promise<ArticleContent> {
+  await pool.query(`UPDATE article_content SET content = NULL WHERE article_id = $1`, [id])
+  await pool.query(
+    `UPDATE articles SET meta_title = NULL, meta_description = NULL, seo_score = NULL, geo_score = NULL WHERE id = $1`,
+    [id],
+  )
+  // Les liens du texte effacé sortent de la matrice du maillage.
+  await pruneStaleLinks(id, '')
+  log.info(`clearArticleContent: texte, méta et scores effacés pour ${id}`)
   return getArticleContent(id)
 }

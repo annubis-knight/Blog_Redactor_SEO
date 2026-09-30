@@ -15,7 +15,7 @@ vi.mock('../../../server/services/article/linking.service', () => ({
   pruneStaleLinks: (...args: unknown[]) => mockPruneStaleLinks(...args),
 }))
 
-import { getArticleContent, saveArticleContent } from '../../../server/services/article/article-content.service'
+import { getArticleContent, saveArticleContent, clearArticleContent } from '../../../server/services/article/article-content.service'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -159,6 +159,39 @@ describe('article-content.service', () => {
       mockQuery.mockResolvedValue({ rows: [{}], rowCount: 1 })
       await saveArticleContent(1, { metaTitle: 'Titre' })
       expect(mockQuery.mock.calls.some(c => /SELECT phase/.test(String(c[0])))).toBe(false)
+    })
+  })
+
+  // FR-RED-EDITOR-TIPTAP (recette du 2026-09-30, RED-26) : « Supprimer le
+  // contenu » vidait l'écran et la méta, mais le texte restait en base (un
+  // contenu `null` envoyé par PUT veut dire « inchangé ») et revenait au
+  // rechargement. La suppression a sa propre écriture.
+  describe('clearArticleContent — « Supprimer le contenu »', () => {
+    it('efface le texte en base, pas le sommaire', async () => {
+      mockQuery.mockResolvedValue({ rows: [], rowCount: 1 })
+      await clearArticleContent(1335)
+      const contentWrite = mockQuery.mock.calls.find(c => /UPDATE article_content/.test(String(c[0])))
+      expect(contentWrite, 'le texte est effacé').toBeDefined()
+      expect(String(contentWrite![0])).toMatch(/content\s*=\s*NULL/)
+      expect(String(contentWrite![0]), 'le sommaire reste').not.toMatch(/outline\s*=/)
+      expect(contentWrite![1]).toEqual([1335])
+    })
+
+    it('efface la méta et remet les scores à « inconnu »', async () => {
+      mockQuery.mockResolvedValue({ rows: [], rowCount: 1 })
+      await clearArticleContent(1335)
+      const metaWrite = mockQuery.mock.calls.find(c => /UPDATE articles/.test(String(c[0])))
+      expect(metaWrite).toBeDefined()
+      for (const column of ['meta_title', 'meta_description', 'seo_score', 'geo_score']) {
+        expect(String(metaWrite![0])).toMatch(new RegExp(`${column}\\s*=\\s*NULL`))
+      }
+      expect(String(metaWrite![0]), 'la phase ne recule jamais').not.toMatch(/phase/)
+    })
+
+    it('sort de la matrice les liens du texte effacé', async () => {
+      mockQuery.mockResolvedValue({ rows: [], rowCount: 1 })
+      await clearArticleContent(1335)
+      expect(mockPruneStaleLinks).toHaveBeenCalledWith(1335, '')
     })
   })
 })

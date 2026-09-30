@@ -159,9 +159,10 @@ Le bouton « Envoyer au Capitaine (N) » apparaît dès qu'une carte ou une long
 L'exploration Radar d'un article tient en une seule ligne en base : liste d'attente, dernier scan, longues traînes et leur sélection.
 
 - La liste d'attente revient seule à chaque sélection de l'article.
-- Les cartes du dernier scan reviennent seules si l'onglet Radar était déjà ouvert au moment où l'on sélectionne l'article. Sinon, le bandeau du bas propose « Charger Radar » (voir [Moteur — cadre commun](05-moteur.md)) ; un clic les réaffiche, sans nouvel appel externe.
+- Les cartes du dernier scan reviennent seules à l'ouverture de l'onglet Radar, sans nouvel appel externe et sans redemander l'étape Radar. Le bandeau du bas propose aussi « Charger Radar » (voir [Moteur — cadre commun](05-moteur.md)), qui n'ajoute aucun doublon. Un article jamais scanné garde son invitation à scanner.
 - Changer le titre, le mot-clé ou la douleur de l'article vide l'affichage du scan (pas la base).
-- Limite : l'enregistrement fait après un scan reprend la liste d'attente que le scan connaissait, qui peut être vide si l'exploration n'a pas été rechargée par « Charger Radar ». La liste d'attente en base peut alors être vidée par le scan.
+- L'enregistrement fait après un scan garde la liste d'attente qui vient d'être scannée : un scan ne vide jamais la liste enregistrée.
+- Un nouveau scan efface la liste des longues traînes et leur sélection : « Envoyer au Capitaine (N) » ne compte plus que ce qui est coché à l'écran.
 
 ## Générer une liste par l'IA
 *Exigences : FR-RAD-GENERATE*

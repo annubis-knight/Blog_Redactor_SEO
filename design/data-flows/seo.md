@@ -2,7 +2,7 @@
 name: seo
 description: Scores SEO et GEO de l'article en rédaction — calculés à l'écran en continu, affichés dans les panneaux, puis enregistrés dans articles.seo_score / geo_score avec le seul texte qu'ils notent.
 type: "SeoScore { global: number, factors, keywordDensities[], headingValidation, metaAnalysis, checklistItems, wordCount, hasArticleKeywords, … } (shared/types/seo.types.ts) ; GeoScore ; en base : articles.seo_score / geo_score NUMERIC, NULL = inconnu"
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 related_fr: [FR-RED-SEO-LIVE, FR-RED-GEO-LIVE, FR-RED-SEO-SCORE-PERSIST, NFR-PERF-SEO-DEBOUNCE, FR-RED-WORD-COUNT-TARGET, FR-RED-META, FR-INFRA-NO-SCORE-FALLBACK]
 ---
 
@@ -28,14 +28,16 @@ related_fr: [FR-RED-SEO-LIVE, FR-RED-GEO-LIVE, FR-RED-SEO-SCORE-PERSIST, NFR-PER
 - longueur visée : `contentLengthTarget` fourni par la vue (cf. [Rédaction](../17-redaction.md), « Longueur visée »), sinon `DEFAULT_CONTENT_LENGTH_TARGET = 1500` ;
 - capitaine cherché dans le vrai slug (`checkSlugKeyword`).
 
-Puis `recalculate` confie le score à l'éditeur : `editorStore.recordScore('seo', global, seoScoreKey(texte, meta title, meta description))`.
+Puis `recalculate` confie le score à l'éditeur : `editorStore.recordScore('seo', global, seoScoreKey(texte, meta title, meta description), articleKeywords?.articleId)`. Le dernier argument dit pour quel article les mots-clés ont noté le texte.
 
 **Calcul GEO.** [`useGeoScoring`](../../src/composables/seo/useGeoScoring.ts) (300 ms) → [`geo.store.ts`](../../src/stores/article/geo.store.ts) → `calculateGeoScore` ([`src/utils/geo-calculator.ts`](../../src/utils/geo-calculator.ts), `GEO_SCORE_WEIGHTS` 30 / 25 / 25 / 20, constantes dans [`shared/constants/geo.constants.ts`](../../shared/constants/geo.constants.ts)) → `recordScore('geo', …)` avec pour empreinte le texte seul.
 
 **Enregistrement** — [`editor.store.ts`](../../src/stores/article/editor.store.ts), sans état réactif :
 - `scoreSnapshots` garde le dernier score de chaque sorte avec l'**empreinte** du texte noté (`seoScoreKey` = texte + méta ; GEO = texte, [`src/utils/score-key.ts`](../../src/utils/score-key.ts)) ;
 - `saveArticle` envoie `PUT /api/articles/:id { content, metaTitle, metaDescription, seoScore, geoScore }`, chaque score valant `freshScore` : la valeur si son empreinte est celle du texte envoyé, sinon `null` ;
-- `recordScore` : si le texte noté est exactement le dernier enregistré (`lastSaved`) et que la valeur a changé, envoie `PUT { seoScore }` ou `{ geoScore }` seul ; en cas d'échec, revient à la valeur précédente ;
+- `recordScore` : si le texte noté est exactement le dernier enregistré (`lastSaved`) et que la valeur a changé, envoie `PUT { seoScore }` ou `{ geoScore }` seul ; en cas d'échec, revient à la valeur précédente. Un score calculé avec les mots-clés d'un autre article que celui de `lastSaved` ne part pas (recette du 2026-09-30, 01-T1 : `PUT /articles/1335 {"seoScore":68}` envoyé depuis la page de l'enfant 1341) ;
+- `openArticle(id)` (appelé à l'entrée de la rédaction guidée et de l'éditeur, avant tout calcul) : `resetEditor`, donc ni texte, ni méta, ni `lastSaved` de l'article précédent ;
+- `deleteContent(id)` (« Supprimer le contenu ») : `DELETE /api/articles/:id/content`, puis vide texte, méta, empreintes et `lastSaved` ;
 - `loadExistingContent` (rédaction guidée) initialise `lastSaved` avec le texte chargé et les scores en base : le score recalculé sur ce texte intact rejoint la base.
 
 **Serveur.** `saveArticleContent` ([`article-content.service.ts`](../../server/services/article/article-content.service.ts)) écrit `seo_score` / `geo_score` **dès que le champ est présent**, même `null`, et ne les touche pas s'il est absent. Aucun calcul de score côté serveur ; le mode automatique n'en calcule pas.
@@ -81,7 +83,8 @@ Puis `recalculate` confie le score à l'éditeur : `editorStore.recordScore('seo
 | **Méta générée après le premier jet** | texte + méta | nouvelle empreinte SEO | Le score SEO d'avant la méta n'est plus envoyé ; celui calculé avec la méta part à la sauvegarde suivante. |
 | **Mots-clés de l'article chargés après le texte** | `articleKeywords` | aucune | Premier calcul sans capitaine (densités neutres à 50), puis nouveau calcul quand ils arrivent. |
 | **Premier jet enregistré au fil (`saveContenuPartiel`)** | — | `PUT { content }` sans score | La colonne garde l'ancien score à côté du nouveau texte jusqu'à la sauvegarde finale ; si la génération s'interrompt, il y reste. |
-| **Ouverture dans l'éditeur libre** | `setContent` + `markClean` | aucune | `lastSaved` reste vide : le score recalculé ne part qu'à la prochaine sauvegarde. |
+| **Ouverture dans l'éditeur libre** | `openArticle`, puis `loadExistingContent` sans identifiant | aucune | `lastSaved` reste vide : le score recalculé ne part qu'à la prochaine sauvegarde. |
+| **Passer d'un article à l'autre sans recharger** | `openArticle` à l'entrée de la vue | aucune | Couvert depuis le 2026-09-30 : le texte, la méta et l'empreinte du précédent sont vidés avant que les calculs ne s'abonnent ; et un score calculé avec les mots-clés d'un autre article ne part jamais (`scoredForArticleId`). |
 | **Article ouvert, jamais modifié** | score recalculé | `PUT { seoScore }` seul (rédaction guidée) | Voulu : le score du texte intact rejoint la base. |
 
 ## Limites connues

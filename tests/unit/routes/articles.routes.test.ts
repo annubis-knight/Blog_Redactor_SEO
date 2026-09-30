@@ -2,7 +2,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
-const { mockGetArticleBySlug, mockSaveArticleContent, mockGetArticleContent, mockRemoveArticleFromCocoon, mockRemoveArticleChecks, mockGetChildren } = vi.hoisted(() => ({
+const { mockGetArticleBySlug, mockSaveArticleContent, mockGetArticleContent, mockClearArticleContent, mockRemoveArticleFromCocoon, mockRemoveArticleChecks, mockGetChildren } = vi.hoisted(() => ({
+  mockClearArticleContent: vi.fn(),
   mockGetChildren: vi.fn(),
   mockGetArticleBySlug: vi.fn(),
   mockSaveArticleContent: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock('../../../server/services/infra/data.service', () => ({
 vi.mock('../../../server/services/article/article-content.service', () => ({
   saveArticleContent: mockSaveArticleContent,
   getArticleContent: mockGetArticleContent,
+  clearArticleContent: mockClearArticleContent,
 }))
 
 // Import the router and extract the handlers
@@ -122,6 +124,39 @@ describe('GET /articles/:id/content', () => {
     await handler(req, res)
 
     expect(res.json).toHaveBeenCalledWith({ data: content })
+  })
+})
+
+// FR-RED-EDITOR-TIPTAP (recette du 2026-09-30, RED-26) : « Supprimer le contenu »
+// efface le texte en base ; un `content: null` envoyé par PUT, lui, veut dire
+// « inchangé » (un écran pas encore chargé n'efface rien).
+describe('DELETE /articles/:id/content', () => {
+  const handler = findHandler('delete', '/articles/:id/content')
+
+  it('efface le texte, la méta et les scores de l’article et renvoie ce qui reste', async () => {
+    const remaining = {
+      outline: { sections: [] }, content: null, metaTitle: null, metaDescription: null,
+      seoScore: null, geoScore: null, updatedAt: null,
+    }
+    mockClearArticleContent.mockResolvedValueOnce(remaining)
+    const res = createMockRes()
+    await handler({ params: { id: '1335' } } as unknown as Request, res)
+    expect(mockClearArticleContent).toHaveBeenCalledWith(1335)
+    expect(res.json).toHaveBeenCalledWith({ data: remaining })
+  })
+
+  it('refuse un identifiant qui n’est pas un nombre', async () => {
+    const res = createMockRes()
+    await handler({ params: { id: 'abc' } } as unknown as Request, res)
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(mockClearArticleContent).not.toHaveBeenCalled()
+  })
+
+  it('un PUT avec un texte vide (null) ne l’efface pas : il ne dit rien du texte', async () => {
+    const put = findHandler('put', '/articles/:id')
+    mockSaveArticleContent.mockResolvedValueOnce({})
+    await put({ params: { id: '1335' }, body: { content: null } } as unknown as Request, createMockRes())
+    expect(mockClearArticleContent).not.toHaveBeenCalled()
   })
 })
 

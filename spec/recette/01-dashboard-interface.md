@@ -398,7 +398,7 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 **Tu dois voir :**
 - en bas, « Résultats déjà calculés » et quatre pastilles, « Radar », « Capitaine », « Lieutenants », « Lexique », chacune avec « DB » et « C » suivis d'un nombre ; une pastille à 0 partout reste visible, en pâle ;
 - au survol, un détail, par exemple « N mots-clés testés — verrouillé : … » pour le Capitaine, ou « N propositions en base · 1 verrouillé » pour les Lieutenants ;
-- à droite du bandeau, « Charger Capitaine » avec un bouton « DB » suivi d'un nombre, et une infobulle « Charger … depuis la base de données » ; le clic n'ajoute aucun doublon dans la liste ;
+- à droite du bandeau (au-dessus sur un écran étroit), « Charger Capitaine » avec un bouton « DB » suivi d'un nombre, et une infobulle « Charger … depuis la base de données » ; le clic n'ajoute aucun doublon dans la liste ; avec ou sans cette invite, le bandeau reste à la même place, sur une seule ligne ;
 - × referme l'invite ; elle revient quand tu reviens sur l'onglet ;
 - aucune invite sur Structure ni Discovery (ni sur Finalisation) ;
 - après le scan de l'enfant, la pastille Radar peut afficher « C 1 » (un scan gardé en mémoire). Alors seulement, « Vider le cache » apparaît, avec l'infobulle « Vide le cache externe (autocomplete, PAA, SERP, validate) pour cet article. La base de données n'est pas affectée. » ; après le clic, aucun nombre « DB » ne bouge.

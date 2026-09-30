@@ -19,8 +19,10 @@ import { useInternalLinking } from '@/composables/seo/useInternalLinking'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { marked } from 'marked'
 import type { ArticleContent } from '@shared/types/index.js'
+import { articleBriefKeyword } from '@shared/utils/article-keyword.js'
 import { log } from '@/utils/logger'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
+import ErrorMessage from '@/components/shared/ErrorMessage.vue'
 import BriefStructureStep from '@/components/workflow/BriefStructureStep.vue'
 import ArticleActions from '@/components/article/ArticleActions.vue'
 import ArticleStreamDisplay from '@/components/article/ArticleStreamDisplay.vue'
@@ -64,6 +66,18 @@ const slugResolutionError = ref<string | null>(null)
   } else {
     slugResolutionError.value = `Article ID "${route.params.articleId}" invalide`
   }
+}
+
+// Entrée dans l'article : le texte, la méta, les scores notés et le sommaire de
+// l'article ouvert avant ne restent pas. Un article sans texte affichait ceux du
+// précédent, « Générer l'article » rédigeait sur son sommaire, et le score du
+// précédent, recalculé avec les mots-clés de celui-ci, partait dans le
+// précédent (FR-RED-EDITOR-TIPTAP, FR-RED-OUTLINE, FR-RED-SEO-SCORE-PERSIST ;
+// recette du 2026-09-30, RED-3 et 01-T1). Fait dès la création de la vue,
+// avant que les calculs de score ne s'y abonnent.
+if (articleId.value) {
+  editorStore.openArticle(articleId.value)
+  outlineStore.resetOutline()
 }
 
 // --- Back link to cocoon redaction or dashboard ---
@@ -176,7 +190,7 @@ const {
 // (wordCountPercent moved into ArticleWordCountBar sub-component)
 
 // --- IA Brief Panel ---
-const { chunks: iaBriefChunks, isStreaming: iaBriefStreaming, startStream: startBriefExplain } = useStreaming()
+const { chunks: iaBriefChunks, isStreaming: iaBriefStreaming, error: iaBriefError, startStream: startBriefExplain } = useStreaming()
 const iaBriefTriggered = ref(false)
 
 const parsedBriefMarkdown = computed(() => {
@@ -188,10 +202,19 @@ function triggerBriefExplain() {
   if (!articleId.value) return
   iaBriefTriggered.value = true
   const dfs = briefStore.briefData?.dataForSeo
+  const article = briefStore.briefData?.article
   startBriefExplain('/api/generate/brief-explain', {
     articleId: articleId.value,
     articleTitle: articleTitle.value,
-    keyword: articleKeywordsStore.keywords?.capitaine ?? articleTitle.value,
+    // Capitaine verrouillé, à défaut mot-clé suggéré, à défaut le titre : un
+    // capitaine vide ('') n'est pas un mot-clé (FR-RED-BRIEF, RED-1 : le serveur
+    // refusait la demande, en silence).
+    keyword: articleBriefKeyword({
+      storedCaptain: articleKeywordsStore.keywords?.capitaine,
+      captainKeywordLocked: article?.captainKeywordLocked,
+      suggestedKeyword: article?.suggestedKeyword,
+      title: articleTitle.value,
+    }),
     cocoonName: cocoonName.value,
     articleType: briefStore.briefData?.article.type ?? 'Spécialisé',
     keywords: articleKeywordsStore.keywords?.lieutenants ?? [],
@@ -425,10 +448,16 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
                 :title="editorStore.sectionProgress.title"
               />
 
+              <!-- Une panne (rédaction, méta, réduction, humanisation) se dit à
+                   l'écran (FR-RED-DRAFT-SINGLE-PASS) : le composant n'était pas
+                   importé, rien ne s'affichait. Pas de « Réessayer » : relancer
+                   la rédaction pour une réduction ratée la referait (et la
+                   ferait payer) ; les boutons ci-dessus relancent chaque geste. -->
               <ErrorMessage
                 v-if="editorStore.error && !editorStore.isGenerating"
                 :message="editorStore.error"
-                @retry="handleGenerateArticle()"
+                hide-retry
+                data-testid="workflow-error"
               />
 
               <ArticleMetaDisplay
@@ -506,6 +535,7 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
           v-if="showIaBriefPanel"
           :parsed-brief-markdown="parsedBriefMarkdown"
           :ia-brief-streaming="iaBriefStreaming"
+          :ia-brief-error="iaBriefError"
           @relaunch="triggerBriefExplain"
         />
       </ResizablePanel>

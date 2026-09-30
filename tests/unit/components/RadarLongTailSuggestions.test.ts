@@ -127,6 +127,16 @@ describe('moteur:radar RadarLongTailSuggestions', () => {
   })
 
   describe('emit update:selected-keywords', () => {
+    // FR-RAD-SEND-CAPTAIN (recette du 2026-09-30, RAD-14) : la section revient
+    // vide après un nouveau scan ; le parent doit l'apprendre dès le montage,
+    // sinon il garde la sélection de l'ancienne liste (« Envoyer au Capitaine (5) »
+    // sans rien de coché, et 5 mots-clés invisibles étudiés).
+    it('au montage, la sélection affichée (vide) remonte au parent', () => {
+      const wrapper = mount(RadarLongTailSuggestions, { props: baseProps })
+      expect(wrapper.emitted('update:selected-suggestions')?.[0]).toEqual([[]])
+      expect(wrapper.emitted('update:selected-keywords')?.[0]).toEqual([[]])
+    })
+
     it('emits when checkbox is toggled', async () => {
       mockApiPost.mockResolvedValueOnce({ suggestions: fixtures.slice(0, 3), fromCache: false })
       const wrapper = mount(RadarLongTailSuggestions, { props: baseProps })

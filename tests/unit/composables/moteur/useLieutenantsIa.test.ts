@@ -136,6 +136,41 @@ describe('useLieutenantsIa', () => {
     expect(onLieutenantsUpdated).toHaveBeenCalledWith(['lt-locked'])
   })
 
+  // FR-LIE-CHECKBOX-COUNT (recette du 2026-09-30, LIE-8 / INFRA-16) : après un
+  // rechargement, le compteur disait « 1 / 0 sélectionnés » et le panneau de
+  // l'IA « Aucune génération IA pour ce Capitaine. » alors que 3 propositions
+  // de l'IA étaient affichées.
+  it('FR-LIE-CHECKBOX-COUNT — relues en base, les propositions de l’IA se comptent (« 1 / 3 », pas « 1 / 0 »)', () => {
+    const articleKeywordsStore = useArticleKeywordsStore()
+    articleKeywordsStore.keywords = {
+      articleId: 1, capitaine: 'cap', lieutenants: ['lt-locked'], lexique: [], rootKeywords: [],
+      richLieutenants: [
+        { keyword: 'lt-locked', status: 'locked', reasoning: '', sources: [], suggestedHnLevel: 2, score: 80 },
+        { keyword: 'lt-suggest', status: 'suggested', reasoning: '', sources: [], suggestedHnLevel: 2, score: 60 },
+        { keyword: 'lt-elim', status: 'eliminated', reasoning: '', sources: [], suggestedHnLevel: 2, score: 30 },
+        { keyword: 'lt-archive', status: 'archived', reasoning: '', sources: [], suggestedHnLevel: 2, score: 20 },
+      ],
+    } as never
+
+    const api = useLieutenantsIa(buildDeps({ articleKeywordsStore }))
+    api.restoreLockedLieutenants()
+
+    expect(api.selectedCards.value.size).toBe(1)
+    expect(api.totalGenerated.value, 'retenue, proposée et écartée ; pas l’archivée (ancien capitaine)').toBe(3)
+  })
+
+  it('FR-LIE-CHECKBOX-COUNT — une ancienne liste plate relue compte ses lieutenants', () => {
+    const articleKeywordsStore = useArticleKeywordsStore()
+    articleKeywordsStore.keywords = {
+      articleId: 1, capitaine: 'cap', lieutenants: ['a', 'b'], lexique: [], rootKeywords: [],
+    } as never
+
+    const api = useLieutenantsIa(buildDeps({ articleKeywordsStore }))
+    api.restoreLockedLieutenants()
+
+    expect(api.totalGenerated.value).toBe(2)
+  })
+
   it('AC.J.9.bis — restoreLockedLieutenants ne re-restaure pas si lieutenantCards déjà rempli', () => {
     const articleKeywordsStore = useArticleKeywordsStore()
     articleKeywordsStore.keywords = {

@@ -60,7 +60,8 @@ export const useSeoStore = defineStore('seo', () => {
     })
     score.value = calculateSeoScore(content, keywords, metaTitle, metaDescription, contentLengthTarget, relatedKeywords, articleKeywords ?? undefined, articleSlug)
     // FR-RED-SEO-SCORE-PERSIST — le score affiché part en base avec le texte qu'il note.
-    useEditorStore().recordScore('seo', score.value.global, seoScoreKey(content, metaTitle, metaDescription))
+    // Les mots-clés d'un autre article que celui du texte ne le notent pas (01-T1).
+    useEditorStore().recordScore('seo', score.value.global, seoScoreKey(content, metaTitle, metaDescription), articleKeywords?.articleId)
     log.info(`[seo] score: ${score.value?.global}`, {
       wordCount: score.value?.wordCount,
       densities: score.value?.keywordDensities.map(d => `${d.keyword}:${d.occurrences}x`).join(', '),

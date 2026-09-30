@@ -103,7 +103,8 @@ test('Capitaine — la moyenne des racines ignore les scores absents', async ({ 
   if (await moyenne.count() === 0) return // aucune racine scorée : rien à moyenner
 
   const texte = (await moyenne.innerText()).trim()
-  expect(texte, 'la moyenne est un score sur 100, jamais « 0 » par défaut').toMatch(/Moyenne\s+\d+\/100/)
+  // L'écran écrit « MOYENNE » en capitales (CSS) : la comparaison ignore la casse.
+  expect(texte, 'la moyenne est un score sur 100, jamais « 0 » par défaut').toMatch(/Moyenne\s+\d+\/100/i)
 })
 
 test('Capitaine — le tiroir de détail s’ouvre et se ferme', async ({ page }) => {

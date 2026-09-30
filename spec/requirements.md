@@ -509,8 +509,8 @@ L'outil doit compter tout ce qui est enregistré pour un onglet, verrouillé ou 
 **Statut :** active
 L'outil doit réafficher les explorations Capitaine et Lieutenants d'un article rouvert, même si rien n'a été verrouillé.
 - Les candidats Capitaine déjà testés reviennent avec le statut « suggéré ».
-- Les Lieutenants déjà proposés reviennent.
-- Un article jamais exploré reste vierge.
+- Les Lieutenants déjà proposés reviennent dès l'ouverture de l'onglet, avec leur nombre (« N / M sélectionnés », « M propositions générées par l'IA »).
+- Un article jamais exploré reste vierge : ses mots-clés sont chargés vides, à son nom, et ne passent pas pour « pas encore chargés ».
 
 ### FR-MOT-CHECK-RECONCILIATION — Réconciliation des étapes à l'ouverture
 **Statut :** active
@@ -519,6 +519,7 @@ L'outil doit, à la première ouverture des onglets Capitaine, Lieutenants et Le
 - Donnée présente mais étape absente : l'étape est demandée (et passe par sa porte pour Lieutenants et Lexique).
 - Données et étape cohérentes : aucun échange avec le serveur.
 - L'onglet Structure ne réconcilie pas : son étape ne bouge qu'à la validation ou à l'enregistrement d'une structure modifiée.
+- Choisir ou rechoisir un article ne fait que relire : les onglets n'apparaissent qu'une fois ses mots-clés et ses étapes relus (« Lecture des données de l'article… », ou un message et « Réessayer » si la lecture échoue), et seules ces données sont jugées. Leur arrivée n'est pas un geste : aucune étape cohérente n'est retirée ni redemandée, aucune décision n'est réenregistrée, et « Structure validée » reste acquise. (Recette du 2026-09-30, F4 : rechoisir un article retirait sa Structure.)
 
 ### FR-MOT-EXTERNAL-CACHE-CLEAR — Vider le cache externe d'un article
 **Statut :** non tenue (le bouton n'apparaît que si l'article a déjà un scan Radar, et la purge vise des types de cache que l'outil n'écrit plus : aucun nouvel appel n'est forcé ; « Vider le cache » ne dit rien à l'écran, ni ce qui a été purgé, ni un échec)
@@ -785,16 +786,17 @@ L'utilisateur doit pouvoir régénérer les longues traînes ; le cache évite u
 **Statut :** non tenue (la provenance radar / longue traîne / saisie n'est pas enregistrée)
 L'utilisateur doit pouvoir envoyer au Capitaine toutes les cartes cochées et les longues traînes cochées, sans doublon.
 - Le bouton « Envoyer au Capitaine (N) » apparaît dès qu'une case est cochée ; N compte les mots-clés sans doublon.
+- N ne compte que ce qui est coché à l'écran : un nouveau scan, qui efface la liste des longues traînes, efface aussi leur sélection.
 - En cas de doublon, la carte scannée l'emporte sur la longue traîne.
 - Le clic ouvre l'onglet Capitaine, qui étudie chaque mot-clé reçu.
 - La provenance de chaque mot-clé (radar, longue traîne, saisie) est enregistrée.
 
 ### FR-RAD-PERSIST — Retrouver l'exploration Radar d'un article
-**Statut :** non tenue (les longues traînes ne sont pas réaffichées ; l'enregistrement qui suit un scan peut vider la liste d'attente et effacer les longues traînes en base ; sur un article jamais scanné, « Charger Radar » remplace l'invitation à scanner par un résultat vide)
+**Statut :** non tenue (les longues traînes ne sont pas réaffichées ; un nouveau scan efface en base les longues traînes du précédent ; sur un article jamais scanné, « Charger Radar » remplace l'invitation à scanner par un résultat vide)
 L'exploration Radar d'un article (liste d'attente, cartes scannées, longues traînes, cases cochées) doit être enregistrée et réaffichée à l'identique, sans nouvel appel externe.
-- Chaque ajout, retrait, scan et cochage est enregistré au moment où il est fait, sans effacer les autres parties de l'exploration.
+- Chaque ajout, retrait, scan et cochage est enregistré au moment où il est fait, sans effacer les autres parties de l'exploration : l'enregistrement d'un scan garde la liste d'attente qui vient d'être scannée.
 - Rouvrir le Radar réaffiche la liste d'attente d'office.
-- Les cartes du dernier scan reviennent d'office si l'onglet était déjà ouvert, sinon par « Charger Radar ».
+- Les cartes du dernier scan reviennent d'office à l'ouverture de l'onglet, sans appel externe ni étape redemandée ; « Charger Radar » reste disponible. Un article jamais scanné garde son invitation à scanner.
 - Les longues traînes et leurs cases cochées reviennent avec les cartes.
 - La réouverture ne rappelle ni DataForSEO, ni Google, ni l'IA.
 
@@ -899,7 +901,7 @@ Pour chaque candidat étudié, l'outil doit afficher un avis d'expert rédigé p
 - L'avis obtenu est enregistré avec le candidat, et réaffiché à la réouverture de l'article, sans nouvel appel.
 
 ### FR-CAP-ROOTS — Racines d'un mot-clé long
-**Statut :** non tenue (à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte)
+**Statut :** non tenue (à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte)
 L'outil doit décomposer un mot-clé d'au moins 3 mots en racines, par troncature depuis la fin, et permettre de les comparer.
 - Jusqu'à 5 racines, de la plus longue à la plus courte ; une racine garde au moins 2 mots significatifs (hors mots-outils).
 - Quand le volume du mot-clé n'est pas au vert, ses racines sont étudiées d'office.
@@ -944,6 +946,7 @@ Sans point de douleur d'au moins 10 caractères, l'outil doit continuer de fonct
 Chaque candidat étudié pour un article doit être enregistré, avec ses questions PAA, et réaffiché à la réouverture.
 - Un candidat est enregistré dès son étude.
 - La réouverture réaffiche tous les candidats, leurs indicateurs et le Capitaine verrouillé.
+- Les données d'un article ne se mélangent jamais à celles d'un autre : une réponse arrivée pour un article qu'on vient de quitter est ignorée.
 - La provenance de chaque candidat est conservée.
 - Supprimer l'article supprime ses candidats.
 
@@ -1025,11 +1028,12 @@ Un changement du point de douleur pendant la visite de l'onglet ne doit pas rela
 - Le prochain chargement de l'onglet ou de l'article reflète le nouveau point de douleur.
 
 ### FR-CAP-LOCK-INTEGRITY — Verrou sans doublon, tri stable
-**Statut :** non tenue (afficher une racine l'enregistre comme candidat et lance pour elle un avis IA payant ; la liste se reconstruit alors, et les notes des candidats étudiés pendant la session passent à « — » ; deux casses d'un même mot-clé comptent pour deux candidats)
+**Statut :** non tenue (deux casses d'un même mot-clé comptent pour deux candidats)
 Le verrouillage doit viser le mot-clé d'origine d'une carte, sans créer de doublon ni déplacer la carte.
 - Ajouter, recharger ou verrouiller plusieurs fois un même mot-clé ne crée qu'une carte.
 - Le verrou porte sur le mot-clé d'origine, même quand une racine est affichée.
 - Afficher une racine ne déplace pas la carte : le tri lit le mot-clé et le score d'origine.
+- Afficher une racine ne l'enregistre pas comme candidat : elle reste rangée sous son mot-clé long, à l'écran comme à la réouverture, avec les mesures de son étude enregistrée (recette du 2026-09-30).
 
 ### Retirées (FR-CAP)
 
@@ -1053,7 +1057,7 @@ Les lieutenants sont les mots-clés secondaires d'un article : les recherches vo
 ### FR-LIE-SERP-ANALYZE — Analyser les pages concurrentes du capitaine
 **Statut :** non tenue (la pile d'activité annonce « Scraping ~N URLs via DataForSEO » même quand l'analyse est relue en base ; « Tout relancer (SERP + IA) » ne relance rien pendant 7 jours : il relit l'analyse et les propositions gardées, et doit s'appeler « Recharger l'analyse »)
 L'outil doit analyser les 10 premiers résultats Google (la SERP) du capitaine et de ses mots-clés racines, lire leurs pages et en restituer les titres, les questions « Autres questions posées » (PAA) et la liste des concurrents. Une analyse récente est relue au lieu d'être refaite.
-- L'analyse part d'un clic sur « Analyser SERP », seulement quand le capitaine est verrouillé ou que des propositions existent déjà pour l'article.
+- L'analyse part d'un clic sur « Analyser SERP », seulement quand le capitaine est verrouillé ou que des propositions existent déjà pour l'article ; dans ce second cas, un Capitaine déverrouillé (« Les garder ») laisse le bouton actif, sur le mot-clé de l'article.
 - Chaque mot-clé analysé montre ses concurrents : rang, nature (« Blog » ou « Autre »), domaine, titre cliquable, et un « ! » pour une page qui n'a pas pu être lue.
 - Une analyse de moins de 7 jours est relue en base, sans nouvel appel payant, quel que soit l'article qui l'a demandée.
 - Le nombre de résultats analysés est fixe : 10 par mot-clé.
@@ -1106,11 +1110,12 @@ Chaque candidat doit montrer d'où il vient et sa force estimée, pour qu'on com
 - Les candidats se trient par ordre alphabétique ou par score ; un score absent reste en bas.
 
 ### FR-LIE-CHECKBOX-COUNT — Compteur de lieutenants retenus
-**Statut :** non tenue (le compteur affiche les cases cochées sur le nombre de propositions générées ; aucune fourchette conseillée par type d'article n'est affichée ni signalée ; après un rechargement, le nombre de propositions retombe à 0 (« 1 / 0 sélectionnés »))
+**Statut :** non tenue (le compteur affiche les cases cochées sur le nombre de propositions générées ; aucune fourchette conseillée par type d'article n'est affichée ni signalée)
 L'utilisateur coche ses lieutenants ; un compteur doit lui dire combien il en a retenus et s'il est dans la fourchette conseillée pour le type d'article (le minimum et le maximum de lieutenants retenus des règles du type).
 - Chaque candidat a une case à cocher.
 - Chaque case est enregistrée aussitôt, sans bouton « Enregistrer ».
 - Le compteur affiche le nombre retenu et la fourchette du type, et signale un nombre hors fourchette.
+- Après un rechargement, le nombre de propositions est relu avec elles (retenues, proposées et écartées pour le Capitaine courant) : jamais « 1 / 0 sélectionnés ».
 
 ### FR-LIE-SLIDER-INTELLIGENT — Curseur du nombre de concurrents
 **Statut :** non tenue (le curseur, de 3 à 10, ne change que le compteur « N concurrents affichés » ; il ne filtre ni la liste des concurrents ni les données de l'IA, et ne déclenche jamais d'analyse complémentaire)
@@ -1151,10 +1156,10 @@ L'analyse des lieutenants doit fonctionner sans que le Lexique ait jamais été 
 - Un test d'architecture interdit tout import croisé entre les traitements Lieutenants et Lexique.
 
 ### FR-LIE-CHECKBOX-LOCK-IMMEDIATE — Cocher un lieutenant le verrouille aussitôt
-**Statut :** non tenue (relancer la proposition de l'IA décoche à l'écran les lieutenants déjà retenus et retire l'étape, alors que la liste enregistrée les garde ; et le bouton de relance du panneau de l'IA disparaît tant que ce panneau affiche les failles de contenu de la dernière génération ; après un rechargement, le panneau de l'IA dit « Aucune génération IA pour ce Capitaine. » alors que des propositions sont affichées, et son bouton de relance ne fait rien tant que la SERP n'est pas réanalysée)
+**Statut :** non tenue (relancer la proposition de l'IA décoche à l'écran les lieutenants déjà retenus et retire l'étape, alors que la liste enregistrée les garde ; et le bouton de relance du panneau de l'IA disparaît tant que ce panneau affiche les failles de contenu de la dernière génération)
 Cocher la case d'un lieutenant doit le verrouiller en base ; la décocher le déverrouille. Aucune action de l'onglet ne doit défaire ces choix.
 - Cocher un lieutenant ne désactive jamais les autres cases ; il n'y a pas de bouton de verrouillage groupé.
-- « Tout relancer (SERP + IA) » et la relance de la proposition restent disponibles, quel que soit le nombre de lieutenants retenus.
+- « Tout relancer (SERP + IA) » et la relance de la proposition restent disponibles, quel que soit le nombre de lieutenants retenus. Tant que la relance ne peut pas partir (Capitaine ni verrouillé ni déjà analysé), son bouton est grisé et dit pourquoi ; après un rechargement, le panneau de l'IA annonce les propositions relues (« N propositions générées par l'IA. »), et sa relance relit d'abord l'analyse SERP (en base si elle a moins de 7 jours) avant de rappeler l'IA : jamais un clic sans effet.
 - Après une relance de la proposition, les lieutenants retenus restent cochés et leur étape reste valable.
 
 ### Retirées (LIE)
@@ -1357,7 +1362,8 @@ L'outil doit produire, dans la rédaction guidée, une analyse stratégique du b
 - L'analyse se lance d'elle-même à la première ouverture du panneau « IA Brief » de la page ; « Relancer l'analyse » en redemande une nouvelle.
 - Le texte apparaît progressivement, mis en forme (titres, listes, gras).
 - L'analyse reçoit le titre, le mot-clé principal, les lieutenants, le lexique, la structure H1/H2/H3, l'angle éditorial de l'article, les questions « Autres questions posées » et les cinq premiers résultats de Google, et les titres des autres articles du cocon.
-- Les données de Google portent sur le mot-clé de l'article (capitaine verrouillé, à défaut mot-clé suggéré), jamais sur le mot-clé pilier du cocon ; sans mot-clé, l'article n'en reçoit aucune.
+- Les données de Google portent sur le mot-clé de l'article (capitaine verrouillé, à défaut mot-clé suggéré), jamais sur le mot-clé pilier du cocon ; sans mot-clé, l'article n'en reçoit aucune. Un capitaine enregistré vide ne compte pas : l'analyse part alors sur le mot-clé suggéré, à défaut sur le titre.
+- Une analyse refusée ou interrompue le dit dans le panneau (« L'analyse n'a pas abouti : … »), jamais en silence.
 - L'analyse est enregistrée avec l'article : elle réapparaît à la réouverture, sans nouvel appel. « Relancer l'analyse » en demande une nouvelle. (Décision d'Arnaud du 2026-09-29 : ne pas repayer une analyse déjà obtenue.)
 
 ### FR-RED-IA-BRIEF — Panneau « IA Brief »
@@ -1369,10 +1375,10 @@ L'outil doit héberger l'analyse du brief dans un panneau dédié de la rédacti
 - Sans analyse affichée, le panneau invite à cliquer sur « Relancer l'analyse ».
 
 ### FR-RED-OUTLINE — Le sommaire de l'article
-**Statut :** non tenue (les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique ; un article sans sommaire affiche, déjà validé, celui de l'article ouvert juste avant : « Générer l'article » rédige (et paie) sur ce sommaire)
+**Statut :** non tenue (les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique)
 L'outil doit fournir à la rédaction un sommaire H1 / H2 / H3 tiré de la structure validée au Moteur, que l'utilisateur peut retoucher puis valider.
 - Le sommaire reprend le H1 de la structure (à défaut le titre de l'article), ajoute une « Introduction » et une « Conclusion » sauf si la structure en porte déjà une, et garde les chapitres et sous-parties dans l'ordre ; aucun niveau au-delà de H3.
-- Sans sommaire enregistré, l'écran le dit et renvoie au Moteur ; l'écran ne génère pas de sommaire par IA (seul le mode automatique le fait, quand l'article n'a pas de structure).
+- Sans sommaire enregistré, l'écran le dit et renvoie au Moteur, même juste après un autre article (jamais le sommaire de celui-ci) ; l'écran ne génère pas de sommaire par IA (seul le mode automatique le fait, quand l'article n'a pas de structure).
 - Avant validation, l'utilisateur peut renommer un titre, supprimer une section, ajouter un H2 ou un H3, réordonner les sections par glisser-déposer (sauf le H1).
 - Le H1 reste en tête : une section lâchée sur lui se place juste après. Pendant qu'on renomme un titre, Échap rend le titre d'avant ; Entrée, ou un clic ailleurs, garde le nouveau.
 - Annuler et Rétablir restaurent l'état précédent du sommaire après toute modification.
@@ -1387,13 +1393,13 @@ L'outil doit empêcher de passer à l'étape « Article » de la rédaction guid
 - L'éditeur libre n'est pas concerné.
 
 ### FR-RED-DRAFT-SINGLE-PASS — Le premier jet s'écrit d'un seul tenant
-**Statut :** non tenue (une panne de rédaction n'affiche aucun message, ni dans la rédaction guidée ni dans l'éditeur ; l'échec de la méta, d'une réduction ou d'une humanisation n'en affiche pas non plus)
+**Statut :** active
 L'outil doit rédiger l'article en un seul appel à l'IA qui voit tout le sommaire, puis juger ce premier jet par sa porte avant de l'accepter comme étape.
 - Un seul appel, sans recherche web, qui reçoit le sommaire (chapitres, sous-parties, intentions), la longueur visée et la part de chaque chapitre, la stratégie de l'article (à défaut celle du cocon), les mots-clés, les règles du type d'article et l'état du cocon.
 - La part de chaque chapitre : 15 % pour le premier, 10 % pour le dernier, le reste à parts égales ; deux chapitres se partagent 40 / 60 ; le chapeau compte dans le premier chapitre.
 - La progression s'affiche chapitre par chapitre (« Section n/N » et son titre) et le texte apparaît au fil de l'écriture ; une réponse coupée au plafond reprend au début du chapitre interrompu, deux reprises au plus.
 - Une fois le texte et la méta enregistrés, l'étape « premier jet accepté » est demandée à la porte ; un bandeau permet de la redemander (« Valider le premier jet »).
-- Une panne arrête la rédaction avec un message ; ce qui a déjà été enregistré au fil reste en base.
+- Une panne arrête la rédaction avec un message, dans la rédaction guidée comme dans l'éditeur ; ce qui a déjà été enregistré au fil reste en base. L'échec de la méta, d'une réduction ou d'une humanisation s'affiche de même. Le message ne propose pas de relancer la rédaction : chaque geste se relance par son propre bouton.
 
 ### FR-RED-GEN-SAUVEGARDE-AU-FIL — Le texte en cours de rédaction est enregistré au fil
 **Statut :** active
@@ -1490,8 +1496,10 @@ L'outil doit utiliser une même longueur visée pour l'affichage, la rédaction,
 - La rédaction guidée affiche « N mots / cible » avec une jauge ; l'écart, quand l'article est trop long, apparaît sur le bouton « Réduire (-N mots) ».
 
 ### FR-RED-EDITOR-TIPTAP — L'éditeur de finalisation
-**Statut :** non tenue (un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement)
+**Statut :** active
 L'outil doit offrir un éditeur de texte enrichi, en trois zones (introduction, corps, conclusion), qui garde le travail de l'utilisateur.
+- Ouvrir un article, dans l'éditeur comme dans la rédaction guidée, n'affiche que son propre texte, sa méta et son sommaire, même sans rechargement de la page : rien de l'article ouvert avant ne reste à l'écran ni ne peut être enregistré dans celui-ci.
+- « Supprimer le contenu » (après confirmation) efface en base le texte, la méta et les scores notés ; le brief et le sommaire restent. Le texte ne revient pas au rechargement ; un échec de la suppression le laisse à l'écran et le dit.
 - Mise en forme : gras, italique, H2, H3, listes, citation, lien, annuler / rétablir ; les blocs spéciaux, liens internes, marqueurs « à sourcer », tableaux et images survivent à l'enregistrement et au rechargement.
 - Un lien interne s'enregistre sans « nofollow » ni ouverture dans un nouvel onglet ; un clic sur un lien, dans l'éditeur, n'ouvre aucun onglet.
 - Le bouton « Image » remplace l'image sélectionnée ou en insère une, par une adresse « https://… » ou « /… » et un texte alternatif obligatoires ; toute autre saisie est refusée avec un message.
@@ -1516,10 +1524,11 @@ L'outil doit calculer en continu un score GEO sur 100, qui mesure la facilité p
 - Tant que l'article n'a pas de texte, le bouton « GEO » est grisé.
 
 ### FR-RED-SEO-SCORE-PERSIST — Le score enregistré est celui affiché pour ce texte
-**Statut :** non tenue (un premier jet interrompu enregistre le texte sans remettre les scores à « inconnu » : l'ancien score reste en base, à l'écran comme en mode automatique ; en passant d'un article à un autre dans la rédaction guidée, le score calculé sur le texte encore affiché de l'ancien, avec les mots-clés du nouveau, est enregistré dans l'ancien)
+**Statut :** non tenue (un premier jet interrompu enregistre le texte sans remettre les scores à « inconnu » : l'ancien score reste en base, à l'écran comme en mode automatique)
 L'outil doit enregistrer les scores SEO et GEO avec le texte qu'ils notent, et jamais un score d'une autre version.
 - Le score SEO note texte, meta title et meta description ; le score GEO, le texte seul.
 - Un score calculé sur une autre version du texte n'est jamais enregistré : la base porte « inconnu », affiché « — ».
+- Un score n'est jamais enregistré dans un autre article que celui dont il a noté le texte avec les mots-clés : passer d'un article à l'autre sans recharger n'écrit rien dans le précédent.
 - Un score calculé juste après une sauvegarde, sur le texte enregistré, part aussitôt, seul ; le même score n'est pas renvoyé deux fois.
 - À l'ouverture d'un article dans la rédaction guidée, le score recalculé sur le texte intact rejoint la base.
 - L'audit du projet affiche les scores enregistrés, « — » quand ils sont inconnus.
@@ -1788,6 +1797,7 @@ L'outil doit afficher dans le Moteur des briques communes, montées une seule fo
 - Récapitulatif du cocon (articles suggérés et publiés) avec, pour chaque article, 6 points de progression en deux groupes : « Explorer » (Discovery, Radar) et « Valider » (Capitaine, Lieutenants, Structure, Lexique).
 - Panneau « Résultats déjà calculés » collé en bas : une pastille par onglet (Radar, Capitaine, Lieutenants, Lexique) avec ses compteurs « DB » et « C », et « Vider le cache » quand un scan Radar non sauvegardé est en mémoire (cf. FR-MOT-EXTERNAL-CACHE-CLEAR).
 - Invitation « Charger <onglet> » à chaque visite d'un de ces onglets qui a des données, avec un bouton par source ; la fermer ne vaut que pour la visite.
+- Le panneau « Résultats déjà calculés » garde la même place et la même hauteur sur tous les onglets : l'invitation se pose à sa droite (au-dessus sur un écran étroit) sans le déplacer ni le faire passer sur deux lignes.
 - Panneau de suggestions de mots-clés partagé par les Lieutenants et le Lexique, masqué quand il n'a rien à proposer.
 
 ### Retirées (UI)

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, watch, toRef } from 'vue'
+import { computed, nextTick, ref, watch, toRef } from 'vue'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import { extractRoots } from '@/composables/keyword/useCapitaineScan'
 import { useLieutenantsSerp } from '@/composables/moteur/useLieutenantsSerp'
-import { useLieutenantsIa } from '@/composables/moteur/useLieutenantsIa'
+import { useLieutenantsIa, countStoredProposals } from '@/composables/moteur/useLieutenantsIa'
 import { log } from '@/utils/logger'
 import { shouldRegenerate } from '@/utils/ttl-freshness'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
@@ -358,56 +358,92 @@ function invalidateValidatedStructure(id: number): boolean {
 }
 
 /**
+ * Les données de l'article choisi sont relues : ses mots-clés enregistrés
+ * (le store porte cet article) et ses étapes (le store de progression le
+ * connaît). Tant qu'il manque l'un des deux, rien n'est jugé : un store vide
+ * pendant un chargement ne veut pas dire « aucun lieutenant retenu »
+ * (FR-MOT-CHECK-RECONCILIATION, recette du 2026-09-30, F4).
+ */
+const articleDataReady = computed(() => {
+  const id = props.selectedArticle?.id
+  if (!id || articleKeywordsStore.keywords?.articleId !== id) return false
+  try {
+    return useArticleProgressStore().getProgress(id) !== null
+  } catch {
+    // Hors contexte Pinia (panneau monté seul) : aucune progression à attendre.
+    return true
+  }
+})
+
+/** Réconcilie l'étape enregistrée avec les lieutenants enregistrés, à l'arrivée des données. */
+function reconcileLieutenantsCheck(id: number, active: boolean): void {
+  // Lazy access au store progress pour eviter erreur Pinia hors composant
+  // dans les tests qui ne mockent pas ce store.
+  let checks: string[] = []
+  try {
+    checks = useArticleProgressStore().getProgress(id)?.completedChecks ?? []
+  } catch {
+    checks = []
+  }
+  const checkPresent = checks.includes(MOTEUR_LIEUTENANTS_LOCKED)
+  const lockedCount = articleKeywordsStore.lockedLieutenants?.length ?? 0
+  // Les lieutenants tels qu'ils arrivent de la base : les voir apparaître n'est
+  // pas un ajout de l'utilisateur (le watcher de signature l'ignore).
+  arrivalSignature = lockedLieutenantsSignature.value
+  let decision: 'add' | 'remove' | 'noop'
+  if (active && !checkPresent) {
+    // Cas rare : la regle est remplie mais le check manque → la porte décide.
+    decision = 'add'
+    void verifyLockedLieutenants(false)
+  } else if (!active && checkPresent) {
+    // Check en base mais plus aucun lieutenant verrouillé → retirer.
+    decision = 'remove'
+    withdrawCheck()
+  } else {
+    decision = 'noop'
+    // Règle déjà remplie à l'arrivée des données : un ajout ou un retrait
+    // ultérieur relancera la porte (sans quoi l'étape restait accordée avec
+    // trop peu de lieutenants).
+    if (active) transitionSettled = true
+  }
+  log.info('[reconcile:lieutenants]', {
+    articleId: id,
+    lockedCount,
+    active,
+    checkPresent,
+    decision,
+    check: MOTEUR_LIEUTENANTS_LOCKED,
+  })
+}
+
+/**
  * Gating workflow : émet/retire check `MOTEUR_LIEUTENANTS_LOCKED`.
  * Actif ssi ≥1 lieutenant verrouillé.
  * Enregistre les décisions sur transition false→true, puis la porte décide.
- * Au mount, réconcilie état réel vs check en DB.
+ *
+ * L'arrivée des données d'un article (montage, choix ou rechoix, rechargement)
+ * n'est pas un geste : elle sert de point de départ et ne donne lieu qu'à la
+ * réconciliation avec l'étape enregistrée. Seul un changement survenu ensuite,
+ * sur le même article, est un geste de l'utilisateur. Avant cela, le store vidé
+ * au choix d'un article faisait retirer l'étape (et « Structure validée » avec
+ * elle, côté serveur), puis les données revenues la faisaient redemander.
  */
 let previousCheckActive = false
-let isFirstRun = true
+/** Article dont les données chargées servent de point de départ ; `null` pendant un chargement. */
+let baselineArticleId: number | null = null
+/** Signature des lieutenants verrouillés à l'arrivée des données, pas encore dépassée par un geste. */
+let arrivalSignature: string | null = null
 watch(
-  () => lieutenantsCheckActive.value,
-  async (active) => {
-    // Au mount : reconcilier l'etat reel avec le check workflow stocke en DB.
-    if (isFirstRun) {
-      isFirstRun = false
+  [() => props.selectedArticle?.id ?? null, articleDataReady, lieutenantsCheckActive],
+  async ([id, ready, active]) => {
+    if (!id || !ready) {
+      baselineArticleId = null
+      return
+    }
+    if (baselineArticleId !== id) {
+      baselineArticleId = id
       previousCheckActive = active
-      const id = props.selectedArticle?.id
-      // Lazy access au store progress pour eviter erreur Pinia hors composant
-      // dans les tests qui ne mockent pas ce store.
-      let checks: string[] = []
-      try {
-        const progressStore = useArticleProgressStore()
-        checks = id ? (progressStore.getProgress(id)?.completedChecks ?? []) : []
-      } catch {
-        checks = []
-      }
-      const checkPresent = checks.includes(MOTEUR_LIEUTENANTS_LOCKED)
-      const lockedCount = articleKeywordsStore.lockedLieutenants?.length ?? 0
-      let decision: 'add' | 'remove' | 'noop'
-      if (active && !checkPresent) {
-        // Cas rare : la regle est remplie mais le check manque → la porte décide.
-        decision = 'add'
-        void verifyLockedLieutenants(false)
-      } else if (!active && checkPresent) {
-        // Check en base mais plus aucun lieutenant verrouillé → retirer.
-        decision = 'remove'
-        withdrawCheck()
-      } else {
-        decision = 'noop'
-        // Règle déjà remplie au montage : un ajout ou un retrait ultérieur
-        // relancera la porte (sans quoi l'étape restait accordée avec trop peu
-        // de lieutenants).
-        if (active) transitionSettled = true
-      }
-      log.info('[reconcile:lieutenants]', {
-        articleId: id,
-        lockedCount,
-        active,
-        checkPresent,
-        decision,
-        check: MOTEUR_LIEUTENANTS_LOCKED,
-      })
+      reconcileLieutenantsCheck(id, active)
       return
     }
 
@@ -420,8 +456,7 @@ watch(
       lieutenantsGateBlocked.value = null
       transitionSettled = false
       withdrawCheck()
-      const id = props.selectedArticle?.id
-      if (id) void articleKeywordsStore.saveDecisions(id)
+      void articleKeywordsStore.saveDecisions(id)
     }
     previousCheckActive = active
   },
@@ -433,8 +468,13 @@ watch(
 // transition false → true est traitée par le watcher ci-dessus ; pendant une
 // vérification, c'est elle qui reprend le changement.
 watch(lockedLieutenantsSignature, async (signature, previous) => {
-  if (signature === previous || !transitionSettled || !lieutenantsCheckActive.value) return
+  if (signature === previous) return
+  // Les lieutenants qui arrivent avec les données de l'article ne sont pas un geste.
+  const isArrival = signature === arrivalSignature
+  arrivalSignature = null
+  if (isArrival || !transitionSettled || !lieutenantsCheckActive.value) return
   if (!props.selectedArticle?.id || props.mode === 'libre') return
+  if (!articleDataReady.value || baselineArticleId !== props.selectedArticle.id) return
   await verifyLockedLieutenants(true)
 })
 
@@ -494,10 +534,14 @@ watch(
 
 // Sync `lieutenantCards` quand `richLieutenants` change (mergeRichLieutenants).
 // Peuple aussi `selectedCards` avec locked (pour checkboxes état coché).
+// `immediate` : l'onglet est monté une fois les données de l'article relues
+// (MoteurView) ; les propositions enregistrées, même sans lieutenant retenu,
+// s'affichent dès l'ouverture (FR-MOT-EXPLORATIONS-HYDRATATION).
 watch(
   () => articleKeywordsStore.keywords?.richLieutenants,
   (richLts) => {
     if (!richLts || richLts.length === 0) return
+    if (articleKeywordsStore.keywords?.articleId !== props.selectedArticle?.id) return
     // Recalcule la liste courante depuis le store. Idempotent : si rien n'a
     // changé visuellement, le rendu Vue ne re-render pas.
     const locked = richLts.filter(lt => lt.status === 'locked')
@@ -520,6 +564,8 @@ watch(
         suggestedHnLevel: lt.suggestedHnLevel,
         score: lt.score,
       }))
+      // Le compte des propositions suit les propositions affichées (FR-LIE-CHECKBOX-COUNT).
+      totalGenerated.value = Math.max(totalGenerated.value, countStoredProposals(richLts))
     }
     // Sync `selectedCards` avec les lieutenants `locked` du store. Les
     // checkboxes des lieutenants verrouillés doivent apparaître cochées.
@@ -544,8 +590,39 @@ watch(
       selectedCards.value = new Map(selectedCards.value)
     }
   },
-  { deep: true },
+  { deep: true, immediate: true },
 )
+
+/**
+ * Préalable de la proposition de l'IA (FR-UI-AI-PANELS-PATTERN) : le même que
+ * celui d'« Analyser SERP » (Capitaine verrouillé, ou propositions déjà là).
+ * Sans lui, le bouton du panneau est grisé et dit pourquoi : un clic ne
+ * faisait rien, sans message (recette du 2026-09-30, 01-T9).
+ */
+const proposeDisabledReason = computed<string | null>(() => {
+  if (!props.captainKeyword || !(props.isCaptaineLocked || hasEverAnalyzed.value)) {
+    return 'Verrouillez d’abord votre Capitaine : l’IA propose les lieutenants à partir de lui.'
+  }
+  if (isLoading.value) return 'Analyse SERP en cours…'
+  return null
+})
+
+/**
+ * Relance de la proposition depuis le panneau de l'IA. Elle part des pages
+ * concurrentes du Capitaine : après un rechargement, les propositions sont
+ * relues en base mais pas l'analyse SERP, alors relue d'abord (en base si elle
+ * a moins de 7 jours, FR-LIE-SERP-ANALYZE), puis l'IA est relancée.
+ */
+async function relaunchProposal(): Promise<void> {
+  if (proposeDisabledReason.value) return
+  if (!serpResult.value) {
+    await analyzeSERPWithStep()
+    await nextTick()
+    // Sans carte à l'écran, l'analyse a déjà lancé la proposition d'elle-même.
+    if (iaIsStreaming.value) return
+  }
+  if (serpResult.value) proposeLieutenants()
+}
 
 // Bloc 6 — Auto-trigger SERP supprimé. Le SERP était relancé silencieusement
 // à chaque changement de captainKeyword, ce qui (a) gâchait des crédits API
@@ -674,8 +751,9 @@ async function analyzeSERPWithStep(): Promise<void> {
       :content-gap-insights="contentGapInsights"
       :article-level="articleLevel"
       :word-groups="wordGroups"
+      :propose-disabled-reason="proposeDisabledReason"
       @toggle="toggleLieutenant"
-      @propose-retry="proposeLieutenants"
+      @propose-retry="relaunchProposal"
     />
   </div>
 </template>

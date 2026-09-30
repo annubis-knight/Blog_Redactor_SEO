@@ -14,10 +14,12 @@ import type { SerpAnalysisResult } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
 
-defineProps<{
+withDefaults(defineProps<{
   // Visibility gate
   serpResult: SerpAnalysisResult | null
   lieutenantCards: ProposedLieutenant[]
+  /** Préalable manquant de la proposition de l'IA : bouton grisé, raison affichée. */
+  proposeDisabledReason?: string | null
 
   // LieutenantProposals props
   iaIsStreaming: boolean
@@ -31,7 +33,9 @@ defineProps<{
 
   // Word groups (Discovery clusters)
   wordGroups: WordGroup[]
-}>()
+}>(), {
+  proposeDisabledReason: null,
+})
 
 defineEmits<{
   (e: 'toggle', card: ProposedLieutenant): void
@@ -91,6 +95,7 @@ defineEmits<{
       :ia-error="iaError"
       :content-gap-insights="contentGapInsights"
       :total-generated="totalGenerated"
+      :propose-disabled-reason="proposeDisabledReason"
       @retry="$emit('propose-retry')"
     />
   </div>

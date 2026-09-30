@@ -549,11 +549,12 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 3. Regarde les cartes du Capitaine, puis reviens au Radar.
 
 **Tu dois voir :**
-- sans case cochée, pas de bouton « Envoyer au Capitaine » ; « Envoyer au Capitaine (1) » dès la première case, puis « (2) » ;
+- sans case cochée, pas de bouton « Envoyer au Capitaine » ; « Envoyer au Capitaine (1) » dès la première case, puis « (2) » : les longues traînes cochées en RAD-12 ont disparu avec leur liste à la relance du scan (RAD-13), elles ne comptent plus ;
 - l'onglet Capitaine s'ouvre ; les 2 mots-clés y sont étudiés (voile « Validation… »), puis affichés en cartes ;
 - sous leur anneau, « Score Pertinence » (plus « Score KPI ») ; une carte arrivée du Radar affiche « — » jusqu'à la réouverture de l'article.
 
 **C'est un bug si :**
+- « Envoyer au Capitaine (N) » apparaît sans case cochée à l'écran, ou compte plus que les cases cochées ; plus de 2 mots-clés partent à l'étude ;
 - un mot-clé coché manque au Capitaine, ou y arrive en double ;
 - une carte du Capitaine affiche « Score KPI », ou deux notes.
 
@@ -565,20 +566,21 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 **Gestes :**
 1. Remets le tri au repos (⇅). Note les notes des cartes dans l'ordre, la note du thermomètre et le nombre d'appels de la pastille.
 2. Choisis le pilier, puis rechoisis l'article enfant (l'onglet Radar est déjà ouvert). Clique l'onglet **Radar**.
-3. Recharge la page (F5), rechoisis l'article, ouvre **Radar**. En bas, dans l'invite « Charger Radar », clique **« DB »**.
+3. Recharge la page (F5), rechoisis l'article, ouvre **Radar**. Puis, dans l'invite « Charger Radar » en bas, clique **« DB »**.
 4. Compare « M » de « Suggestions IA Radar » aux anneaux, puis trie par « Score KPI ».
 
 **Tu dois voir :**
-- geste 2 : les cartes reviennent seules, sans clic et sans barre de scan ;
-- geste 3 : avant le clic, pas de carte (« Cartes radar (0) ») ; après « DB », tout de suite et sans barre de scan : les mêmes cartes, les mêmes notes, dans le même ordre, le même thermomètre ; la pastille ne compte aucun appel en plus ;
+- geste 2 : les cartes et la liste « N mots-clés à scanner » reviennent seules, sans clic et sans barre de scan ;
+- geste 3 : dès l'ouverture, sans clic et sans barre de scan : la liste d'attente entière, les mêmes cartes, les mêmes notes, dans le même ordre, le même thermomètre ; « DB » n'ajoute ni carte ni doublon ; la pastille ne compte aucun appel en plus ;
 - « M » égal à l'anneau, et le tri « Score KPI » suit les notes comme en RAD-8.
 
 **C'est un bug si :**
+- après F5, « Cartes radar (0) » ou « Aucun mot-clé en attente… » alors que l'article a été scanné ;
 - une note diffère de celle d'avant, ou l'ordre change ;
 - « M » et l'anneau ne concordent plus après le rechargement ;
 - un scan repart (barre de progression).
 
-**⚠ Défaut connu :** l'enregistrement qui suit un scan peut vider la liste d'attente : si tu n'as pas cliqué « DB » depuis le dernier rechargement avant de scanner (c'est le cas en suivant ce module), la liste revient vide dès le geste 2, avec « Aucun mot-clé en attente… ». Les longues traînes ne sont pas réaffichées non plus (rien à perdre en MOCK : voir RAD-R2). Si la liste revient entière, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-RAD-PERSIST — les longues traînes ne sont pas réaffichées (rien à perdre en MOCK : voir RAD-R2), et un nouveau scan efface en base celles du précédent. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ## En mode RÉEL (payant)
 

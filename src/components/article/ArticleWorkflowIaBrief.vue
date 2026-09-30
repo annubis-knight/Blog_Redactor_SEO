@@ -6,10 +6,14 @@
  * Spécifique au WorkflowView (ArticleEditorView ne propose pas ce panel).
  */
 
-defineProps<{
+withDefaults(defineProps<{
   parsedBriefMarkdown: string
   iaBriefStreaming: boolean
-}>()
+  /** Échec de l'analyse (FR-RED-BRIEF) : dit à l'écran, jamais en silence (RED-1). */
+  iaBriefError?: string | null
+}>(), {
+  iaBriefError: null,
+})
 
 defineEmits<{
   (e: 'relaunch'): void
@@ -28,6 +32,9 @@ defineEmits<{
         {{ iaBriefStreaming ? 'Analyse en cours...' : 'Relancer l\'analyse' }}
       </button>
     </div>
+    <p v-if="iaBriefError && !iaBriefStreaming" class="ia-brief-error" role="alert" data-testid="ia-brief-error">
+      L’analyse n’a pas abouti : {{ iaBriefError }}
+    </p>
     <div
       v-if="parsedBriefMarkdown"
       class="ia-brief-content markdown-body"
@@ -86,5 +93,15 @@ defineEmits<{
   font-size: 0.8125rem;
   color: var(--color-text-muted);
   font-style: italic;
+}
+
+.ia-brief-error {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-error, #dc2626);
+  background: var(--color-block-error-bg, #fef2f2);
+  border: 1px solid var(--color-error, #ef4444);
+  border-radius: 6px;
 }
 </style>

@@ -122,7 +122,9 @@ Règles :
 | présentes | absente | l'étape est demandée (par la porte pour Lieutenants et Lexique) |
 | cohérentes | cohérente | rien |
 
-L'onglet Structure ne réconcilie pas. Tant que les décisions du nouvel article ne sont pas arrivées, l'état « verrouillé » affiché est celui de l'étape enregistrée.
+L'onglet Structure ne réconcilie pas.
+
+**Choisir un article ne fait que relire.** À chaque choix (ou rechoix) d'un article, ses mots-clés et ses étapes sont relus. Les onglets n'apparaissent qu'ensuite : entre-temps, « Lecture des données de l’article… » ; si la lecture échoue, un message et « Réessayer ». Seules les données de cet article sont jugées, et leur arrivée n'est pas un geste : une étape cohérente avec elles n'est ni retirée ni redemandée, aucune décision n'est réenregistrée, et « Structure validée » reste acquise.
 
 > **En situation.** L'utilisateur verrouille « indemnité rupture conventionnelle 2026 » : le troisième point se remplit. Il déverrouille pour tester un autre mot-clé : le troisième point se vide, et le cinquième aussi si la structure était validée.
 
@@ -188,9 +190,9 @@ Les appels d'IA de Discovery (génération, filtre, analyse) ne sont pas réutil
 La douleur et la stratégie sont relues en base à chaque demande. Aucun écran du Moteur ne propose de changer la douleur. Limite connue : aucun autre écran non plus, pas même le Cerveau ; la douleur d'un article est fixée à sa création.
 
 ## La barre « Résultats déjà calculés »
-*Exigences : FR-MOT-EXPLORATION-COUNTS, FR-MOT-CACHE-PANEL-COUNT, FR-MOT-EXPLORATIONS-HYDRATATION, FR-MOT-EXTERNAL-CACHE-CLEAR*
+*Exigences : FR-MOT-EXPLORATION-COUNTS, FR-MOT-CACHE-PANEL-COUNT, FR-MOT-EXPLORATIONS-HYDRATATION, FR-MOT-EXTERNAL-CACHE-CLEAR, FR-UI-MOTEUR-SHARED*
 
-Quand un article est choisi, une barre fixe en bas d'écran s'intitule « Résultats déjà calculés ». Elle porte quatre puces : Radar, Capitaine, Lieutenants, Lexique. Chaque puce montre « DB n » (enregistré en base) et « C n » (en mémoire, non encore sauvegardé), même à 0.
+Quand un article est choisi, une barre fixe en bas d'écran s'intitule « Résultats déjà calculés ». Elle porte quatre puces : Radar, Capitaine, Lieutenants, Lexique. Chaque puce montre « DB n » (enregistré en base) et « C n » (en mémoire, non encore sauvegardé), même à 0. Elle garde la même place et la même hauteur, sur une seule ligne, quel que soit l'onglet.
 
 | Puce | « DB » compte | Infobulle |
 |---|---|---|
@@ -201,7 +203,7 @@ Quand un article est choisi, une barre fixe en bas d'écran s'intitule « Résul
 
 Les compteurs se relisent après chaque étape ajoutée ou retirée et à chaque changement d'article.
 
-Dans les onglets Radar, Capitaine, Lieutenants et Lexique, si la puce de l'onglet n'est pas à zéro, une invite « Charger {onglet} » s'affiche à côté. Elle propose un bouton « DB n » et, s'il y a lieu, « C n ». Le chargement ajoute ce qui manque à l'écran, sans doublon. La croix ferme l'invite jusqu'au prochain changement d'onglet ou d'article.
+Dans les onglets Radar, Capitaine, Lieutenants et Lexique, si la puce de l'onglet n'est pas à zéro, une invite « Charger {onglet} » s'affiche à sa droite (au-dessus sur un écran étroit), sans la déplacer. Elle propose un bouton « DB n » et, s'il y a lieu, « C n ». Le chargement ajoute ce qui manque à l'écran, sans doublon. La croix ferme l'invite jusqu'au prochain changement d'onglet ou d'article.
 
 Les candidats Capitaine et les Lieutenants déjà explorés reviennent à la réouverture, même sans verrou. Les candidats Capitaine reviennent en « suggéré ».
 

@@ -19,7 +19,7 @@ synced_with:
 ## Les étapes
 
 ### 1. Ouvrir l'article dans l'éditeur
-**Exigences :** FR-RED-PANELS-LAYOUT, FR-UI-ARTICLE-SHARED, FR-RED-EDITOR-TIPTAP ⚠
+**Exigences :** FR-RED-PANELS-LAYOUT, FR-UI-ARTICLE-SHARED, FR-RED-EDITOR-TIPTAP
 
 Depuis la page du cocon, l'utilisateur clique « Rédaction », puis la carte de l'article : la rédaction guidée s'ouvre, le texte en lecture seule à l'étape « Article ». « Éditer l'article » ouvre l'éditeur, en trois zones repliables (« Introduction », « Corps de l'article », « Conclusion »), avec « Meta SEO » et « Table des matières » repliés au-dessus. À droite, la barre des panneaux (« SEO », « GEO », « Maillage », « Enrichir », « Blocs ») ouvre un panneau à la fois, dans une zone qu'il élargit à la souris. Il y arrive en cliquant, sans recharger : c'est ainsi que l'éditeur connaît les autres articles du cocon.
 
@@ -29,7 +29,7 @@ Depuis la page du cocon, l'utilisateur clique « Rédaction », puis la carte de
 Le panneau « SEO » donne une jauge sur 100, « N mots » et le temps de lecture, puis le détail : « Indicateurs » (« Meta », « Structure », « Mots-clés », « Alertes »), « Mots-clefs » (où apparaissent le capitaine, les lieutenants et le lexique) et « SERP Data ». Le panneau « GEO » mesure la facilité pour une IA de citer l'article : « Questions H2/H3 », « Answer Capsules », « Stats sourcées », et en « Lisibilité » les paragraphes trop longs. Les deux notes se recalculent une fraction de seconde après chaque pause de frappe, sans gêner la saisie : elles guident les retouches qui suivent.
 
 ### 3. Retoucher le texte à la main
-**Exigences :** FR-RED-EDITOR-TIPTAP ⚠, FR-RED-SEO-SCORE-PERSIST ⚠
+**Exigences :** FR-RED-EDITOR-TIPTAP, FR-RED-SEO-SCORE-PERSIST ⚠
 
 La barre d'outils (gras, italique, H2, H3, listes, citation, lien, image, annuler, rétablir) agit sur la zone où se trouve le curseur. Le bouton « 📷 » demande une adresse (« https://… » ou « /… »), puis un texte alternatif, tous deux obligatoires. Dès la première frappe, « ⚠ Modifications non sauvegardées » s'affiche ; Ctrl+S ou « Sauvegarder » enregistre (« ✓ Sauvegardé à l'instant »), et l'éditeur enregistre seul toutes les 30 secondes. Les scores partent en base avec le texte qu'ils notent.
 
@@ -81,9 +81,9 @@ Plus tard, il retouche l'article publié (par exemple parce que l'enfant est enf
 ## Ce qui peut mal tourner
 
 ### Il ouvre un article sans texte juste après un autre
-**Exigences :** FR-RED-EDITOR-TIPTAP ⚠, FR-RED-OUTLINE ⚠, FR-RED-SEO-SCORE-PERSIST ⚠
+**Exigences :** FR-RED-EDITOR-TIPTAP, FR-RED-OUTLINE ⚠, FR-RED-SEO-SCORE-PERSIST ⚠
 
-Passer d'un article à l'autre sans recharger doit montrer le bon article, ou un écran vide s'il n'a pas de texte. Aujourd'hui, un article sans texte affiche le texte et la méta, voire le sommaire, de l'article ouvert juste avant ; le moindre enregistrement (Ctrl+S, une passe acceptée, l'enregistrement automatique) les copie en base dans le nouvel article, et le score du texte encore affiché peut être enregistré dans l'ancien. Précaution : recharger la page (F5) avant de toucher à quoi que ce soit.
+Passer d'un article à l'autre sans recharger montre le bon article, ou un écran vide s'il n'a pas de texte : ni le texte, ni la méta, ni le sommaire de l'article ouvert juste avant. Aucun enregistrement ne les copie dans le nouvel article, et aucun score n'est écrit dans l'ancien.
 
 ### Le chapitre a changé depuis la proposition
 **Exigences :** FR-RED-ENRICH-PASSES
@@ -96,25 +96,23 @@ Entre la proposition d'une passe et son acceptation, il a retouché ce chapitre 
 Après une correction dans l'éditeur, il clique « Exporter HTML » dans l'onglet d'aperçu resté ouvert. La porte juge la nouvelle version, et le fichier est demandé au serveur juste après elle : c'est cette version qui se télécharge, puis l'aperçu se recharge. Dans le fichier, le H1 est celui que la porte a jugé, et chaque lien interne vers un article rédigé pointe vers son adresse de blog ; un lien vers un article pas encore rédigé est retiré, son texte gardé.
 
 ### Une opération d'IA échoue ou est annulée
-**Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-HUMANIZE-SECTION ⚠, FR-RED-CONTEXTUAL-ACTIONS ⚠, FR-INFRA-API-STREAM ⚠
+**Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-HUMANIZE-SECTION ⚠, FR-RED-CONTEXTUAL-ACTIONS ⚠, FR-INFRA-API-STREAM ⚠
 
 « Annuler humanisation », « Annuler réduction » ou « Arrêter » doivent rendre l'article d'avant, en entier, et une panne doit se dire. Aujourd'hui, l'échec d'une réduction, d'une humanisation ou de la méta n'affiche aucun message ; une section que l'IA n'a pas su traiter reste telle quelle sans que l'écran le dise ; l'échec d'une action sur une sélection s'affiche sous l'éditeur, caché par le voile. Et une annulation arrête l'écran, pas le serveur : en mode réel, la génération continue et se facture.
 
 ### Il supprime le contenu
-**Exigences :** FR-RED-EDITOR-TIPTAP ⚠, FR-RED-META ⚠, FR-RED-PROGRESS ⚠
+**Exigences :** FR-RED-EDITOR-TIPTAP, FR-RED-META ⚠, FR-RED-PROGRESS ⚠
 
 « Supprimer le contenu » demande « Supprimer le contenu de l'article ? Le brief et le sommaire seront conservés. » ; une fois confirmé, l'éditeur se vide et la méta est effacée, mais la phase de l'article ne recule pas. Aujourd'hui, le texte reste en base et revient au rechargement, alors que la méta, elle, est perdue : l'aperçu refuse alors de s'ouvrir (« Article needs meta title and description before preview »), et seul « Régénérer l'article » refait la méta, en remplaçant tout le texte.
 
 ## Défauts connus sur ce parcours
 
 - FR-RED-PROGRESS — rouvrir la rédaction guidée d'un article déjà rédigé ramène toujours à « Brief & Structure ».
-- FR-RED-EDITOR-TIPTAP — un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement.
-- FR-RED-SEO-SCORE-PERSIST — un premier jet interrompu enregistre le texte sans remettre les scores à « inconnu » : l'ancien score reste en base, à l'écran comme en mode automatique ; en passant d'un article à un autre dans la rédaction guidée, le score calculé sur le texte encore affiché de l'ancien, avec les mots-clés du nouveau, est enregistré dans l'ancien.
+- FR-RED-SEO-SCORE-PERSIST — un premier jet interrompu enregistre le texte sans remettre les scores à « inconnu » : l'ancien score reste en base, à l'écran comme en mode automatique.
 - FR-RED-SECTION-REWRITE — le champ « Consigne » accepte plus de 600 caractères ; au-delà, la carte affiche un message technique en anglais au lieu de dire la limite.
 - FR-RED-HUMANIZE-SECTION — aucune note ne signale les sections revenues à leur texte d'origine ; le message « La structure de l'article a été altérée par l'humanisation. Retour à la version précédente. » ne s'affiche nulle part.
 - FR-RED-CONTEXTUAL-ACTIONS — l'éditeur n'envoie pas le mot-clé de l'article : « Optimiser mot-clé » et les autres actions travaillent sans lui ; les blocs « Sources chiffrées » et « Exemples réels » retirent les liens absents de la recherche sans dire combien ; l'échec d'une action s'affiche sous l'éditeur, caché par le voile ; « Convertir en liste » montre ses balises dans la fenêtre de résultat.
 - FR-RED-LINKING-MANUAL — dans la rédaction guidée, « Appliquer » une suggestion ne fait rien ; dans l'éditeur, l'ancre n'est cherchée que dans la zone active : ailleurs, « Appliquer » ne fait rien, sans message, et la suggestion reste affichée.
 - FR-RED-META — la méta ne se modifie pas à la main et ne se relance pas seule : réessayer relance tout l'article.
-- FR-RED-OUTLINE — les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique ; un article sans sommaire affiche, déjà validé, celui de l'article ouvert juste avant : « Générer l'article » rédige (et paie) sur ce sommaire.
-- FR-RED-DRAFT-SINGLE-PASS — une panne de rédaction n'affiche aucun message, ni dans la rédaction guidée ni dans l'éditeur ; l'échec de la méta, d'une réduction ou d'une humanisation n'en affiche pas non plus.
+- FR-RED-OUTLINE — les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique.
 - FR-INFRA-API-STREAM — quand l'utilisateur annule, l'écran s'arrête mais le serveur continue la génération jusqu'au bout et la facture.

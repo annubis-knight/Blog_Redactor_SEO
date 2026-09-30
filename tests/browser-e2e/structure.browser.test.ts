@@ -8,6 +8,7 @@
  */
 import { expect, type Page } from '@playwright/test'
 import { test } from './helpers/test-fixtures'
+import { MOTEUR_CAPITAINE_LOCKED } from '../../shared/constants/workflow-checks.constants.js'
 import { checksDeLArticle, dismissLoadPrompt, openMoteur, selectArticleByTitle, tabLocator } from './helpers/moteur-ui'
 
 const alarm = (page: Page) => page.locator('[data-testid="gate-alarm"]')
@@ -28,7 +29,7 @@ async function preparer(page: Page, apiUrl: string, articleId: number, captain: 
 test.describe('Onglet Structure', () => {
   test('① une structure sans H1 est refusée, sans dérogation possible', async ({ page, ctx }) => {
     test.setTimeout(120_000)
-    const article = await ctx.createArticle('Structure sans H1', 'Spécialisé')
+    const article = await ctx.createArticle('Structure sans H1', 'Spécialisé', { checks: [MOTEUR_CAPITAINE_LOCKED] })
     const captain = article.suggestedKeyword ?? `structure ${ctx.runId}`
     await preparer(page, ctx.apiUrl, article.id, captain, [
       { level: 2, text: 'Le prix du service' },
@@ -57,7 +58,7 @@ test.describe('Onglet Structure', () => {
 
   test('② proposée à partir des lieutenants retenus, validée, elle devient le sommaire', async ({ page, ctx }) => {
     test.setTimeout(180_000)
-    const article = await ctx.createArticle('Structure valide', 'Spécialisé')
+    const article = await ctx.createArticle('Structure valide', 'Spécialisé', { checks: [MOTEUR_CAPITAINE_LOCKED] })
     const captain = article.suggestedKeyword ?? `structure valide ${ctx.runId}`
     await preparer(page, ctx.apiUrl, article.id, captain, [])
 

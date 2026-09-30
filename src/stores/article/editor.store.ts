@@ -3,7 +3,10 @@
  *            `meta_description`, `seo_score`, `geo_score`.
  * READS FROM: GET /articles/:id/content (hydratation par les vues d'édition).
  * WRITES TO: PUT /articles/:id (saveArticle : contenu, méta et scores du texte
- *            enregistré ; recordScore : score calculé après coup, seul).
+ *            enregistré ; recordScore : score calculé après coup, seul, jamais
+ *            avec les mots-clés d'un autre article) ; DELETE /articles/:id/content
+ *            (deleteContent : texte, méta et scores effacés en base).
+ *            openArticle vide l'état de l'article ouvert avant.
  * CONSUMERS: ArticleEditorView, ArticleWorkflowView, useArticleGeneration,
  *            useAutoSave, seo.store et geo.store (recordScore), SaveStatusIndicator.
  * RELATED FR: FR-RED-SEO-SCORE-PERSIST, FR-RED-META-CAPTAIN, FR-RED-GEN-SAUVEGARDE-AU-FIL
@@ -13,7 +16,7 @@ import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import { useStreaming, startStreamOnce, type StreamOnceResult } from '@/composables/editor/useStreaming'
-import { apiPost, apiPut } from '@/services/api.service'
+import { apiDelete, apiPost, apiPut } from '@/services/api.service'
 import {
   countWordsFromHtml,
   splitArticleByH2,
@@ -277,11 +280,21 @@ export const useEditorStore = defineStore('editor', () => {
    * noté. Si ce texte est exactement celui enregistré en base, le score y part
    * aussitôt, seul : une sauvegarde faite avant la fin du calcul n'a pas à
    * attendre la suivante.
+   *
+   * `scoredForArticleId` : l'article dont les mots-clés ont servi au calcul. Un
+   * score calculé avec les mots-clés d'un autre article que celui du texte
+   * enregistré ne part pas : il noterait ce texte avec des mots-clés qui ne sont
+   * pas les siens (recette du 2026-09-30, 01-T1 : `PUT /articles/1335` envoyé
+   * depuis la page de l'enfant 1341).
    */
-  function recordScore(kind: ScoreKind, value: number, key: string): void {
+  function recordScore(kind: ScoreKind, value: number, key: string, scoredForArticleId?: number | null): void {
     scoreSnapshots[kind] = { value, key }
     const saved = lastSaved
     if (!saved || saved.keys[kind] !== key || saved.persisted[kind] === value) return
+    if (scoredForArticleId != null && scoredForArticleId !== saved.articleId) {
+      log.warn(`[editor] score ${kind} non enregistré : calculé pour l'article ${scoredForArticleId}, texte de l'article ${saved.articleId}`)
+      return
+    }
     const previous = saved.persisted[kind]
     saved.persisted[kind] = value
     const field = kind === 'seo' ? 'seoScore' : 'geoScore'
@@ -327,6 +340,38 @@ export const useEditorStore = defineStore('editor', () => {
       isDirty.value = wasDirty
       log.error(`Save failed for article ${articleId} — ${(err as Error).message}`)
       error.value = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde'
+    } finally {
+      isSaving.value = false
+    }
+  }
+
+  /**
+   * « Supprimer le contenu » (FR-RED-EDITOR-TIPTAP) : le texte, la méta et les
+   * scores sont effacés en base par leur propre écriture, puis à l'écran. Un
+   * `content: null` envoyé par `saveArticle` veut dire « inchangé » pour le
+   * serveur : le texte restait en base et revenait au rechargement (RED-26).
+   * Refusée par le serveur, la suppression laisse le texte à l'écran et le dit.
+   */
+  async function deleteContent(articleId: number): Promise<boolean> {
+    isSaving.value = true
+    error.value = null
+    try {
+      await apiDelete(`/articles/${articleId}/content`)
+      content.value = null
+      streamedText.value = ''
+      metaTitle.value = null
+      metaDescription.value = null
+      isDirty.value = false
+      scoreSnapshots.seo = null
+      scoreSnapshots.geo = null
+      lastSaved = null
+      lastSavedAt.value = new Date().toISOString()
+      log.info(`[editor] contenu de l'article ${articleId} supprimé`)
+      return true
+    } catch (err) {
+      error.value = `Le contenu n'a pas été supprimé : ${err instanceof Error ? err.message : 'erreur inconnue'}`
+      log.error(`[editor] suppression du contenu impossible pour ${articleId} — ${(err as Error).message}`)
+      return false
     } finally {
       isSaving.value = false
     }
@@ -675,6 +720,19 @@ export const useEditorStore = defineStore('editor', () => {
       : null
   }
 
+  /**
+   * Entrée dans la rédaction d'un article : rien de l'article ouvert avant ne
+   * reste (texte, méta, scores notés, empreinte du texte enregistré). Sans cela,
+   * un article sans texte affichait celui du précédent, et un enregistrement ou
+   * un score pouvait l'écrire dans le mauvais article (FR-RED-EDITOR-TIPTAP,
+   * FR-RED-SEO-SCORE-PERSIST ; recette du 2026-09-30, RED-3 et 01-T1).
+   * Le contenu de `articleId` est chargé ensuite par la vue.
+   */
+  function openArticle(articleId: number) {
+    log.debug('[editor] ouverture d\'un article : état précédent vidé', { articleId })
+    resetEditor()
+  }
+
   function resetEditor() {
     content.value = null
     streamedText.value = ''
@@ -686,6 +744,10 @@ export const useEditorStore = defineStore('editor', () => {
     isDirty.value = false
     isSaving.value = false
     lastSavedAt.value = null
+    lastArticleUsage.value = null
+    lastMetaUsage.value = null
+    lastDraftTargetWordCount.value = null
+    sectionProgress.value = null
     isReducing.value = false
     isHumanizing.value = false
     humanizeProgress.value = null
@@ -717,8 +779,8 @@ export const useEditorStore = defineStore('editor', () => {
     // computed
     wordCount, wordCountDelta,
     // actions
-    generateArticle, generateMeta, saveArticle, setContent, recordScore,
-    loadExistingContent, markClean, markDirty, resetEditor, saveContenuPartiel,
+    generateArticle, generateMeta, saveArticle, deleteContent, setContent, recordScore,
+    loadExistingContent, markClean, markDirty, openArticle, resetEditor, saveContenuPartiel,
     reduceArticle, abortReduce, humanizeArticle, abortHumanize, callHumanizeSection,
   }
 })

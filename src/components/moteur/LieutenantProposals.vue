@@ -5,6 +5,7 @@ import LieutenantCard from '@/components/moteur/LieutenantCard.vue'
 import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
 import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
 import { compareScores, compareScoresAsc } from '@shared/score'
+import { articleLevelToDisplayLabel } from '@shared/utils/article-level.js'
 import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
 
 marked.setOptions({ breaks: true, gfm: true })
@@ -74,8 +75,9 @@ const parsedInsights = computed(() =>
         <span v-if="iaIsStreaming" class="pulse-dot" />
       </h3>
       <!-- Badge level, migré depuis `lieutenants-header`. -->
-      <span v-if="articleLevel" class="level-badge" :title="`Niveau de l'article : ${articleLevel}`">
-        {{ articleLevel }}
+      <!-- En toutes lettres, jamais le code du niveau (FR-CER-AIGUILLAGE). -->
+      <span v-if="articleLevel" class="level-badge" :title="`Niveau de l'article : ${articleLevelToDisplayLabel(articleLevel)}`">
+        {{ articleLevelToDisplayLabel(articleLevel) }}
       </span>
     </header>
 

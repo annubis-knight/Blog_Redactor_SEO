@@ -15,6 +15,7 @@
  */
 import { expect, type Page } from '@playwright/test'
 import { test } from './helpers/test-fixtures'
+import { MOTEUR_CAPITAINE_LOCKED } from '../../shared/constants/workflow-checks.constants.js'
 import { checksDeLArticle, dismissLoadPrompt, openMoteur, selectArticleByTitle, tabLocator } from './helpers/moteur-ui'
 import { GATE_TEST_REASON } from './helpers/gate-alarm'
 import { query } from '../../server/db/client.js'
@@ -107,7 +108,7 @@ test.describe('Porte « verrouiller le capitaine »', () => {
 test.describe('Porte « valider les lieutenants »', () => {
   test('un pilier avec un seul lieutenant : étape retenue, bandeau, alarme, puis dérogation', async ({ page, ctx }) => {
     test.setTimeout(180_000)
-    const article = await ctx.createArticle('Porte lieutenants')
+    const article = await ctx.createArticle('Porte lieutenants', 'Pilier', { checks: [MOTEUR_CAPITAINE_LOCKED] })
     const captain = article.suggestedKeyword ?? `porte lieutenants ${ctx.runId}`
     const seul = `${captain} prix`
     await page.request.put(`${ctx.apiUrl}/articles/${article.id}/keywords`, {

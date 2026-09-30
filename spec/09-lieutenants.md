@@ -12,8 +12,8 @@ Les lieutenants sont les mots-clés secondaires de l'article : les recherches vo
 *Exigences : FR-LIE-SERP-ANALYZE, FR-LIE-CHECK*
 
 - Tant que le capitaine n'est pas verrouillé et qu'aucune proposition n'existe pour l'article, un message invite : « Verrouillez votre Capitaine dans l'onglet precedent pour analyser la SERP. » Le curseur et « Analyser SERP » sont grisés.
-- Dès qu'une proposition existe pour l'article, l'onglet reste utilisable même si le capitaine est déverrouillé ensuite.
-- Ouvrir l'onglet ne lance rien de payant. Les lieutenants déjà enregistrés reviennent à l'écran : les retenus cochés, puis les candidats suggérés, puis les « Autres candidats ». Une ancienne liste sans détail revient avec des cartes sans raison et un score « — ».
+- Dès qu'une proposition existe pour l'article, l'onglet reste utilisable même si le capitaine est déverrouillé ensuite (« Les garder ») : « Analyser SERP » reste actif, sur le mot-clé de l'article.
+- Ouvrir l'onglet ne lance rien de payant. Les lieutenants déjà enregistrés reviennent à l'écran dès l'ouverture, même sans lieutenant retenu : les retenus cochés, puis les candidats suggérés, puis les « Autres candidats ». Une ancienne liste sans détail revient avec des cartes sans raison et un score « — ».
 - Le panneau « 💡 Suggestions pour vos Lieutenants » liste au plus 10 mots-clés issus du scan Radar de l'article. « Ajouter » crée une carte non cochée, raison « Proposé depuis votre panier », niveau H2, score « — ». Le panneau se masque avec « × ».
 
 ## Analyser les concurrents
@@ -52,7 +52,7 @@ La SERP est la page de résultats de Google pour une recherche. « Analyser SERP
 - « Failles de contenu » (mis en forme) suit la liste ; le panneau de l'IA reprend ce texte sous « Content-gap détecté ».
 - Deux sections repliées par défaut suivent la liste : « Sources IA : questions Google (PAA) » et « Sources IA : clusters Discovery ». Vides, elles l'expliquent (« Google n'a renvoye aucune question PAA… », « Aucun cluster disponible. Lance un scan Discovery pour ce cocon, puis reviens ici. »).
 - Le panneau de l'IA est toujours sous la liste, séparé d'elle : la liste des lieutenants n'est jamais dans ce panneau, et aucune structure de titres n'est affichée dans l'onglet.
-- Relancer : « Relancer la proposition IA » après une erreur ; dans le panneau de l'IA, « Régénérer » après une erreur, « Lancer une suggestion IA » ou « Régénérer les suggestions » au repos. Quand le panneau affiche « Content-gap détecté », il ne propose pas de bouton.
+- Relancer : « Relancer la proposition IA » après une erreur ; dans le panneau de l'IA, « Régénérer » après une erreur, « Lancer une suggestion IA » ou « Régénérer les suggestions » au repos, avec « N propositions générées par l'IA. », relu aussi après un rechargement. Sans Capitaine verrouillé ni proposition déjà faite, ce bouton est grisé et le panneau dit pourquoi (« Verrouillez d’abord votre Capitaine : l’IA propose les lieutenants à partir de lui. ») ; après un rechargement, la relance relit d'abord l'analyse SERP (en base si elle a moins de 7 jours), puis rappelle l'IA : jamais un clic sans effet. Quand le panneau affiche « Content-gap détecté », il ne propose pas de bouton.
 
 > **En situation.** Sur l'intermédiaire « audit site web », l'utilisateur clique « Analyser SERP ». Le capitaine et deux racines sont analysés ; l'IA propose 8 candidats ; 5 restent en tête de liste, les 3 autres vont dans « Autres candidats ». Aucun n'est coché. « audit seo toulouse » a un score bas : la consigne interdit la ville à un intermédiaire.
 
@@ -60,7 +60,7 @@ La SERP est la page de résultats de Google pour une recherche. « Analyser SERP
 *Exigences : FR-LIE-CHECKBOX-LOCK-IMMEDIATE, FR-LIE-CHECKBOX-COUNT*
 
 - Cocher une carte (retenue ou « Autres candidats ») verrouille ce lieutenant et l'enregistre aussitôt ; décocher le déverrouille aussitôt. Il n'y a pas de bouton de validation groupée, et les autres cases restent cliquables.
-- Le compteur de la barre de tri affiche « X / N sélectionnés », où N est le nombre de candidats générés par l'IA. Il n'indique pas de fourchette conseillée par type d'article.
+- Le compteur de la barre de tri affiche « X / N sélectionnés », où N est le nombre de candidats générés par l'IA ; après un rechargement, N est relu avec les propositions (retenues, proposées et écartées pour le Capitaine courant). Il n'indique pas de fourchette conseillée par type d'article.
 - Relancer la proposition remplace les cartes et décoche tout : les lieutenants retenus apparaissent décochés et l'étape est retirée, alors qu'ils restent dans la liste enregistrée (voir « Limites connues »).
 
 ## L'étape « Lieutenants verrouillés » et sa porte

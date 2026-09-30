@@ -111,3 +111,50 @@ describe('editor store — scores enregistrés avec leur texte', () => {
     expect(mockApiPut).toHaveBeenCalledTimes(1)
   })
 })
+
+/**
+ * FR-RED-SEO-SCORE-PERSIST, FR-RED-EDITOR-TIPTAP — rien d'un article ne passe à
+ * un autre (recette du 2026-09-30, 01-T1 et 07-T2). Rédaction du pilier 1335,
+ * puis de l'enfant 1341 sans recharger : la page de l'enfant a noté le texte du
+ * pilier, encore en mémoire, avec les mots-clés de l'enfant, et envoyé
+ * `PUT /articles/1335 {"seoScore":68}`.
+ */
+describe('editor store — un score ne part jamais vers un autre article', () => {
+  const PILIER = '<h2>Le budget à prévoir</h2><p>Texte du pilier…</p>'
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    mockApiPut.mockResolvedValue({})
+  })
+
+  it('un score calculé avec les mots-clés d’un autre article n’est pas enregistré sur le texte affiché', async () => {
+    const store = useEditorStore()
+    store.loadExistingContent({ content: PILIER, metaTitle: 'Pilier', metaDescription: 'Desc', articleId: 1335, seoScore: 86 })
+
+    store.recordScore('seo', 68, seoScoreKey(PILIER, 'Pilier', 'Desc'), 1341)
+    await Promise.resolve()
+    expect(mockApiPut).not.toHaveBeenCalled()
+
+    // Les mots-clés de l'article affiché, eux, font partir le score (FR-RED-SEO-SCORE-PERSIST).
+    store.recordScore('seo', 88, seoScoreKey(PILIER, 'Pilier', 'Desc'), 1335)
+    await vi.waitFor(() => expect(mockApiPut).toHaveBeenCalledTimes(1))
+    expect(mockApiPut.mock.calls[0]).toEqual(['/articles/1335', { seoScore: 88 }])
+  })
+
+  it('ouvrir un autre article vide le texte, la méta et l’empreinte du précédent', async () => {
+    const store = useEditorStore()
+    store.loadExistingContent({ content: PILIER, metaTitle: 'Pilier', metaDescription: 'Desc', articleId: 1335, seoScore: 86 })
+
+    store.openArticle(1341)
+    expect(store.content).toBeNull()
+    expect(store.metaTitle).toBeNull()
+    expect(store.metaDescription).toBeNull()
+    expect(store.isDirty).toBe(false)
+
+    // Un calcul tardif sur l'ancien texte ne vise plus le pilier.
+    store.recordScore('seo', 68, seoScoreKey(PILIER, 'Pilier', 'Desc'))
+    await Promise.resolve()
+    expect(mockApiPut).not.toHaveBeenCalled()
+  })
+})
