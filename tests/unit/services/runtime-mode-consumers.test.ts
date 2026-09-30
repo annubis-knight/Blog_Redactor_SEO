@@ -11,7 +11,7 @@
  * l'override n'est pas honoré, le toggle navbar n'a aucun effet.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { setRuntimeMode } from '../../../server/services/infra/runtime-mode.service'
+import { setRuntimeMode, getEffectiveMode } from '../../../server/services/infra/runtime-mode.service'
 import { getProvider } from '../../../server/services/external/ai-provider.service'
 import { isSandbox } from '../../../server/services/external/dataforseo/_client'
 
@@ -19,6 +19,10 @@ describe('FR-INFRA-RUNTIME-MODE — consommateurs honorent l\'override', () => {
   beforeEach(() => {
     setRuntimeMode(null)
     vi.unstubAllEnvs()
+    // Environnement neutre : chaque cas pose ce qu'il teste (le poste ou la CI
+    // peuvent avoir AI_PROVIDER=mock ou DATAFORSEO_SANDBOX=true).
+    vi.stubEnv('AI_PROVIDER', '')
+    vi.stubEnv('DATAFORSEO_SANDBOX', '')
   })
 
   afterEach(() => {
@@ -83,11 +87,55 @@ describe('FR-INFRA-RUNTIME-MODE — consommateurs honorent l\'override', () => {
       expect(isSandbox()).toBe(true)
     })
 
-    it('override null + DATAFORSEO_SANDBOX absent → false (défaut prod)', () => {
+    it('override null + DATAFORSEO_SANDBOX absent + IA réelle → false (défaut prod)', () => {
+      vi.stubEnv('AI_PROVIDER', 'claude')
       vi.stubEnv('DATAFORSEO_SANDBOX', '')
       setRuntimeMode(null)
       expect(isSandbox()).toBe(false)
     })
+
+    it('F1 (recette 2026-09-30) : override null + AI_PROVIDER=mock + DATAFORSEO_SANDBOX absent → bac à sable', () => {
+      // Le poste d'Arnaud : le badge disait MOCK pendant que DataForSEO partait en production payante.
+      vi.stubEnv('AI_PROVIDER', 'mock')
+      vi.stubEnv('DATAFORSEO_SANDBOX', '')
+      setRuntimeMode(null)
+      expect(isSandbox()).toBe(true)
+    })
+
+    it('le bac à sable n’est jamais déduit de NODE_ENV', () => {
+      vi.stubEnv('AI_PROVIDER', 'claude')
+      vi.stubEnv('DATAFORSEO_SANDBOX', '')
+      vi.stubEnv('NODE_ENV', 'development')
+      setRuntimeMode(null)
+      expect(isSandbox()).toBe(false)
+    })
+  })
+
+  describe('F1 — une seule autorité : le mode effectif (FR-INFRA-RUNTIME-MODE, NFR-COST-AI-MOCK)', () => {
+    it('override null + DATAFORSEO_SANDBOX=true + AI_PROVIDER=claude → IA simulée aussi', () => {
+      vi.stubEnv('AI_PROVIDER', 'claude')
+      vi.stubEnv('DATAFORSEO_SANDBOX', 'true')
+      setRuntimeMode(null)
+      expect(getProvider()).toBe('mock')
+    })
+
+    const providers = ['mock', 'claude', 'gemini', 'openrouter', '']
+    const sandboxes = ['true', 'false', '']
+    const overrides: Array<'mock' | 'real' | null> = [null, 'mock', 'real']
+    for (const provider of providers) {
+      for (const sandbox of sandboxes) {
+        for (const override of overrides) {
+          it(`AI_PROVIDER=${provider || '∅'}, DATAFORSEO_SANDBOX=${sandbox || '∅'}, override=${override ?? 'null'} : badge MOCK ⇔ rien de facturé`, () => {
+            vi.stubEnv('AI_PROVIDER', provider)
+            vi.stubEnv('DATAFORSEO_SANDBOX', sandbox)
+            setRuntimeMode(override)
+            const badgeSaysMock = getEffectiveMode() === 'mock'
+            expect(isSandbox(), 'DataForSEO suit le badge').toBe(badgeSaysMock)
+            expect(getProvider() === 'mock', 'l’IA suit le badge').toBe(badgeSaysMock)
+          })
+        }
+      }
+    }
   })
 
   describe('cohérence cross-API (AC1+AC2)', () => {

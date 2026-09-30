@@ -184,10 +184,12 @@ Un seul interrupteur couvre toutes les sources payantes. Il se bascule par le bo
 - Le robot démarre en mode simulé par défaut, et le dit en toutes lettres.
 - Le mode est tenu par le serveur, pour tous ses clients : le dernier qui le change l'impose aux
   autres, jusqu'au redémarrage du serveur. Après un run réel du robot, l'application ouverte sur
-  le même serveur travaille donc aussi en réel. À son chargement, l'application réimpose le mode
-  dont elle se souvient, s'il diffère de celui du serveur.
+  le même serveur travaille donc aussi en réel, et son bouton l'affiche (il relit le serveur au
+  retour sur l'onglet et toutes les 15 secondes). Si le serveur a perdu le choix (redémarrage),
+  l'application lui renvoie le mode dont elle se souvient.
 - Sans choix explicite, le serveur suit sa configuration : simulé si l'IA simulée ou le bac à sable
-  est configuré, réel sinon.
+  est configuré, réel sinon. Simulé vaut pour les deux sources : le bouton dit toujours ce qui
+  sera facturé.
 - En mode réel, un plafond de dépense sur une fenêtre de temps glissante bloque tout appel de
   données Google payant qui le dépasserait, **avant** l'appel. Le bac à sable n'est pas plafonné.
 

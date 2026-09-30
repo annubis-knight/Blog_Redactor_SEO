@@ -19,7 +19,7 @@ synced_with:
 ## Les étapes
 
 ### 1. Lancer le robot, en mode simulé d'abord
-**Exigences :** NFR-COST-AI-MOCK ⚠, FR-EXT-TESTS-NO-COST, FR-INFRA-RUNTIME-MODE ⚠
+**Exigences :** NFR-COST-AI-MOCK, FR-EXT-TESTS-NO-COST, FR-INFRA-RUNTIME-MODE
 
 Tu lances `npm run dev` dans un terminal, puis `npm run auto:article` dans un second. Sans option, le robot travaille en simulé et le dit en toutes lettres : « MODE MOCK (défaut) — brief et données SEO SIMULÉS, sans rapport avec ton sujet. », puis « Pour un vrai résultat : npm run auto:article -- --mode=real ». Avec `npm run auto:article -- --mode=real`, il prévient : « Les appels DataForSEO / Claude sont facturés (~$0.35 par run). ». Le mode choisi s'applique à tout le serveur, donc aussi à l'application ouverte à côté ; si le serveur ne répond pas, le robot s'arrête sur « Serveur injoignable sur … » et « → Lance « npm run dev » dans un autre terminal, puis relance. ».
 
@@ -96,15 +96,13 @@ En réel, toute mesure DataForSEO qui ferait dépasser le plafond de la fenêtre
 Un texte vide ou pollué (l'IA qui parle d'elle-même, un bloc coupé) n'est pas exporté : « Export refusé — le texte contient des défauts de génération : », puis « → L'article est enregistré en base : corrige-le dans l'éditeur, » et « ou lance « npm run content:clean -- --id=<numéro> ». ». La recherche de sources n'a pas de relais si Claude manque de crédits : le robot écrit « Sources de « … » impossibles : … » et continue. Les passages restés « à sourcer » reviendront en 🔴 à la publication.
 
 ### Le mode du robot reste celui de tout le serveur
-**Exigences :** FR-INFRA-RUNTIME-MODE ⚠, NFR-COST-AI-MOCK ⚠
+**Exigences :** FR-INFRA-RUNTIME-MODE, NFR-COST-AI-MOCK
 
-En simulé, le brief, les mots-clés et le texte n'ont aucun rapport avec le sujet : ce run ne sert qu'à vérifier la mécanique, et un run réel s'impose avant de publier. Après le run, le serveur garde le mode du robot : l'application ouverte à côté travaille dans ce mode, et son bouton peut dire l'inverse jusqu'au prochain rechargement de la page. Recharge l'application après chaque run du robot.
+En simulé, le brief, les mots-clés et le texte n'ont aucun rapport avec le sujet : ce run ne sert qu'à vérifier la mécanique, et un run réel s'impose avant de publier. Après le run, le serveur garde le mode du robot : l'application ouverte à côté travaille dans ce mode, et son bouton l'adopte de lui-même en quelques secondes (au retour sur l'onglet, ou au plus 15 secondes plus tard), sans rechargement de la page.
 
 ## Défauts connus sur ce parcours
 
 - FR-RED-PROGRESS — rouvrir la rédaction guidée d'un article déjà rédigé ramène toujours à « Brief & Structure ».
-- NFR-COST-AI-MOCK — après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK ».
-- FR-INFRA-RUNTIME-MODE — la resynchronisation n'a lieu qu'au chargement de la page : après un redémarrage du serveur en cours de session, le badge garde « MOCK » alors que le serveur est revenu à sa configuration.
 - FR-CER-AIGUILLAGE — « Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur.
 - FR-CER-STEPS-ARTICLE — aucun écran ne propose la stratégie d'un article : le Cerveau travaille au niveau du cocon ; seul le mode automatique enregistre une stratégie d'article. Et le mode automatique, repris sur un article créé à l'écran, donc sans stratégie, relance le Cerveau sur le sujet « (reprise) », qui abîme le titre et la stratégie de l'article.
 - FR-MOT-CANNIBALIZATION — l'alerte n'existe que sur les lignes de la barre des articles, sans nommer l'article concurrent ; les cartes du Radar et du Capitaine n'ont pas de badge.

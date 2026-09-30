@@ -1635,7 +1635,7 @@ L'outil doit refuser, avant de l'émettre, tout appel DataForSEO payant qui fera
 ### FR-EXT-DATAFORSEO-SANDBOX — Bac à sable DataForSEO
 **Statut :** non tenue (les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis)
 L'outil doit pouvoir interroger le bac à sable gratuit de DataForSEO (données factices de même forme) au lieu de la production payante.
-- Le bac à sable n'est jamais déduit de l'environnement : il s'active explicitement, par la configuration ou par le mode simulé.
+- Le bac à sable n'est jamais deviné d'après le type d'environnement (développement ou production) : il s'active explicitement, par la configuration (bac à sable demandé, ou IA réglée en simulation) ou par le mode « MOCK ». Il suit toujours le mode affiché par le bouton.
 - La pile d'activité indique « SANDBOX » ou « PROD » à côté de la dépense DataForSEO.
 - Les mesures demandées en groupe sont rattachées, dans l'ordre, aux mots-clés demandés, pour que chacun reçoive une mesure.
 - Le bac à sable exige lui aussi de vrais identifiants DataForSEO.
@@ -1933,12 +1933,15 @@ Des règles d'architecture doivent interdire les imports qui dégraderaient la s
 - Un cycle d'import est une erreur.
 
 ### FR-INFRA-RUNTIME-MODE — Bascule globale « simulé / réel »
-**Statut :** non tenue (la resynchronisation n'a lieu qu'au chargement de la page : après un redémarrage du serveur en cours de session, le badge garde « MOCK » alors que le serveur est revenu à sa configuration ; le mode automatique, et son option « --relink » qui repasse le serveur en simulé, désynchronisent aussi le bouton de l'application)
+**Statut :** active
 Un bouton de la barre de navigation doit basculer toutes les sources coûteuses en simulation (IA : réponses simulées ; DataForSEO : bac à sable gratuit), et revenir au réel en un clic. Le choix survit au rechargement de la page.
 - En « MOCK », aucun appel IA ni DataForSEO n'est facturé.
-- Le badge affiché et le mode appliqué par le serveur sont toujours les mêmes.
+- Le mode affiché par le bouton est la seule autorité : l'IA et DataForSEO suivent toujours ce mode. Sans choix de l'utilisateur, c'est celui de la configuration du serveur, « MOCK » dès que l'IA simulée ou le bac à sable y est demandé.
+- Le badge affiché et le mode appliqué par le serveur sont toujours les mêmes, hors les quelques secondes qui suivent un redémarrage du serveur, que la resynchronisation rattrape.
+- Le bouton se resynchronise sans rechargement de la page : au retour sur l'onglet, et au plus toutes les 15 secondes.
 - Après un rechargement de la page, le mode choisi est conservé.
 - Après un redémarrage du serveur, l'outil lui renvoie le dernier choix de l'utilisateur sans intervention.
+- Un mode posé ailleurs (le mode automatique, un autre onglet) est adopté par le bouton, jamais renversé.
 
 ### FR-INFRA-SCRAPE-CORPUS-NEUTRE — Un seul relevé des pages concurrentes
 **Statut :** active
@@ -2159,14 +2162,15 @@ Avant chaque appel DataForSEO, l'outil doit estimer son coût et refuser l'appel
 - Les appels redeviennent possibles dès que la fenêtre glisse, sans intervention.
 
 ### NFR-COST-AI-MOCK — Mode simulé gratuit
-**Statut :** non tenue (après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK »)
+**Statut :** active
 L'outil doit offrir un mode simulé où ni l'IA ni DataForSEO ne coûtent rien, activable par configuration ou par un bouton toujours visible.
+- Une configuration qui simule l'IA, ou qui demande le bac à sable DataForSEO, met tout en simulé : le bouton affiche « MOCK » et rien n'est facturé.
 - En mode simulé, les réponses d'IA viennent de réponses préparées, identiques d'un appel à l'autre, sans réseau.
 - Chaque réponse préparée reconnaît l'appel qu'elle sert d'après sa consigne réelle, même quand le texte saisi parle d'autre chose : le conseil IA du Capitaine reçoit un avis rédigé sur son mot-clé, jamais la réponse par défaut.
 - Chaque réponse préparée a la forme que l'écran attend, et part de la demande (mot-clé, niveau, termes, texte saisi) : aucun panneau ne reste vide ni n'affiche un texte hors sujet à cause de la simulation.
 - En mode simulé, DataForSEO est interrogé en bac à sable.
 - Le bouton de la barre de navigation affiche le mode actif et bascule d'un clic.
-- Le choix fait par le bouton survit à un redémarrage du serveur.
+- Le choix fait par le bouton survit à un redémarrage du serveur : la page le lui renvoie, sans rechargement, dans les 15 secondes.
 
 ---
 
@@ -2462,6 +2466,7 @@ Ce domaine couvre ce que l'utilisateur règle sans toucher au code : fournisseur
 **Statut :** active
 Le fournisseur d'IA par défaut (Claude, Gemini, OpenRouter ou simulé) doit se choisir par configuration ; Claude s'applique si rien n'est réglé.
 - Le bouton de mode de la barre de navigation l'emporte : « simulé » force la simulation, « réel » force Claude.
+- Un bac à sable DataForSEO demandé par configuration met aussi l'IA en simulation : le mode simulé couvre toujours les deux (FR-INFRA-RUNTIME-MODE).
 
 ### NFR-CFG-AI-FALLBACK-OPT-OUT — Désactiver la bascule entre fournisseurs
 **Statut :** active
@@ -2482,6 +2487,7 @@ Le modèle Gemini doit se régler par configuration, avec un modèle Flash par d
 **Statut :** active
 DataForSEO ne doit passer en bac à sable que sur demande explicite ; sans réglage, les appels vont en production.
 - Le bouton de mode l'emporte sur la configuration : « simulé » force le bac à sable, « réel » force la production.
+- Une IA réglée en simulation vaut demande explicite : le mode simulé couvre toujours les deux (FR-INFRA-RUNTIME-MODE).
 - Au premier appel, le serveur journalise s'il est en bac à sable ou en production facturée.
 
 ### NFR-CFG-DATAFORSEO-BUDGET — Plafond et fenêtre réglables

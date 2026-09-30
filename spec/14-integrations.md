@@ -32,11 +32,11 @@ Le bouton, à droite de la barre de navigation, affiche « MOCK » ou « RÉEL �
 | Search Console, modèle local | Inchangés | Inchangés |
 
 Règles :
-- Tant que personne n'a cliqué, le serveur suit sa configuration : il est « MOCK » si l'IA y est réglée en simulation ou si le bac à sable DataForSEO y est activé, « RÉEL » sinon.
-- Le choix est gardé dans le navigateur. Au chargement de la page, s'il diffère de celui du serveur (serveur redémarré), le navigateur le lui renvoie.
+- Tant que personne n'a cliqué, le serveur suit sa configuration : il est « MOCK » si l'IA y est réglée en simulation ou si le bac à sable DataForSEO y est activé, « RÉEL » sinon. Ce mode s'applique aux deux sources : « MOCK » simule l'IA **et** envoie DataForSEO au bac à sable, même si la configuration ne demandait que l'un des deux. Le bouton dit donc toujours ce qui sera facturé.
+- Le choix est gardé dans le navigateur. Le bouton relit le serveur au chargement de la page, au retour sur l'onglet et toutes les 15 secondes : si le serveur a perdu le choix (redémarrage), le navigateur le lui renvoie ; si le mode a été changé ailleurs (mode automatique, autre onglet), le bouton l'adopte, sans jamais le renverser.
 - Si le serveur refuse la bascule, le bouton revient à son état précédent.
 - Une fois le bouton cliqué, l'écran n'offre aucun moyen de revenir à « suivre la configuration » : le choix du navigateur l'emporte à chaque chargement.
-- Si le serveur redémarre pendant que la page reste ouverte, il reprend sa configuration jusqu'au prochain chargement de la page ; le bouton peut alors afficher un mode qui n'est plus le bon. La mention « SANDBOX » / « PROD » de la pile d'activité, relue toutes les 15 secondes, dit toujours l'état réel de DataForSEO.
+- Si le serveur redémarre pendant que la page reste ouverte, il reprend sa configuration pendant au plus 15 secondes, le temps que la page le remarque et lui renvoie le choix de l'utilisateur, sans rechargement. La mention « SANDBOX » / « PROD » de la pile d'activité, relue toutes les 15 secondes, dit toujours l'état réel de DataForSEO.
 - Le fournisseur d'IA « de tous les jours » (Claude, Gemini, OpenRouter ou simulation) se choisit dans la configuration du serveur ; changer ce réglage exige que le serveur le relise.
 
 > **En situation.** Arnaud prépare une démo. Il clique sur « RÉEL » : le bouton passe à « MOCK ». Il lance un scan Radar : les cartes se remplissent de mesures factices et la pile d'activité, dépliée, affiche « DataForSEO SANDBOX » et une dépense « < $0.001 » : rien n'est compté. Tavily, lui, n'est jamais simulé : une analyse d'écart de contenu l'interrogerait avec sa clé (aucun écran ne la lance aujourd'hui, voir § 19).
@@ -93,7 +93,7 @@ Avant chaque appel payant, l'outil estime son prix (selon le service appelé et 
 ## Bac à sable DataForSEO
 *Exigences : FR-EXT-DATAFORSEO-SANDBOX*
 
-- Le bac à sable s'active par la configuration ou par le mode « MOCK ». Rien ne l'active par défaut : sans réglage, l'outil appelle la production.
+- Le bac à sable suit le mode du bouton : il s'active par la configuration (bac à sable demandé, ou IA réglée en simulation) ou par le mode « MOCK ». Il n'est jamais deviné d'après le type d'environnement ; sans réglage, l'outil appelle la production.
 - Au premier appel après son démarrage, le serveur écrit dans son journal lequel des deux il utilise (« using SANDBOX (free, fake data) » ou un avertissement « using PRODUCTION — calls will be billed »). Il ne le répète pas après une bascule.
 - Le bac à sable répond par ses propres mots-clés factices. Pour une mesure groupée, l'outil attribue ses réponses, dans l'ordre, aux mots-clés demandés : chaque candidat reçoit une mesure, ce qui permet de créer un article en mode simulé.
 - Le bac à sable exige de vrais identifiants DataForSEO.

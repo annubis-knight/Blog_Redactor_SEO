@@ -16,7 +16,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 ## Vérifications
 
 ### EXT-1 — Le bouton MOCK / RÉEL et la pile d'activité disent la même chose
-**Exigences :** FR-EXT-AI-MULTI-PROVIDER, FR-EXT-DATAFORSEO-SANDBOX ⚠, FR-EXT-DATAFORSEO-COSTGUARD ⚠, NFR-COST-AI-MOCK ⚠, NFR-OBS-COST-LOG
+**Exigences :** FR-EXT-AI-MULTI-PROVIDER, FR-EXT-DATAFORSEO-SANDBOX ⚠, FR-EXT-DATAFORSEO-COSTGUARD ⚠, NFR-COST-AI-MOCK, NFR-OBS-COST-LOG
 
 **Gestes :**
 1. Va sur l'accueil : rien n'y part tout seul, tu peux basculer sans rien payer.
@@ -43,8 +43,6 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 **⚠ Défaut connu :** FR-EXT-DATAFORSEO-SANDBOX — les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
-
-**⚠ Défaut connu :** NFR-COST-AI-MOCK — après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### EXT-2 — Au Radar, en MOCK, chaque mot-clé reçoit une mesure factice et gratuite
 **Exigences :** FR-EXT-DATAFORSEO-SANDBOX ⚠, FR-EXT-AUTOCOMPLETE-GOOGLE
@@ -140,7 +138,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 **⚠ Défaut connu :** NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### EXT-6 — Sans internet, l'IA simulée et les mesures déjà faites continuent
-**Exigences :** FR-EXT-AI-MULTI-PROVIDER, NFR-COST-AI-MOCK ⚠, NFR-COST-CACHE-FIRST ⚠
+**Exigences :** FR-EXT-AI-MULTI-PROVIDER, NFR-COST-AI-MOCK, NFR-COST-CACHE-FIRST ⚠
 
 **Gestes :**
 1. Reste en MOCK. Coupe internet (Wi-Fi ou câble). L'outil tourne sur ton ordinateur : il reste ouvert.
@@ -155,8 +153,6 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 **C'est un bug si :**
 - l'avis échoue sans internet en MOCK : la simulation ferait un appel réseau ;
 - les Lieutenants affichent une erreur alors que ces mots-clés ont été analysés il y a moins de 7 jours.
-
-**⚠ Défaut connu :** NFR-COST-AI-MOCK — après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 

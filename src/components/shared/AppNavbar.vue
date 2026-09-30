@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useSilosStore } from '@/stores/strategy/silos.store'
 import { useWorkflowNavStore } from '@/stores/ui/workflow-nav.store'
 import { useRuntimeModeStore } from '@/stores/ui/runtime-mode.store'
@@ -25,6 +25,11 @@ async function onToggleMode() {
   }
 }
 
+// Le badge suit le mode effectif du serveur sans rechargement de la page :
+// après un redémarrage du serveur, ou un changement posé ailleurs (mode
+// automatique), il se resynchronise seul (FR-INFRA-RUNTIME-MODE).
+let stopResync: (() => void) | null = null
+
 onMounted(() => {
   if (silosStore.silos.length === 0) {
     silosStore.fetchSilos()
@@ -32,6 +37,12 @@ onMounted(() => {
   if (!runtimeMode.isHydrated) {
     runtimeMode.hydrate()
   }
+  stopResync = runtimeMode.startAutoResync()
+})
+
+onUnmounted(() => {
+  stopResync?.()
+  stopResync = null
 })
 </script>
 

@@ -1,6 +1,6 @@
 import { log } from '../../../utils/logger.js'
 import { costGuard, CostBudgetError } from '../dataforseo-cost-guard.js'
-import { getRuntimeMode } from '../../infra/runtime-mode.service.js'
+import { getEffectiveMode } from '../../infra/runtime-mode.service.js'
 
 // --- Shared constants ---
 
@@ -30,25 +30,25 @@ export { CostBudgetError }
 // --- Sandbox / Production URL ---
 
 /**
- * Sandbox detection — EXPLICIT opt-in only.
+ * Bac à sable = le mode effectif est « mock » (FR-EXT-DATAFORSEO-SANDBOX).
  *
- * Why: previously we inferred sandbox from NODE_ENV. `npm run dev:server` does
- * NOT set NODE_ENV, so the inference silently failed and dev traffic hit the
- * paid production API. Default route: `DATAFORSEO_SANDBOX=true` in `.env`.
+ * Jamais deviné d'après NODE_ENV : `npm run dev:server` ne pose pas NODE_ENV,
+ * l'ancienne déduction échouait en silence et le développement payait la
+ * production. Le bac à sable s'active explicitement, par `DATAFORSEO_SANDBOX=true`,
+ * par `AI_PROVIDER=mock` ou par le bouton MOCK de la barre de navigation.
  *
- * Runtime override : if the user toggled navbar mock/real, that takes
- * precedence over `.env` so a single switch covers AI + DataForSEO.
+ * Une seule autorité, `getEffectiveMode()` (FR-INFRA-RUNTIME-MODE) : le badge
+ * et DataForSEO ne peuvent plus se contredire. Avant (recette 2026-09-30, F1),
+ * `AI_PROVIDER=mock` sans `DATAFORSEO_SANDBOX` affichait MOCK et payait la
+ * production.
  */
 export function isSandbox(): boolean {
-  const override = getRuntimeMode()
-  if (override === 'mock') return true
-  if (override === 'real') return false
-  return process.env.DATAFORSEO_SANDBOX === 'true'
+  return getEffectiveMode() === 'mock'
 }
 
 let baseUrlLogged = false
 
-/** Returns sandbox URL when DATAFORSEO_SANDBOX=true, production URL otherwise */
+/** Returns sandbox URL when the effective mode is mock, production URL otherwise */
 export function getBaseUrl(): string {
   const url = isSandbox()
     ? 'https://sandbox.dataforseo.com/v3'
@@ -58,7 +58,7 @@ export function getBaseUrl(): string {
     if (isSandbox()) {
       log.info('DataForSEO: using SANDBOX (free, fake data)')
     } else {
-      log.warn('DataForSEO: using PRODUCTION — calls will be billed. Set DATAFORSEO_SANDBOX=true in .env to switch.')
+      log.warn('DataForSEO: using PRODUCTION — calls will be billed. Switch the navbar badge to MOCK (or set AI_PROVIDER=mock / DATAFORSEO_SANDBOX=true in .env) to use the sandbox.')
     }
   }
   return url

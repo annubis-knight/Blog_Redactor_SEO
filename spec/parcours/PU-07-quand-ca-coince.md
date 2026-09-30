@@ -29,9 +29,9 @@ Le premier indice est sur la carte, le panneau ou le bandeau de l'action qui a �
 En bas à gauche, la pastille (un montant, puis « N appels ») se déplie en « Coûts API ». Une erreur connue y ajoute une ligne rouge avec la marche à suivre : « Quota DataForSEO atteint », « Quota IA atteint », « Modèle IA surchargé » ; chaque ligne d'IA donne le modèle qui a réellement répondu et son coût. En tête, la bande « DataForSEO » affiche « dépensé / plafond (30min) », une barre qui passe sur fond jaune au-delà de 80 % du plafond, et « SANDBOX » ou « PROD ». La pile se vide au rechargement de la page : lis-la avant de recharger.
 
 ### 3. Vérifier le mode : « MOCK » ou « RÉEL »
-**Exigences :** FR-INFRA-RUNTIME-MODE ⚠, NFR-CFG-DATAFORSEO-SANDBOX
+**Exigences :** FR-INFRA-RUNTIME-MODE, NFR-CFG-DATAFORSEO-SANDBOX
 
-Le bouton de la barre du haut affiche « MOCK » ou « RÉEL » (info-bulle « Sources : MOCK (cliquer pour passer en réel) »). La mention « SANDBOX » ou « PROD » de la pile, relue toutes les 15 secondes, dit ce que fait vraiment le serveur. Si les deux se contredisent plus de 15 secondes, recharge la page : elle renvoie au serveur le mode dont elle se souvient. Le mode vaut pour tout le serveur : un run du mode automatique lancé à côté impose le sien.
+Le bouton de la barre du haut affiche « MOCK » ou « RÉEL » (info-bulle « Sources : MOCK (cliquer pour passer en réel) »). C'est le mode que le serveur applique à l'IA comme à DataForSEO : « MOCK », rien n'est facturé. La mention « SANDBOX » ou « PROD » de la pile, relue toutes les 15 secondes, dit la même chose. Le bouton relit le serveur au retour sur l'onglet et toutes les 15 secondes : si les deux se contredisent plus de 15 secondes, c'est un défaut. Le mode vaut pour tout le serveur : un run du mode automatique lancé à côté impose le sien, et le bouton l'adopte.
 
 ### 4. Plafond de dépense atteint : attendre, ou relever le plafond
 **Exigences :** FR-EXT-DATAFORSEO-COSTGUARD ⚠, NFR-COST-DATAFORSEO-RESERVE, NFR-CFG-DATAFORSEO-BUDGET
@@ -44,7 +44,7 @@ En RÉEL, une mesure DataForSEO qui ferait dépasser le plafond de la fenêtre g
 Une IA saturée ou à court de quota est réessayée deux fois, puis la demande passe au fournisseur suivant (Claude, Gemini, OpenRouter) : la réponse arrive quand même, et la pile nomme le modèle qui a répondu (« gemini-… », ou un nom qui finit par « :free »). Rien d'autre ne dit que Claude a échoué : un modèle inattendu dans la pile est l'indice. La recherche de sources sur le web n'a pas de relais : elle échoue avec « Quota Claude atteint ou crédits Anthropic insuffisants. Rechargez vos crédits. » ou « La recherche web exige Claude : aucun autre fournisseur ne sait chercher et citer ses sources. ». Recharge tes crédits, puis relance l'action ; la bascule peut aussi être coupée dans la configuration du serveur, pour n'essayer que le fournisseur choisi.
 
 ### 6. Service de données muet ou internet coupé : ce qui continue, ce qui échoue
-**Exigences :** FR-EXT-DATAFORSEO ⚠, FR-EXT-AUTOCOMPLETE-GOOGLE, FR-LIE-SERP-ECHEC-EXPLIQUE ⚠, NFR-COST-AI-MOCK ⚠
+**Exigences :** FR-EXT-DATAFORSEO ⚠, FR-EXT-AUTOCOMPLETE-GOOGLE, FR-LIE-SERP-ECHEC-EXPLIQUE ⚠, NFR-COST-AI-MOCK
 
 L'outil tourne sur ta machine : il reste ouvert sans internet. En MOCK, l'IA simulée répond sans réseau, et les mesures de moins de 7 jours sont relues en base (« (cache) » aux Lieutenants). Une nouvelle mesure, elle, échoue : « Erreur : Keyword validation failed » au Capitaine, « L'analyse SERP n'a pas abouti pour « … » … Relancez-la, ou choisissez un autre mot-clé. » aux Lieutenants ; les suggestions Google reviennent vides, sans erreur. Rebranche, recharge la page : la dernière bonne mesure est toujours là.
 
@@ -76,9 +76,9 @@ Le texte est enregistré à la fin de chaque chapitre : après un rechargement o
 Au Radar et dans « SERP Data », une mesure refusée par le plafond ou perdue dans une panne ne dit rien : les cases restent à « — », et la pile n'inscrit pas le refus du plafond. Seule la bande DataForSEO, jaune près du plafond, met sur la piste. Un « Rafraîchir » raté date quand même la mesure du jour, et pour un mot-clé sans volume connu il remplace la réponse gardée par une fiche vide. Avant de conclure qu'un mot-clé n'a pas de marché, regarde la bande DataForSEO et relance plus tard.
 
 ### Le serveur redémarre pendant que la page reste ouverte
-**Exigences :** NFR-COST-AI-MOCK ⚠, FR-INFRA-RUNTIME-MODE ⚠
+**Exigences :** NFR-COST-AI-MOCK, FR-INFRA-RUNTIME-MODE
 
-Le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK » : la page ne lui renvoie son mode qu'à son chargement. La pile peut alors afficher « PROD » à côté d'un bouton « MOCK ». Si la page ne s'est pas rechargée d'elle-même, recharge-la avant toute action.
+Le serveur revient d'abord à sa configuration. La page, restée ouverte, le remarque au plus tard 15 secondes après (ou dès que tu reviens sur l'onglet) et lui renvoie le mode dont elle se souvient, sans rechargement. Si ta configuration est payante, attends ces quelques secondes, ou que la pile réaffiche « SANDBOX », avant de relancer une action.
 
 ### Une mesure faite en MOCK revient en RÉEL
 **Exigences :** FR-EXT-DATAFORSEO-SANDBOX ⚠, NFR-COST-CACHE-FIRST ⚠
@@ -95,13 +95,11 @@ Avant le premier mot, l'outil réessaie puis passe au fournisseur d'IA suivant. 
 - NFR-OBS-KNOWN-ERRORS — le dépassement du budget DataForSEO n'est pas inscrit dans la pile d'activité ; une erreur inconnue affiche son message brut, pas un message générique ; au Cerveau, l'échec d'une suggestion, d'une fusion, d'une sous-question, d'un enrichissement, d'une régénération ou de l'enregistrement par « Suivant » n'affiche rien ; l'échec de « Remplir les champs avec Claude » et un aperçu refusé s'expliquent en anglais.
 - FR-INFRA-ERROR-HANDLER — la plupart des routes interceptent leurs erreurs et renvoient un 500 générique ; seules quelques-unes traduisent les erreurs connues en 429 / 503.
 - FR-INFRA-COST-LOG-STORE — seules les lectures et écritures des mots-clés d'article et des explorations Capitaine / Lieutenants remontent dans la pile ; les autres opérations en base n'y apparaissent pas. Et le coût de la génération des longues traînes et du jugement des questions PAA ne remonte pas à l'écran ; l'analyse IA de Discovery s'inscrit deux fois dans la pile, ce qui double son coût affiché.
-- FR-INFRA-RUNTIME-MODE — la resynchronisation n'a lieu qu'au chargement de la page : après un redémarrage du serveur en cours de session, le badge garde « MOCK » alors que le serveur est revenu à sa configuration.
 - FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ».
 - FR-EXT-AI-FALLBACK — la bascule n'est écrite que dans le journal du serveur ; la pile d'activité montre seulement le modèle qui a répondu ; un fournisseur de secours sans clé configurée arrête la chaîne au lieu de passer au suivant, et l'utilisateur lit un message technique en anglais à la place de la vraie cause.
 - FR-EXT-GEMINI — le modèle par défaut, Gemini 2.0 Flash, n'est plus servi par Google : sans réglage, Gemini échoue et la chaîne passe à OpenRouter.
 - FR-EXT-DATAFORSEO — les mesures demandées en groupe et la fiche SEO du brief taisent un échec du fournisseur, y compris un refus du plafond de dépense : les valeurs restent vides, sans message ; un « Rafraîchir » qui échoue tout à fait remplace toute la page de rédaction par le bloc d'erreur, au lieu du seul panneau « SERP Data ».
 - FR-LIE-SERP-ECHEC-EXPLIQUE — le serveur remplace toute cause (aucun résultat, source muette) par « SERP analysis failed », affiché entre parenthèses ; une coupure réseau n'est pas reconnue ; le plafond de dépense invite à changer de mot-clé, et un quota épuisé à attendre au lieu de recharger les crédits.
-- NFR-COST-AI-MOCK — après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK ».
 - FR-EXT-DATAFORSEO-SANDBOX — les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis.
 - NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine.
 - FR-INFRA-API-STREAM — quand l'utilisateur annule, l'écran s'arrête mais le serveur continue la génération jusqu'au bout et la facture.
