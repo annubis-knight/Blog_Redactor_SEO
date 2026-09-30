@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { articleLevelToDisplayLabel, parseArticleLevel } from '@shared/utils/article-level.js'
 
 const props = defineProps<{
   recommendation: number | null
@@ -12,6 +13,13 @@ const emit = defineEmits<{
 }>()
 
 const effectiveTarget = computed(() => props.customTarget ?? props.recommendation)
+
+// Le niveau en toutes lettres (« Spécialisé »), jamais son code « specifique »
+// (FR-CER-AIGUILLAGE, recette du 2026-09-30).
+const articleTypeLabel = computed(() => {
+  const level = parseArticleLevel(props.articleType)
+  return level ? articleLevelToDisplayLabel(level) : props.articleType
+})
 
 const range = computed(() => {
   if (!effectiveTarget.value) return null
@@ -53,7 +61,7 @@ function resetTarget() {
     </div>
 
     <p class="recommendation-note">
-      Base : ~{{ recommendation?.toLocaleString('fr-FR') }} mots (type <strong>{{ articleType }}</strong>)
+      Base : ~{{ recommendation?.toLocaleString('fr-FR') }} mots (type <strong data-testid="recommendation-level">{{ articleTypeLabel }}</strong>)
       <span v-if="isCustom" class="custom-badge">ajuste</span>
     </p>
   </div>
