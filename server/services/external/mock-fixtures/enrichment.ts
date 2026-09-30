@@ -96,18 +96,41 @@ function faq(keyword: string, prompt: string): string {
   return ['<h2>Questions fréquentes</h2>', ...qa.slice(0, Math.min(qa.length, Math.max(1, wanted))).map(([q, a]) => `<h3>${q}</h3>\n<p>${a}</p>`)].join('\n')
 }
 
+const RESUME_OUVERTURES = ['En bref,', 'Retenez d’abord que', 'L’essentiel tient en peu de mots :', 'Autrement dit,', 'Pour résumer,', 'Au fond,']
+const RESUME_SUJETS = ['le point de départ', 'la première décision', 'votre priorité', 'le choix décisif', 'la vraie question',
+  'le piège courant', 'la bonne habitude', 'le repère utile', 'votre meilleur atout', 'l’erreur à éviter', 'le premier réflexe']
+const RESUME_SUITES = ['se prépare avant de dépenser quoi que ce soit', 'dépend de ce que vos clients cherchent vraiment',
+  'se vérifie avec deux ou trois clients fidèles', 'change la façon dont on vous contacte', 'évite de refaire le travail plus tard',
+  'donne une base solide au reste du projet', 'se décide en une matinée bien préparée', 'rend vos échanges plus simples',
+  'protège votre budget des mauvaises surprises', 'aide à comparer les offres sans se perdre', 'se juge sur les demandes reçues',
+  'éclaire chaque étape suivante', 'rassure le client dès la première visite']
+
 /**
- * Passe « Résumer » (C7) : le H2 gardé, un résumé d'environ 190 mots tiré du
- * chapitre (ses H3 partent), et une phrase qui annonce l'article enfant.
+ * Passe « Résumer » (C7) : le H2 gardé, ses H3 partis, un résumé de 150 à 250
+ * mots en phrases entières, propre au chapitre et à l'article enfant, qui finit
+ * par une phrase annonçant cet article. Recette du 2026-09-30 : l'ancien résumé
+ * recopiait les 170 premiers mots du chapitre — il finissait en plein mot (⛔ à
+ * la publication), avalait le texte des cellules d'un tableau, et sa phrase de
+ * renvoi, seule dans son paragraphe et presque identique d'un chapitre à
+ * l'autre, faisait un 🔴 « Paragraphe répété ».
  */
 function summary(chapter: string, prompt: string): string {
   const child = /L'article qui développe ce sujet\*\* : « ([^»]+) »/.exec(prompt)?.[1]?.trim() ?? 'l’article dédié'
   const h2 = /<h2\b[^>]*>[\s\S]*?<\/h2>/i.exec(chapter)?.[0] ?? `<h2>${titleOf(chapter)}</h2>`
-  const words = chapter.replace(/<h[23]\b[^>]*>[\s\S]*?<\/h[23]>/gi, ' ').replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean)
-  const source = words.length > 0 ? words : ['Ce', 'sujet', 'mérite', 'qu’on', 's’y', 'arrête.']
-  const body: string[] = []
-  while (body.length < 170) body.push(...source.slice(0, 170 - body.length))
-  return `${h2}\n<p>${body.join(' ')}</p>\n<p>Pour aller au bout du sujet, lisez notre article « ${child} » : il détaille chaque étape.</p>`
+  const topic = titleOf(chapter).toLowerCase()
+  // Graine bien dispersée (FNV-1a) : deux chapitres voisins ne tirent pas les mêmes phrases.
+  const seed = [...`${topic}|${child}`].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261) % 9973
+  const paragraphs: string[][] = [[`Ce chapitre fait le tour de « ${topic} », et ce qu’il faut en retenir avant d’aller plus loin.`]]
+  let words = paragraphs[0]![0]!.split(' ').length
+  for (let i = 0; words < 165; i++) {
+    const opening = RESUME_OUVERTURES[(seed + i) % RESUME_OUVERTURES.length]!
+    const sentence = `${opening} ${RESUME_SUJETS[(seed * 3 + i * 5) % RESUME_SUJETS.length]} ${RESUME_SUITES[(seed * 7 + i * 3) % RESUME_SUITES.length]}${i % 2 === 0 ? `, quand on parle de ${topic}` : ''}.`
+    if (paragraphs.at(-1)!.length >= 5) paragraphs.push([])
+    paragraphs.at(-1)!.push(sentence)
+    words += sentence.split(' ').length
+  }
+  paragraphs.at(-1)!.push(`Pour aller au bout du sujet, lisez notre article « ${child} » : il détaille chaque étape.`)
+  return [h2, ...paragraphs.map(p => `<p>${p.join(' ')}</p>`)].join('\n')
 }
 
 function rewrite(chapter: string): string {

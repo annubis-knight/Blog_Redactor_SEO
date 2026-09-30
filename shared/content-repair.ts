@@ -184,31 +184,41 @@ export function removeSelfReviewBlocks(html: string): { html: string; removed: s
   return { html: out, removed }
 }
 
+/** Positions `[début, fin[` des cellules de tableau (`<td>`, `<th>`). */
+function tableCellRanges(html: string): Array<[number, number]> {
+  return [...html.matchAll(/<(td|th)\b[^>]*>[\s\S]*?<\/\1>/gi)].map(m => [m.index, m.index + m[0].length])
+}
+
 /**
  * Répare les paragraphes et éléments de liste tronqués.
  *
  * - `<p>` sans ponctuation finale → coupé à la dernière phrase complète,
  *   supprimé s'il n'en contient aucune.
- * - `<li>` : un libellé sans point final est un usage NORMAL. On ne coupe que
- *   si l'élément contient déjà une phrase complète suivie d'un fragment.
- *   Les éléments contenant une sous-liste sont laissés intacts.
+ * - `<li>`, et `<p>` d'une cellule de tableau (l'éditeur range le texte de
+ *   chaque cellule dans un `<p>`) : un libellé sans point final est un usage
+ *   NORMAL (« Quand s'y mettre »). On ne coupe que si l'élément contient déjà
+ *   une phrase complète suivie d'un fragment. Les éléments contenant une
+ *   sous-liste sont laissés intacts.
  */
 export function trimTruncatedBlocks(html: string): { html: string; trimmed: string[] } {
   if (!html) return { html, trimmed: [] }
   const trimmed: string[] = []
+  const cells = tableCellRanges(html)
+  const inCell = (offset: number): boolean => cells.some(([start, end]) => offset > start && offset < end)
 
   const out = html.replace(
     /<(p|li)\b([^>]*)>([\s\S]*?)<\/\1>/gi,
-    (full: string, tag: string, attrs: string, inner: string) => {
+    (full: string, tag: string, attrs: string, inner: string, offset: number) => {
       const kind = tag.toLowerCase()
       if (kind === 'li' && /<(ul|ol|li)\b/i.test(inner)) return full
+      const isLabel = kind === 'li' || inCell(offset)
 
       const text = visibleText(inner)
       if (!text || ENDS_CLEANLY.test(text)) return full
 
       const cut = lastSentenceEnd(inner)
       if (cut < 0) {
-        if (kind === 'li') return full
+        if (isLabel) return full
         trimmed.push(text)
         return ''
       }

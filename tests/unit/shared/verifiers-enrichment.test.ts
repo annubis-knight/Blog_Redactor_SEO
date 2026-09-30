@@ -103,6 +103,28 @@ describe('verifyEnrichment — toutes les passes', () => {
     expect(rules(verifyEnrichment({ pass: 'exemples', before: base, after: '  ' }))).toEqual(['technique:enrich-empty'])
     expect(rules(verifyEnrichment({ pass: 'exemples', before: base, after: `${base}<p>Et en plus`, truncated: true }))).toContain('technique:enrich-truncated')
   })
+
+  // Recette du 2026-09-30 (express 10 a, CER-25) : un résumé fini en plein mot
+  // (« …Très ») passait la vérification (le modèle s'était arrêté normalement)
+  // puis la publication le bloquait en ⛔ « Bloc coupé ». Une proposition qui
+  // serait ⛔ à la publication est ⛔ dès l'acceptation, par la même règle.
+  it('⛔ un bloc coupé en plein mot, même quand le modèle s’est arrêté normalement', () => {
+    const coupe = `${base}<p>Le lecteur sait quoi faire. Très</p>`
+    const issue = verifyEnrichment({ pass: 'resumes', before: base, after: coupe }).find(i => i.rule.startsWith('enrich-truncated-block'))
+    expect(issue?.level).toBe('technique')
+    expect(issue?.excerpt).toBe('Très')
+  })
+
+  it('un tableau accepté ne passe pas pour coupé : ses cellules sont des libellés', () => {
+    const tableau = `${base}<table><thead><tr><th><p>Étape</p></th><th><p>Quand s’y mettre</p></th></tr></thead><tbody><tr><td><p>Faire le point sur le budget</p></td><td><p>Dès cette semaine</p></td></tr></tbody></table>`
+    expect(verifyEnrichment({ pass: 'tableaux', before: base, after: tableau }).filter(i => i.level === 'technique')).toEqual([])
+  })
+
+  it('un défaut déjà présent dans le chapitre n’est pas mis au compte de la proposition', () => {
+    const avant = `${base}<p>Un reste coupé dans le texte d’origine, vo</p>`
+    const apres = `${avant}<p>Un exemple ajouté, complet.</p>`
+    expect(rules(verifyEnrichment({ pass: 'exemples', before: avant, after: apres }))).not.toContain('technique:enrich-truncated-block')
+  })
 })
 
 describe('verifyEnrichment — FAQ', () => {
