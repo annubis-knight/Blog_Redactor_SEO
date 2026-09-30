@@ -19,7 +19,7 @@ Qui crée ou met à jour cette donnée :
 - **Source unique** — `fetchSearchIntentBatch(keywords)` ([`dataforseo/keywords.ts`](../../server/services/external/dataforseo/keywords.ts)) appelle `dataforseo_labs/google/search_intent/live` par lots de 1 000 et range les réponses sous le mot-clé **en minuscules** : `{ intent: libellé, intentProbability }`. Un lot en échec est journalisé et laissé vide.
 - **Étude Capitaine** — `POST /api/keywords/:keyword/scan` ([`keyword-scan.routes.ts`](../../server/routes/keyword-scan.routes.ts)) : si les mesures ne sont pas fraîches, lit `intentMap.get(keyword.toLowerCase())`, ramène le libellé aux 4 valeurs (`coerceIntentLabel`, sinon `null`) et l'enregistre par `upsertKeywordKpis` (`intent_label`, `intent_raw`). Sinon, relit `intent_label` en base.
 - **Mesure des candidats du Cerveau** — `measureKeywords` ([`keyword-measure.service.ts`](../../server/services/keyword/keyword-measure.service.ts)) : même enregistrement, pour les mots-clés absents ou de plus de 7 jours.
-- **Scan Radar** — `scanRadarKeywords` ([`keyword-radar.service.ts`](../../server/services/keyword/keyword-radar.service.ts)) : `mapIntentTypes(libellé)` → `card.kpis.intentTypes`, et `intentProbability`. Ce résultat part dans la réponse du scan et dans `radar_explorations.scan_result` ; il n'est **pas** écrit dans `keyword_metrics`.
+- **Scan Radar** — `scanRadarKeywords` ([`keyword-radar.service.ts`](../../server/services/keyword/keyword-radar.service.ts)) : `mapIntentTypes(libellé)` → `card.kpis.intentTypes`, et `intentProbability`. Ce résultat part dans la réponse du scan et dans `radar_explorations.scan_result`, et, pour un mot-clé mesuré par ce scan, dans `keyword_metrics` (`intent_label` ramené aux 4 valeurs, `intent_raw`). Une intention déjà gardée depuis moins de 7 jours est relue, sans appel.
 - **Intention attendue de l'article** — `articles.pain_intent_expected`, posée au Cerveau (IA, utilisateur ou candidat d'origine) par `insertCocoonArticle` et `updateArticleInCocoon` ([`data.service.ts`](../../server/services/infra/data.service.ts)). Cf. [articles](articles.md) et [11 — Cerveau](../11-cerveau.md).
 
 ## Persistance
@@ -67,7 +67,7 @@ Trois calculs lisent l'intention, chacun avec sa propre expression :
 |---|---|
 | DataForSEO ne renvoie pas d'intention | `intent_label` et `intent_raw` restent `null` (ou gardent l'ancienne valeur) ; verdict sans KPI intention, Score Marché avec une composante rouge, signal 5 neutre, porte sans alerte d'intention. |
 | Mot-clé saisi avec des majuscules | Retrouvé : les réponses sont rangées en minuscules et lues en minuscules. |
-| Mot-clé étudié au Radar puis au Capitaine | Deux copies : la carte du Radar (figée au scan) et `keyword_metrics` (remesurée après 7 jours) ; elles peuvent diverger. |
+| Mot-clé étudié au Radar puis au Capitaine | Une mesure : le scan Radar l'écrit dans `keyword_metrics`, et l'étude du Capitaine la relit. La carte du Radar (figée au scan) ne diverge qu'après une nouvelle mesure, au-delà de 7 jours. |
 | Article sans intention attendue | Signal 5 neutre (50) ; la porte suppose « informationnel » pour un pilier et ne dit rien pour les autres niveaux. |
 | Mot-clé étudié hors Radar | Panneau « KPIs marché » : Intent « — », alors que l'intention est connue et entre dans les scores. |
 

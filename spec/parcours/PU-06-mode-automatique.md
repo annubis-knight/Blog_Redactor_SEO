@@ -88,7 +88,7 @@ Le robot ne déroge jamais à ta place : sur un refus, le run s'arrête (« ✗ 
 ### Le plafond de dépense arrête le run
 **Exigences :** FR-EXT-DATAFORSEO-COSTGUARD ⚠, NFR-COST-DATAFORSEO-RESERVE, FR-EXT-DATAFORSEO ⚠, NFR-COST-CACHE-FIRST ⚠
 
-En réel, toute mesure DataForSEO qui ferait dépasser le plafond de la fenêtre glissante (0,50 $ sur 30 minutes si rien n'est réglé) est refusée avant de partir. Quand c'est l'étude d'un candidat capitaine qui est refusée, le run s'arrête sur « ✗ Échec du run : … » avec « Plafond de dépense DataForSEO atteint (…) ». Une mesure groupée refusée, elle, ne dit rien : les mots-clés restent sans mesure, et le robot poursuit sur ces données vides. Tu attends que la fenêtre glisse, puis tu reprends par `--resume` ; chaque relance du Moteur rachète les mesures du Radar.
+En réel, toute mesure DataForSEO qui ferait dépasser le plafond de la fenêtre glissante (0,50 $ sur 30 minutes si rien n'est réglé) est refusée avant de partir. Quand c'est l'étude d'un candidat capitaine qui est refusée, le run s'arrête sur « ✗ Échec du run : … » avec « Plafond de dépense DataForSEO atteint (…) ». Une mesure groupée refusée, elle, ne dit rien : les mots-clés restent sans mesure, et le robot poursuit sur ces données vides. Tu attends que la fenêtre glisse, puis tu reprends par `--resume` ; une relance du Moteur relit les mesures de moins de 7 jours au lieu de les racheter.
 
 ### Le texte sort pollué, ou les sources ne se trouvent pas
 **Exigences :** FR-RED-PUBLISH-GATE, FR-RED-ENRICH-SOURCES, FR-EXT-AI-FALLBACK ⚠
@@ -118,5 +118,5 @@ En simulé, le brief, les mots-clés et le texte n'ont aucun rapport avec le suj
 - FR-RED-LINKING-MANUAL — dans la rédaction guidée, « Appliquer » une suggestion ne fait rien ; dans l'éditeur, l'ancre n'est cherchée que dans la zone active : ailleurs, « Appliquer » ne fait rien, sans message, et la suggestion reste affichée.
 - FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ».
 - FR-EXT-DATAFORSEO — les mesures demandées en groupe et la fiche SEO du brief taisent un échec du fournisseur, y compris un refus du plafond de dépense : les valeurs restent vides, sans message ; un « Rafraîchir » qui échoue tout à fait remplace toute la page de rédaction par le bloc d'erreur, au lieu du seul panneau « SERP Data ».
-- NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine.
+- NFR-COST-CACHE-FIRST — un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine.
 - FR-EXT-AI-FALLBACK — la bascule n'est écrite que dans le journal du serveur ; la pile d'activité montre seulement le modèle qui a répondu ; un fournisseur de secours sans clé configurée arrête la chaîne au lieu de passer au suivant, et l'utilisateur lit un message technique en anglais à la place de la vraie cause.

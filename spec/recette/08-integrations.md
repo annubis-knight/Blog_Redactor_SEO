@@ -135,7 +135,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 
 **⚠ Défaut connu :** les mesures demandées en groupe (Radar) et la fiche « SERP Data » taisent un échec du fournisseur, même un refus du plafond de dépense : les valeurs restent vides (« — »), sans message. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
-**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### EXT-6 — Sans internet, l'IA simulée et les mesures déjà faites continuent
 **Exigences :** FR-EXT-AI-MULTI-PROVIDER, NFR-COST-AI-MOCK, NFR-COST-CACHE-FIRST ⚠
@@ -154,7 +154,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 - l'avis échoue sans internet en MOCK : la simulation ferait un appel réseau ;
 - les Lieutenants affichent une erreur alors que ces mots-clés ont été analysés il y a moins de 7 jours.
 
-**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### EXT-7 — Sans internet, une nouvelle mesure échoue : ce que dit l'écran
 **Exigences :** FR-EXT-DATAFORSEO ⚠
@@ -283,7 +283,7 @@ Passe le bouton sur **RÉEL** avant ces vérifications, et repasse sur **MOCK** 
 
 **⚠ Défaut connu :** FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
-**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### EXT-R3 — Le plafond refuse la dépense avant qu'elle parte
 **Exigences :** FR-EXT-DATAFORSEO-COSTGUARD ⚠, FR-EXT-DATAFORSEO ⚠, NFR-COST-DATAFORSEO-RESERVE

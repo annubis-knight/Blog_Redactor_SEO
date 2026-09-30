@@ -455,7 +455,7 @@ L'outil doit afficher les métriques de marché (volume, difficulté, coût par 
 - Une valeur présente s'affiche sans transformation cachée.
 
 ### FR-MOT-CACHE-CASCADE — Réutiliser avant de payer
-**Statut :** non tenue (les appels d'IA de Discovery — génération, filtre de pertinence, analyse — ne consultent aucun cache ; seul le rechargement d'une découverte sauvegardée évite de les refaire ; un mot-clé sans volume, difficulté ou coût par clic est remesuré, et repayé, à chaque étude ; le scan Radar rachète volume, difficulté, coût par clic et intention de chaque mot-clé à chaque scan)
+**Statut :** non tenue (les appels d'IA de Discovery — génération, filtre de pertinence, analyse — ne consultent aucun cache ; seul le rechargement d'une découverte sauvegardée évite de les refaire ; un mot-clé sans volume, difficulté ou coût par clic est remesuré, et repayé, à chaque étude)
 L'outil doit consulter ses propres données avant tout appel externe payant, et ne payer qu'en cas d'absence.
 - Une mesure de marché récente d'un mot-clé, faite pour un article, sert aussi aux autres articles.
 - Les réponses brutes des services externes sont gardées pour une durée limitée et resservies pendant cette durée.
@@ -1806,11 +1806,12 @@ Le cache court ne doit pas grossir sans limite : les réponses expirées sont su
 - La purge ne bloque aucune action de l'utilisateur ; son échec est journalisé sans effet visible.
 
 ### FR-INFRA-KEYWORD-METRICS — Mémoire permanente des mesures d'un mot-clé
-**Statut :** non tenue (tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie ; le scan Radar ne relit ni n'enregistre les mesures gardées, et chaque test au Capitaine relance ce scan pour sa carte ; un « Rafraîchir » raté date quand même la mesure du jour, et pour un mot-clé sans volume connu la fiche vide remplace la réponse gardée)
+**Statut :** non tenue (tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie ; un « Rafraîchir » raté date quand même la mesure du jour, et pour un mot-clé sans volume connu la fiche vide remplace la réponse gardée)
 Les mesures de marché d'un mot-clé (volume, difficulté, CPC, concurrence, intention, suggestions Google, questions PAA) doivent être gardées de façon permanente et partagées entre tous les articles et cocons. Au-delà de 7 jours, elles sont considérées comme anciennes et remesurées au prochain besoin.
 - Un mot-clé mesuré il y a moins de 7 jours n'est pas remesuré.
 - Une nouvelle mesure partielle n'efface jamais une valeur connue par « absent ».
 - Un mot-clé mesuré depuis le cocon A est immédiatement disponible dans le cocon B.
+- Le Radar et le Capitaine partagent les mêmes mesures : un mot-clé scanné au Radar n'est pas remesuré à l'étude du Capitaine, et inversement.
 
 ### FR-INFRA-PAA-CACHE — Mémoire des questions « People Also Ask »
 **Statut :** active
@@ -2132,7 +2133,7 @@ Le score SEO de l'article en cours de rédaction doit se recalculer tout seul, s
 Ce domaine couvre les garde-fous de dépense : cache avant tout appel payant, persistance durable, plafond de dépense DataForSEO, mode simulé gratuit.
 
 ### NFR-COST-CACHE-FIRST — Aucun appel payant si la réponse est déjà en cache
-**Statut :** non tenue (le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine)
+**Statut :** non tenue (un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine)
 Avant tout appel à un service payant, l'outil doit consulter ses données locales et ne pas appeler si une donnée fraîche existe.
 - Les mesures de mots-clés, les résultats Google et les questions « People Also Ask » (PAA : les questions associées affichées par Google) sont relus en base avant tout appel.
 - Il n'existe pas de « forcer l'appel » implicite : rafraîchir passe par un geste explicite (« Rafraîchir ») ou par l'expiration.

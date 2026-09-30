@@ -475,7 +475,7 @@ Ces vérifications coûtent de quelques centimes à quelques dizaines de centime
 
 **⚠ Défaut connu :** tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie : si le geste 2 affiche « KD — » et « CPC — », le geste 3 fait monter le montant. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
-**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-R2 — Le plafond de dépense bloque l'appel avant de l'envoyer
 **Mode :** RÉEL (payant)
