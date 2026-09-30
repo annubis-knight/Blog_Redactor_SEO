@@ -1091,15 +1091,17 @@ export async function saveLieutenantExplorations(
 /**
  * Marque toutes les rows lieutenant non-archivées comme archived : elles
  * cessent d'être affichées par défaut dans l'UI tout en restant en DB pour audit.
- * Appelé quand l'utilisateur déverrouille le Capitaine et choisit "Archiver".
+ * Appelé quand l'utilisateur déverrouille le Capitaine et choisit "Archiver" :
+ * `keywords` = les lieutenants verrouillés, seuls archivés (FR-INFRA-LIEUTENANT-EXPLORATIONS).
  */
-export async function archiveLieutenantExplorations(articleId: number): Promise<number> {
+export async function archiveLieutenantExplorations(articleId: number, keywords?: string[]): Promise<number> {
+  if (keywords?.length === 0) return 0
   const res = await pool.query(
     `UPDATE lieutenant_explorations
         SET status = 'archived'
       WHERE article_id = $1
-        AND status <> 'archived'`,
-    [articleId],
+        AND status <> 'archived'${keywords ? '\n        AND keyword = ANY($2::text[])' : ''}`,
+    keywords ? [articleId, keywords] : [articleId],
   )
   return res.rowCount ?? 0
 }

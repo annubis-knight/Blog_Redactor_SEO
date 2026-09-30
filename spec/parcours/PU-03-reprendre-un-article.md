@@ -44,7 +44,7 @@ Un clic sur le titre choisit l'article et replie la liste. Le Moteur ouvre de lu
 En bas de l'écran, la barre « Résultats déjà calculés » compte ce qui est enregistré pour cet article : une puce par onglet (Radar, Capitaine, Lieutenants, Lexique) avec « DB n », et le détail au survol (par exemple « n mots-clés testés — verrouillé : … »). Dans l'onglet ouvert, l'invite « Charger Capitaine » (ou Radar, Lieutenants, Lexique) propose son bouton « DB n » : un clic remet à l'écran ce qui manque, sans doublon. Les candidats du Capitaine et les lieutenants déjà proposés reviennent, même sans verrou.
 
 ### 6. Revoir les choix déjà faits, sans les refaire
-**Exigences :** FR-CAP-PERSIST ⚠, FR-INFRA-LIEUTENANT-EXPLORATIONS ⚠, FR-LEX-SELECT, FR-MOT-CHECK-RECONCILIATION
+**Exigences :** FR-CAP-PERSIST ⚠, FR-INFRA-LIEUTENANT-EXPLORATIONS, FR-LEX-SELECT, FR-MOT-CHECK-RECONCILIATION
 
 Au Capitaine, tous les candidats étudiés reviennent, chacun une fois, le Capitaine verrouillé en tête avec son cadenas. Aux Lieutenants, les propositions reviennent du meilleur score au moins bon, les lieutenants retenus toujours cochés. Au Lexique, les termes retenus sont cochés. À la première ouverture de ces trois onglets, l'outil corrige de lui-même une étape qui contredirait les données enregistrées.
 
@@ -76,9 +76,9 @@ Page du cocon › « Rédaction » : la carte de l'article porte son statut (« 
 ## Ce qui peut mal tourner
 
 ### La page est rechargée en plein travail
-**Exigences :** FR-CAP-ROOTS ⚠, FR-LIE-CHECKBOX-COUNT ⚠, FR-RAD-LONGTAIL-UI ⚠, FR-LEX-AI-PANEL ⚠, FR-RED-BRIEF ⚠
+**Exigences :** FR-CAP-ROOTS ⚠, FR-LIE-CHECKBOX-COUNT ⚠, FR-RAD-LONGTAIL-UI ⚠, FR-LEX-AI-PANEL, FR-RED-BRIEF ⚠
 
-Un rechargement ne doit rien faire perdre de ce qui est enregistré. Aujourd'hui, plusieurs affichages ne reviennent pas : les racines d'un Capitaine reviennent sans indicateurs ni Score Pertinence ; les suggestions de longue traîne du Radar et leurs cases disparaissent ; le panneau d'analyse IA du Lexique perd son résumé et ses termes manquants. L'analyse « IA Brief », elle, n'est pas gardée par choix : elle repart à l'ouverture du panneau.
+Un rechargement ne doit rien faire perdre de ce qui est enregistré. L'analyse IA du Lexique revient telle qu'elle était : badges, résumé, termes manquants et décompte du panneau. Aujourd'hui, d'autres affichages ne reviennent pas : les racines d'un Capitaine reviennent sans indicateurs ni Score Pertinence ; les suggestions de longue traîne du Radar et leurs cases disparaissent. L'analyse « IA Brief », elle, n'est pas gardée par choix : elle repart à l'ouverture du panneau.
 
 ### L'onglet a été fermé pendant l'écriture du premier jet
 **Exigences :** FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-RED-SEO-SCORE-PERSIST ⚠, FR-RED-DRAFT-SINGLE-PASS
@@ -96,9 +96,9 @@ Reprendre, c'est souvent enchaîner plusieurs articles : chacun s'ouvre avec son
 Rouvrir un article ne doit que relire la base ; une seule exception est admise, le jugement des questions « Autres questions posées » à l'ouverture du Capitaine, une fois par article et par session. L'avis expert de l'IA sur chaque candidat est gardé et réaffiché sans nouvel appel ; celui qui manque attend « Analyser avec l'IA ». L'onglet Lexique relit son extraction et son analyse IA sans rien relancer. Le jugement des questions, lui, est repayé après chaque rechargement alors que son résultat n'est pas affiché.
 
 ### Une étape cochée ne correspond plus aux données
-**Exigences :** FR-MOT-CHECK-RECONCILIATION, FR-INFRA-LIEUTENANT-EXPLORATIONS ⚠
+**Exigences :** FR-MOT-CHECK-RECONCILIATION, FR-INFRA-LIEUTENANT-EXPLORATIONS
 
-À la première ouverture des onglets Capitaine, Lieutenants et Lexique, l'outil retire une étape dont les données sont vides, et redemande à la porte une étape dont les données existent : le bandeau « Étape non validée. » revient si la porte refuse. Aujourd'hui, après « Tout réinitialiser » au déverrouillage du Capitaine, les lieutenants ne sont archivés qu'à l'écran : au retour, ils réapparaissent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide et que la porte refuse l'étape.
+À la première ouverture des onglets Capitaine, Lieutenants et Lexique, l'outil retire une étape dont les données sont vides, et redemande à la porte une étape dont les données existent : le bandeau « Étape non validée. » revient si la porte refuse. Après « Tout réinitialiser » au déverrouillage du Capitaine, les lieutenants archivés le restent au retour : aucun ne réapparaît coché, ni dans l'onglet ni dans la Finalisation.
 
 ## Défauts connus sur ce parcours
 
@@ -110,14 +110,12 @@ Rouvrir un article ne doit que relire la base ; une seule exception est admise, 
 - FR-CER-CONTEXT-FOR-MOTEUR — une stratégie sans aucune valeur validée affiche une barre « Contexte stratégique » vide ; en passant d'un cocon à l'autre, la barre du cocon précédent reste affichée le temps du chargement.
 - FR-MOT-CACHE-PANEL-COUNT — la puce Radar affiche « C 1 » dès qu'un scan est connu, même enregistré, et le bouton « C 1 » de l'invite ne recharge rien.
 - FR-CAP-PERSIST — la provenance radar / longue traîne / saisie n'est pas enregistrée ; un écran dont les mots-clés ne sont pas encore chargés peut envoyer un Capitaine vide et des listes vides, qui effacent les décisions enregistrées (défaut latent) ; déverrouiller en archivant les lieutenants envoie deux enregistrements concurrents.
-- FR-INFRA-LIEUTENANT-EXPLORATIONS — « Tout réinitialiser » n'archive les lieutenants qu'à l'écran : l'archivage enregistré n'est jamais demandé. Après un rechargement, ils reviennent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide, et la porte refuse l'étape. Un lieutenant ajouté depuis le panneau d'aide n'est enregistré qu'une fois coché ; le message annonce toujours « 0 lieutenant(s) archivé(s) ».
 - FR-LIE-SERP-ANALYZE — la pile d'activité annonce « Scraping ~N URLs via DataForSEO » même quand l'analyse est relue en base ; « Tout relancer (SERP + IA) » ne relance rien pendant 7 jours : il relit l'analyse et les propositions gardées, et doit s'appeler « Recharger l'analyse ».
 - FR-INFRA-KEYWORD-METRICS — tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie ; un « Rafraîchir » raté date quand même la mesure du jour, et pour un mot-clé sans volume connu la fiche vide remplace la réponse gardée.
 - FR-RED-OUTLINE — les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique.
 - FR-CAP-ROOTS — à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte.
 - FR-LIE-CHECKBOX-COUNT — le compteur affiche les cases cochées sur le nombre de propositions générées ; aucune fourchette conseillée par type d'article n'est affichée ni signalée.
 - FR-RAD-LONGTAIL-UI — au rechargement, suggestions et cases cochées ne reviennent pas à l'écran.
-- FR-LEX-AI-PANEL — l'analyse part d'elle-même après chaque extraction, y compris l'extraction lancée seule à l'ouverture de l'onglet ; le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer », après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles ; le résumé et les termes manquants enregistrés ne s'affichent plus après un rechargement, et un changement d'onglet montre ceux de la dernière analyse, faite sur un autre mot-clé.
 - FR-RED-SEO-SCORE-PERSIST — un premier jet interrompu enregistre le texte sans remettre les scores à « inconnu » : l'ancien score reste en base, à l'écran comme en mode automatique.
 - FR-CAP-AI-PANEL — la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur.
 - FR-CAP-PAA-JUDGE-HAIKU — le jugement est calculé mais ni ses pastilles ni la note qu'il corrige n'atteignent la liste du Capitaine ; ce jugement est pourtant payé à chaque ouverture du Capitaine après un rechargement : il est à suspendre tant que son affichage n'est pas branché.

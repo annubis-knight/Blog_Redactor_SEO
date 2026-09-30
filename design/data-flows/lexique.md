@@ -46,7 +46,7 @@ Construction détaillée : [Moteur — Lieutenants, Structure, Lexique](../15-li
 
 ### ③ Recommandations de l'IA
 
-- Clic « Analyser avec l'IA » (`LexiqueAiPanel` `trigger`), « Régénérer l'analyse » ou « Relancer l'analyse IA » → [`useLexiqueIa.generateLexiqueUpfront`](../../src/composables/lexique/useLexiqueIa.ts), jamais d'office (le watcher `tfidfResult` qui la lançait est retiré, 2026-09-30) : `POST /api/keywords/:keyword/ai-lexique-upfront` (SSE, [`server/routes/keyword-ai-panel.routes.ts`](../../server/routes/keyword-ai-panel.routes.ts), prompt `lexique-analysis-upfront.md`, douleur et stratégie du cocon). Le serveur enregistre le résultat avant l'événement `done` (`saveLexiqueAi`). `onDone` remplit la Map de `useLexiqueIa` et **ne coche rien**.
+- Clic « Analyser avec l'IA » (`LexiqueAiPanel` `trigger`), « Régénérer l'analyse » ou « Relancer l'analyse IA » → [`useLexiqueIa.generateLexiqueUpfront`](../../src/composables/lexique/useLexiqueIa.ts), jamais d'office (le watcher `tfidfResult` qui la lançait est retiré, 2026-09-30) : `POST /api/keywords/:keyword/ai-lexique-upfront` pour `analysisKeyword` (le mot-clé de la liste affichée ; SSE, [`server/routes/keyword-ai-panel.routes.ts`](../../server/routes/keyword-ai-panel.routes.ts), prompt `lexique-analysis-upfront.md`, douleur et stratégie du cocon). Le serveur enregistre le résultat avant l'événement `done` (`saveLexiqueAi`, ligne de ce mot-clé). `onDone` le range sous ce mot-clé (`useLexiqueExplorations.applyIaAnalysis`, ignoré si l'article a changé) et **ne coche rien**.
 
 ### ④ Le choix de l'utilisateur (seul producteur de la décision dans le Moteur)
 
@@ -70,8 +70,8 @@ Construction détaillée : [Moteur — Lieutenants, Structure, Lexique](../15-li
 Mémoire :
 - `useArticleKeywordsStore.keywords.lexique` — hydraté par `GET /api/articles/:id/keywords` ; `fetchKeywordsMerge` fait l'union par valeur avec la mémoire. `useLexiqueLocking` en dérive `lockedTerms` et `isLocked` (non vide).
 - `selectedTerms` (`Set` local à `LexiquePanel`) — recopié de `lockedTerms` par un watcher `immediate` à chaque changement, et après chaque `fetchTfidf`.
-- [`useLexiqueExplorations`](../../src/composables/lexique/useLexiqueExplorations.ts) — `pastExplorations`, `activeSourceKeyword`, `tfidfResult`, et une Map `iaRecommendations` **restaurée de la base**. Aucune écriture (famille LECTURE).
-- `useLexiqueIa` — une **seconde** Map `iaRecommendations`, remplie seulement par un nouvel appel à l'IA, et `iaResult` (résumé, termes manquants).
+- [`useLexiqueExplorations`](../../src/composables/lexique/useLexiqueExplorations.ts) — `pastExplorations`, `activeSourceKeyword`, `tfidfResult`, et **la seule** mémoire des analyses de l'IA : `analyses`, une par mot-clé exploré (relue de la base par `hydrateFromDb` / `mergeFromDb`, rangée par `applyIaAnalysis` à la fin d'une analyse, filtrée par `isGenericTerm` comme à la relecture). `analysisKeyword` (onglet ouvert, sinon mot-clé de la liste restée à l'écran, sinon capitaine) choisit l'analyse affichée : `iaRecommendations`, `iaSummary`, `iaMissingTerms`. Aucune écriture en base (famille LECTURE).
+- `useLexiqueIa` — aucune liste propre : ses compteurs et `isIaRecommended` lisent la Map `iaRecommendations` injectée.
 - `lexiqueGateBlocked` — dernier refus de la porte, affiché dans le bandeau.
 
 ## Consommateurs
@@ -79,7 +79,7 @@ Mémoire :
 ### Affichage (UI)
 
 - **Listes à cocher** — `LexiquePanel` + [`LexiqueTermsList.vue`](../../src/components/moteur/lexique/LexiqueTermsList.vue) : cases = `selectedTerms`, densité et fréquence reçues du serveur, badges « IA recommandé » / « IA optionnel » (`useLexiqueIa.isIaRecommended`), compteur « N terme(s) sélectionné(s) » et répartition par niveau (`selectedByLevel`), onglets d'exploration ([`TabBar.vue`](../../src/components/shared/TabBar.vue), libellé = `source_keyword` brut).
-- **Panneau « Analyse IA Lexique »** — [`LexiqueAiPanel.vue`](../../src/components/moteur/LexiqueAiPanel.vue) : état et « N termes analysés » depuis la Map de `useLexiqueExplorations` ; « recommandés · écartés » depuis celle de `useLexiqueIa` (voir Limites connues). Résumé et termes manquants depuis `iaResult`.
+- **Panneau « Analyse IA Lexique »** — [`LexiqueAiPanel.vue`](../../src/components/moteur/LexiqueAiPanel.vue) : état, « N termes analysés » et « recommandés · écartés » depuis la même Map que les badges (`iaRecommendations` de l'analyse affichée). Résumé et termes manquants (bloc `ia-summary` de `LexiquePanel`) depuis `iaSummary` / `iaMissingTerms` de cette même analyse.
 - **Bandeau de la porte** — `data-testid="lexique-gate-banner"` : première raison (« (+n autres) ») et bouton « Voir pourquoi / décider » (`reviewLexiqueGate` → `useGateAlarmStore().ensure`).
 - **Alarme graduée** — [`GateAlarm.vue`](../../src/components/shared/GateAlarm.vue), « Avant de valider le lexique » ; aussi ouverte par `useMoteurArticleSync.emitCheckCompleted` si le serveur refuse l'étape (422).
 - **Finalisation** — [`FinalisationPanel.vue`](../../src/components/moteur/FinalisationPanel.vue) : « Lexique (N termes) », lu dans le store.
@@ -95,13 +95,17 @@ Mémoire :
 - **Score SEO** — [`src/utils/seo-calculator.ts`](../../src/utils/seo-calculator.ts) `calculateLexiqueCoverage` (termes présents / total). Un mot vide, présent dans tout texte, gonflerait cette couverture : c'est une raison de la porte.
 
 > **Règle de cohérence affichage / calcul** — Ce que l'écran montre coché est ce qui est enregistré : `selectedTerms` suit `lockedTerms` et chaque geste écrit en base. C'est cette même liste que lisent la porte, la rédaction, la Finalisation et le score SEO. Les termes sont comparés tels qu'enregistrés, sauf par la porte, qui les compare et nomme ses alertes après `normalizeTerm` (minuscules, sans accents).
+>
+> **Avis de l'IA** — Badges, compteurs du panneau, résumé et termes manquants lisent une seule analyse : celle d'`analysisKeyword`, le mot-clé de la liste affichée. Elle est la même juste après l'analyse (rangée par `applyIaAnalysis`), après un rechargement (relue en base) et au retour sur l'onglet ; un mot-clé jamais analysé n'en montre aucune.
 
 ## Cas d'usage à risque
 
 | Cas | Lecture | Écriture | Risque |
 |---|---|---|---|
-| **Premier chargement** (onglet ouvert, capitaine verrouillé) | watcher de restauration : `hydrateFromDb` (`GET /api/articles/:id/explorations`) ; si les pages existent (`GET …/serp/exists`) et qu'aucune proposition n'est restaurée, `fetchTfidf` | `lexique_explorations.tfidf_terms` | **Modéré** : sans exploration enregistrée, l'ouverture lance le TF-IDF puis l'analyse IA sans clic (coût IA). Écart `FR-MOT-NO-AUTO-ACTION` / `FR-LEX-AI-PANEL`, déjà relevé. Aucune case cochée, aucune étape demandée. |
-| **Rechargement de la page** | après le choix de l'article : store relu, explorations restaurées | aucune | Faible pour les cases : le watcher sur `lockedTerms` recoche les termes enregistrés, compteur juste. Réconciliation au premier montage : lexique non vide sans étape → porte ; étape sans lexique → retrait. Badges et résumé de l'IA ne reviennent pas (voir Limites connues). |
+| **Premier chargement** (onglet ouvert, capitaine verrouillé) | watcher de restauration : `hydrateFromDb` (`GET /api/articles/:id/explorations`) seul | aucune | Faible : l'ouverture relit, n'extrait rien et ne lance pas l'IA (lot 1, 2026-09-30). Aucune case cochée, aucune étape demandée. |
+| **Rechargement de la page** | après le choix de l'article : store relu, explorations et analyses de l'IA restaurées | aucune | Faible : le watcher sur `lockedTerms` recoche les termes enregistrés, compteur juste ; badges, résumé, termes manquants et décompte reviennent tels qu'avant. Réconciliation au premier montage : lexique non vide sans étape → porte ; étape sans lexique → retrait. |
+| **Analyse de l'IA terminée** | — | `lexique_explorations.ai_*` (serveur, avant `done`) | Faible : `applyIaAnalysis` range la réponse sous le mot-clé analysé ; badges et panneau la montrent ensemble. Une réponse arrivée après un changement d'article est ignorée. |
+| **Changement d'onglet d'exploration** | `selectExploration` (cache, aucun appel) | aucune | Faible : l'analyse affichée suit le mot-clé de l'onglet ; un onglet jamais analysé n'en montre aucune (celle d'un autre mot-clé ne passe plus d'un onglet à l'autre). |
 | **Changement d'article** | watcher `selectedArticle.slug` : `resetExplorations`, cases vidées, IA interrompue ; puis relecture | aucune | Faible : l'état de porte et la demande d'étape en cours sont oubliés (`selectedArticle.id`). |
 | **Retour sur l'onglet** | panneau gardé monté (`v-show`) | aucune | Faible : ni relecture ni appel. |
 | **Premier terme coché** | — | `PUT …/keywords`, vérification, puis `POST …/progress/check` | Faible : la porte juge ce qui vient d'être enregistré. |
@@ -131,8 +135,6 @@ flowchart TD
 
 ## Limites connues
 
-- **Deux Maps de recommandations de l'IA.** `LexiquePanel` lit l'état du panneau et le nombre de termes analysés dans la Map restaurée de la base (`useLexiqueExplorations`), mais les badges, les nombres « recommandés · écartés », le résumé et les termes manquants dans celle de `useLexiqueIa`, remplie seulement par un nouvel appel. Après une première analyse, le panneau reste à l'état « à lancer » (0 terme analysé) alors que les badges s'affichent ; après un rechargement, il annonce « N termes analysés — 0 recommandés · 0 écartés », sans badge ni résumé, et ne relance pas l'IA. **Défaut** face à `FR-LEX-AI-PANEL` (badges par terme ; le panneau compte analysés, recommandés, écartés).
-- **Analyse IA lancée sans clic** à l'ouverture de l'onglet quand aucune analyse n'est restaurée. Écart `FR-LEX-AI-PANEL` et `FR-MOT-NO-AUTO-ACTION`, déjà relevé ([cadre commun](../12-moteur.md), section « Coûts et caches »).
 - **Explorations enregistrées avant le filtre des mots génériques** : filtrées à la relecture, pas réécrites en base ; la porte refuse toujours un terme générique retenu.
 - **Pages lues avant le filtre du décor** : leur texte garde menus et bandeaux jusqu'à la prochaine lecture ; `tokenize` écarte de toute façon les mots de décor.
 
@@ -146,13 +148,13 @@ flowchart TD
   - [`tests/unit/components/lexique-check-reconciliation.test.ts`](../../tests/unit/components/lexique-check-reconciliation.test.ts) — réconciliation au montage.
   - [`tests/unit/shared/verifiers-lexique.test.ts`](../../tests/unit/shared/verifiers-lexique.test.ts), [`tests/contract-api/gates.contract.test.ts`](../../tests/contract-api/gates.contract.test.ts) — règles de la porte, 422 sur un terme générique (serveur requis).
   - [`tests/unit/shared/generic-terms.test.ts`](../../tests/unit/shared/generic-terms.test.ts), [`tests/unit/services/tfidf.test.ts`](../../tests/unit/services/tfidf.test.ts), [`tests/unit/services/scrape-corpus.service.test.ts`](../../tests/unit/services/scrape-corpus.service.test.ts), [`tests/unit/services/lexique-exploration.service.test.ts`](../../tests/unit/services/lexique-exploration.service.test.ts) — mots génériques, TF-IDF, contenu principal, relecture filtrée.
+  - [`tests/unit/composables/lexique/lexique-ai-analysis.test.ts`](../../tests/unit/composables/lexique/lexique-ai-analysis.test.ts) (dans `npm run verify`), [`tests/unit/components/lexique-ai-panel-une-analyse.test.ts`](../../tests/unit/components/lexique-ai-panel-une-analyse.test.ts) — `FR-LEX-AI-PANEL` : après une analyse, après un rechargement et au changement d'onglet, panneau, badges, résumé et termes manquants lisent la même analyse, celle du mot-clé affiché ; l'analyse part pour ce mot-clé.
   - [`tests/unit/architecture/lexique-separation.test.ts`](../../tests/unit/architecture/lexique-separation.test.ts) — LECTURE et VERROUILLAGE sans appel croisé.
   - [`tests/unit/scripts/auto-article/pick-lexique.test.ts`](../../tests/unit/scripts/auto-article/pick-lexique.test.ts) — le mode automatique n'emporte aucun terme générique.
   - [`tests/browser-e2e/parcours/lexique.parcours.test.ts`](../../tests/browser-e2e/parcours/lexique.parcours.test.ts) — aucune case cochée ni étape avant le geste, puis bandeau et alarme si la porte retient l'étape.
 
 À écrire :
-1. Après une analyse de l'IA, puis après un rechargement, le panneau « Analyse IA Lexique » et les badges lisent les mêmes recommandations.
-2. Remplacer les copies de `tests/unit/coherence/lexique.test.ts` par des appels à `computeTfidfFromTexts`, `jaccardWithPainPoint` et `saveDecisions`.
+1. Remplacer les copies de `tests/unit/coherence/lexique.test.ts` par des appels à `computeTfidfFromTexts`, `jaccardWithPainPoint` et `saveDecisions`.
 
 ---
 

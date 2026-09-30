@@ -1243,10 +1243,11 @@ L'utilisateur doit retenir les termes qu'il veut dans son article en cochant une
 - Recharger la page retrouve exactement les choix.
 
 ### FR-LEX-AI-PANEL — Analyse du lexique par l'IA
-**Statut :** non tenue (le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles ; le résumé et les termes manquants enregistrés ne s'affichent plus après un rechargement, et un changement d'onglet montre ceux de la dernière analyse, faite sur un autre mot-clé)
+**Statut :** active
 L'IA doit analyser les termes extraits au regard de la douleur de l'article et de la stratégie du cocon, et dire lesquels recommander, lesquels écarter et quels termes manquent. Elle ne part que sur un clic.
 - Chaque terme analysé porte un badge « IA recommandé » ou « IA optionnel », avec la raison en info-bulle ; un terme sans décision lisible n'a pas de badge.
 - Un résumé et au plus 5 « Termes manquants » s'affichent au-dessus des listes ; le panneau « Analyse IA Lexique » compte les termes analysés, recommandés et écartés.
+- Badges, résumé, termes manquants et compteurs du panneau montrent la même analyse : celle du mot-clé affiché, identique juste après l'analyse, après un rechargement et au retour sur son onglet ; un mot-clé jamais analysé n'en montre aucune.
 - L'utilisateur peut relancer l'analyse (« Analyser avec l'IA », « Régénérer l'analyse », « Relancer l'analyse IA » après une erreur).
 - Ni une extraction, ni l'ouverture de l'onglet, ni un changement d'onglet d'exploration ne lancent l'analyse ; un clic en lance une seule.
 - L'analyse ne coche aucun terme.
@@ -2031,11 +2032,12 @@ L'outil doit disposer d'un référentiel de lieux (régions et autres noms de la
 - Un lieu rattaché à une région n'est proposé que si la zone du client nomme cette région ; les lieux sans région forment le référentiel par défaut, proposé seulement si la zone nomme l'une de ses régions.
 
 ### FR-INFRA-LIEUTENANT-EXPLORATIONS — Les propositions de lieutenants sont gardées par article
-**Statut :** non tenue (« Tout réinitialiser » n'archive les lieutenants qu'à l'écran : l'archivage enregistré n'est jamais demandé. Après un rechargement, ils reviennent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide, et la porte refuse l'étape. Et un lieutenant ajouté depuis le panneau d'aide n'est enregistré qu'une fois coché)
+**Statut :** active
 Toutes les propositions de lieutenants d'un article (de l'IA ou ajoutées à la main) doivent être gardées avec leur contexte, leur niveau de titre suggéré, leur score, leurs indicateurs du moment et leur statut.
-- Une proposition est enregistrée dès qu'elle est générée ou ajoutée.
+- Une proposition est enregistrée dès qu'elle est générée ou ajoutée ; ajoutée depuis le panneau d'aide, elle l'est non cochée.
 - À la réouverture, la liste est triée par score décroissant, les scores absents en bas.
 - Le statut (proposé, verrouillé, écarté, archivé) survit au rechargement.
+- « Tout réinitialiser » archive les lieutenants verrouillés à l'écran et dans l'enregistrement : après un rechargement, aucun ne revient coché, ni dans l'onglet ni dans la Finalisation ; les autres propositions gardent leur statut.
 
 ### FR-INFRA-KEYWORD-DISCOVERIES — Mémoire des découvertes de mots-clés
 **Statut :** active

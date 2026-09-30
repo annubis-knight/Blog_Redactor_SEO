@@ -81,6 +81,19 @@ const mockSetRichLieutenants = vi.fn()
 const mockSaveRichLieutenantProposals = vi.fn()
 const mockSaveLieutenantExplorationEntries = vi.fn().mockResolvedValue(undefined)
 
+// Comme le vrai store : un mot-clé ajouté depuis le panneau d'aide devient une
+// proposition `suggested` (FR-INFRA-LIEUTENANT-EXPLORATIONS). Sans cette action,
+// le clic levait une erreur en arrière-plan et Vitest sortait en échec.
+function mockProposeLieutenant(entry: { keyword: string }) {
+  const kw = mockStoreKeywords.value
+  if (!kw) return null
+  const existing = (kw.richLieutenants ?? []).find(lt => lt.keyword.toLowerCase() === entry.keyword.toLowerCase())
+  if (existing) return existing
+  const created = { ...entry, status: 'suggested' }
+  kw.richLieutenants = [...(kw.richLieutenants ?? []), created]
+  return created
+}
+
 vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
     get keywords() { return mockStoreKeywords.value },
@@ -88,6 +101,7 @@ vi.mock('../../../src/stores/article/article-keywords.store', () => ({
     setRichLieutenants: mockSetRichLieutenants,
     saveRichLieutenantProposals: mockSaveRichLieutenantProposals,
     saveLieutenantExplorationEntries: mockSaveLieutenantExplorationEntries,
+    proposeLieutenant: mockProposeLieutenant,
   }),
 }))
 
@@ -203,6 +217,12 @@ describe('LieutenantsPanel — handleAssistAdd (basket)', () => {
     const cards = proposals.props('lieutenantCards') as { keyword: string }[]
     expect(cards.length).toBe(1)
     expect(cards[0]!.keyword).toBe('kw-from-basket')
+    // FR-INFRA-LIEUTENANT-EXPLORATIONS — enregistrée dès l'ajout, non cochée.
+    expect(mockSaveLieutenantExplorationEntries).toHaveBeenCalledWith(
+      1,
+      [expect.objectContaining({ keyword: 'kw-from-basket', status: 'suggested' })],
+      'seo local',
+    )
   })
 
   it('handleAssistAdd ne duplique pas un keyword déjà présent', async () => {

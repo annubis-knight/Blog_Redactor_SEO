@@ -346,7 +346,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 - au geste 6, la dérogation est acceptée pour des données que tu n'as pas lues.
 
 ### INFRA-16 — Les propositions de lieutenants survivent au rechargement
-**Exigences :** FR-INFRA-LIEUTENANT-EXPLORATIONS ⚠, FR-INFRA-KPI-CONSISTENCY
+**Exigences :** FR-INFRA-LIEUTENANT-EXPLORATIONS, FR-INFRA-KPI-CONSISTENCY
 
 **Gestes :**
 1. Dans la barre de tri des Lieutenants, clique **« Score IA »** (↓), puis une deuxième fois (↑), puis une troisième.
@@ -362,8 +362,6 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 - une proposition disparaît ou apparaît en double après le rechargement ;
 - A ou B n'est plus cochée ;
 - un score absent s'affiche 0.
-
-**⚠ Défaut connu :** « Tout réinitialiser » n'archive les lieutenants qu'à l'écran (vérifié en INFRA-18). Et un lieutenant ajouté depuis le panneau d'aide n'est enregistré qu'une fois coché. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-17 — Une seule liste d'étapes, lue partout ; retirer le capitaine retire la structure
 **Exigences :** FR-INFRA-WORKFLOW-CHECKS-CONSTANTS ⚠, NFR-INT-COMPLETED-CHECKS-SSOT
@@ -389,7 +387,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 **⚠ Défaut connu :** le serveur accepte un nom d'étape inventé au bon format, par exemple « moteur:nimporte_quoi ». Invisible depuis l'écran, qui n'écrit que des étapes connues. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-18 — « Tout réinitialiser » archive les lieutenants
-**Exigences :** FR-INFRA-LIEUTENANT-EXPLORATIONS ⚠
+**Exigences :** FR-INFRA-LIEUTENANT-EXPLORATIONS
 
 **Gestes :**
 1. Capitaine de l'enfant : reverrouille la carte (cadenas « Verrouiller »).
@@ -401,9 +399,8 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 - plus aucun lieutenant coché ; dans « Finalisation », « Lieutenants (0) » et « Aucun lieutenant verrouillé. », avant **et** après le rechargement.
 
 **C'est un bug si :**
-- le message annonce « 0 lieutenant(s) archivé(s) » alors que deux étaient cochés.
-
-**⚠ Défaut connu :** « Tout réinitialiser » n'archive les lieutenants qu'à l'écran : l'archivage enregistré n'est jamais demandé. Après un rechargement, ils reviennent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide, et la porte refuse l'étape. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+- le message annonce « 0 lieutenant(s) archivé(s) » alors que deux étaient cochés ;
+- après le rechargement, un lieutenant revient coché, dans l'onglet ou dans la Finalisation.
 
 ### INFRA-19 — À la publication, la reconfirmation suit les données de chaque point
 **Exigences :** FR-INFRA-GATE-WAIVER, FR-INFRA-VERIFIER-SHARED

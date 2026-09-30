@@ -563,9 +563,13 @@ describe('LexiquePanel', () => {
       expect(wrapper.find('[data-testid="ia-analysis-section"]').exists()).toBe(true)
     })
 
+    // Fin du flux comme le vrai `useStreaming` : `result`, puis `onDone`. Le
+    // résumé se lit dans l'analyse du mot-clé affiché (FR-LEX-AI-PANEL), que
+    // `onDone` range ; `result` seul ne l'affiche plus.
     it('shows IA summary after upfront completes', async () => {
       const wrapper = await mountWithResults()
       iaStreaming.result.value = MOCK_IA_RESULT
+      simulateIaUpfrontDone()
       await nextTick()
       expect(wrapper.find('[data-testid="ia-summary"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="ia-summary"]').text()).toContain('Analyse IA : 3 termes recommandés, 1 optionnel.')
@@ -574,6 +578,7 @@ describe('LexiquePanel', () => {
     it('shows missing terms in IA summary', async () => {
       const wrapper = await mountWithResults()
       iaStreaming.result.value = MOCK_IA_RESULT
+      simulateIaUpfrontDone()
       await nextTick()
       expect(wrapper.find('.ia-missing-terms').text()).toContain('backlinks')
     })
