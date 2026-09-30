@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
 import { useArticlesStore } from '@/stores/article/articles.store'
@@ -30,16 +30,30 @@ const isLoading = computed(() =>
   articlesStore.isLoading || keywordsStore.isLoading,
 )
 
-const error = computed(() => articlesStore.error)
+const error = computed(() => cocoonsStore.error ?? articlesStore.error)
+
+/**
+ * Cocon absent de la liste des cocons, lue sans erreur : il n'existe pas.
+ * On le dit en français, avec un lien de retour, au lieu d'afficher le 404
+ * anglais de ses articles et un « Réessayer » qui refait le même 404
+ * (FR-DASH-WORKFLOW-CHOICE, recette du 2026-09-30, 01-T13).
+ */
+const notFound = ref(false)
 
 async function loadData() {
+  notFound.value = false
   const needsFetch = cocoonsStore.cocoons.length === 0
     || !cocoonsStore.cocoons.some(c => c.id === cocoonId.value)
   if (needsFetch) {
     await cocoonsStore.fetchCocoons()
   }
+  if (cocoonsStore.error) return
 
   const name = cocoonsStore.cocoons.find(c => c.id === cocoonId.value)?.name
+  if (!name) {
+    notFound.value = true
+    return
+  }
 
   await Promise.all([
     articlesStore.fetchArticlesByCocoon(cocoonId.value),
@@ -66,7 +80,12 @@ onMounted(() => {
       </div>
     </div>
 
-    <AsyncContent :is-loading="isLoading" :error="error" @retry="loadData()">
+    <div v-if="notFound" class="empty-state" data-testid="cocoon-not-found">
+      <p>Cocon introuvable : il n’existe pas, ou il a été supprimé.</p>
+      <RouterLink to="/" class="back-link">&larr; Retour au dashboard</RouterLink>
+    </div>
+
+    <AsyncContent v-else :is-loading="isLoading" :error="error" @retry="loadData()">
       <template #skeleton>
         <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
           <SkeletonCard v-for="i in 3" :key="i" width="280px" height="160px" />
@@ -116,5 +135,16 @@ onMounted(() => {
 
 .summary-sep {
   color: var(--color-border);
+}
+
+.empty-state {
+  color: var(--color-text-muted);
+}
+
+.back-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-primary);
 }
 </style>
