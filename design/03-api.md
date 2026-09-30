@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -61,5 +61,4 @@ contrats relève du domaine de chaque route.
 | `server/index.ts` | `/health` | Santé du serveur | Infrastructure |
 
 Aucun appelant dans `src/` ni `scripts/` : `POST /strategy/batch-status`,
-`POST /keywords/autocomplete-suggest`, `POST /keywords/validate-pain`,
-`POST /articles/:id/lieutenants/archive`.
+`POST /keywords/autocomplete-suggest`, `POST /keywords/validate-pain`.

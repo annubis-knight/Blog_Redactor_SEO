@@ -19,9 +19,12 @@ import type { WordGroup } from '@shared/types/discovery-tab.types.js'
  *            (lieutenants retenus, via useArticleKeywordsStore).
  * READS FROM: GET /articles/:id/keywords (hydratation via useArticleKeywordsStore)
  * WRITES TO: POST /keywords/:keyword/propose-lieutenants (candidats et tri)
+ *            POST /articles/:id/lieutenant-explorations (statuts à chaque case ;
+ *            proposition ajoutée depuis le panneau d'aide, dès l'ajout)
  * CONSUMERS: LieutenantsPanel (cartes proposées / éliminées, cases à cocher,
  *            `totalGenerated` : relu avec les propositions, cf. countStoredProposals)
  * RELATED FR: FR-LIE-AI-FRONTIER, FR-LIE-CHECKBOX-LOCK-IMMEDIATE, FR-LIE-CHECKBOX-COUNT,
+ *             FR-INFRA-LIEUTENANT-EXPLORATIONS,
  *             NFR-INT-DISPLAY-CONTRACTS (contrat `propose-lieutenants`)
  *
  * Vague 3 — Composable extrait de LieutenantsPanel. Encapsule la Phase 2 IA :
@@ -146,21 +149,30 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
   }
 
   /** F3 — Ajoute un mot-clé (suggéré par le basket) à la liste des propositions
-   *  lieutenants sans lancer de SERP/IA. */
+   *  lieutenants sans lancer de SERP/IA. La proposition est enregistrée dès
+   *  l'ajout, non cochée (FR-INFRA-LIEUTENANT-EXPLORATIONS) : elle ne l'était
+   *  qu'une fois cochée, et disparaissait au rechargement sinon. */
   function handleAssistAdd(keyword: string): void {
     if (lieutenantCards.value.some(c => c.keyword.toLowerCase() === keyword.toLowerCase())) return
-    lieutenantCards.value = [
-      ...lieutenantCards.value,
-      {
-        keyword,
-        reasoning: 'Proposé depuis votre panier',
-        sources: [],
-        suggestedHnLevel: 2 as const,
-        // Pas évalué par l'IA : « — », pas un faux 0.
-        score: null,
-      },
-    ]
+    const card: ProposedLieutenant = {
+      keyword,
+      reasoning: 'Proposé depuis votre panier',
+      sources: [],
+      suggestedHnLevel: 2 as const,
+      // Pas évalué par l'IA : « — », pas un faux 0.
+      score: null,
+    }
+    lieutenantCards.value = [...lieutenantCards.value, card]
+    // Une proposition écartée, ajoutée de nouveau, redevient proposée : elle
+    // quitte « Autres candidats », comme au rechargement.
+    eliminatedCards.value = eliminatedCards.value.filter(c => c.keyword.toLowerCase() !== keyword.toLowerCase())
     log.info('[useLieutenantsIa] Assist add', { keyword, total: lieutenantCards.value.length })
+
+    const articleId = selectedArticle.value?.id
+    const captainKw = captainKeyword.value
+    if (!articleId || !captainKw || !isResponseForCurrentArticle(articleKeywordsStore.keywords?.articleId, articleId)) return
+    const proposal = articleKeywordsStore.proposeLieutenant({ ...card, kpis: null, exploredAt: new Date().toISOString() })
+    if (proposal) void articleKeywordsStore.saveLieutenantExplorationEntries(articleId, [proposal], captainKw)
   }
 
   /** Restore lieutenant cards from saved data when in locked state */

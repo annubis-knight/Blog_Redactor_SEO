@@ -2,6 +2,7 @@ import type { Request, Response } from 'express'
 import { log } from '../../utils/logger.js'
 import { streamChatCompletion, USAGE_SENTINEL } from './ai-provider.service.js'
 import type { ApiUsage } from './claude.service.js'
+import { requestDbOps } from '../../middleware/db-telemetry.middleware.js'
 
 /**
  * Service runner unifié Panels IA Moteur. Séquence SSE :
@@ -125,6 +126,9 @@ export async function runAiPanelStream<TParsed = unknown>(opts: RunAiPanelStream
     log.info(`${logTag} done for "${keyword}"`, { length: fullContent.length, chunkCount, totalMs: Date.now() - startTotal })
 
     const donePayload = buildDonePayload(parsed, usage)
+    // Écritures en base de `onSuccess` → pile d'activité, comme une réponse JSON (FR-INFRA-COST-LOG-STORE).
+    const dbOps = requestDbOps()
+    if (dbOps.length > 0) donePayload.dbOps = dbOps
     res.write(`event: done\ndata: ${JSON.stringify(donePayload)}\n\n`)
     res.end()
   } catch (err) {

@@ -9,8 +9,9 @@
  *             (cf. FR-CAP-PAA-JUDGE-HAIKU), fallback lexical via `avgLexicalPainAlignment`
  *             si Haiku indisponible.
  * WRITES TO: rien (read-only par contrat)
- * CONSUMERS: data.service.ts → getCaptainExplorations,
- *            futurs endpoints /articles/:id/relevance et /relevance/compute
+ * CONSUMERS: data.service.ts → getCaptainExplorations (cartes, et racines sans
+ *            étude enregistrée : score et mesures relus via `roots` / `metrics`,
+ *            FR-CAP-ROOTS), futurs endpoints /articles/:id/relevance et /relevance/compute
  * RELATED FR: FR-CAP-RELEVANCE-COMPUTED-LIVE, FR-CAP-RELEVANCE-NO-DB-WRITE,
  *             FR-CAP-RELEVANCE-NO-CACHE, FR-CAP-RELEVANCE-ROOTS-FROM-DB,
  *             FR-CAP-RELEVANCE-MEMOIZATION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON,
@@ -73,6 +74,9 @@ export interface CaptainTabRelevanceResult {
   /** Racines uniques calculées (mémoïsées). Permet d'afficher les scores
    *  individuels des racines dans le side panel sans recalcul front. */
   roots: Map<string, RelevanceLiveEntry>
+  /** Mesures `keyword_metrics` lues pour le calcul (cartes et racines), sans
+   *  nouvelle lecture : la relecture en tire les indicateurs des racines. */
+  metrics: Map<string, KeywordMetrics>
   /** Snapshot du painPoint utilisé pour ce calcul — pour invalidation côté front. */
   painPointSnapshot: string | null
   /** Horodatage du calcul. */
@@ -347,6 +351,7 @@ export async function computeRelevanceForCaptainTab(
   return {
     cards: cardScores,
     roots: rootScores,
+    metrics: metricsByKeyword,
     painPointSnapshot,
     computedAt: new Date(),
   }

@@ -23,7 +23,7 @@ Qui crée ou met à jour cette donnée :
 - **Store** — [`article-keywords.store.ts`](../../src/stores/article/article-keywords.store.ts) (en-tête `AUTHORITY:`) :
   - `saveDecisions(id)` (alias `saveKeywords`) envoie `capitaine`, `lieutenants`, `lexique`, `rootKeywords`, **sans** la structure ; renvoie `false` en cas d'échec ;
   - `saveStructure(id, structure)` envoie les mêmes champs **plus** `hnStructure` ; la mémoire ne prend la structure qu'après la réponse du serveur. C'est le seul écrivain de `hn_structure` ;
-  - mutations en mémoire : `lockCaptain`, `unlockCaptain`, `setCapitaine`, `setRootKeywords`, `addLieutenant`, `removeLieutenant`, `lockLieutenant`, `unlockLieutenant`, `setRichLieutenants`, `unlockLieutenants`, `archiveLockedLieutenants` (chacune resynchronise la liste plate `lieutenants`), `addLexiqueTerm`, `removeLexiqueTerm`, `suggestLexique` (remplace le lexique par la suggestion de `POST /api/keywords/lexique-suggest`).
+  - mutations en mémoire : `lockCaptain`, `unlockCaptain`, `setCapitaine`, `setRootKeywords`, `addLieutenant`, `removeLieutenant`, `lockLieutenant`, `unlockLieutenant`, `setRichLieutenants`, `unlockLieutenants`, `archiveLockedLieutenants` (chacune resynchronise la liste plate `lieutenants` ; la dernière demande aussi l'archivage enregistré, `POST /api/articles/:id/lieutenants/archive`), `proposeLieutenant` (proposition ajoutée depuis le panneau d'aide, liste plate inchangée), `addLexiqueTerm`, `removeLexiqueTerm`, `suggestLexique` (remplace le lexique par la suggestion de `POST /api/keywords/lexique-suggest`).
 - **Appelants des enregistrements** :
   - [`CaptainPanel.vue`](../../src/components/moteur/CaptainPanel.vue) : verrou et déverrou (attendus), plus un enregistrement groupé 300 ms après les rafales de mutations (`requestSave` → `persistIfOwned`, seulement si le store porte l'article) ;
   - [`LieutenantsPanel.vue`](../../src/components/moteur/LieutenantsPanel.vue) et [`useLieutenantsIa.ts`](../../src/composables/moteur/useLieutenantsIa.ts) : chaque case cochée enregistre aussitôt (FR-LIE-CHECKBOX-LOCK-IMMEDIATE) ;
@@ -46,7 +46,7 @@ Qui crée ou met à jour cette donnée :
 |---|---|
 | `capitaine`, `lieutenants`, `lexique`, `rootKeywords`, `hnStructure` | la ligne `article_keywords` (`''` et `[]` si absente) |
 | `richCaptain` | `{ keyword: capitaine, status: capitaine non vide ? 'locked' : 'suggested', exploredKeywords, aiPanelMarkdown }` ; `exploredKeywords` = `getCaptainExplorations` (KPI relus dans `keyword_metrics`, Score Marché relu dans `radar_explorations`, Score Pertinence recalculé, `paaJudgment: null`) |
-| `richRootKeywords` | racines de chaque candidat (`captain_explorations.root_keywords`), sans KPI |
+| `richRootKeywords` | racines de chaque candidat (`captain_explorations.root_keywords`) ; sans KPI, sauf une racine sans étude à elle que `keyword_metrics` connaît : ses KPI, ses questions PAA et son Score Pertinence de relecture (`rootStudies` de `getCaptainExplorations`, FR-CAP-ROOTS) |
 | `richLieutenants` | `getLieutenantExplorations` (`ORDER BY score DESC NULLS LAST`), absent si vide |
 
 - Les explorations sont toujours chargées, même sans ligne `article_keywords` (FR-MOT-EXPLORATIONS-HYDRATATION). Ni ligne ni exploration → `data: null`.
@@ -87,7 +87,7 @@ Qui crée ou met à jour cette donnée :
 | Changement d'article | `$reset` + `fetchKeywordsMerge` (`useMoteurArticleSync`) | aucune | La garde `keywords.articleId` évite d'afficher l'article précédent ; les onglets ne sont montés qu'une fois l'article chargé (`loadedArticleId`), et la réponse d'un article quitté est ignorée. |
 | « Charger » (bouton de l'onglet) | `fetchKeywordsMerge` | aucune | La mémoire n'est jamais écrasée : un Capitaine déjà en mémoire l'emporte sur la base. |
 | Enregistrement Lieutenants ou Lexique | — | `PUT` sans `hnStructure` | La structure en base est gardée. |
-| Déverrouillage avec Lieutenants verrouillés | store | `archiveLockedLieutenants` + `PUT` | Voir [captain-keyword-locked](captain-keyword-locked.md), limites. |
+| Déverrouillage avec Lieutenants verrouillés | store | `archiveLockedLieutenants` (`POST …/lieutenants/archive`, verrouillés seulement) + `PUT` | Voir [captain-keyword-locked](captain-keyword-locked.md), limites, et [lieutenants](lieutenants.md). |
 | Store initialisé vide puis enregistré | — | `PUT` avec `capitaine: ''` et listes vides | Efface les décisions en base (voir limites). |
 
 ## Limites connues

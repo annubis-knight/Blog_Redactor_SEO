@@ -30,12 +30,12 @@ Qui crée ou met à jour cette donnée :
 - [`useLieutenantsIa.proposeLieutenants`](../../src/composables/moteur/useLieutenantsIa.ts) → `POST /api/keywords/:capitaine/propose-lieutenants` (SSE) avec les titres récurrents, les concurrents lus, les PAA du capitaine, les données des racines, les groupes de mots de Discovery et `cocoonSlug`.
 - [`server/routes/keyword-ai-panel.routes.ts`](../../server/routes/keyword-ai-panel.routes.ts) : ajoute les lieutenants des autres articles du cocon (`getCocoonExistingLieutenants`, lus dans `article_keywords.lieutenants`) et la douleur de l'article ; prompt `propose-lieutenants.md` (règle de l'entonnoir géographique : malus dans le prompt seulement) ; `filterLieutenants` trie par `compareScores` et garde `ARTICLE_TYPE_RULES[niveau].maxLieutenants` ; `saveLieutenantExplorations` enregistre les retenus en `suggested` et les autres en `eliminated` **avant** l'événement `done`.
 - `onDone` côté client : cartes **décochées**, `saveRichLieutenantProposals` remplace `richLieutenants` en mémoire, puis `saveLieutenantExplorationEntries` réécrit les mêmes lignes (`POST /api/articles/:id/lieutenant-explorations`).
-- Ajout depuis le panneau d'aide (`KeywordAssistPanel`) : `useLieutenantsIa.handleAssistAdd` ajoute une carte sans note (`score: null`), en mémoire seulement.
+- Ajout depuis le panneau d'aide (`KeywordAssistPanel`) : `useLieutenantsIa.handleAssistAdd` ajoute une carte sans note (`score: null`), non cochée ; le store la range en `suggested` (`proposeLieutenant` : une entrée écartée ou archivée du même mot-clé redevient `suggested`, une `locked` ne bouge pas) et `saveLieutenantExplorationEntries` enregistre cette seule entrée aussitôt.
 
 ### ③ Le choix de l'utilisateur (seul producteur de la décision dans le Moteur)
 
 - Case cochée ou décochée → `useLieutenantsIa.toggleLieutenant` : store `lockLieutenant` / `unlockLieutenant` ([`article-keywords.store.ts`](../../src/stores/article/article-keywords.store.ts), statut + liste plate), puis `saveLieutenantExplorationEntries` (tous les `richLieutenants`, statuts compris) et `saveDecisions` → `PUT /api/articles/:id/keywords` → `saveArticleKeywords` ([`server/services/infra/data.service.ts`](../../server/services/infra/data.service.ts)). Un enregistrement par geste, sans temporisation.
-- Déverrouillage du Capitaine avec lieutenants verrouillés → [`UnlockLieutenantsModal.vue`](../../src/components/moteur/UnlockLieutenantsModal.vue) : « Les garder » ou « Tout réinitialiser » (`CaptainPanel.handleUnlockArchive` → `archiveLockedLieutenants` en mémoire, puis `saveKeywords`, qui vide la liste plate en base).
+- Déverrouillage du Capitaine avec lieutenants verrouillés → [`UnlockLieutenantsModal.vue`](../../src/components/moteur/UnlockLieutenantsModal.vue) : « Les garder » ou « Tout réinitialiser » (`CaptainPanel.handleUnlockArchive` → `archiveLockedLieutenants` : `locked` → `archived` en mémoire, puis `POST /api/articles/:id/lieutenants/archive` avec ces mots-clés → `archiveLieutenantExplorations` ; puis `saveKeywords`, qui vide la liste plate en base).
 - Mode automatique : l'heuristique `pickLieutenants` ([`scripts/auto-article/heuristics/pick-lieutenants.ts`](../../scripts/auto-article/heuristics/pick-lieutenants.ts)) choisit, `saveThenEmit` enregistre avant de demander l'étape.
 
 ### ④ L'étape
@@ -89,8 +89,8 @@ Mémoire :
 | **Retour sur l'onglet** | panneau gardé monté (`v-show`) | aucune | Faible : ni relecture ni appel payant. |
 | **Case cochée** | — | `POST …/lieutenant-explorations`, `PUT …/keywords`, puis vérification et `POST …/progress/check` | Faible : une case cochée pendant la vérification est reprise par la boucle de `verifyLockedLieutenants`. |
 | **Nouvelle proposition de l'IA** (« Analyser SERP » avec propositions de plus de 7 jours) | — | le serveur réécrit les statuts des mots-clés reproposés en `suggested` / `eliminated` | **Élevé** : les statuts `locked` disparaissent de l'écran et de `lieutenant_explorations`, l'étape est retirée, la liste plate les garde. Écart `FR-LIE-CHECKBOX-LOCK-IMMEDIATE`, déjà relevé. |
-| **« Tout réinitialiser » au déverrouillage du Capitaine** | — | liste plate vidée en base ; statuts `archived` en mémoire seulement | **Élevé** : au rechargement, les lieutenants reviennent cochés (statut `locked` en base) alors que la décision est vide : la porte refuse (`lieutenants-too-few`) et la Finalisation les liste. Voir Limites connues. |
-| **Mot-clé ajouté depuis le panneau d'aide** | — | rien avant qu'il soit coché | Modéré : la carte disparaît au rechargement si elle n'a pas été cochée. |
+| **« Tout réinitialiser » au déverrouillage du Capitaine** | — | `lieutenant_explorations` : les verrouillés passent `archived` (`POST …/lieutenants/archive`) ; liste plate vidée (`PUT …/keywords`) | Faible : écran, Finalisation et porte lisent la même chose, avant et après le rechargement (aucun lieutenant coché). Un archivage enregistré en échec est seulement journalisé (le store renvoie `false`). |
+| **Mot-clé ajouté depuis le panneau d'aide** | — | `POST …/lieutenant-explorations` (cette entrée, `suggested`) | Faible : la carte revient au rechargement, non cochée. |
 | **Lieutenant d'un autre article ajouté entre-temps** | `getCocoonExistingLieutenants` au moment de l'appel IA ; `lieutenantsGate` à chaque vérification | — | Faible : la porte relit le cocon à chaque vérification. |
 
 ## Diagramme
@@ -114,10 +114,8 @@ flowchart TD
 
 ## Limites connues
 
-- **« Tout réinitialiser » n'archive qu'en mémoire.** `handleUnlockArchive` passe les lieutenants à `archived` dans le store et vide la liste plate en base, mais n'écrit pas `lieutenant_explorations` ; la route `POST /api/articles/:id/lieutenants/archive` (`archiveLieutenantExplorations`) n'a aucun appelant. Au rechargement, les lieutenants reviennent verrouillés à l'écran et dans la Finalisation, contre une décision vide. **Défaut** face à `FR-INFRA-LIEUTENANT-EXPLORATIONS` (« le statut … archivé survit au rechargement ») et `FR-CAP-LOCK-RADIO` (« Tout réinitialiser (qui les archive) »).
 - **Relancer la proposition défait les verrous** (écran et `lieutenant_explorations`), alors que la liste plate les garde. Écart `FR-LIE-CHECKBOX-LOCK-IMMEDIATE`, déjà relevé.
-- **Proposition ajoutée à la main non enregistrée** tant qu'elle n'est pas cochée (`handleAssistAdd`). Écart face à `FR-INFRA-LIEUTENANT-EXPLORATIONS` (« enregistrée dès qu'elle est … ajoutée »).
-- **Deux autorités.** L'écran, la Structure et la Finalisation lisent les statuts `locked` ; la porte, la Rédaction et le cocon lisent la liste plate. Elles ne divergent que par les deux défauts ci-dessus.
+- **Deux autorités.** L'écran, la Structure et la Finalisation lisent les statuts `locked` ; la porte, la Rédaction et le cocon lisent la liste plate. Elles ne divergent plus que par le défaut ci-dessus (« Tout réinitialiser » écrit les deux depuis le 2026-09-30, lot 6).
 - **Curseur sans effet sur les données** et **pas de fourchette conseillée**. Écarts `FR-LIE-SLIDER-INTELLIGENT` et `FR-LIE-CHECKBOX-COUNT`, déjà relevés.
 
 ## Tests qui la gardent
@@ -130,11 +128,11 @@ flowchart TD
   - [`tests/unit/stores/article-keywords.merge.test.ts`](../../tests/unit/stores/article-keywords.merge.test.ts) — fusion sans doublon. Le test intitulé « le lockedAt le plus récent gagne » vérifie en fait qu'un statut `locked` entrant remplace un `suggested` : c'est la règle du statut terminal, pas une date.
   - [`tests/unit/components/lieutenants-selection.test.ts`](../../tests/unit/components/lieutenants-selection.test.ts), [`lieutenants-results-layout-architecture.test.ts`](../../tests/unit/components/lieutenants-results-layout-architecture.test.ts), [`lieutenants-selection-architecture.test.ts`](../../tests/unit/components/lieutenants-selection-architecture.test.ts) — analyse à la demande, sections repliées, frontière entre la liste et le panneau de l'IA, plus de structure dans l'onglet.
   - [`tests/unit/composables/serp-echec-explique.test.ts`](../../tests/unit/composables/serp-echec-explique.test.ts) — échec d'analyse expliqué.
+  - [`tests/unit/composables/lieutenant-explorations-persist.test.ts`](../../tests/unit/composables/lieutenant-explorations-persist.test.ts), [`tests/unit/routes/lieutenants-archive.routes.test.ts`](../../tests/unit/routes/lieutenants-archive.routes.test.ts) (dans `npm run verify`), [`tests/unit/coherence/db-tables-coverage.test.ts`](../../tests/unit/coherence/db-tables-coverage.test.ts) — `FR-INFRA-LIEUTENANT-EXPLORATIONS` : « Tout réinitialiser » demande l'archivage enregistré des seuls verrouillés, la route et la requête n'archivent que ces mots-clés ; un lieutenant ajouté depuis le panneau d'aide est enregistré aussitôt, `suggested`.
 
 À écrire :
-1. « Tout réinitialiser » puis relecture : aucun lieutenant ne revient au statut `locked`.
-2. Relance de la proposition : les lieutenants verrouillés restent cochés, en base comme à l'écran, et l'étape reste acquise.
-3. Remplacer les copies de `tests/unit/coherence/lieutenants.test.ts` par des appels à `computeHnRecurrence` et à la route `propose-lieutenants` en mode simulé.
+1. Relance de la proposition : les lieutenants verrouillés restent cochés, en base comme à l'écran, et l'étape reste acquise.
+2. Remplacer les copies de `tests/unit/coherence/lieutenants.test.ts` par des appels à `computeHnRecurrence` et à la route `propose-lieutenants` en mode simulé.
 
 ---
 

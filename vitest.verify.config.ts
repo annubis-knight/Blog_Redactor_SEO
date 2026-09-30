@@ -32,6 +32,14 @@ export default mergeConfig(
         // Portes de qualité côté serveur, I/O simulées (recette du 2026-09-30) :
         // dérogation par point, « Google ne suggère pas », pistes des lieutenants.
         'tests/unit/services/gate.service.test.ts',
+        // Pile d'activité (FR-INFRA-COST-LOG-STORE, lot 6) : écritures en base
+        // de toutes les routes, coût des longues traînes et du jugement PAA.
+        'tests/unit/utils/db-telemetry-middleware.test.ts',
+        'tests/unit/routes/ai-cost-usage.routes.test.ts',
+        'tests/unit/services/long-tail-suggest.service.test.ts',
+        'tests/unit/services/captain-paa-judge.service.test.ts',
+        'tests/unit/services/api.service.test.ts',
+        'tests/unit/composables/cost-log-long-tail-paa-judge.test.ts',
         // Réponses simulées (NFR-COST-AI-MOCK) : consigne réelle, bon choix de
         // réponse, forme acceptée par le contrat ou le parseur consommateur.
         'tests/unit/services/mock-captain-ai-panel.test.ts',
@@ -51,6 +59,15 @@ export default mergeConfig(
         'tests/unit/services/article-content.service.test.ts',
         'tests/unit/routes/articles.routes.test.ts',
         'tests/unit/composables/useResonanceScore.save.test.ts',
+        // Lexique et lieutenants (recette du 2026-09-30, lot 6) : une seule analyse
+        // de l'IA affichée, celle du mot-clé affiché ; archivage et ajout enregistrés.
+        'tests/unit/composables/lexique/lexique-ai-analysis.test.ts',
+        'tests/unit/composables/lieutenant-explorations-persist.test.ts',
+        'tests/unit/routes/lieutenants-archive.routes.test.ts',
+        // Réponses simulées jamais resservies en réel, ni l'inverse
+        // (FR-EXT-DATAFORSEO-SANDBOX, recette du 2026-09-30, lot 6).
+        'tests/unit/services/sandbox-cache-isolation.test.ts',
+        'tests/unit/services/sandbox-measures-purge.test.ts',
       ],
       root: fileURLToPath(new URL('./', import.meta.url)),
     },

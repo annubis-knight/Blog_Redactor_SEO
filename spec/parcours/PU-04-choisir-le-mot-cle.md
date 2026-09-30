@@ -49,9 +49,9 @@ La liste d'attente est enregistrée sur l'article. Il y ajoute ses propres idée
 Chaque carte montre « VOL », « KD », « CPC », « PAA », les icônes d'intention et un anneau noté « Score KPI » : le Score Marché, qui répond à « ce mot-clé pèse-t-il en SEO ? », avec des seuils qui dépendent du niveau de l'article. Survoler l'anneau détaille ses six composantes et le « Total » ; le triangle ▶ déplie l'arbre des questions PAA. Il trie par « Score KPI » (↓, ↑, puis l'ordre d'arrivée), une carte sans note restant en bas, et filtre « Avec CPC » ou « Sans CPC » ; le thermomètre, au-dessus, donne la chaleur du sujet. La pertinence face à la douleur ne se juge pas ici, mais au Capitaine.
 
 ### 7. Chercher des longues traînes (facultatif)
-**Exigences :** FR-RAD-AI-SUGGESTIONS ⚠, FR-RAD-LONGTAIL-GENERATE ⚠, FR-RAD-LONGTAIL-UI ⚠, FR-RAD-LONGTAIL-REGENERATE ⚠
+**Exigences :** FR-RAD-AI-SUGGESTIONS, FR-RAD-LONGTAIL-GENERATE ⚠, FR-RAD-LONGTAIL-UI ⚠, FR-RAD-LONGTAIL-REGENERATE ⚠
 
-Le panneau « Suggestions IA Radar » reprend, sans appel d'IA, les cinq meilleures cartes notées 40 ou plus. Dès deux cartes, la section « Suggestions longue traîne » propose, par « ✨ Suggérer des combinaisons », dix combinaisons au plus des mots-clés scannés, chacune notée « N/10 » avec sa justification et ses mots-clés d'origine ; les cinq meilleures arrivent cochées. « ⟳ Régénérer » avec les mêmes cartes resservit la même liste, sans nouvel appel.
+Le panneau « Suggestions IA Radar » reprend, sans appel d'IA, les cinq meilleures cartes notées 40 ou plus ; « Marquer comme candidats Capitaine (N) » envoie les lignes cochées au Capitaine, comme « Envoyer au Capitaine ». Dès deux cartes, la section « Suggestions longue traîne » propose, par « ✨ Suggérer des combinaisons », dix combinaisons au plus des mots-clés scannés, chacune notée « N/10 » avec sa justification et ses mots-clés d'origine ; les cinq meilleures arrivent cochées. « ⟳ Régénérer » avec les mêmes cartes resservit la même liste, sans nouvel appel.
 
 ### 8. Envoyer les meilleurs candidats au Capitaine
 **Exigences :** FR-RAD-SEND-CAPTAIN ⚠, FR-MOT-CROSS-TAB-PAYLOAD, FR-CAP-LIST-SIDEPANEL ⚠
@@ -59,14 +59,14 @@ Le panneau « Suggestions IA Radar » reprend, sans appel d'IA, les cinq meilleu
 Il coche les cartes, et les longues traînes, qu'il veut comparer ; « Envoyer au Capitaine (N) » les compte une seule fois chacune. Le clic ouvre l'onglet Capitaine, qui étudie chaque mot-clé reçu (« Validation en cours... ») et l'ajoute aux candidats de l'article. Aujourd'hui, juste après cet envoi, un Capitaine déjà verrouillé perd sa marque et sa place en tête jusqu'à la réouverture de l'article.
 
 ### 9. Comparer les candidats
-**Exigences :** FR-CAP-SCORING-BIMODAL ⚠, FR-CAP-RELEVANCE-LIVE ⚠, FR-CAP-INPUT ⚠, FR-CAP-SCAN ⚠, FR-CAP-LIST-SIDEPANEL ⚠, FR-CAP-AI-PANEL ⚠
+**Exigences :** FR-CAP-SCORING-BIMODAL ⚠, FR-CAP-RELEVANCE-LIVE ⚠, FR-CAP-INPUT ⚠, FR-CAP-SCAN ⚠, FR-CAP-LIST-SIDEPANEL ⚠, FR-CAP-AI-PANEL
 
 Au Capitaine, chaque carte porte une autre note, le « Score Pertinence » : ce mot-clé sert-il la douleur de cet article ? Il trie par « Score Pertinence » et teste ses propres idées dans « Tester un mot-clé capitaine… » (Entrée ou « Analyser ») ; un mot-clé déjà présent est ré-étudié à sa place. Un clic sur la ligne d'indicateurs d'une carte ouvre le panneau « Capitaine » : le verdict (« GO », « ORANGE », « NO-GO » ou « GRAY »), les « KPIs marché » en lecture seule et l'« Avis expert IA » en trois parties. Le verdict aide à décider, il ne bloque pas le cadenas. Aujourd'hui, la note affichée juste après une étude peut changer à la réouverture de l'article.
 
 ### 10. Essayer des mots-clés plus courts
-**Exigences :** FR-CAP-ROOTS ⚠, FR-CAP-LOCK-INTEGRITY ⚠
+**Exigences :** FR-CAP-ROOTS, FR-CAP-LOCK-INTEGRITY ⚠
 
-Sur un mot-clé d'au moins trois mots, les mots au-delà des deux premiers mots significatifs sont cliquables : en retirer un étudie la combinaison restante, une « racine », et l'affiche sur la carte avec sa propre note. Quand le volume du mot-clé est faible pour le niveau de l'article, ses racines sont étudiées d'office. La section « Racines » du panneau les liste, chacune avec sa note, et en donne la « Moyenne n/100 », qui compte dans le Score Pertinence. La carte garde sa place dans le tri, et son cadenas vise toujours le mot-clé d'origine : pour faire d'une racine le Capitaine, il l'étudie comme un candidat à part.
+Sur un mot-clé d'au moins trois mots, les mots au-delà des deux premiers mots significatifs sont cliquables : en retirer un étudie la combinaison restante, une « racine », et l'affiche sur la carte avec sa propre note. Quand le volume du mot-clé est faible pour le niveau de l'article, ses racines sont étudiées d'office. La section « Racines » du panneau les liste, de la plus longue à la plus courte, chacune avec sa note, et en donne la « Moyenne n/100 », qui compte dans le Score Pertinence. La carte garde sa place dans le tri, et son cadenas vise toujours le mot-clé d'origine : pour faire d'une racine le Capitaine, il l'étudie comme un candidat à part.
 
 ### 11. Verrouiller le Capitaine
 **Exigences :** FR-CAP-LOCK-GATE, FR-CAP-LOCK-RADIO, FR-CAP-CHECK ⚠, FR-INFRA-GATE-WAIVER
@@ -81,9 +81,9 @@ Verrouiller un autre candidat remplace l'ancien dans le même geste, après sa p
 ## Ce qui peut mal tourner
 
 ### Il rouvre l'article le lendemain
-**Exigences :** FR-DIS-CACHE ⚠, FR-RAD-PERSIST ⚠, FR-CAP-PERSIST ⚠, FR-CAP-ROOTS ⚠, FR-CAP-AI-PANEL ⚠
+**Exigences :** FR-DIS-CACHE ⚠, FR-RAD-PERSIST ⚠, FR-CAP-PERSIST ⚠, FR-CAP-ROOTS, FR-CAP-AI-PANEL
 
-Rien de ce qui a été payé ne doit l'être à nouveau. À Discovery, l'écran repart vide ; retaper la racine fait apparaître le bandeau « Dernière analyse du JJ/MM/AAAA · N mots-clés · analyse IA incluse », et « Charger » rend les sections, les jugements du filtre et l'analyse IA sans appel (« Rafraîchir » oublie la sauvegarde). Au Radar, la liste d'attente et les cartes du dernier scan reviennent d'elles-mêmes, avec les mêmes notes, sans scan (« Charger Radar » n'y ajoute rien) ; au Capitaine, les candidats reviennent, le Capitaine verrouillé en tête. Aujourd'hui : la courte-traîne n'est pas sauvegardée et une sauvegarde n'expire jamais ; les longues traînes ne reviennent pas ; les racines reviennent sans note ; l'avis de l'IA est redemandé, et repayé, pour chaque candidat.
+Rien de ce qui a été payé ne doit l'être à nouveau. À Discovery, l'écran repart vide ; retaper la racine fait apparaître le bandeau « Dernière analyse du JJ/MM/AAAA · N mots-clés · analyse IA incluse », et « Charger » rend les sections, les jugements du filtre et l'analyse IA sans appel (« Rafraîchir » oublie la sauvegarde). Au Radar, la liste d'attente et les cartes du dernier scan reviennent d'elles-mêmes, avec les mêmes notes, sans scan (« Charger Radar » n'y ajoute rien) ; au Capitaine, les candidats reviennent, le Capitaine verrouillé en tête, avec leur avis de l'IA sans nouvel appel ; les racines reviennent avec leurs mesures connues, relues sans appel (une racine jamais mesurée reste « — » jusqu'à ce qu'il la clique). Aujourd'hui : la courte-traîne n'est pas sauvegardée et une sauvegarde n'expire jamais ; les longues traînes ne reviennent pas.
 
 ### Il refait une mesure déjà payée
 **Exigences :** FR-CAP-SCAN ⚠, FR-INFRA-KEYWORD-METRICS ⚠, NFR-COST-CACHE-FIRST ⚠, FR-MOT-CACHE-CASCADE ⚠
@@ -114,7 +114,6 @@ Choisir un autre article doit repartir de ses propres données : le Radar, les c
 - FR-RAD-SCORING-BIMODAL — une intention inconnue compte comme une composante rouge du Score Marché au lieu d'être écartée.
 - FR-RAD-SCORE-RING-TOOLTIP — dans l'info-bulle, une composante sans donnée s'affiche « 50/100 » avec son poids, alors qu'elle n'entre pas dans le total.
 - FR-RAD-THERMOMETER — la chaleur est la moyenne d'un ancien score qui compte 0 là où les cartes affichent « — » ; elle ne reflète pas les notes affichées.
-- FR-RAD-AI-SUGGESTIONS — le bouton « Marquer comme candidats Capitaine » n'a aucun effet ; la pastille « P » est toujours vide au Radar.
 - FR-RAD-LONGTAIL-GENERATE — une réponse vide est enregistrée et resservie pendant 7 jours, sans bouton pour réessayer.
 - FR-RAD-LONGTAIL-UI — au rechargement, suggestions et cases cochées ne reviennent pas à l'écran.
 - FR-RAD-LONGTAIL-REGENERATE — les suggestions enregistrées ne sont pas réaffichées ; un nouveau scan les efface de la base.
@@ -124,8 +123,6 @@ Choisir un autre article doit repartir de ses propres données : le Radar, les c
 - FR-CAP-RELEVANCE-LIVE — juste après une étude, la note affichée vient d'un autre calcul que celle de la réouverture : sans racines, avec les anciens signaux du Radar.
 - FR-CAP-INPUT — ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête.
 - FR-CAP-SCAN — dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention ; un mot-clé dont le volume, la difficulté ou le CPC est absent est remesuré, et repayé, à chaque étude ; un échec d'étude s'affiche en anglais technique, sans cause (« Erreur : Keyword validation failed »).
-- FR-CAP-AI-PANEL — la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur.
-- FR-CAP-ROOTS — à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte.
 - FR-CAP-LOCK-INTEGRITY — deux casses d'un même mot-clé comptent pour deux candidats.
 - FR-CAP-CHECK — déverrouiller le Capitaine retire l'étape même quand l'enregistrement du déverrouillage a échoué.
 - FR-DIS-CACHE — une sauvegarde n'expire jamais, et la section Courte-traîne n'est ni sauvegardée ni restaurée ; pendant le chargement d'une sauvegarde, « Charger » n'affiche pas « Chargement... » et reste cliquable.

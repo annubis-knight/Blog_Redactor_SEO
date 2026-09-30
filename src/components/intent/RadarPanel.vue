@@ -50,15 +50,19 @@ const emit = defineEmits<{
   (e: 'scanned', payload: { globalScore: number | null; heatLevel: string | null }): void
   (e: 'keywords-cleared'): void
   (e: 'cards-selected', cards: RadarCard[]): void
-  (e: 'captain-candidates-marked', keywords: string[]): void
 }>()
 
-// Handoff RadarAiPanel : remonte les keywords sélectionnés au parent
-// (MoteurView) qui pourra écrire dans article_keywords.captainCandidates[].
-// Aucun appel IA ici.
+// « Marquer comme candidats Capitaine » (RadarAiPanel) transmet la sélection au
+// Capitaine par le même chemin que « Envoyer au Capitaine » : les cartes du
+// scan, avec leurs indicateurs (FR-RAD-AI-SUGGESTIONS). Avant, le relais
+// `captain-candidates-marked` n'avait aucun écouteur : rien n'arrivait
+// (recette du 2026-09-30, RAD-11). Aucun appel IA ici.
 function handleMarkCaptainCandidates(keywords: string[]) {
-  log.info(`[DouleurIntent] Marked ${keywords.length} keyword(s) as Capitaine candidate(s)`)
-  emit('captain-candidates-marked', keywords)
+  const wanted = new Set(keywords.map(normalizeKeyword))
+  const cards = (scanResult.value?.cards ?? []).filter(c => wanted.has(normalizeKeyword(c.keyword)))
+  if (cards.length === 0) return
+  log.info(`[DouleurIntent] ${cards.length} suggestion(s) IA Radar envoyée(s) au Capitaine`)
+  emit('cards-selected', cards)
 }
 
 const {

@@ -7,7 +7,7 @@ import { hnOutlineContract, proposeLieutenantsAiContract, type HnOutlineResult }
 import { lexiqueAnalysisContract } from '../../shared/contracts/lexique.contract.js'
 import { aiAdviceContract } from '../../shared/contracts/ai-advice.contract.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
-import { getCocoonExistingLieutenants, saveLieutenantExplorations } from '../services/infra/data.service.js'
+import { getArticleById, getCocoonExistingLieutenants, saveLieutenantExplorations } from '../services/infra/data.service.js'
 import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../services/queries/article-pain-point.service.js'
 import { cocoonContextForArticle } from '../services/strategy/cocoon-context.service.js'
 import type { RichLieutenant } from '../../shared/types/keyword.types.js'
@@ -43,6 +43,23 @@ function formatScoreForPrompt(score: unknown): string {
   return '(non disponible)'
 }
 
+/**
+ * Le cocon dont la stratégie éclaire l'avis : celui que l'appelant nomme, sinon
+ * celui de l'article. L'écran du Capitaine n'envoie que l'article ; sans cette
+ * lecture, `{{strategy_context}}` restait vide (FR-CAP-AI-PANEL, recette du
+ * 2026-09-30). Un article illisible donne un avis sans stratégie, jamais d'échec.
+ */
+async function cocoonOfArticle(articleId: unknown, cocoonSlug: unknown): Promise<string | undefined> {
+  if (typeof cocoonSlug === 'string' && cocoonSlug.trim()) return cocoonSlug
+  if (typeof articleId !== 'number' || !Number.isFinite(articleId)) return undefined
+  try {
+    return (await getArticleById(articleId))?.cocoonName || undefined
+  } catch (err) {
+    log.warn(`ai-panel — article ${articleId} illisible : avis sans stratégie du cocon`, { error: (err as Error).message })
+    return undefined
+  }
+}
+
 const router = Router()
 
 /**
@@ -62,14 +79,15 @@ router.post('/keywords/:keyword/ai-panel', async (req, res) => {
   log.info(`AI panel request for "${keyword}" (${level})`)
 
   const painPoint = await getArticlePainPoint(articleId)
+  const cocoon = await cocoonOfArticle(articleId, cocoonSlug)
   const systemPrompt = await loadPrompt('capitaine-ai-panel', {
     keyword,
     level,
     painPoint,
     marketScore: formatScoreForPrompt(marketScore),
     relevanceScore: formatScoreForPrompt(relevanceScore),
-  }, cocoonSlug ? { cocoonSlug } : undefined)
-  log.debug('ai-panel prompt built', { keyword, promptChars: systemPrompt.length, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
+  }, cocoon ? { cocoonSlug: cocoon } : undefined)
+  log.debug('ai-panel prompt built', { keyword, promptChars: systemPrompt.length, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK, cocoon: cocoon ?? null })
 
   await runAiPanelStream({
     req,

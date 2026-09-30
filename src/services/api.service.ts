@@ -295,6 +295,8 @@ async function consumeSseBody<T>(
               usage = parsed.usage as ApiUsage
               callbacks?.onUsage?.(parsed.usage as ApiUsage)
             }
+            // Écritures faites pendant le flux (FR-INFRA-COST-LOG-STORE).
+            pushDbOpsIfPresent(path, parsed)
             // Temps « mise en format » : le résultat final passe le contrat de l'écran.
             // Inutilisable → même chemin qu'une erreur du serveur, onDone n'est pas appelé.
             const done = conformStreamResult(path, parsed.outline ?? parsed.metadata ?? parsed, options)

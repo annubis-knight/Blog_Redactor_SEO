@@ -478,28 +478,28 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 **⚠ Défaut connu :** la note du thermomètre est la moyenne d'un ancien score, qui compte 0 là où les cartes affichent « — » ; elle ne reflète pas les notes des anneaux : ta moyenne du geste 3 et la note du thermomètre diffèrent. Si elles concordent, scan après scan, le défaut a peut-être disparu : note-le.
 
 ### RAD-11 — « Suggestions IA Radar » reprend les notes des cartes
-**Exigences :** FR-RAD-AI-SUGGESTIONS ⚠, FR-RAD-MARKET-LEVEL-AWARE, FR-RAD-NO-RELEVANCE-IN-SCAN
+**Exigences :** FR-RAD-AI-SUGGESTIONS, FR-RAD-MARKET-LEVEL-AWARE, FR-RAD-NO-RELEVANCE-IN-SCAN
 
 **Gestes :**
 1. Descends au panneau « Suggestions IA Radar ».
 2. Pour chaque ligne, compare « M n » à la note de l'anneau de la carte du même mot-clé.
 3. Coche deux lignes, puis clique **« Marquer comme candidats Capitaine (2) »**.
-4. Ouvre l'onglet Capitaine, puis reviens au Radar.
+4. Regarde l'onglet Capitaine qui s'ouvre, puis reviens au Radar.
 
 **Tu dois voir :**
 - le sous-titre « Top candidats Capitaine — tri local par mix marché + pertinence (verdicts NOGO exclus). » ; le classement s'affiche sans attente ni appel d'IA ;
-- au plus 5 lignes, chacune avec le mot-clé, « M n » et « P — » ; au survol de « P — » : « Score Pertinence indisponible au Radar : il se calcule au Capitaine, quand le mot-clé y est étudié » ;
+- au plus 5 lignes, chacune avec le mot-clé, « M n » et « P — » (toujours « — » : le Radar ne mesure pas la pertinence, c'est voulu) ; au survol de « P — » : « Score Pertinence indisponible au Radar : il se calcule au Capitaine, quand le mot-clé y est étudié » ;
 - « M n » égal à la note de l'anneau de la même carte : le serveur et l'écran notent avec le niveau de l'article ;
 - les lignes rangées par « M » décroissant ; aucune carte de note inférieure à 40 ; ce sont les 5 meilleures cartes à 40 ou plus ;
 - si toutes les cartes sont sous 40 : « Aucun candidat à proposer pour l'instant. Élargis ta sélection ou relance un scan — les cartes verdict NOGO/NOGO sont filtrées. » ;
-- le bouton passe à « (2) » et devient actif ; au clic, les deux cases se décochent.
+- le bouton passe à « (2) » et devient actif ; au clic, les deux cases se décochent et l'onglet Capitaine s'ouvre avec les deux mots-clés, en cours d'étude, comme après « Envoyer au Capitaine » ;
+- de retour au Radar : les cartes et le panneau n'ont pas bougé.
 
 **C'est un bug si :**
 - « M » diffère de l'anneau pour un même mot-clé ;
 - une carte sous 40 est proposée, ou une carte à 40 ou plus manque alors qu'il y a moins de 5 lignes ;
-- « P » affiche un nombre.
-
-**⚠ Défaut connu :** « Marquer comme candidats Capitaine » n'a aucun effet, à part décocher : rien n'arrive au Capitaine. Si tu y vois arriver les deux mots-clés, le défaut a peut-être disparu : note-le.
+- « P » affiche un nombre ;
+- le clic ne fait que décocher : rien n'arrive au Capitaine.
 
 ### RAD-12 — Les longues traînes en MOCK : la section et ses suggestions
 **Exigences :** FR-RAD-LONGTAIL-GENERATE ⚠
@@ -585,7 +585,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 ## En mode RÉEL (payant)
 
 Passe le bouton en **RÉEL**. Trois précautions avant de commencer :
-- **Le MOCK a laissé des traces relues en RÉEL** : la découverte sauvegardée (bandeau « Dernière analyse… »), les suggestions DataForSEO de la racine (gardées 24 h), les questions PAA des mots-clés scannés (gardées 1 jour) et les longues traînes simulées (gardées 7 jours pour les mêmes mots-clés). Prends donc une **autre racine** et des **mots-clés jamais scannés aujourd'hui**.
+- **Rien de ce que le MOCK a gardé n'est relu en RÉEL** : la découverte sauvegardée, les suggestions DataForSEO, les longues traînes et les réponses gardées ne servent qu'au mode qui les a obtenues, et les mesures de mots-clés faites en MOCK (volumes, questions PAA) sont effacées au passage en RÉEL. Chaque mot-clé déjà vu en MOCK est donc remesuré, et payé : garde peu de mots-clés.
 - **Chaque case cochée à l'unité dans Discovery lance, 5 s plus tard, une étude Capitaine payante.** Clique « Annuler » dans la notification si tu n'en veux pas, ou coche par « Tout ».
 - **Aucun geste de ce module n'annonce son coût avant de partir.** Suis la dépense dans la pastille des coûts, en bas à gauche : dépliée, elle montre « Coûts API », la ligne « DataForSEO » marquée « PROD » (dépense / plafond sur 30 min) et une ligne par appel d'IA. Garde 3 ou 4 mots-clés au Radar : chacun coûte une page de résultats Google, plus une par question PAA.
 

@@ -7,6 +7,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
+// Le passage en réel efface les mesures simulées (FR-EXT-DATAFORSEO-SANDBOX) :
+// la base est simulée ici, la purge est gardée par sandbox-measures-purge.test.ts.
+vi.mock('../../../server/db/client', () => ({
+  query: vi.fn(async () => ({ rows: [], rowCount: 0 })),
+  pool: {},
+}))
+vi.mock('../../../server/utils/logger', () => ({
+  log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
+
 const { default: router } = await import('../../../server/routes/runtime-mode.routes')
 const { setRuntimeMode } = await import('../../../server/services/infra/runtime-mode.service')
 
@@ -58,6 +68,7 @@ describe('GET /runtime-mode', () => {
         effective: 'real',
         envAiProvider: 'claude',
         envDataforseoSandbox: false,
+        aiProvider: 'claude',
       },
     })
   })
@@ -74,6 +85,43 @@ describe('GET /runtime-mode', () => {
   })
 })
 
+// FR-CAP-AI-PANEL — le fournisseur d'IA effectif part avec le mode : la
+// confirmation d'une régénération le nomme (« un appel Gemini ») ou dit
+// qu'aucun appel payant ne part en mode simulé.
+describe('FR-CAP-AI-PANEL — GET /runtime-mode nomme le fournisseur d’IA effectif', () => {
+  const handler = findHandler('get', '/runtime-mode')
+
+  async function aiProviderOf(): Promise<unknown> {
+    const res = createMockRes()
+    await handler!({} as Request, res)
+    return (res.json.mock.calls[0]![0] as { data: { aiProvider: unknown } }).data.aiProvider
+  }
+
+  it('AI_PROVIDER=gemini sans override → gemini', async () => {
+    vi.stubEnv('AI_PROVIDER', 'gemini')
+    vi.stubEnv('DATAFORSEO_SANDBOX', 'false')
+    expect(await aiProviderOf()).toBe('gemini')
+  })
+
+  it('bouton sur MOCK → mock, même avec AI_PROVIDER=claude', async () => {
+    vi.stubEnv('AI_PROVIDER', 'claude')
+    setRuntimeMode('mock')
+    expect(await aiProviderOf()).toBe('mock')
+  })
+
+  it('bouton sur RÉEL → claude, le fournisseur réel par défaut', async () => {
+    vi.stubEnv('AI_PROVIDER', 'gemini')
+    setRuntimeMode('real')
+    expect(await aiProviderOf()).toBe('claude')
+  })
+
+  it('bac à sable seul (DATAFORSEO_SANDBOX=true) → mock : rien de facturé', async () => {
+    vi.stubEnv('AI_PROVIDER', 'claude')
+    vi.stubEnv('DATAFORSEO_SANDBOX', 'true')
+    expect(await aiProviderOf()).toBe('mock')
+  })
+})
+
 describe('POST /runtime-mode', () => {
   const handler = findHandler('post', '/runtime-mode')
 
@@ -84,7 +132,7 @@ describe('POST /runtime-mode', () => {
 
     expect(res.status).not.toHaveBeenCalledWith(400)
     expect(res.json).toHaveBeenCalledWith({
-      data: { override: 'mock', effective: 'mock' },
+      data: { override: 'mock', effective: 'mock', aiProvider: 'mock' },
     })
   })
 
@@ -93,7 +141,7 @@ describe('POST /runtime-mode', () => {
     const res = createMockRes()
     await handler!(req, res)
     expect(res.json).toHaveBeenCalledWith({
-      data: { override: 'real', effective: 'real' },
+      data: { override: 'real', effective: 'real', aiProvider: 'claude' },
     })
   })
 
@@ -107,7 +155,7 @@ describe('POST /runtime-mode', () => {
     await handler!(req, res)
 
     expect(res.json).toHaveBeenCalledWith({
-      data: { override: null, effective: 'real' },
+      data: { override: null, effective: 'real', aiProvider: 'claude' },
     })
   })
 

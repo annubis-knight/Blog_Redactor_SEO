@@ -33,7 +33,7 @@
  *   - CLAUDE.md §3.2 (header AUTHORITY:)
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
@@ -291,6 +291,23 @@ describe('FR-INFRA-LIEUTENANT-EXPLORATIONS — lieutenant_explorations', () => {
     expect(upd, 'UPDATE archive attendu').toBeDefined()
     expect(upd!.sql).toMatch(/'archived'/i)
   })
+
+  // « Tout réinitialiser » archive les lieutenants verrouillés, pas les propositions
+  // restées à l'écran (recette du 2026-09-30, INFRA-18).
+  it('archiveLieutenantExplorations(id, mots-clés) n’archive que ces mots-clés', async () => {
+    const { archiveLieutenantExplorations } = await import('../../../server/services/infra/data.service.js')
+    await archiveLieutenantExplorations(42, ['prix erreurs à éviter', 'erreurs à éviter avis'])
+    const upd = capturedQueries.find(q => /UPDATE lieutenant_explorations/i.test(q.sql))
+    expect(upd, 'UPDATE archive attendu').toBeDefined()
+    expect(upd!.sql).toMatch(/keyword = ANY\(\$2/i)
+    expect(upd!.params).toEqual([42, ['prix erreurs à éviter', 'erreurs à éviter avis']])
+  })
+
+  it('archiveLieutenantExplorations(id, []) n’écrit rien', async () => {
+    const { archiveLieutenantExplorations } = await import('../../../server/services/infra/data.service.js')
+    await expect(archiveLieutenantExplorations(42, [])).resolves.toBe(0)
+    expect(capturedQueries.filter(q => /UPDATE lieutenant_explorations/i.test(q.sql))).toHaveLength(0)
+  })
 })
 
 // ============================================================================
@@ -298,6 +315,17 @@ describe('FR-INFRA-LIEUTENANT-EXPLORATIONS — lieutenant_explorations', () => {
 // ============================================================================
 
 describe('FR-INFRA-KEYWORD-DISCOVERIES — keyword_discoveries', () => {
+  // La racine est rangée par mode (FR-EXT-DATAFORSEO-SANDBOX) : le poste ou la
+  // CI peuvent être réglés en simulé, le mode réel est donc posé ici.
+  beforeEach(async () => {
+    const { setRuntimeMode } = await import('../../../server/services/infra/runtime-mode.service.js')
+    setRuntimeMode('real')
+  })
+  afterEach(async () => {
+    const { setRuntimeMode } = await import('../../../server/services/infra/runtime-mode.service.js')
+    setRuntimeMode(null)
+  })
+
   it('getKeywordDiscovery() lit avec PK (seed, lang)', async () => {
     const { getKeywordDiscovery } = await import('../../../server/services/keyword/keyword-discovery-db.service.js')
     await getKeywordDiscovery('seed-kw', 'fr')

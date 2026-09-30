@@ -838,13 +838,13 @@ Au-dessus des cartes, l'outil doit résumer la chaleur du sujet par une note sur
 - La note globale agrège les notes que les cartes affichent.
 
 ### FR-RAD-AI-SUGGESTIONS — Panneau « Suggestions IA Radar »
-**Statut :** non tenue (le bouton « Marquer comme candidats Capitaine » n'a aucun effet ; la pastille « P » est toujours vide au Radar)
+**Statut :** active
 Sous les cartes, l'outil doit proposer les 5 meilleurs candidats Capitaine, et permettre de les marquer.
 - Le panneau classe localement les cartes par la moyenne de leurs scores disponibles, sans appel d'IA.
 - Une carte dont les scores disponibles sont tous au verdict NOGO est écartée.
 - Les scores absents s'affichent « — ».
-- L'infobulle d'une pastille « P » vide en donne la vraie raison : la pertinence se calcule au Capitaine ; elle n'accuse pas une douleur absente.
-- « Marquer comme candidats Capitaine (N) » transmet la sélection au Capitaine.
+- La pastille « P » vaut toujours « — » au Radar, qui ne mesure pas la pertinence (cf. FR-RAD-NO-RELEVANCE-IN-SCAN) : ce n'est pas un défaut. Son infobulle en donne la vraie raison : la pertinence se calcule au Capitaine ; elle n'accuse pas une douleur absente.
+- « Marquer comme candidats Capitaine (N) » transmet les cartes cochées au Capitaine, comme « Envoyer au Capitaine » : l'onglet Capitaine s'ouvre et étudie chaque mot-clé reçu ; les cases se décochent.
 
 ---
 
@@ -892,23 +892,24 @@ Au Capitaine, chaque carte doit afficher son Score Pertinence ; le Score Marché
 - L'intention de la SERP (la page de résultats Google) entre dans le Score Marché dès l'étude, mesurée ou relue en base.
 
 ### FR-CAP-AI-PANEL — Avis de l'IA sur un candidat
-**Statut :** non tenue (la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur)
+**Statut :** active
 Pour chaque candidat étudié, l'outil doit afficher un avis d'expert rédigé par l'IA.
 - L'avis compte trois parties : potentiel éditorial, opportunités et risques, recommandation.
 - Le texte s'affiche au fil de la génération.
-- L'avis tient compte du mot-clé, du niveau, du point de douleur, des deux scores et de la stratégie du cocon.
-- Le bouton de régénération demande confirmation (« Cela consommera un appel Claude »).
+- L'avis tient compte du mot-clé, du niveau, du point de douleur, des deux scores et de la stratégie du cocon de l'article (cible, douleur, angle, promesse, CTA), retrouvée d'après l'article.
+- Le bouton de régénération demande confirmation, et le message dit ce qui va se passer : le fournisseur d'IA du moment en réel (« Cela consommera un appel Claude. », « … un appel Gemini. »), « Mode simulé : la réponse sera simulée, sans appel payant. » quand le badge est sur MOCK.
 - L'avis est demandé d'office à la fin d'une étude que l'utilisateur a lancée (saisie, envoi depuis le Radar, recalcul), une seule fois ; jamais au choix d'un article ni à la réouverture. Un avis en échec n'est pas redemandé seul : « Régénérer » relance.
 - L'avis obtenu est enregistré avec le candidat, et réaffiché à la réouverture de l'article, sans nouvel appel.
 
 ### FR-CAP-ROOTS — Racines d'un mot-clé long
-**Statut :** non tenue (à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte)
+**Statut :** active
 L'outil doit décomposer un mot-clé d'au moins 3 mots en racines, par troncature depuis la fin, et permettre de les comparer.
-- Jusqu'à 5 racines, de la plus longue à la plus courte ; une racine garde au moins 2 mots significatifs (hors mots-outils).
+- Jusqu'à 5 racines, de la plus longue à la plus courte, juste après l'étude comme à la réouverture, quel que soit l'ordre où leurs études aboutissent ; une racine garde au moins 2 mots significatifs (hors mots-outils).
 - Quand le volume du mot-clé n'est pas au vert, ses racines sont étudiées d'office.
 - Le panneau de détail liste les racines, avec leur Score Pertinence et leur moyenne ; un clic sur une racine l'affiche à la place du mot-clé.
 - Cliquer sur les mots d'une carte (au-delà des 2 premiers mots significatifs) étudie la combinaison choisie.
-- Une racine relue sans ses mesures est étudiée quand on la choisit (mot de la carte ou colonne de détail) ; une étude qui échoue l'annonce (« Impossible de valider "…" ») et la carte garde son mot-clé.
+- À la réouverture, une racine revient avec les mesures de sa propre étude ; sans étude enregistrée pour l'article, avec celles que l'outil connaît déjà (mesures partagées entre articles), relues sans aucun appel payant, et son Score Pertinence.
+- Une racine que l'outil n'a jamais mesurée reste « — » ; son infobulle le dit (« Racine pas encore étudiée : aucune mesure en base. Un clic l’étudie. »). Elle est étudiée quand on la choisit (mot de la carte ou colonne de détail), jamais d'office ; une étude qui échoue l'annonce (« Impossible de valider "…" ») et la carte garde son mot-clé.
 
 ### FR-CAP-LOCK-RADIO — Un seul Capitaine par article
 **Statut :** active
@@ -1243,10 +1244,11 @@ L'utilisateur doit retenir les termes qu'il veut dans son article en cochant une
 - Recharger la page retrouve exactement les choix.
 
 ### FR-LEX-AI-PANEL — Analyse du lexique par l'IA
-**Statut :** non tenue (le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles ; le résumé et les termes manquants enregistrés ne s'affichent plus après un rechargement, et un changement d'onglet montre ceux de la dernière analyse, faite sur un autre mot-clé)
+**Statut :** active
 L'IA doit analyser les termes extraits au regard de la douleur de l'article et de la stratégie du cocon, et dire lesquels recommander, lesquels écarter et quels termes manquent. Elle ne part que sur un clic.
 - Chaque terme analysé porte un badge « IA recommandé » ou « IA optionnel », avec la raison en info-bulle ; un terme sans décision lisible n'a pas de badge.
 - Un résumé et au plus 5 « Termes manquants » s'affichent au-dessus des listes ; le panneau « Analyse IA Lexique » compte les termes analysés, recommandés et écartés.
+- Badges, résumé, termes manquants et compteurs du panneau montrent la même analyse : celle du mot-clé affiché, identique juste après l'analyse, après un rechargement et au retour sur son onglet ; un mot-clé jamais analysé n'en montre aucune.
 - L'utilisateur peut relancer l'analyse (« Analyser avec l'IA », « Régénérer l'analyse », « Relancer l'analyse IA » après une erreur).
 - Ni une extraction, ni l'ouverture de l'onglet, ni un changement d'onglet d'exploration ne lancent l'analyse ; un clic en lance une seule.
 - L'analyse ne coche aucun terme.
@@ -1660,9 +1662,13 @@ L'outil doit refuser, avant de l'émettre, tout appel DataForSEO payant qui fera
 - La fenêtre écoulée, les appels repassent sans intervention.
 
 ### FR-EXT-DATAFORSEO-SANDBOX — Bac à sable DataForSEO
-**Statut :** non tenue (les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis)
+**Statut :** active
 L'outil doit pouvoir interroger le bac à sable gratuit de DataForSEO (données factices de même forme) au lieu de la production payante.
 - Le bac à sable n'est jamais deviné d'après le type d'environnement (développement ou production) : il s'active explicitement, par la configuration (bac à sable demandé, ou IA réglée en simulation) ou par le mode « MOCK ». Il suit toujours le mode affiché par le bouton.
+- Une réponse obtenue en simulé (bac à sable DataForSEO ou IA simulée) n'est jamais resservie en réel, ni l'inverse : longues traînes, découvertes enregistrées et réponses gardées de 1 à 7 jours ne servent qu'au mode qui les a obtenues. Les suggestions Google et Search Console, identiques dans les deux modes, restent partagées.
+- Les mesures de mots-clés partagées entre articles (volume, CPC, difficulté, intention, questions PAA, pages concurrentes lues pour le Lexique) obtenues en simulé sont effacées au passage en réel, par le bouton ou au démarrage du serveur en réel ; en simulé, rien n'est effacé. Un candidat du Capitaine ainsi effacé s'affiche sans mesure jusqu'à une nouvelle étude. Si l'effacement échoue, la bascule en réel est refusée et le bouton revient à « MOCK ».
+- Limite assumée : ce que chaque article a gardé de son propre travail en simulé (cartes du Radar, questions PAA jugées et avis IA du Capitaine, indicateurs des lieutenants, lexique extrait) garde ses chiffres simulés après le passage en réel ; seule une nouvelle étude les remplace.
+- Limite : une mesure simulée encore en cours au moment de la bascule en réel s'enregistre comme réelle (sauf le relevé des pages concurrentes, marqué dès son départ) ; ne bascule pas pendant une étude.
 - La pile d'activité indique « SANDBOX » ou « PROD » à côté de la dépense DataForSEO.
 - Les mesures demandées en groupe sont rattachées, dans l'ordre, aux mots-clés demandés, pour que chacun reçoive une mesure.
 - Le bac à sable exige lui aussi de vrais identifiants DataForSEO.
@@ -2005,10 +2011,10 @@ Au démarrage, le serveur doit tester la connexion à la base et dire clairement
 - Service arrêté, mot de passe refusé ou base absente : le journal donne une piste de correction adaptée.
 
 ### FR-INFRA-COST-LOG-STORE — Pile d'activité de la session
-**Statut :** non tenue (seules les lectures et écritures des mots-clés d'article et des explorations Capitaine / Lieutenants remontent dans la pile ; les autres opérations en base n'y apparaissent pas. Et le coût de la génération des longues traînes et du jugement des questions PAA ne remonte pas à l'écran)
+**Statut :** active
 Une pile d'activité, visible dans l'interface, doit accumuler les appels IA (modèle, jetons, coût estimé), les opérations en base (type, table, lignes, durée) et les messages d'erreur connus ; l'utilisateur voit le coût total de sa session et peut vider la pile.
-- Chaque appel IA, diffusé ou non, ajoute sa ligne de coût, une seule : un appel n'est jamais compté deux fois.
-- Chaque écriture significative en base ajoute sa ligne.
+- Chaque action qui fait appel à l'IA, diffusée ou non, ajoute sa ligne de coût, une seule, dont le libellé dit l'action : quand l'action fait plusieurs appels (un par candidat, une reprise), leurs coûts y sont additionnés ; un appel n'est jamais compté deux fois. Une réponse servie par la mémoire, sans appel, n'ajoute pas de ligne de coût.
+- Chaque écriture significative en base ajoute sa ligne. Significative : toute écriture (ajout, mise à jour, remplacement, suppression) faite pour traiter une action de l'écran, qu'elle réponde d'un bloc ou au fil de l'eau. Une ligne par table et par type d'écriture, avec les lignes touchées et la durée additionnées. Les lectures n'en ajoutent pas (sauf le chargement des mots-clés et des explorations d'un article), ni les nettoyages de fond du serveur.
 - Le coût cumulé est affiché ; la pile se vide d'un clic et se vide au rechargement de la page.
 
 ### FR-INFRA-PAA-EXPLORATIONS — Les questions PAA testées sont gardées par article
@@ -2031,11 +2037,12 @@ L'outil doit disposer d'un référentiel de lieux (régions et autres noms de la
 - Un lieu rattaché à une région n'est proposé que si la zone du client nomme cette région ; les lieux sans région forment le référentiel par défaut, proposé seulement si la zone nomme l'une de ses régions.
 
 ### FR-INFRA-LIEUTENANT-EXPLORATIONS — Les propositions de lieutenants sont gardées par article
-**Statut :** non tenue (« Tout réinitialiser » n'archive les lieutenants qu'à l'écran : l'archivage enregistré n'est jamais demandé. Après un rechargement, ils reviennent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide, et la porte refuse l'étape. Et un lieutenant ajouté depuis le panneau d'aide n'est enregistré qu'une fois coché)
+**Statut :** active
 Toutes les propositions de lieutenants d'un article (de l'IA ou ajoutées à la main) doivent être gardées avec leur contexte, leur niveau de titre suggéré, leur score, leurs indicateurs du moment et leur statut.
-- Une proposition est enregistrée dès qu'elle est générée ou ajoutée.
+- Une proposition est enregistrée dès qu'elle est générée ou ajoutée ; ajoutée depuis le panneau d'aide, elle l'est non cochée.
 - À la réouverture, la liste est triée par score décroissant, les scores absents en bas.
 - Le statut (proposé, verrouillé, écarté, archivé) survit au rechargement.
+- « Tout réinitialiser » archive les lieutenants verrouillés à l'écran et dans l'enregistrement : après un rechargement, aucun ne revient coché, ni dans l'onglet ni dans la Finalisation ; les autres propositions gardent leur statut.
 
 ### FR-INFRA-KEYWORD-DISCOVERIES — Mémoire des découvertes de mots-clés
 **Statut :** active
@@ -2475,7 +2482,7 @@ Une pile d'activité toujours accessible doit montrer ce que l'outil fait en arr
 - Elle ne contient pas le contenu des requêtes.
 
 ### NFR-OBS-DBOPS-TRACK — Opérations en base visibles par requête
-**Statut :** non tenue (seules quelques routes des explorations Capitaine et Lieutenants rapportent leurs opérations ; aucun seuil d'alerte)
+**Statut :** non tenue (les réponses ne rapportent que leurs écritures en base, pas leurs lectures, sauf celles des mots-clés et des explorations d'un article ; aucun seuil d'alerte)
 Chaque réponse du serveur doit rapporter les opérations faites en base pour la traiter, afin de repérer une route qui en ferait trop.
 - Toute réponse rapporte ses opérations en base (type, table, lignes, durée).
 - La pile d'activité les affiche.

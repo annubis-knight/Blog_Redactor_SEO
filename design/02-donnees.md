@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -56,7 +56,7 @@ erDiagram
 
 | Table | Clé | Rôle | Écrit par |
 |---|---|---|---|
-| `keyword_metrics` | `(keyword, lang, country)` | Mesures d'un mot-clé : volume, difficulté, CPC, intention, suggestions, PAA (JSONB), analyses locale et content gap | `keyword/keyword-metrics.service.ts`, `external/scrape-corpus.service.ts` |
+| `keyword_metrics` | `(keyword, lang, country)` | Mesures d'un mot-clé : volume, difficulté, CPC, intention, suggestions, PAA (JSONB), analyses locale et content gap ; `from_sandbox` (mesure simulée, effacée au passage en réel) | `keyword/keyword-metrics.service.ts`, `external/scrape-corpus.service.ts` |
 | `keyword_serp_results` | `(keyword, lang, country, position)` → `keyword_metrics` | Top 10 d'un mot-clé | `external/scrape-corpus.service.ts` (via `keyword-serp.service.ts`) |
 | `keyword_serp_scrapes` | idem → `keyword_serp_results` | Titres et texte des pages du top 10 | idem |
 | `keyword_paa_questions` | `id` ; unique `(keyword, lang, country, question, depth)` | Questions PAA d'une SERP analysée | idem |
@@ -165,7 +165,7 @@ Pour chaque table de `schema.sql` : l'exigence qui en fait l'autorité, qui l'é
 | `keyword_autocomplete` | NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION | aucun (`upsertAutocomplete` sans appelant) | aucun (`getAutocomplete` sans appelant) | table morte ; l'autocomplétion vit dans `keyword_metrics.autocomplete_suggestions` |
 | `keyword_discoveries` | FR-INFRA-KEYWORD-DISCOVERIES | FR-DIS-CACHE | FR-DIS-CACHE | pas d'expiration appliquée |
 | `keyword_intent_analyses` | aucune | aucun | aucun | table morte conservée ; l'intention SERP vit dans `keyword_metrics` ; un test casse si le code la relit |
-| `keyword_metrics` | FR-INFRA-KEYWORD-METRICS | FR-EXT-DATAFORSEO, FR-MOT-RAW-KPIS, FR-CER-KEYWORD-REAL-DATA, FR-EXT-AUTOCOMPLETE-GOOGLE, FR-INFRA-PAA-CACHE, FR-EXP-CONTENT-GAP | FR-CAP-LOCK-GATE, FR-CAP-RELEVANCE-LIVE, FR-MOT-RAW-KPIS, FR-CER-KEYWORD-REAL-DATA | un seul `fetched_at` ; COALESCE sur les KPI |
+| `keyword_metrics` | FR-INFRA-KEYWORD-METRICS | FR-EXT-DATAFORSEO, FR-MOT-RAW-KPIS, FR-CER-KEYWORD-REAL-DATA, FR-EXT-AUTOCOMPLETE-GOOGLE, FR-INFRA-PAA-CACHE, FR-EXP-CONTENT-GAP, FR-EXT-DATAFORSEO-SANDBOX (`from_sandbox` ; purge au passage en réel) | FR-CAP-LOCK-GATE, FR-CAP-RELEVANCE-LIVE, FR-MOT-RAW-KPIS, FR-CER-KEYWORD-REAL-DATA | un seul `fetched_at` ; COALESCE sur les KPI ; `from_sandbox` jamais remis à faux, lignes marquées effacées avec leurs tables filles (cascade) |
 | `keyword_paa_questions` | NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION | FR-LIE-SERP-ANALYZE (relevé SERP) | FR-INFRA-SCRAPE-CORPUS-NEUTRE (`getPaaQuestions`) | FK `keyword_metrics` |
 | `keyword_serp_results` | NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION | FR-LIE-SERP-ANALYZE (NFR-INT-SERP-ONCE) | FR-LEX-TFIDF, FR-LEX-PRECHECK-SERP, FR-CER-KEYWORD-REAL-DATA (lecture) | fraîcheur 7 j ; le relevé du Cerveau va dans `external_api_cache` (`serp-top`) |
 | `keyword_serp_scrapes` | NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION | FR-LIE-SERP-ANALYZE | FR-LEX-TFIDF, FR-LIE-SCRAPE-DEDIE, FR-LEX-PRECHECK-SERP | FK sur `keyword_serp_results` |

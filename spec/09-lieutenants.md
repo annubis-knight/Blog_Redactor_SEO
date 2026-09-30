@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -14,7 +14,7 @@ Les lieutenants sont les mots-clés secondaires de l'article : les recherches vo
 - Tant que le capitaine n'est pas verrouillé et qu'aucune proposition n'existe pour l'article, un message invite : « Verrouillez votre Capitaine dans l'onglet précédent pour analyser la SERP. » Le curseur et « Analyser SERP » sont grisés.
 - Dès qu'une proposition existe pour l'article, l'onglet reste utilisable même si le capitaine est déverrouillé ensuite (« Les garder ») : « Analyser SERP » reste actif, sur le mot-clé de l'article.
 - Ouvrir l'onglet ne lance rien de payant. Les lieutenants déjà enregistrés reviennent à l'écran dès l'ouverture, même sans lieutenant retenu : les retenus cochés, puis les candidats suggérés, puis les « Autres candidats ». Une ancienne liste sans détail revient avec des cartes sans raison et un score « — ».
-- Le panneau « 💡 Suggestions pour vos Lieutenants » liste au plus 10 mots-clés issus du scan Radar de l'article. « Ajouter » crée une carte non cochée, raison « Proposé depuis votre panier », niveau H2, score « — ». Le panneau se masque avec « × ».
+- Le panneau « 💡 Suggestions pour vos Lieutenants » liste au plus 10 mots-clés issus du scan Radar de l'article. « Ajouter » crée une carte non cochée, raison « Proposé depuis votre panier », niveau H2, score « — », enregistrée aussitôt comme proposition : elle revient au rechargement, même sans être cochée. Un candidat écarté ajouté ainsi quitte « Autres candidats » pour la liste principale. Le panneau se masque avec « × ».
 
 ## Analyser les concurrents
 *Exigences : FR-LIE-SERP-ANALYZE, FR-LIE-SERP-ECHEC-EXPLIQUE, FR-LIE-SLIDER-INTELLIGENT, FR-LIE-SCRAPE-DEDIE*
@@ -62,6 +62,7 @@ La SERP est la page de résultats de Google pour une recherche. « Analyser SERP
 - Cocher une carte (retenue ou « Autres candidats ») verrouille ce lieutenant et l'enregistre aussitôt ; décocher le déverrouille aussitôt. Il n'y a pas de bouton de validation groupée, et les autres cases restent cliquables.
 - Le compteur de la barre de tri affiche « X / N sélectionnés », où N est le nombre de candidats générés par l'IA ; après un rechargement, N est relu avec les propositions (retenues, proposées et écartées pour le Capitaine courant). Il n'indique pas de fourchette conseillée par type d'article.
 - Relancer la proposition remplace les cartes et décoche tout : les lieutenants retenus apparaissent décochés et l'étape est retirée, alors qu'ils restent dans la liste enregistrée (voir « Limites connues »).
+- Déverrouiller le Capitaine avec « Tout réinitialiser » archive les lieutenants retenus, à l'écran et dans l'enregistrement : après un rechargement, aucun ne revient coché, ni ici ni dans la Finalisation. Les autres propositions gardent leur statut.
 
 ## L'étape « Lieutenants verrouillés » et sa porte
 *Exigences : FR-LIE-CHECK, FR-LIE-LOCK-GATE*

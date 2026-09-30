@@ -11,22 +11,31 @@
  * CONSUMERS: article-keywords.store (CaptainPanel, LieutenantsPanel,
  *            LexiquePanel, FinalisationPanel)
  * RELATED FR: NFR-INT-DISPLAY-CONTRACTS, FR-MOT-EXPLORATIONS-HYDRATATION,
- *             FR-INFRA-KPI-NULLABLE
+ *             FR-INFRA-KPI-NULLABLE, FR-CAP-ROOTS
  */
 import { z } from 'zod'
-import { defineContract, nullableText, oneOf, text, tolerantArray, optionalObject } from './core.js'
-import { captainScanEntrySchema, kpiSummarySchema } from './captain-scan.contract.js'
+import { defineContract, nullableText, oneOf, text, tolerantArray, optionalObject, withFallback } from './core.js'
+import { captainScanEntrySchema, kpiSummarySchema, paaQuestionScanSchema } from './captain-scan.contract.js'
+import { UNAVAILABLE_REASONS, relevanceScoreSchema } from './score-blocks.js'
 import { proposeHnNodeSchema, richLieutenantSchema } from './lieutenants.contract.js'
 import type { ArticleKeywords, RichCaptain, RichRootKeyword } from '../types/keyword.types.js'
 
 const ARTICLE_LEVELS = ['pilier', 'intermediaire', 'specifique'] as const
 
+/** Une racine relue : ses mesures connues, sans étude à elle pour l'article (FR-CAP-ROOTS). */
 const richRootKeywordSchema: z.ZodType<RichRootKeyword, unknown> = z.looseObject({
   keyword: z.string().min(1),
   parentKeyword: z.string().min(1),
   kpis: tolerantArray(kpiSummarySchema, 'richRootKeywords.kpis'),
   articleLevel: z.enum(ARTICLE_LEVELS),
   timestamp: text('richRootKeywords.timestamp', ''),
+  paaQuestions: tolerantArray(paaQuestionScanSchema, 'richRootKeywords.paaQuestions').optional(),
+  relevanceScore: optionalObject(relevanceScoreSchema, 'richRootKeywords.relevanceScore'),
+  relevanceUnavailableReason: withFallback(
+    z.enum(UNAVAILABLE_REASONS).nullable().optional(),
+    null,
+    'richRootKeywords.relevanceUnavailableReason',
+  ),
 })
 
 const richCaptainSchema: z.ZodType<RichCaptain, unknown> = z.looseObject({

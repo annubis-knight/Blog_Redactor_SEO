@@ -148,12 +148,17 @@ describe('moteur:keyword-metrics:getKeywordMetrics', () => {
 
 describe('moteur:keyword-metrics:upsertKeywordKpis', () => {
   it('inserts KPIs with default lang/country', async () => {
+    // Mode réel posé : le dernier paramètre (from_sandbox) suit le mode effectif,
+    // que le poste ou la CI peuvent régler en simulé (FR-EXT-DATAFORSEO-SANDBOX).
+    const { setRuntimeMode } = await import('../../../server/services/infra/runtime-mode.service')
+    setRuntimeMode('real')
     mockQuery.mockResolvedValueOnce({ rows: [] })
     await upsertKeywordKpis('seo', { searchVolume: 1000, keywordDifficulty: 50 })
+    setRuntimeMode(null)
     expect(mockQuery).toHaveBeenCalledTimes(1)
     const [, params] = mockQuery.mock.calls[0]!
-    // Signature : keyword, lang, country, volume, KD, cpc, competition, intentRaw, intentLabel
-    expect(params).toEqual(['seo', 'fr', 'fr', 1000, 50, null, null, null, null])
+    // Signature : keyword, lang, country, volume, KD, cpc, competition, intentRaw, intentLabel, from_sandbox
+    expect(params).toEqual(['seo', 'fr', 'fr', 1000, 50, null, null, null, null, false])
   })
 
   it('coalesces undefined KPIs to null in params', async () => {

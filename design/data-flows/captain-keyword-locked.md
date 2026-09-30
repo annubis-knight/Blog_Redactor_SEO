@@ -24,7 +24,7 @@ Qui crée ou met à jour cette donnée :
    4. seulement ensuite, `check-completed` (`MOTEUR_CAPITAINE_LOCKED`) part vers `MoteurView`.
 
    Le mot-clé verrouillé est toujours `originalCard.keyword`, jamais la racine affichée sur la carte (FR-CAP-LOCK-INTEGRITY).
-2. **Déverrouiller** — `requestUnlock` → `performUnlock` : `unlockCaptain()` (capitaine `''`, `richCaptain.keyword = ''`, `status = 'suggested'`), `saveKeywords`, puis `check-removed`. Si des Lieutenants sont verrouillés, [`UnlockLieutenantsModal.vue`](../../src/components/moteur/UnlockLieutenantsModal.vue) propose de les garder ou de les archiver (`archiveLockedLieutenants`).
+2. **Déverrouiller** — `requestUnlock` → `performUnlock` : `unlockCaptain()` (capitaine `''`, `richCaptain.keyword = ''`, `status = 'suggested'`), `saveKeywords`, puis `check-removed`. Si des Lieutenants sont verrouillés, [`UnlockLieutenantsModal.vue`](../../src/components/moteur/UnlockLieutenantsModal.vue) propose de les garder ou de les archiver (`archiveLockedLieutenants`, en mémoire puis `POST /api/articles/:id/lieutenants/archive` : voir [lieutenants.md](lieutenants.md)).
 3. **Enregistrement serveur** — `PUT /api/articles/:id/keywords` ([`keywords.routes.ts`](../../server/routes/keywords.routes.ts)) exige `capitaine` (400 sinon) et appelle `saveArticleKeywords` ([`data.service.ts`](../../server/services/infra/data.service.ts)) :
    - UPSERT de `article_keywords` ; un champ absent du corps garde sa valeur en base ;
    - copie `updateArticleCaptainKeyword(id, capitaine non vide ? capitaine : null)`. Un échec de la copie est seulement journalisé (`log.warn`).

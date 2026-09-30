@@ -4,7 +4,7 @@
 -- ⚠️  Fichier généré par `npm run db:bootstrap` (ou db:snapshot).
 -- NE PAS éditer à la main. Sert à créer une base vide (CI).
 -- Usage : psql -v ON_ERROR_STOP=1 -d <base> -f server/db/bootstrap.sql
--- Empreinte schéma (schema.sql) : sha256:ba224fc27721f34088db4e759e1188ccec2f7a3f2dbfeb09586df0f7def52474
+-- Empreinte schéma (schema.sql) : sha256:60722e6290a267db901e696fa5d959a2456d3b1894172dc7797783fb6e22be7f
 -- ============================================================
 --
 -- PostgreSQL database dump
@@ -356,6 +356,7 @@ CREATE TABLE public.keyword_metrics (
     content_gap_analysis jsonb,
     local_comparison jsonb,
     intent_label text,
+    from_sandbox boolean DEFAULT false NOT NULL,
     CONSTRAINT keyword_metrics_intent_label_check CHECK (((intent_label IS NULL) OR (intent_label = ANY (ARRAY['commercial'::text, 'transactional'::text, 'informational'::text, 'navigational'::text]))))
 );
 
@@ -1077,6 +1078,12 @@ CREATE INDEX idx_keyword_autocomplete_fetched ON public.keyword_autocomplete USI
 --
 
 CREATE INDEX idx_keyword_metrics_fetched ON public.keyword_metrics USING btree (fetched_at);
+
+--
+-- Name: idx_keyword_metrics_from_sandbox; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_keyword_metrics_from_sandbox ON public.keyword_metrics USING btree (keyword) WHERE from_sandbox;
 
 --
 -- Name: idx_keyword_paa_kw; Type: INDEX; Schema: public; Owner: -

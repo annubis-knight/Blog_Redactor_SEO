@@ -140,7 +140,8 @@ Sous les résultats, le panneau « Suggestions IA Radar » (« Top candidats Cap
 - note de classement = moyenne des scores disponibles ; comme le Radar n'a pas de Score Pertinence, c'est le Score Marché ;
 - une carte au verdict marché NOGO (score < 40) est écartée ; les 5 premières sont affichées avec les pastilles « M n » et « P — » ; l'info-bulle de « P — » dit que la pertinence se calcule au Capitaine ;
 - avant scan : « Lance un scan ci-dessus pour voir ici les meilleurs candidats… » ; aucun candidat : « Aucun candidat à proposer pour l'instant… ».
-- Le bouton « Marquer comme candidats Capitaine (N) » vide la sélection, mais n'a aucun autre effet.
+- Le bouton « Marquer comme candidats Capitaine (N) » transmet les cartes cochées au Capitaine, comme « Envoyer au Capitaine » : l'onglet Capitaine s'ouvre et étudie chaque mot-clé reçu ; les cases se décochent.
+- La pastille « P » vaut toujours « — » : le Radar ne mesure pas la pertinence, c'est voulu (elle se calcule au Capitaine).
 
 ## Envoyer au Capitaine
 *Exigences : FR-RAD-SEND-CAPTAIN*

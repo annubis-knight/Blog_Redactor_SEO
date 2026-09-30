@@ -63,6 +63,32 @@ describe('articleKeywordsContract', () => {
     expect(parseContract(articleKeywordsContract, raw, 'client')?.lieutenants).toEqual(['prix création site web'])
   })
 
+  // FR-CAP-ROOTS — une racine sans étude enregistrée revient avec ses mesures
+  // connues de `keyword_metrics` : le contrat les laisse passer jusqu'à l'écran.
+  it('FR-CAP-ROOTS : une racine relue garde ses indicateurs, ses questions et son Score Pertinence', () => {
+    const root = {
+      keyword: 'création site', parentKeyword: 'création site internet toulouse', articleLevel: 'intermediaire', timestamp: '',
+      kpis: [{ name: 'volume', rawValue: 673000 }, { name: 'kd', rawValue: 54 }],
+      paaQuestions: [{ question: 'Quel est le prix d’un site ?', answer: null, match: 'partial', matchQuality: 'stem' }],
+      relevanceScore: { total: 62, verdict: 'GO', breakdown: {}, rootsContext: {} },
+      relevanceUnavailableReason: null,
+    }
+    const out = parseContract(articleKeywordsContract, { ...payload(), richRootKeywords: [root] }, 'client')
+    expect(out?.richRootKeywords).toEqual([root])
+    expect(events).toHaveLength(0)
+  })
+
+  it('FR-CAP-ROOTS : un Score Pertinence de racine illisible est écarté, la racine reste', () => {
+    const root = {
+      keyword: 'création site', parentKeyword: 'création site internet toulouse', articleLevel: 'intermediaire', timestamp: '',
+      kpis: [], relevanceScore: { total: 'beaucoup' },
+    }
+    const out = parseContract(articleKeywordsContract, { ...payload(), richRootKeywords: [root] }, 'client')
+    expect(out?.richRootKeywords?.[0]?.keyword).toBe('création site')
+    expect(out?.richRootKeywords?.[0]?.relevanceScore ?? null).toBeNull()
+    expect(events.some(e => e.kind === 'dropped')).toBe(true)
+  })
+
   it('sans identifiant d’article, la réponse est refusée', () => {
     const raw = { ...payload(), articleId: undefined }
     expect(() => parseContract(articleKeywordsContract, raw, 'client')).toThrow(ContractViolationError)

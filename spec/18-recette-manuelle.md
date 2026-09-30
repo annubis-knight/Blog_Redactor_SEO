@@ -1,7 +1,7 @@
 ---
 title: Recette manuelle — Blog Redactor SEO
 version: 2.0.0
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md (NFR-TEST-RECETTE-COVERAGE)
   - spec/recette/ (les modules par domaine)
@@ -38,6 +38,7 @@ La recette a deux niveaux :
    - **MOCK** : l'IA répond par des textes préparés à l'avance, et DataForSEO renvoie des données factices depuis son bac à sable. C'est **gratuit**.
    - **RÉEL** : l'IA et DataForSEO travaillent pour de vrai. C'est **payant**, dans la limite d'un plafond de dépense DataForSEO par demi-heure : `DATAFORSEO_COST_BUDGET_USD` dans `.env` (2 $ sur ton poste), 0,50 $ si rien n'est réglé.
    - Ce réglage vaut pour tout le serveur, et il reste actif tant que tu ne le changes pas.
+   - Passer en **RÉEL** efface les mesures de mots-clés faites en **MOCK** (volumes, questions PAA, pages lues pour le Lexique), pour qu'elles ne passent jamais pour vraies. De retour en MOCK, un candidat du Capitaine étudié avant apparaît sans mesure : une vérification qui en a besoin la refait, gratuitement. Ce que chaque article a gardé de son travail (cartes du Radar, lieutenants, lexique extrait) reste affiché.
 3. Garde une connexion internet : les suggestions de Google sont réelles, même en MOCK.
 4. Pour chaque vérification, note ✅ ou ❌. En cas de ❌, fais une capture d'écran et note le code de la vérification (« Étape 4 », « RAD-7 »…) : c'est tout ce qu'il faut pour corriger.
 
@@ -349,7 +350,7 @@ Trois choses ne se voient pas en MOCK, parce que les données y sont factices :
 **Sans rien payer**, tu peux déjà lire le pilier **#1030**, produit en RÉEL par la recette C8 : il a passé la porte de publication sans aucune dérogation.
 
 Pour un essai payant :
-- passe le bouton en **RÉEL** et refais les étapes 1 à 6 sur un **nouveau** cocon, avec des mots-clés jamais utilisés en MOCK : une mesure faite en MOCK dans les 7 derniers jours resservirait ses chiffres factices ;
+- passe le bouton en **RÉEL** et refais les étapes 1 à 6 sur un **nouveau** cocon : les mesures faites en MOCK sont effacées au passage en RÉEL, mais les cartes et lieutenants d'un article travaillé en MOCK gardent leurs chiffres simulés ;
 - certaines actions annoncent leur coût avant de partir, par exemple « ~$0.003 » pour l'analyse SERP du Lexique. D'autres non (le scan Radar, « Tester un mot-clé capitaine… », « Découvrir », « Analyser SERP » des Lieutenants) : suis la dépense dans la pile « Coûts API », en bas à gauche ;
 - repasse en **MOCK** à la fin.
 

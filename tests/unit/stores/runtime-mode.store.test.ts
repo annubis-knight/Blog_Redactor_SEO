@@ -245,6 +245,39 @@ describe('FR-INFRA-RUNTIME-MODE — store Pinia', () => {
     })
   })
 
+  // FR-CAP-AI-PANEL — la confirmation d'une régénération nomme le fournisseur
+  // d'IA effectif, ou dit qu'aucun appel payant ne part : le store le garde.
+  describe('FR-CAP-AI-PANEL — fournisseur d’IA effectif', () => {
+    it('inconnu avant toute lecture du serveur', () => {
+      expect(useRuntimeModeStore().aiProvider).toBeNull()
+    })
+
+    it('hydrate() le relit sur le serveur', async () => {
+      mockApiGet.mockResolvedValueOnce({ override: null, effective: 'real', aiProvider: 'gemini' })
+      const s = useRuntimeModeStore()
+      await s.hydrate()
+      expect(s.aiProvider).toBe('gemini')
+    })
+
+    it('une bascule le reprend de la réponse : passer en réel ne garde pas « mock »', async () => {
+      mockApiGet.mockResolvedValueOnce({ override: 'mock', effective: 'mock', aiProvider: 'mock' })
+      mockApiPost.mockResolvedValueOnce({ override: 'real', effective: 'real', aiProvider: 'claude' })
+      const s = useRuntimeModeStore()
+      await s.hydrate()
+      await s.setMode('real')
+      expect(s.aiProvider).toBe('claude')
+    })
+
+    it('une bascule en échec rend le fournisseur d’avant', async () => {
+      mockApiGet.mockResolvedValueOnce({ override: null, effective: 'real', aiProvider: 'gemini' })
+      mockApiPost.mockRejectedValueOnce(new Error('500'))
+      const s = useRuntimeModeStore()
+      await s.hydrate()
+      await expect(s.setMode('mock')).rejects.toThrow('500')
+      expect(s.aiProvider).toBe('gemini')
+    })
+  })
+
   describe('toggle() — inversion (AC8)', () => {
     it('toggle depuis "real" → "mock"', async () => {
       mockApiPost.mockResolvedValueOnce({

@@ -1,12 +1,12 @@
 -- ============================================================
 -- SCHEMA SNAPSHOT — Blog Redactor SEO
 -- ============================================================
--- Généré le        : 2026-09-29T02:22:41.208Z
--- Commit git       : 1111a18 (fix/articles-id-sequence)
--- Sujet commit     : test(capitaine): « le conseil n'est pas vide » attend un texte, pas un long mot
--- Working tree     : ⚠️  NON (modifs non commitées)
+-- Généré le        : 2026-09-30T18:26:26.716Z
+-- Commit git       : 85ae18d (fix/lot6-restes)
+-- Sujet commit     : Merge fix/lot6-sandbox : une donnée obtenue en simulé n'est plus servie en réel
+-- Working tree     : oui
 -- Tables           : 26
--- Empreinte schéma : sha256:ba224fc27721f34088db4e759e1188ccec2f7a3f2dbfeb09586df0f7def52474
+-- Empreinte schéma : sha256:60722e6290a267db901e696fa5d959a2456d3b1894172dc7797783fb6e22be7f
 -- ============================================================
 -- ⚠️  Fichier généré automatiquement. NE PAS éditer à la main.
 --
@@ -214,6 +214,7 @@ CREATE TABLE "keyword_metrics" (
   "content_gap_analysis" JSONB,
   "local_comparison" JSONB,
   "intent_label" TEXT,
+  "from_sandbox" BOOLEAN NOT NULL DEFAULT false,
   CONSTRAINT "keyword_metrics_intent_label_check" CHECK (((intent_label IS NULL) OR (intent_label = ANY (ARRAY['commercial'::text, 'transactional'::text, 'informational'::text, 'navigational'::text])))),
   CONSTRAINT "keyword_metrics_pkey" PRIMARY KEY (keyword, lang, country)
 );
@@ -378,6 +379,8 @@ CREATE INDEX idx_internal_links_target ON public.internal_links USING btree (tar
 CREATE INDEX idx_keyword_autocomplete_fetched ON public.keyword_autocomplete USING btree (fetched_at);
 
 CREATE INDEX idx_keyword_metrics_fetched ON public.keyword_metrics USING btree (fetched_at);
+
+CREATE INDEX idx_keyword_metrics_from_sandbox ON public.keyword_metrics USING btree (keyword) WHERE from_sandbox;
 
 CREATE INDEX idx_keyword_paa_kw ON public.keyword_paa_questions USING btree (keyword, lang, country);
 

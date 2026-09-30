@@ -306,12 +306,10 @@ Détail : [Intégrations externes](18-integrations.md#retour-du-coût-et-des-err
 Une recherche web ajoute beaucoup de jetons d'entrée (le texte des pages trouvées) : la passe « sources » est
 la plus chère. Les frais propres à la recherche ne sont pas comptés.
 
-**Limite connue.** Deux appels ne remontent pas leur coût, contrairement à `FR-INFRA-COST-LOG-STORE` et
-`FR-EXT-AI-MULTI-PROVIDER` (« chaque appel IA, diffusé ou non, ajoute sa ligne de coût ») :
-
-- les longues traînes : `long-tail-suggest.service.ts` ne garde pas l'`usage` de `classifyWithTool` ;
-- le jugement des PAA : `captain-paa-judge.service.ts` écrit le coût dans le journal du serveur, pas dans
-  la réponse.
+Une action qui fait plusieurs appels rend un seul `usage`, additionné : le jugement des PAA
+(`captain-paa-judge.service.ts`, un appel par candidat) comme la reprise de la relecture. Une réponse servie
+par un cache (longues traînes : `long-tail-suggest.service.ts`) ne rend pas d'`usage` : rien n'a été payé.
+Avant le lot 6 (recette du 2026-09-30), ces deux appels ne remontaient pas leur coût.
 
 ### Régler les modèles
 
@@ -331,8 +329,10 @@ Liste complète des variables : [Qualités transverses](21-qualites.md).
 - [`../server/services/infra/runtime-mode.service.ts`](../server/services/infra/runtime-mode.service.ts) —
   `overrideMode` en mémoire vive (`'mock' | 'real' | null`), perdu au redémarrage. `getEffectiveMode()` :
   l'override, sinon `mock` si `AI_PROVIDER=mock` ou `DATAFORSEO_SANDBOX=true`, sinon `real`.
-- API : `GET /api/runtime-mode` (`override`, `effective`, réglages `.env`), `POST /api/runtime-mode`
-  (`{ mode: 'mock' | 'real' | null }`).
+- API : `GET /api/runtime-mode` (`override`, `effective`, réglages `.env`, `aiProvider` = `getProvider()`),
+  `POST /api/runtime-mode` (`{ mode: 'mock' | 'real' | null }`, répond `override`, `effective`, `aiProvider`).
+  `aiProvider` nomme le fournisseur dans la confirmation de « Régénérer » l'avis du Capitaine
+  (`useAiCallNotice`, FR-CAP-AI-PANEL).
 - Consommateurs : `getProvider()` (IA) et `isSandbox()` ([`../server/services/external/dataforseo/_client.ts`](../server/services/external/dataforseo/_client.ts)),
   qui choisit `sandbox.dataforseo.com` ou `api.dataforseo.com`. Tous deux lisent le mode effectif :
   le badge MOCK garantit l'IA simulée **et** le bac à sable. Le plafond de dépense ne s'applique

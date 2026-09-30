@@ -137,6 +137,29 @@ describe('moteur:radar long-tail-suggest service', () => {
     })
   })
 
+  // FR-INFRA-COST-LOG-STORE — recette 2026-09-30 : l'`usage` de l'IA était
+  // jeté ici, et la génération n'ajoutait aucune ligne à la pile « Coûts API ».
+  describe('FR-INFRA-COST-LOG-STORE — coût de la génération', () => {
+    const usage = { model: 'claude-haiku-4-5-20251001', inputTokens: 700, outputTokens: 400, cacheReadTokens: 0, cacheCreationTokens: 0, estimatedCost: 0.0027 }
+
+    it('une génération par l’IA rend l’usage de l’appel', async () => {
+      mockGetCached.mockResolvedValueOnce(null)
+      mockClassifyWithTool.mockResolvedValueOnce({ result: validAiResponse, usage })
+
+      const out = await generateLongTailSuggestions(validInput)
+
+      expect(out.usage).toEqual(usage)
+    })
+
+    it('une réponse du cache ne coûte rien : pas d’usage', async () => {
+      mockGetCached.mockResolvedValueOnce(validAiResponse)
+
+      const out = await generateLongTailSuggestions(validInput)
+
+      expect(out.usage).toBeNull()
+    })
+  })
+
   describe('cache behavior', () => {
     it('cache HIT → ne rappelle pas l\'IA, retourne fromCache=true', async () => {
       mockGetCached.mockResolvedValueOnce(validAiResponse)
