@@ -55,6 +55,14 @@ interface CreateArticleOptions {
    * article issu du Cerveau arrive toujours avec sa proposition.
    */
   withKeyword?: boolean
+  /**
+   * Étapes déjà acquises, écrites en base comme les aurait laissées un
+   * utilisateur (par exemple `moteur:capitaine_locked` quand le test pose aussi
+   * un capitaine). Sans elles, un capitaine enregistré sans son étape est une
+   * donnée incohérente : l'onglet Capitaine la réconcilie à l'ouverture et
+   * redemande l'étape à sa porte (FR-MOT-CHECK-RECONCILIATION).
+   */
+  checks?: string[]
 }
 
 export interface BrowserCtx {
@@ -172,9 +180,10 @@ export const test = base.extend<{ ctx: BrowserCtx }>({
         // (NFR-INT-ARTICLE-ID-NEVER-REUSED).
         const res = await query<{ id: number }>(
           `INSERT INTO articles (titre, cocoon_id, slug, type, status, phase, completed_checks, check_timestamps)
-           VALUES ($1, $2, $3, $4, 'à rédiger', 'proposed', ARRAY[]::TEXT[], '{}'::jsonb)
+           VALUES ($1, $2, $3, $4, 'à rédiger', 'proposed', $5::TEXT[],
+                   (SELECT COALESCE(jsonb_object_agg(c, to_jsonb(now())), '{}'::jsonb) FROM unnest($5::TEXT[]) AS c))
            RETURNING id`,
-          [titre, cocoonDbId, slug, type],
+          [titre, cocoonDbId, slug, type, opts.checks ?? []],
         )
         const article: TestArticle = {
           id: res.rows[0].id,
