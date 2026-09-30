@@ -11,11 +11,14 @@
  *             (reconciliation au mount).
  * WRITES TO: useLexiqueLocking.toggleTerm → store + PUT /articles/:id/keywords.
  *            Emits check-completed / check-removed (MOTEUR_LEXIQUE_VALIDATED).
+ *            Ouvrir l'onglet ne fait que relire : l'extraction (POST /serp/tfidf) et
+ *            l'analyse IA (ai-lexique-upfront) ne partent que sur un clic.
  * CONSUMERS: MoteurView (parent), TabCachePanel (validatedLexiqueCount).
  * RELATED FR: FR-LEX-SELECT, FR-LEX-CHECKBOX-LOCK-IMMEDIATE, FR-LEX-TFIDF,
  *             FR-LEX-MULTI-KEYWORD, FR-LEX-MULTI-KEYWORD-TABS (E2),
  *             FR-LEX-PRECHECK-SERP (E1), FR-LEX-LECTURE-VS-VERROUILLAGE (E3),
- *             FR-MOT-CHECK-RECONCILIATION, FR-MOT-CACHE-PANEL-COUNT.
+ *             FR-MOT-CHECK-RECONCILIATION, FR-MOT-CACHE-PANEL-COUNT,
+ *             FR-LEX-AI-PANEL, FR-MOT-NO-AUTO-ACTION.
  */
 import { ref, computed, watch, onUnmounted, toRef } from 'vue'
 import { apiPost } from '@/services/api.service'
@@ -278,11 +281,13 @@ async function fetchTfidf(keywordOverride?: string, triggerScrape: boolean = fal
 
 // --- Watchers ---
 
-// Auto-trigger IA upfront après TF-IDF (session cache).
-watch(tfidfResult, (res) => {
-  if (!res || iaRecommendations.value.size > 0) return
-  generateLexiqueUpfront()
-})
+// L'analyse IA du lexique ne part QUE sur un clic (« Analyser avec l'IA »,
+// « Régénérer l'analyse », « Relancer l'analyse IA ») : FR-LEX-AI-PANEL,
+// FR-MOT-NO-AUTO-ACTION. L'ancien `watch(tfidfResult)` la lançait à chaque
+// nouvelle liste — à l'ouverture de l'onglet, au changement d'onglet
+// d'exploration, et DEUX fois après une extraction (la liste relue de la base
+// relançait l'appel, que le serveur menait au bout : deux appels payés ;
+// recette 2026-09-30, express étape 5 et 06-T4).
 
 // --- Porte « valider le lexique » (FR-LEX-METIER-ONLY) ---
 // L'étape n'est accordée que si la porte passe, et elle est revérifiée à
@@ -409,17 +414,18 @@ watch(() => props.selectedArticle?.id ?? null, (id, previous) => {
   lexiqueGateBlocked.value = null
 })
 
-// Auto-restore TF-IDF (capitaine locked) : hydrate cache → attendre pré-check
-// → si exists=false ne PAS POSTer /serp/tfidf (anti-404, FR-LEX-PRECHECK-SERP)
-// → si exists=true et pas de cache, fetchTfidf live.
+// Restauration à l'ouverture (capitaine verrouillé) : on RELIT ce qui est
+// enregistré (explorations Lexique), rien de plus. Aucune extraction ne part
+// seule : sans exploration enregistrée, l'utilisateur clique « Extraire le
+// Lexique » (FR-MOT-NO-AUTO-ACTION ; recette 2026-09-30, express étape 5).
+// Le pré-check SERP reste dans les dépendances : une analyse SERP confirmée
+// fait relire la base, ce qui ajoute l'onglet du capitaine (FR-LEX-MULTI-KEYWORD-TABS).
 watch(
   [() => props.isCaptaineLocked, () => props.captainKeyword, articleIdRef, () => serpExists.value],
-  async ([locked, keyword, , exists]) => {
+  async ([locked, keyword]) => {
     if (!locked || !keyword) return
     if (!activeSourceKeyword.value) activeSourceKeyword.value = keyword
     await hydrateFromDb()
-    if (exists === null || exists === false) return
-    if (!tfidfResult.value && !isLoading.value) await fetchTfidf(keyword)
   },
   { immediate: true },
 )

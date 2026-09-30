@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
 import LexiquePanel from '../../../src/components/moteur/LexiquePanel.vue'
+import LexiqueAiPanel from '../../../src/components/moteur/LexiqueAiPanel.vue'
 import type { LexiqueAnalysisResult, LexiqueTermRecommendation } from '../../../shared/types/serp-analysis.types'
 
 
@@ -112,6 +113,15 @@ function simulateIaUpfrontDone(result: LexiqueAnalysisResult = MOCK_IA_RESULT) {
   if (callbacks?.onDone) {
     callbacks.onDone(result)
   }
+}
+
+/**
+ * « Analyser avec l'IA » : l'analyse IA du lexique ne part que sur ce clic
+ * (FR-LEX-AI-PANEL, FR-MOT-NO-AUTO-ACTION).
+ */
+async function triggerIa(wrapper: ReturnType<typeof mountComponent>) {
+  wrapper.findComponent(LexiqueAiPanel).vm.$emit('trigger')
+  await nextTick()
 }
 
 function mountComponent(overrides: Record<string, unknown> = {}) {
@@ -382,6 +392,7 @@ describe('LexiquePanel', () => {
       await nextTick()
 
       // Simulate IA completion — stratégie is aiRecommended=true
+      await triggerIa(wrapper)
       simulateIaUpfrontDone()
       await nextTick()
 
@@ -487,11 +498,24 @@ describe('LexiquePanel', () => {
       await wrapper.find('[data-testid="btn-extract"]').trigger('click')
       await nextTick()
       await nextTick()
+      await triggerIa(wrapper)
       return wrapper
     }
 
-    it('auto-triggers IA upfront stream after TF-IDF extraction', async () => {
+    it('FR-LEX-AI-PANEL — l’extraction ne lance pas l’analyse IA : elle attend le clic', async () => {
+      // Recette 2026-09-30 (06-T4) : l'analyse partait seule, et deux fois par extraction.
+      const wrapper = mountComponent()
+      await wrapper.find('[data-testid="btn-extract"]').trigger('click')
+      await nextTick()
+      await nextTick()
+      expect(iaStreaming.startStream).not.toHaveBeenCalled()
+      await triggerIa(wrapper)
+      expect(iaStreaming.startStream).toHaveBeenCalledTimes(1)
+    })
+
+    it('« Analyser avec l’IA » lance l’analyse sur tous les termes extraits', async () => {
       await mountWithResults()
+      expect(iaStreaming.startStream).toHaveBeenCalledTimes(1)
       expect(iaStreaming.startStream).toHaveBeenCalledWith(
         expect.stringContaining('/ai-lexique-upfront'),
         expect.objectContaining({
@@ -569,6 +593,7 @@ describe('LexiquePanel', () => {
       await wrapper.find('[data-testid="btn-extract"]').trigger('click')
       await nextTick()
       await nextTick()
+      await triggerIa(wrapper)
       simulateIaUpfrontDone()
       await nextTick()
       return wrapper
@@ -639,6 +664,7 @@ describe('LexiquePanel', () => {
       await wrapper.find('[data-testid="btn-extract"]').trigger('click')
       await nextTick()
       await nextTick()
+      await triggerIa(wrapper)
       simulateIaUpfrontDone(iaResult)
       await nextTick()
       return wrapper
