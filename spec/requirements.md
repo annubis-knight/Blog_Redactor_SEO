@@ -621,7 +621,7 @@ L'outil doit faire juger par l'IA si chaque candidat a sa place dans un article 
 - Les candidats arrivés plus tard sont jugés à leur tour, sans rejuger les autres.
 - Tous les jugements de la découverte sont gardés, quel que soit le nombre de candidats : un candidat jugé n'est ni oublié, ni rejugé (donc jamais repayé), et son verdict survit à la sauvegarde de la découverte.
 - Une douleur d'au moins 10 caractères devient un critère éliminatoire.
-- Si plus de 90 % d'au moins 20 candidats passent, un avertissement signale un filtrage probablement en échec.
+- Si plus de 90 % d'au moins 20 candidats passent, un avertissement signale un filtrage probablement en échec ; pas en mode simulé, où le filtre simulé garde presque tout.
 
 ### FR-DIS-AI-ANALYSIS — Sélection stratégique proposée par l'IA
 **Statut :** active

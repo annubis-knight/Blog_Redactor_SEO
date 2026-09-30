@@ -483,6 +483,16 @@ describe('DiscoveryPanel — filtre de pertinence', () => {
     const wrapper = mountTab()
     expect(wrapper.find('.filtering-suspect-warning').exists()).toBe(true)
   })
+
+  it('FR-DIS-RELEVANCE-FILTER — en MOCK, pas d’avertissement « vérifiez votre clé API Claude » (recette UI-5)', async () => {
+    // Le filtre simulé garde presque tout : l'avertissement mentait en MOCK.
+    const { useRuntimeModeStore } = await import('../../../src/stores/ui/runtime-mode.store')
+    useRuntimeModeStore().effective = 'mock'
+    mockHasResults.value = true
+    mockFilteringSuspect.value = true
+    const wrapper = mountTab()
+    expect(wrapper.find('.filtering-suspect-warning').exists()).toBe(false)
+  })
 })
 
 // ============================================================================
