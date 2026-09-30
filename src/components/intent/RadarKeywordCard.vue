@@ -299,7 +299,7 @@ const formatCpc = fmtCpcShared
 const formatKd = fmtKdShared
 
 function baseMatchLabel(paa: RadarPaaItem): string {
-  if (paa.match === 'total') return paa.matchQuality === 'exact' ? 'Exact' : paa.matchQuality === 'semantic' ? 'Semantique' : 'Match'
+  if (paa.match === 'total') return paa.matchQuality === 'exact' ? 'Exact' : paa.matchQuality === 'semantic' ? 'Sémantique' : 'Match'
   if (paa.match === 'partial') return paa.matchQuality === 'exact' ? 'Partiel exact' : paa.matchQuality === 'semantic' ? 'Sem. partiel' : 'Partiel'
   return 'Hors sujet'
 }
@@ -469,7 +469,7 @@ function handleChevronClick(e: MouseEvent) {
         @toggle-answer="toggleAnswer"
       />
 
-      <p v-if="card.paaItems.length === 0" class="radar-card__no-paa">Aucune PAA trouvee</p>
+      <p v-if="card.paaItems.length === 0" class="radar-card__no-paa">Aucune PAA trouvée</p>
     </div>
   </div>
 </template>

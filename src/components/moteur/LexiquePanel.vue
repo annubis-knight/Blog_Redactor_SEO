@@ -46,6 +46,7 @@ import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { TfidfResult } from '@shared/types/serp-analysis.types.js'
 import type { GateEvaluation } from '@shared/verifiers/gate.js'
 import { MOTEUR_LEXIQUE_VALIDATED } from '@shared/constants/workflow-checks.constants.js'
+import { plural } from '@/utils/plural'
 
 const props = withDefaults(defineProps<{
   selectedArticle: SelectedArticle | null
@@ -571,7 +572,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
 
       <!-- 3 sections factorisées via LexiqueTermsList -->
       <LexiqueTermsList
-        :title="`Obligatoire (70%+) — ${tfidfResult.obligatoire?.length ?? 0} termes`"
+        :title="`Obligatoire (70%+) — ${tfidfResult.obligatoire?.length ?? 0} ${plural(tfidfResult.obligatoire?.length ?? 0, 'terme')}`"
         :terms="tfidfResult.obligatoire"
         :selected-terms="selectedTerms"
         :is-locked="isLocked"
@@ -579,11 +580,11 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         :is-ia-recommended="isIaRecommended"
         :get-recommendation="getRecommendation"
         :sort-terms-by-alignment="sortTermsByAlignment"
-        empty-label="Aucun terme obligatoire identifie."
+        empty-label="Aucun terme obligatoire identifié."
         @toggle-term="handleToggleTerm"
       />
       <LexiqueTermsList
-        :title="`Differenciateur (30-70%) — ${tfidfResult.differenciateur?.length ?? 0} termes`"
+        :title="`Différenciateur (30-70%) — ${tfidfResult.differenciateur?.length ?? 0} ${plural(tfidfResult.differenciateur?.length ?? 0, 'terme')}`"
         :terms="tfidfResult.differenciateur"
         :selected-terms="selectedTerms"
         :is-locked="isLocked"
@@ -591,11 +592,11 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         :is-ia-recommended="isIaRecommended"
         :get-recommendation="getRecommendation"
         :sort-terms-by-alignment="sortTermsByAlignment"
-        empty-label="Aucun terme differenciateur identifie."
+        empty-label="Aucun terme différenciateur identifié."
         @toggle-term="handleToggleTerm"
       />
       <LexiqueTermsList
-        :title="`Optionnel (<30%) — ${tfidfResult.optionnel?.length ?? 0} termes`"
+        :title="`Optionnel (<30%) — ${tfidfResult.optionnel?.length ?? 0} ${plural(tfidfResult.optionnel?.length ?? 0, 'terme')}`"
         :terms="tfidfResult.optionnel"
         :selected-terms="selectedTerms"
         :is-locked="isLocked"
@@ -603,7 +604,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         :is-ia-recommended="isIaRecommended"
         :get-recommendation="getRecommendation"
         :sort-terms-by-alignment="sortTermsByAlignment"
-        empty-label="Aucun terme optionnel identifie."
+        empty-label="Aucun terme optionnel identifié."
         @toggle-term="handleToggleTerm"
       />
 

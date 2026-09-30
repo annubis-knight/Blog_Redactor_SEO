@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ParagraphAlert } from '@shared/types/geo.types.js'
+import { plural } from '@/utils/plural'
 
 defineProps<{
   alerts: ParagraphAlert[]
@@ -18,7 +19,7 @@ defineProps<{
     >
       <span class="alert-icon">&#9888;</span>
       <div class="alert-content">
-        <span class="alert-count">P{{ alert.index + 1 }} &mdash; {{ alert.wordCount }} mots</span>
+        <span class="alert-count">P{{ alert.index + 1 }} &mdash; {{ alert.wordCount }} {{ plural(alert.wordCount, 'mot') }}</span>
         <span class="alert-excerpt">{{ alert.excerpt }}</span>
       </div>
     </div>

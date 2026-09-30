@@ -10,6 +10,7 @@ import type { AiPanelState } from '@/composables/moteur/useAiPanel'
 import type { ExploredKeywordEntry } from '@/composables/keyword/useExploredKeywords'
 import type { VerdictLevel, ScanResponse } from '@shared/types/index.js'
 import type { RadarCard, KeywordRootVariant } from '@shared/types/intent.types.js'
+import { plural } from '@/utils/plural'
 
 const props = defineProps<{
   entry: ExploredKeywordEntry | null
@@ -171,7 +172,7 @@ useEventListener(document, 'pointerdown', (event: PointerEvent) => {
             <li><span class="kpi-label">Difficult&eacute;</span><span class="kpi-value">{{ marketKpis.kd === null ? '—' : marketKpis.kd }}</span></li>
             <li><span class="kpi-label">CPC</span><span class="kpi-value">{{ marketKpis.cpc === null ? '—' : `${marketKpis.cpc.toFixed(2)} \u20AC` }}</span></li>
             <li><span class="kpi-label">Intent</span><span class="kpi-value">{{ marketKpis.intent }}</span></li>
-            <li><span class="kpi-label">PAA</span><span class="kpi-value">{{ marketKpis.paaCount }} questions</span></li>
+            <li><span class="kpi-label">PAA</span><span class="kpi-value">{{ marketKpis.paaCount }} {{ plural(marketKpis.paaCount, 'question') }}</span></li>
             <li><span class="kpi-label">Autocomplete</span><span class="kpi-value">{{ marketKpis.autocompleteCount }} matches</span></li>
           </ul>
           <p class="side-panel-kpis-note">

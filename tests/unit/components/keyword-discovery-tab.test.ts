@@ -527,7 +527,7 @@ describe('DiscoveryPanel — cache', () => {
     expect(mockLoadFromCache).toHaveBeenCalled()
   })
 
-  it('clic "Rafraichir" appelle clearCacheForSeed et reset', async () => {
+  it('clic "Rafraîchir" appelle clearCacheForSeed et reset', async () => {
     mockCacheStatus.value = { cached: true, keywordCount: 10 }
     mountTab()
 

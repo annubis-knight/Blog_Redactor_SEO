@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { articleLevelToDisplayLabel, parseArticleLevel } from '@shared/utils/article-level.js'
+import { plural } from '@/utils/plural'
 
 const props = defineProps<{
   recommendation: number | null
@@ -55,14 +56,14 @@ function resetTarget() {
       <button class="btn-adjust" @click="adjustTarget(-100)" title="-100 mots">−</button>
       <span class="target-value">{{ effectiveTarget?.toLocaleString('fr-FR') }}</span>
       <button class="btn-adjust" @click="adjustTarget(100)" title="+100 mots">+</button>
-      <button v-if="isCustom" class="btn-reset" @click="resetTarget" title="Revenir a la valeur par defaut">
-        Reinitialiser
+      <button v-if="isCustom" class="btn-reset" @click="resetTarget" title="Revenir à la valeur par défaut">
+        Réinitialiser
       </button>
     </div>
 
     <p class="recommendation-note">
-      Base : ~{{ recommendation?.toLocaleString('fr-FR') }} mots (type <strong data-testid="recommendation-level">{{ articleTypeLabel }}</strong>)
-      <span v-if="isCustom" class="custom-badge">ajuste</span>
+      Base : ~{{ recommendation?.toLocaleString('fr-FR') }} {{ plural(recommendation ?? 0, 'mot') }} (type <strong data-testid="recommendation-level">{{ articleTypeLabel }}</strong>)
+      <span v-if="isCustom" class="custom-badge">ajusté</span>
     </p>
   </div>
 

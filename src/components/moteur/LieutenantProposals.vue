@@ -71,7 +71,7 @@ const parsedInsights = computed(() =>
   <div class="ia-proposal-section" data-testid="ia-proposal-section">
     <header class="ia-proposal-header">
       <h3 class="section-title">
-        Lieutenants proposes par l'IA
+        Lieutenants proposés par l'IA
         <span v-if="iaIsStreaming" class="pulse-dot" />
       </h3>
       <!-- Badge level, migré depuis `lieutenants-header`. -->
@@ -137,7 +137,7 @@ const parsedInsights = computed(() =>
       </div>
     </template>
 
-    <p v-else class="section-empty">L'IA proposera des lieutenants apres l'analyse SERP.</p>
+    <p v-else class="section-empty">L'IA proposera des lieutenants après l'analyse SERP.</p>
   </div>
 </template>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { NlpTermResult } from '@shared/types/seo.types.js'
+import { plural } from '@/utils/plural'
 
 const props = defineProps<{
   terms: NlpTermResult[]
@@ -33,7 +34,7 @@ async function copyTerm(term: string, index: number) {
 <template>
   <div class="nlp-terms">
     <div class="nlp-summary">
-      {{ detectedCount }}/{{ terms.length }} termes d&eacute;tect&eacute;s
+      {{ detectedCount }}/{{ terms.length }} {{ plural(terms.length, 'terme détecté', 'termes détectés') }}
     </div>
     <div class="nlp-list">
       <span

@@ -986,6 +986,16 @@ development_status:
   # automatique (P7).
   qualite-seo-c8-recette-reelle: review
 
+  # Recette complète du 2026-09-30 (MOCK, jouée à l'écran, PR #9) puis cinq lots
+  # de correction, chacun par exigence + test rouge + CI : lot 4 petits défauts
+  # (PR #10), lot 1 argent (#11), lot 3 publication (#12), lot 2 données (#13),
+  # lot 5 textes d'écran + coût compté deux fois (tech-spec-lot5-libelles).
+  recette-2026-09-30-lot1-argent: done
+  recette-2026-09-30-lot2-donnees: done
+  recette-2026-09-30-lot3-publication: done
+  recette-2026-09-30-lot4-petits: done
+  recette-2026-09-30-lot5-libelles: review
+
 # ===== Backlog (non livré) =====
 #
 # - Story 3.3 bis : Indicateur d'alignement stratégique dans l'Explorateur

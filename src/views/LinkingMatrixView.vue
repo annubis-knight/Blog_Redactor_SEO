@@ -7,6 +7,7 @@ import LinkingMatrix from '@/components/linking/LinkingMatrix.vue'
 import OrphanDetector from '@/components/linking/OrphanDetector.vue'
 import AnchorDiversityPanel from '@/components/linking/AnchorDiversityPanel.vue'
 import CrossCocoonPanel from '@/components/linking/CrossCocoonPanel.vue'
+import { plural } from '@/utils/plural'
 
 const linkingStore = useLinkingStore()
 const cocoonsStore = useCocoonsStore()
@@ -25,7 +26,7 @@ onMounted(async () => {
       <RouterLink to="/" class="back-link">&larr; Dashboard</RouterLink>
       <h1 class="linking-title">Matrice de Maillage Interne</h1>
       <div class="linking-stats" v-if="linkingStore.matrix">
-        <span class="stat">{{ linkingStore.totalLinks }} liens</span>
+        <span class="stat">{{ linkingStore.totalLinks }} {{ plural(linkingStore.totalLinks, 'lien') }}</span>
         <span class="stat orphan-stat">{{ linkingStore.orphanCount }} orphelins</span>
       </div>
     </div>

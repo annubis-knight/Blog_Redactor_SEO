@@ -51,7 +51,7 @@ Au Capitaine, tous les candidats étudiés reviennent, chacun une fois, le Capit
 ### 7. Reprendre l'onglet en cours sans repayer
 **Exigences :** FR-INFRA-SCRAPE-CORPUS-NEUTRE, FR-LIE-SERP-ANALYZE ⚠, FR-INFRA-KEYWORD-METRICS ⚠, FR-INFRA-KEYWORD-DISCOVERIES
 
-L'utilisateur reprend l'onglet où il s'était arrêté. Une analyse des concurrents de moins de 7 jours est relue : aux Lieutenants, « Analyser SERP » répond vite, et la ligne qui compte les concurrents porte « (cache) ». Au Capitaine, un mot-clé mesuré il y a moins de 7 jours n'est pas remesuré. En Discovery, retaper le même mot-clé racine affiche le bandeau « Derniere analyse du … » : « Charger » rend la découverte sans nouvel appel. La pile « Coûts API » permet de vérifier que rien n'a été racheté.
+L'utilisateur reprend l'onglet où il s'était arrêté. Une analyse des concurrents de moins de 7 jours est relue : aux Lieutenants, « Analyser SERP » répond vite, et la ligne qui compte les concurrents porte « (cache) ». Au Capitaine, un mot-clé mesuré il y a moins de 7 jours n'est pas remesuré. En Discovery, retaper le même mot-clé racine affiche le bandeau « Dernière analyse du … » : « Charger » rend la découverte sans nouvel appel. La pile « Coûts API » permet de vérifier que rien n'a été racheté.
 
 ### 8. Faire le point à la Finalisation
 **Exigences :** FR-FIN-RECAP, FR-FIN-CHECK
@@ -61,7 +61,7 @@ Onglet « Finalisation » : le récapitulatif relit, sans rien permettre de modi
 ### 9. Rouvrir la rédaction guidée : le brief est intact
 **Exigences :** FR-RED-PROGRESS ⚠, FR-INFRA-MICRO-CONTEXTS, FR-RED-WORD-COUNT-TARGET, FR-RED-OUTLINE ⚠
 
-Page du cocon › « Rédaction » : la carte de l'article porte son statut (« À rédiger » ou « Publié ») ; un clic ouvre sa rédaction guidée, toujours sur l'étape « Brief & Structure ». Le micro-contexte, la cible en mots (avec « ajuste » si elle avait été modifiée) et le sommaire validé (« Sommaire valide et sauvegarde. ») sont tels qu'ils avaient été laissés. Seule l'analyse du panneau « IA Brief » n'est pas gardée : elle repart, et se paie, à la première ouverture du panneau.
+Page du cocon › « Rédaction » : la carte de l'article porte son statut (« À rédiger » ou « Publié ») ; un clic ouvre sa rédaction guidée, toujours sur l'étape « Brief & Structure ». Le micro-contexte, la cible en mots (avec « ajusté » si elle avait été modifiée) et le sommaire validé (« Sommaire validé et sauvegardé. ») sont tels qu'ils avaient été laissés. Seule l'analyse du panneau « IA Brief » n'est pas gardée : elle repart, et se paie, à la première ouverture du panneau.
 
 ### 10. Retrouver le texte à l'étape « Article »
 **Exigences :** FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-CER-PARENT-WRITTEN-GATE, FR-RED-WORD-COUNT-TARGET

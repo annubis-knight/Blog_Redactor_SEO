@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { SerpAnalysisResult, SerpCompetitor } from '@shared/types/index.js'
+import { plural } from '@/utils/plural'
 
 const props = defineProps<{
   serpResultsByKeyword: Map<string, SerpAnalysisResult>
@@ -55,7 +56,7 @@ const blogStats = computed(() => {
     <!-- SERP controls -->
     <div class="serp-controls">
       <div class="slider-row">
-        <label class="slider-label">Resultats SERP : <strong>{{ sliderValue }}</strong></label>
+        <label class="slider-label">Résultats SERP : <strong>{{ sliderValue }}</strong></label>
         <input
           type="range"
           min="3"
@@ -98,7 +99,7 @@ const blogStats = computed(() => {
           </span>
           <span class="serp-skeleton-kw">{{ kw }}</span>
           <span v-if="serpResultsByKeyword.has(kw as string)" class="serp-skeleton-meta">
-            {{ serpResultsByKeyword.get(kw as string)?.competitors.length ?? 0 }} concurrents
+            {{ serpResultsByKeyword.get(kw as string)?.competitors.length ?? 0 }} {{ plural(serpResultsByKeyword.get(kw as string)?.competitors.length ?? 0, 'concurrent') }}
           </span>
           <span v-else-if="kw === serpCurrentKeyword" class="serp-skeleton-meta">scraping...</span>
           <span v-else class="serp-skeleton-meta">en attente</span>
@@ -111,18 +112,18 @@ const blogStats = computed(() => {
       <div class="step-item" :class="{ active: currentStep === 'serp', done: currentStep !== 'serp' }">
         <span class="step-icon">{{ currentStep === 'serp' ? '&#9899;' : '&#9989;' }}</span>
         <span class="step-label">Scraping SERP Google
-          <span class="step-progress">({{ serpDoneCount }} / {{ serpTotalCount }} mots-cles)</span>
+          <span class="step-progress">({{ serpDoneCount }} / {{ serpTotalCount }} {{ plural(serpTotalCount, 'mot-clé', 'mots-clés') }})</span>
         </span>
       </div>
       <div class="step-item" :class="{ active: currentStep === 'ia-proposal', done: currentStep === 'filtering', pending: currentStep === 'serp' }">
         <span class="step-icon">{{ currentStep === 'ia-proposal' ? '&#9899;' : currentStep === 'serp' ? '&#9898;' : '&#9989;' }}</span>
         <span class="step-label">Analyse IA — proposition de lieutenants
-          <span v-if="currentStep === 'ia-proposal' && iaChunks" class="step-progress">({{ Math.round(iaChunks.length / 1000) }}k car. recus)</span>
+          <span v-if="currentStep === 'ia-proposal' && iaChunks" class="step-progress">({{ Math.round(iaChunks.length / 1000) }}k car. reçus)</span>
         </span>
       </div>
       <div class="step-item" :class="{ active: currentStep === 'filtering', pending: currentStep === 'serp' || currentStep === 'ia-proposal' }">
         <span class="step-icon">{{ currentStep === 'filtering' ? '&#9899;' : (currentStep === 'serp' || currentStep === 'ia-proposal') ? '&#9898;' : '&#9989;' }}</span>
-        <span class="step-label">Filtrage et selection des meilleurs candidats</span>
+        <span class="step-label">Filtrage et sélection des meilleurs candidats</span>
       </div>
     </div>
 
@@ -130,13 +131,13 @@ const blogStats = computed(() => {
     <div v-if="serpResult" class="results-summary">
       <p>
         {{ displayedCompetitors.length }} concurrent{{ displayedCompetitors.length > 1 ? 's' : '' }}
-        affiche{{ displayedCompetitors.length > 1 ? 's' : '' }}
+        affiché{{ displayedCompetitors.length > 1 ? 's' : '' }}
         <span v-if="serpResult.fromCache" class="cache-badge">(cache)</span>
       </p>
       <p v-if="serpResult.paaQuestions.length > 0" class="paa-count">
-        {{ serpResult.paaQuestions.length }} questions PAA
+        {{ serpResult.paaQuestions.length }} {{ plural(serpResult.paaQuestions.length, 'question') }} PAA
       </p>
-      <p v-else class="paa-count paa-warning">0 PAA — les lieutenants seront bases sur les headings et la strategie du cocon</p>
+      <p v-else class="paa-count paa-warning">0 PAA — les lieutenants seront basés sur les headings et la stratégie du cocon</p>
     </div>
 
     <!-- Per-keyword SERP tabs -->
@@ -155,7 +156,7 @@ const blogStats = computed(() => {
       </div>
       <div v-if="activeSerpTabResult" class="serp-tab-content">
         <div class="serp-tab-summary">
-          {{ activeSerpTabResult.competitors.filter(c => !c.fetchError).length }} concurrents,
+          {{ activeSerpTabResult.competitors.filter(c => !c.fetchError).length }} {{ plural(activeSerpTabResult.competitors.filter(c => !c.fetchError).length, 'concurrent') }},
           {{ activeSerpTabResult.paaQuestions.length }} PAA
           <span v-if="activeSerpTabResult.fromCache" class="cache-badge">(cache)</span>
           <span class="blog-filter" role="group" aria-label="Filtre blog / non-blog">
@@ -179,17 +180,17 @@ const blogStats = computed(() => {
             :key="comp.url"
             class="serp-url-item"
             :class="{ 'serp-url-error': comp.fetchError }"
-            :title="comp.fetchError ? `Scraping impossible : ${comp.fetchError}. Le site apparait dans le top Google mais son contenu n'a pas pu etre analyse pour la TF-IDF.` : undefined"
+            :title="comp.fetchError ? `Scraping impossible : ${comp.fetchError}. Le site apparaît dans le top Google mais son contenu n'a pas pu être analysé pour la TF-IDF.` : undefined"
           >
             <span class="serp-url-position">#{{ comp.position }}</span>
             <span
               class="serp-url-blog-badge"
               :class="{ 'serp-url-blog-badge--blog': comp.isBlog, 'serp-url-blog-badge--other': !comp.isBlog }"
-              :title="comp.isBlog ? 'Detecte comme blog / article editorial' : 'Detecte comme non-blog (institutionnel, annuaire, marketing)'"
+              :title="comp.isBlog ? 'Détecté comme blog / article éditorial' : 'Détecté comme non-blog (institutionnel, annuaire, marketing)'"
             >{{ comp.isBlog ? 'Blog' : 'Autre' }}</span>
             <span class="serp-url-domain">{{ comp.domain }}</span>
             <a :href="comp.url" target="_blank" rel="noopener" class="serp-url-link">{{ comp.title }}</a>
-            <span v-if="comp.fetchError" class="serp-url-error-badge" aria-label="Scraping echoue">!</span>
+            <span v-if="comp.fetchError" class="serp-url-error-badge" aria-label="Scraping échoué">!</span>
           </div>
         </div>
       </div>

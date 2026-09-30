@@ -64,7 +64,7 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 - Échap : même chose, et « Essai annulé » n'existe nulle part ;
 - Entrée au clavier ouvre le champ, comme le clic ;
 - après Entrée sur un vrai nom : une petite roue tourne, puis la page du cocon « Recette vide <date> » s'ouvre ;
-- à l'accueil : une seule carte « Recette vide <date> » dans le silo, avec « 0 articles | 0 Pilier 0 Inter. 0 Spéc. » et « 0% complété » ; le compteur « Cocons » a pris 1.
+- à l'accueil : une seule carte « Recette vide <date> » dans le silo, avec « 0 article | 0 Pilier 0 Inter. 0 Spéc. » et « 0% complété » ; le compteur « Cocons » a pris 1.
 
 **C'est un bug si :**
 - un cocon est créé sans nom, ou malgré Échap ;
@@ -98,7 +98,7 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 **⚠ Défaut connu :** FR-DASH-COCOON-CREATE — un nom qui ne diffère d'un cocon existant que par les majuscules ou les accents, ou le même nom dans un autre silo, est accepté ; les deux cocons partagent alors la même stratégie au Cerveau et au Moteur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### DASH-4 — Un cocon vide ouvre ses trois ateliers
-**Exigences :** FR-DASH-WORKFLOW-CHOICE, NFR-UX-SCREEN-TEXT ⚠
+**Exigences :** FR-DASH-WORKFLOW-CHOICE, NFR-UX-SCREEN-TEXT
 
 **Gestes :**
 1. À l'accueil, clique la carte « Recette vide <date> ».
@@ -107,8 +107,8 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 4. Clique **« Cerveau »**, puis reviens avec le bouton retour du navigateur.
 
 **Tu dois voir :**
-- en tête : le fil d'Ariane « Dashboard / <silo> / Recette vide <date> », le nom du cocon, puis « 0 articles · 0% complété » ;
-- « Choisissez une phase de travail : », puis trois cartes, toutes cliquables : « Cerveau » (« 6 étapes »), « Moteur » (« 0 mots-clés »), « Rédaction » (« 0 articles, 0% ») ;
+- en tête : le fil d'Ariane « Dashboard / <silo> / Recette vide <date> », le nom du cocon, puis « 0 article · 0% complété » ;
+- « Choisissez une phase de travail : », puis trois cartes, toutes cliquables : « Cerveau » (« 6 étapes »), « Moteur » (« 0 mot-clé »), « Rédaction » (« 0 article, 0% ») ;
 - dans la Rédaction : « Aucun article dans cette thématique. », accent compris, et aucune liste « Articles suggérés » ;
 - dans le Moteur : « Sélectionnez un article ci-dessus pour accéder au Moteur. », sans liste d'articles ;
 - dans le Cerveau : la barre du haut montre Cible, Douleur, Angle, Promesse, CTA, Articles, et tu es sur Cible.
@@ -116,9 +116,8 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 **C'est un bug si :**
 - une carte est grisée ou ne s'ouvre pas ;
 - un texte montre un code technique (une barre oblique inverse suivie de chiffres) à la place d'une lettre accentuée ;
+- un texte fixe est écrit sans ses accents (« Resultats », « mots-cles »…), ou un compteur ne s'accorde pas (« 1 articles ») ;
 - une page reste bloquée sur une roue de chargement.
-
-**⚠ Défaut connu :** NFR-UX-SCREEN-TEXT — des textes fixes sont écrits sans accents (« Deverrouiller », « Rafraichir », « Reinitialiser », « Derniere analyse », « mots-cles », « Suggerer », « Regenerer », « Resultats SERP », « Angle differenciant », « Contexte strategique », « Differenciateur »…) et la vérification rapide ne les repère pas ; d'autres restent techniques ou en anglais : « Discovered via suggest-alphabet », identifiant d'alerte « lieutenants-too-few » à la publication ; les compteurs ne s'accordent pas (« 1 articles »). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### DASH-5 — La page d'un silo : compteurs par niveau et par statut
 **Exigences :** FR-DASH-NAV ⚠
@@ -134,7 +133,7 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 - les compteurs « Cocons », « Articles », « Par type » (« N Pilier », « N Inter. », « N Spéc. »), « Par statut » (« N À rédiger », « N Brouillon », « N Publié ») et « Progression » ; leurs étiquettes s'affichent en majuscules ;
 - la roue dentée mène à la même page que le nom ;
 - « Par type » et « Par statut » font chacun le total « Articles » ; « Progression » vaut (Brouillon + Publié) ÷ Articles, arrondi ;
-- sous « Cocons sémantiques », une ligne par cocon, dont « Recette <date> » (« 2 articles », 50 %) et « Recette vide <date> » (« 0 articles », 0 %) ;
+- sous « Cocons sémantiques », une ligne par cocon, dont « Recette <date> » (« 2 articles », 50 %) et « Recette vide <date> » (« 0 article », 0 %) ;
 - un clic sur une ligne ouvre la page du cocon ;
 - avec `999` : « Silo introuvable. » et « ← Retour au dashboard », qui ramène à l'accueil.
 
@@ -253,7 +252,7 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 - une case à cocher à gauche de chaque carte ;
 - sur une ligne : ▶, le mot-clé, des pictogrammes d'intention s'il y en a, chacun dessiné (infobulles « Informationnel », « Commercial », « Transactionnel » ou « Navigationnel »), les mesures vol · KD · CPC · PAA, puis un anneau avec son chiffre et « Score KPI » dessous ;
 - au survol de l'anneau, une bulle « Score KPI » : une ligne par composante, avec son poids en % et sa note sur 100, puis « Total » en /100 ;
-- ▶ déplie un texte en italique, puis les questions PAA : chacune avec un badge (« Exact », « Match », « Partiel », « Hors sujet »…), les questions filles rangées sous leur mère ; un clic sur une question montre sa réponse. Sans question : « Aucune PAA trouvee » ;
+- ▶ déplie un texte en italique, puis les questions PAA : chacune avec un badge (« Exact », « Match », « Partiel », « Hors sujet »…), les questions filles rangées sous leur mère ; un clic sur une question montre sa réponse. Sans question : « Aucune PAA trouvée » ;
 - cocher encadre la carte et fait apparaître **« Envoyer au Capitaine (2) »**.
 
 **C'est un bug si :**
@@ -311,7 +310,7 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 **⚠ Défaut connu :** le panneau du Lexique n'apparaît qu'après le calcul TF-IDF, celui des Lieutenants qu'après l'analyse des résultats Google, et le panneau « Analyse IA du Brief » de la rédaction n'a ni la structure commune ni d'état « erreur ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### UI-4 — « Verrouiller » et « Déverrouiller », jamais « Valider » pour un mot-clé
-**Exigences :** FR-UI-VOCABULAIRE-VERROUILLER ⚠
+**Exigences :** FR-UI-VOCABULAIRE-VERROUILLER
 
 **Gestes :**
 1. Au Capitaine de l'enfant, survole le cadenas de la carte `plombier toulouse`. Clique-le (réponds à l'alarme comme en DASH-9), survole-le de nouveau, puis reclique pour déverrouiller.
@@ -329,8 +328,6 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 - l'infobulle d'un cadenas parle de « Valider ».
 
 > L'exigence cite un bouton « Verrouiller ce mot-clé » au Capitaine. L'écran ne l'a plus : le cadenas le remplace. Écart signalé, ce n'est pas un défaut de recette.
-
-**⚠ Défaut connu :** FR-UI-VOCABULAIRE-VERROUILLER — les cadenas des titres de la structure disent « Deverrouiller », sans accent. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### UI-5 — Les panneaux d'IA de Discovery et du Radar, du repos au résultat
 **Exigences :** FR-UI-AI-PANELS-PATTERN ⚠
@@ -372,7 +369,7 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 3. Pilier : onglet **« Lexique »**. Regarde le panneau « Analyse IA Lexique » dès l'ouverture de l'onglet.
 
 **Tu dois voir :**
-- enfant, Lieutenants : « Verrouillez votre Capitaine dans l'onglet precedent pour analyser la SERP. », et aucun panneau « Suggestions IA Lieutenants » (défaut connu) ;
+- enfant, Lieutenants : « Verrouillez votre Capitaine dans l'onglet précédent pour analyser la SERP. », et aucun panneau « Suggestions IA Lieutenants » (défaut connu) ;
 - enfant, Lexique : « Verrouillez d'abord le Capitaine pour débloquer les actions Lexique. », et aucun panneau « Analyse IA Lexique » (défaut connu) ;
 - pilier, Lieutenants : « Suggestions IA Lieutenants », avec sa propre présentation (pas d'en-tête repliable), puis « N propositions générées par l'IA. » et « Régénérer les suggestions », ou « Aucune génération IA pour ce Capitaine. » et « Lancer une suggestion IA » ;
 - pilier, Lexique : « Analyse IA Lexique » présent ; rien ne se lance à l'ouverture de l'onglet (l'analyse attend « Analyser avec l'IA »). Juste après une analyse, il revient au repos : « Lance l'analyse IA pour obtenir des recommandations sur les termes TF-IDF. » et « Analyser avec l'IA », alors que les termes portent leurs badges ; après un rechargement, il affiche « N termes analysés — 0 recommandés · 0 écartés. », et les badges ont disparu (le panneau et les badges lisent deux listes différentes : défaut connu de FR-LEX-AI-PANEL). Ou il montre une erreur lisible, si l'extraction n'a trouvé aucun terme.
@@ -446,8 +443,8 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 
 **Tu dois voir :**
 - vue guidée : « SEO », « GEO », « Maillage », « Enrichir », « IA Brief », et pas de « Blocs » ;
-- enfant, sans texte : « SEO », « GEO », « Maillage » et « Enrichir » grisés, infobulles « Generez un article pour activer le scoring SEO », « Generez un article pour activer le scoring GEO », « Generez un article pour activer le maillage », « Rédigez le premier jet pour l’enrichir » ; « IA Brief » reste actif ; un clic sur « GEO » ne fait rien ;
-- à droite, le panneau SEO ouvert d'office, voilé par « Generez un article pour activer ce panneau » ; Échap le ferme, et « SEO » ne le rouvre pas ;
+- enfant, sans texte : « SEO », « GEO », « Maillage » et « Enrichir » grisés, infobulles « Générez un article pour activer le scoring SEO », « Générez un article pour activer le scoring GEO », « Générez un article pour activer le maillage », « Rédigez le premier jet pour l’enrichir » ; « IA Brief » reste actif ; un clic sur « GEO » ne fait rien ;
+- à droite, le panneau SEO ouvert d'office, voilé par « Générez un article pour activer ce panneau » ; Échap le ferme, et « SEO » ne le rouvre pas ;
 - pilier : les mêmes boutons, tous actifs ; « Enrichir » ouvre « Enrichir l’article », et le panneau s'élargit ;
 - vue guidée du pilier : le compteur « N mots / N cible » sous le texte ;
 - éditeur : « SEO », « GEO », « Maillage », « Enrichir », « Blocs », et pas d'« IA Brief » ; « Blocs » ouvert d'office, à la largeur choisie à l'étape 4 ; « ← Retour » en haut à gauche ; aucun compteur de mots.

@@ -24,6 +24,7 @@ import {
 } from '@shared/constants/workflow-checks.constants.js'
 import type { SelectedArticle } from '@shared/types/index.js'
 import { structureHeadings } from '@shared/verifiers/structure.js'
+import { plural } from '@/utils/plural'
 
 const props = defineProps<{
   selectedArticle: SelectedArticle | null
@@ -143,7 +144,7 @@ const ctaTitle = computed(() => finalisationButtonTitle(checks.value))
 
     <CollapsableSection
       :default-open="true"
-      :title="`Lexique (${lexique.length} termes)`"
+      :title="`Lexique (${lexique.length} ${plural(lexique.length, 'terme')})`"
       data-testid="finalisation-lexique"
     >
       <ul v-if="lexique.length > 0" class="finalisation__chip-list">

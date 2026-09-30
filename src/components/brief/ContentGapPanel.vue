@@ -2,11 +2,11 @@
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
-import { useCostLogStore } from '@/stores/ui/cost-log.store'
-import type { ContentGapAnalysis, ThematicGap, ApiUsage } from '@shared/types/index.js'
+import type { ContentGapAnalysis, ThematicGap } from '@shared/types/index.js'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
+import { plural } from '@/utils/plural'
 
 const props = defineProps<{
   keyword: string
@@ -75,14 +75,11 @@ async function handleAnalyze() {
   error.value = null
   try {
     log.info('Analyzing content gap', { keyword: props.keyword })
-    const raw = await apiPost<ContentGapAnalysis & { _apiUsage?: ApiUsage }>('/content-gap/analyze', {
+    // Le coût de l'appel est inscrit une fois, par apiPost (champ `usage`).
+    gapData.value = await apiPost<ContentGapAnalysis>('/content-gap/analyze', {
       keyword: props.keyword,
       articleId: props.articleId ?? undefined,
     })
-    if (raw._apiUsage) {
-      try { useCostLogStore().addEntry('Analyse content gap', raw._apiUsage) } catch { /* noop */ }
-    }
-    gapData.value = raw
     log.info('Content gap analysis complete', { competitors: gapData.value?.competitors.length, gaps: gapData.value?.gaps.length })
     if (gapData.value?.averageWordCount) {
       emit('analyzed', gapData.value.averageWordCount)
@@ -129,7 +126,7 @@ async function handleAnalyze() {
           <span class="card-value">{{ avgWordCount !== null ? avgWordCount.toLocaleString('fr-FR') : '—' }}</span>
         </div>
         <div class="overview-card">
-          <span class="card-label">Themes</span>
+          <span class="card-label">Thèmes</span>
           <span class="card-value">{{ themes.length }}</span>
         </div>
         <div class="overview-card overview-card--danger">
@@ -139,7 +136,7 @@ async function handleAnalyze() {
       </div>
 
       <!-- Themes with frequency -->
-      <CollapsableSection title="Themes identifies">
+      <CollapsableSection title="Thèmes identifiés">
         <div class="themes-list">
           <div
             v-for="theme in themes"
@@ -157,12 +154,12 @@ async function handleAnalyze() {
       </CollapsableSection>
 
       <!-- Gaps highlighted -->
-      <CollapsableSection v-if="gaps.length > 0" title="Lacunes a combler">
+      <CollapsableSection v-if="gaps.length > 0" title="Lacunes à combler">
         <div class="gaps-list">
           <div v-for="gap in gaps" :key="gap.theme" class="gap-item">
             <span class="gap-name">{{ gap.theme }}</span>
             <span class="gap-freq">
-              Present chez {{ gap.frequency }}/{{ competitorCount }} concurrents
+              Présent chez {{ gap.frequency }}/{{ competitorCount }} {{ plural(competitorCount, 'concurrent') }}
             </span>
           </div>
         </div>
@@ -171,7 +168,7 @@ async function handleAnalyze() {
       <!-- Local entities from competitors -->
       <CollapsableSection
         v-if="localEntities.length > 0"
-        title="Entites locales des concurrents"
+        title="Entités locales des concurrents"
         :default-open="false"
       >
         <div class="entities-tags">
@@ -220,7 +217,7 @@ async function handleAnalyze() {
                 </span>
               </div>
             </div>
-            <span class="comp-words">{{ comp.wordCount.toLocaleString('fr-FR') }} mots</span>
+            <span class="comp-words">{{ comp.wordCount.toLocaleString('fr-FR') }} {{ plural(comp.wordCount, 'mot') }}</span>
             <div v-if="(comp.paasCovered ?? []).length > 0" class="comp-paas">
               <span class="comp-paas-label">PAA couvertes:</span>
               {{ (comp.paasCovered ?? []).length }}
@@ -239,7 +236,7 @@ async function handleAnalyze() {
       </CollapsableSection>
 
       <p class="cache-info">
-        Donnees mises en cache le {{ new Date(gapData.cachedAt).toLocaleDateString('fr-FR') }}
+        Données mises en cache le {{ new Date(gapData.cachedAt).toLocaleDateString('fr-FR') }}
       </p>
     </template>
   </section>

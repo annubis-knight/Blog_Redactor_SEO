@@ -13,6 +13,7 @@ import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
 import type { SerpAnalysisResult } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
+import { plural } from '@/utils/plural'
 
 withDefaults(defineProps<{
   // Visibility gate
@@ -63,23 +64,23 @@ defineEmits<{
     />
 
     <CollapsableSection v-if="serpResult" title="Sources IA : questions Google (PAA)" :default-open="false">
-      <p class="section-hint">Questions "People Also Ask" scrapees depuis Google pour tes mots-cles. Elles ont deja ete prises en compte par l'IA pour proposer les lieutenants ci-dessus — affichees ici pour transparence.</p>
+      <p class="section-hint">Questions « People Also Ask » récupérées depuis Google pour tes mots-clés. Elles ont déjà été prises en compte par l'IA pour proposer les lieutenants ci-dessus — affichées ici par transparence.</p>
       <ul v-if="serpResult.paaQuestions.length > 0" class="paa-list">
         <li v-for="paa in serpResult.paaQuestions" :key="paa.question" class="paa-item">
           <div class="paa-question">{{ paa.question }}</div>
           <div v-if="paa.answer" class="paa-answer">{{ paa.answer }}</div>
         </li>
       </ul>
-      <p v-else class="section-empty">Google n'a renvoye aucune question PAA pour ces mots-cles — c'est normal sur des requetes techniques ou de niche.</p>
+      <p v-else class="section-empty">Google n'a renvoyé aucune question PAA pour ces mots-clés — c'est normal sur des requêtes techniques ou de niche.</p>
     </CollapsableSection>
 
     <!-- Word groups -->
     <CollapsableSection v-if="serpResult" title="Sources IA : clusters Discovery" :default-open="false">
-      <p class="section-hint">Regroupements thematiques (par racine commune) calcules a partir des mots-cles trouves dans l'onglet Discovery. Utilises par l'IA pour reperer les sous-themes a traiter.</p>
+      <p class="section-hint">Regroupements thématiques (par racine commune) calculés à partir des mots-clés trouvés dans l'onglet Discovery. Utilisés par l'IA pour repérer les sous-thèmes à traiter.</p>
       <ul v-if="wordGroups.length > 0" class="group-list">
         <li v-for="g in wordGroups" :key="g.normalized" class="group-item">
           <span class="group-word">{{ g.word }}</span>
-          <span class="group-count">{{ g.count }} termes</span>
+          <span class="group-count">{{ g.count }} {{ plural(g.count, 'terme') }}</span>
         </li>
       </ul>
       <p v-else class="section-empty">Aucun cluster disponible. Lance un scan Discovery pour ce cocon, puis reviens ici.</p>

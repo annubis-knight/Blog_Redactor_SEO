@@ -26,7 +26,7 @@ const editableAssignments = ref([...props.assignments])
 
 <template>
   <div class="migration-preview">
-    <h3 class="preview-title">Assignation des mots-cles</h3>
+    <h3 class="preview-title">Assignation des mots-clés</h3>
 
     <div v-if="warnings.length > 0" class="warnings">
       <p v-for="(warn, i) in warnings" :key="i" class="warning-item">{{ warn }}</p>
@@ -48,7 +48,7 @@ const editableAssignments = ref([...props.assignments])
             <input
               v-model="assignment.capitaine"
               class="kw-input capitaine"
-              placeholder="Mot-cle principal"
+              placeholder="Mot-clé principal"
             />
           </div>
           <div class="kw-level">

@@ -26,7 +26,7 @@ Le TF-IDF est ici une mesure simple : sur combien de pages concurrentes un mot a
 
 - Seul le contenu principal de chaque page compte (sa zone principale, sinon ses articles, sinon la page), sans menus, en-têtes, pieds de page, encarts, formulaires ni bandeaux de cookies ou d'inscription. Dans un article, le titre est gardé.
 - Sont écartés : les mots de moins de 3 lettres, les nombres, les mots vides (articles, pronoms, possessifs, prépositions, adverbes, verbes génériques comme « être », « voir », « permet ») et le décor de page (« cookies », « mentions », « newsletter », « panier », réseaux sociaux, « cliquez »…), avec ou sans accent. Le mot proposé garde son accent. « site », « blog », « article », « recherche » restent.
-- Trois listes : « Obligatoire (70%+) — N termes » (ouverte), « Differenciateur (30-70%) — N termes » (ouverte), « Optionnel (<30%) — N termes » (repliée). Au plus 50 termes par liste, triés par densité décroissante.
+- Trois listes : « Obligatoire (70%+) — N termes » (ouverte), « Différenciateur (30-70%) — N termes » (ouverte), « Optionnel (<30%) — N termes » (repliée). Au plus 50 termes par liste, triés par densité décroissante.
 - Chaque ligne : une case, le terme, le badge de l'IA s'il existe, « ×densité/page », le pourcentage de pages.
 - Les termes sont des mots isolés.
 - Sans page lue, l'extraction échoue avec « Lancez d'abord l'analyse SERP dans l'onglet Lieutenants ».
@@ -88,7 +88,7 @@ Le TF-IDF est ici une mesure simple : sur combien de pages concurrentes un mot a
 ## Le lexique hors de l'onglet
 *Exigences : FR-LEX-METIER-ONLY*
 
-- Dans la Rédaction, section « Mots-clés » : un terme générique ajouté à la main est refusé (« « … » est un mot générique : il n'aide pas le référencement, il n'est pas ajouté. ») ; « Suggerer le Lexique via Claude » remplace le lexique par la suggestion, sans ses termes génériques, et les nomme (« Termes génériques écartés de la suggestion : … »). La Rédaction n'a pas d'étape « Lexique validé » : c'est la publication qui rejoue la porte.
+- Dans la Rédaction, section « Mots-clés » : un terme générique ajouté à la main est refusé (« « … » est un mot générique : il n'aide pas le référencement, il n'est pas ajouté. ») ; « Suggérer le Lexique via Claude » remplace le lexique par la suggestion, sans ses termes génériques, et les nomme (« Termes génériques écartés de la suggestion : … »). La Rédaction n'a pas d'étape « Lexique validé » : c'est la publication qui rejoue la porte.
 - Le mode automatique garde les obligatoires et les différenciateurs de densité au moins médiane, sans mot générique ni mot déjà porté par le capitaine ou les lieutenants, 30 au plus. Il enregistre le lexique, puis demande l'étape à la même porte, et s'arrête sur un refus.
 
 ## Limites connues (Lexique)

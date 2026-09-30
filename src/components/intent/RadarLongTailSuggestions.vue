@@ -101,9 +101,9 @@ function badgeColorForScore(score: number): string {
   <section v-if="isVisible" class="long-tail-section" data-testid="radar-long-tail-section">
     <header class="lt-header">
       <div class="lt-header-text">
-        <h4 class="lt-title">Suggestions longue-traine</h4>
+        <h4 class="lt-title">Suggestions longue traîne</h4>
         <p class="lt-desc">
-          Combinaisons IA generees a partir des mots-cles Radar. Coche celles a envoyer au Capitaine.
+          Combinaisons IA générées à partir des mots-clés Radar. Coche celles à envoyer au Capitaine.
         </p>
       </div>
       <div class="lt-header-actions">
@@ -114,24 +114,24 @@ function badgeColorForScore(score: number): string {
           :disabled="isLoading"
           @click="handleGenerate"
         >
-          {{ status === 'error' ? 'Reessayer' : '✨ Suggerer des combinaisons' }}
+          {{ status === 'error' ? 'Réessayer' : '✨ Suggérer des combinaisons' }}
         </button>
         <button
           v-if="showRegenerateButton"
           class="btn-regenerate"
           data-testid="btn-regenerate-longtail"
           :disabled="isLoading"
-          :title="'La regeneration ecrase les suggestions actuelles mais conserve les longues-traines cochees encore presentes dans la nouvelle liste.'"
+          :title="'La régénération écrase les suggestions actuelles mais conserve les longues traînes cochées encore présentes dans la nouvelle liste.'"
           @click="handleRegenerate"
         >
-          ⟳ Regenerer
+          ⟳ Régénérer
         </button>
       </div>
     </header>
 
     <div v-if="isLoading" class="lt-loading" data-testid="longtail-loading">
       <div class="spinner" />
-      <span>L'IA genere les suggestions…</span>
+      <span>L'IA génère les suggestions…</span>
     </div>
 
     <div v-if="status === 'error' && error" class="lt-error">
@@ -174,7 +174,7 @@ function badgeColorForScore(score: number): string {
     </ul>
 
     <p v-else-if="status === 'success' && suggestions.length === 0" class="lt-empty">
-      L'IA n'a propose aucune combinaison pertinente cette fois.
+      L'IA n'a proposé aucune combinaison pertinente cette fois.
     </p>
   </section>
 </template>

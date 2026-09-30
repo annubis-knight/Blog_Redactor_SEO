@@ -42,7 +42,7 @@ defineEmits<{
 
 <template>
   <div v-if="!hasBody && (showSeoPanel || showGeoPanel || showLinkSuggestions || showBlocksPanel || showEnrichPanel)" class="panel-disabled-overlay">
-    <p class="panel-disabled-msg">Generez un article pour activer ce panneau</p>
+    <p class="panel-disabled-msg">Générez un article pour activer ce panneau</p>
   </div>
 
   <ErrorBoundary v-if="showSeoPanel" fallback-message="Erreur dans le panneau SEO.">

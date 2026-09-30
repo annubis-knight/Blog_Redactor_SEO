@@ -8,6 +8,7 @@
  * nouvelle découverte (`hasDiscovered === false`).
  */
 import type { DiscoveryCacheStatus } from '@shared/types/discovery-cache.types.js'
+import { plural } from '@/utils/plural'
 
 defineProps<{
   cacheStatus: DiscoveryCacheStatus | null
@@ -24,12 +25,12 @@ defineEmits<{
 <template>
   <div v-if="cacheStatus?.cached && !hasDiscovered" class="cache-indicator">
     <span class="cache-indicator__badge">
-      Derniere analyse
+      Dernière analyse
       <span v-if="cacheStatus.cachedAt" class="cache-indicator__date">
         du {{ new Date(cacheStatus.cachedAt).toLocaleDateString('fr-FR') }}
       </span>
       <span v-if="cacheStatus.keywordCount" class="cache-indicator__kw">
-        · {{ cacheStatus.keywordCount }} mots-cles
+        · {{ cacheStatus.keywordCount }} {{ plural(cacheStatus.keywordCount, 'mot-clé', 'mots-clés') }}
       </span>
       <span v-if="cacheStatus.hasAnalysis" class="cache-indicator__analysis">
         · analyse IA incluse
@@ -39,7 +40,7 @@ defineEmits<{
       {{ cacheLoading ? 'Chargement...' : 'Charger' }}
     </button>
     <button class="cache-indicator__clear" @click="$emit('clear')">
-      Rafraichir
+      Rafraîchir
     </button>
   </div>
 </template>

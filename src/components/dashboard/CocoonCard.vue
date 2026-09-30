@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Cocoon } from '@shared/types/index.js'
 import ProgressBar from '@/components/shared/ProgressBar.vue'
+import { plural } from '@/utils/plural'
 
 defineProps<{
   cocoon: Cocoon
@@ -12,7 +13,7 @@ defineProps<{
     <h3 class="cocoon-name">{{ cocoon.name }}</h3>
 
     <div class="cocoon-stats">
-      <span class="stat">{{ cocoon.stats.totalArticles }} articles</span>
+      <span class="stat">{{ cocoon.stats.totalArticles }} {{ plural(cocoon.stats.totalArticles, 'article') }}</span>
       <span class="stat-separator">|</span>
       <span class="stat type-pilier">{{ cocoon.stats.byType.pilier }} Pilier</span>
       <span class="stat type-inter">{{ cocoon.stats.byType.intermediaire }} Inter.</span>

@@ -36,13 +36,13 @@ defineEmits<{
     <div v-if="showInputs" class="scanner-inputs">
       <h3 class="scanner-title">Keyword Radar</h3>
       <p class="scanner-desc">
-        L'IA genere des mots-cles courts, puis chacun est scanne dans l'ecosysteme Google
-        (PAA + Autocomplete) pour mesurer la resonance avec votre article.
+        L'IA génère des mots-clés courts, puis chacun est scanné dans l'écosystème Google
+        (PAA + Autocomplete) pour mesurer la résonance avec votre article.
       </p>
 
       <div class="input-row">
         <div class="input-group">
-          <label class="input-label">Mot-cle large (silo)</label>
+          <label class="input-label">Mot-clé large (silo)</label>
           <input
             :value="broadKeyword"
             type="text"
@@ -52,7 +52,7 @@ defineEmits<{
           />
         </div>
         <div class="input-group">
-          <label class="input-label">Sujet precis (article)</label>
+          <label class="input-label">Sujet précis (article)</label>
           <input
             :value="specificTopic"
             type="text"
@@ -80,7 +80,7 @@ defineEmits<{
           :disabled="isGenerating || !broadKeyword.trim() || !specificTopic.trim()"
           @click="$emit('generate')"
         >
-          {{ isGenerating ? 'Generation...' : 'Generer les mots-cles' }}
+          {{ isGenerating ? 'Génération...' : 'Générer les mots-clés' }}
         </button>
 
         <button

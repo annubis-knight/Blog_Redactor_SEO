@@ -11,7 +11,7 @@ Les lieutenants sont les mots-clés secondaires de l'article : les recherches vo
 ## Ouvrir l'onglet
 *Exigences : FR-LIE-SERP-ANALYZE, FR-LIE-CHECK*
 
-- Tant que le capitaine n'est pas verrouillé et qu'aucune proposition n'existe pour l'article, un message invite : « Verrouillez votre Capitaine dans l'onglet precedent pour analyser la SERP. » Le curseur et « Analyser SERP » sont grisés.
+- Tant que le capitaine n'est pas verrouillé et qu'aucune proposition n'existe pour l'article, un message invite : « Verrouillez votre Capitaine dans l'onglet précédent pour analyser la SERP. » Le curseur et « Analyser SERP » sont grisés.
 - Dès qu'une proposition existe pour l'article, l'onglet reste utilisable même si le capitaine est déverrouillé ensuite (« Les garder ») : « Analyser SERP » reste actif, sur le mot-clé de l'article.
 - Ouvrir l'onglet ne lance rien de payant. Les lieutenants déjà enregistrés reviennent à l'écran dès l'ouverture, même sans lieutenant retenu : les retenus cochés, puis les candidats suggérés, puis les « Autres candidats ». Une ancienne liste sans détail revient avec des cartes sans raison et un score « — ».
 - Le panneau « 💡 Suggestions pour vos Lieutenants » liste au plus 10 mots-clés issus du scan Radar de l'article. « Ajouter » crée une carte non cochée, raison « Proposé depuis votre panier », niveau H2, score « — ». Le panneau se masque avec « × ».
@@ -22,12 +22,12 @@ Les lieutenants sont les mots-clés secondaires de l'article : les recherches vo
 La SERP est la page de résultats de Google pour une recherche. « Analyser SERP » lit les 10 premiers résultats du capitaine, puis ceux de ses mots-clés racines (les racines retenues au Capitaine, sinon jusqu'à 5 racines tirées du capitaine).
 
 - Les mots-clés sont analysés l'un après l'autre. L'écran montre « Analyse SERP en cours (n/N) » avec, par mot-clé, ✓ et le nombre de concurrents, « scraping... » ou « en attente ». La pile d'activité note « Analyse SERP lancée (N mots-clés) ».
-- Trois étapes s'enchaînent à l'écran : « Scraping SERP Google (n / N mots-cles) », « Analyse IA — proposition de lieutenants », « Filtrage et selection des meilleurs candidats ».
-- Le résumé dit « N concurrents affiches », « (cache) » si l'analyse a été relue, et « N questions PAA » ou « 0 PAA — les lieutenants seront bases sur les headings et la strategie du cocon ». Les PAA (« Autres questions posées ») sont les questions que Google affiche sous les résultats.
+- Trois étapes s'enchaînent à l'écran : « Scraping SERP Google (n / N mots-clés) », « Analyse IA — proposition de lieutenants », « Filtrage et sélection des meilleurs candidats ».
+- Le résumé dit « N concurrents affichés », « (cache) » si l'analyse a été relue, et « N questions PAA » ou « 0 PAA — les lieutenants seront basés sur les headings et la stratégie du cocon ». Les PAA (« Autres questions posées ») sont les questions que Google affiche sous les résultats.
 - Un onglet par mot-clé analysé liste ses concurrents : « #rang », badge « Blog » ou « Autre », domaine, titre cliquable. Une page qui n'a pas pu être lue porte un « ! » ; une page lue mais vide est traitée de même. Deux filtres « Blogs (n) » et « Autres (m) » restreignent la liste.
 - Une analyse de moins de 7 jours est relue en base, quel que soit l'article qui l'a demandée ; une lecture de moins d'une heure est relue en mémoire. Au-delà, l'analyse est refaite et payée.
 - « Tout relancer (SERP + IA) » vide l'écran et relance l'analyse. Il est grisé pendant une analyse ou une génération.
-- Le curseur « Resultats SERP » va de 3 à 10 (10 par défaut). Il ne change que le compteur « N concurrents affiches » : la liste des concurrents et les données envoyées à l'IA restent entières.
+- Le curseur « Résultats SERP » va de 3 à 10 (10 par défaut). Il ne change que le compteur « N concurrents affichés » : la liste des concurrents et les données envoyées à l'IA restent entières.
 
 **Échec de l'analyse.** Le message nomme le mot-clé et la suite à donner :
 

@@ -10,6 +10,7 @@ import type { ArticleLevel } from '@shared/types/keyword-validate.types'
 import type { LongTailSuggestion } from '@shared/types/long-tail.types'
 import type { ModifierKind } from '@shared/utils/keyword-modifiers'
 import type { SortOption } from '@/composables/moteur/useSortableList'
+import { plural } from '@/utils/plural'
 
 interface AutoGroup {
   query: string
@@ -96,7 +97,7 @@ defineEmits<{
         v-if="scanResult"
         :options="radarSortOptions"
         :model-value="radarSortState"
-        :count-label="filteredCards.length !== scanResult.cards.length ? `${filteredCards.length} / ${scanResult.cards.length} mots-clés` : `${filteredCards.length} mots-clés`"
+        :count-label="filteredCards.length !== scanResult.cards.length ? `${filteredCards.length} / ${scanResult.cards.length} ${plural(scanResult.cards.length, 'mot-clé', 'mots-clés')}` : `${filteredCards.length} ${plural(filteredCards.length, 'mot-clé', 'mots-clés')}`"
         @update:model-value="(s) => $emit('update:radar-sort-state', s)"
       >
         <template #filters>

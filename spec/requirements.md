@@ -323,7 +323,7 @@ L'outil doit recommander une longueur d'article réaliste, tirée du niveau, de 
 - La base est la longueur visée du niveau (Pilier 2 500 mots, Intermédiaire 1 800, Spécialisé 1 200), bornée par sa fourchette (1 800–3 500, 1 200–2 500, 800–1 500).
 - Avec une moyenne des concurrents, la recommandation mêle 60 % de cette moyenne et 40 % de la base ; avec en plus une structure, l'IA donne l'avis. Le résultat reste dans les bornes du niveau.
 - Valider la structure au Moteur demande une recommandation : elle devient la longueur de l'article si aucune n'est choisie ; une valeur déjà choisie est gardée. La pile d'activité affiche « 💡 Longueur conseillée : N mots » et sa raison.
-- Dans la Rédaction, la longueur visée s'ajuste par pas de 100 mots (de 500 à 10 000) et revient à la recommandation par « Reinitialiser ». La valeur retenue alimente le micro-contexte et le premier jet.
+- Dans la Rédaction, la longueur visée s'ajuste par pas de 100 mots (de 500 à 10 000) et revient à la recommandation par « Réinitialiser ». La valeur retenue alimente le micro-contexte et le premier jet.
 
 ### FR-CER-THEME-CONFIG — Configuration du thème, saisie une fois
 **Statut :** non tenue (hors Discovery, qui reçoit le secteur, l'audience, les services et la promesse, les consignes du Moteur et de la Rédaction ne reçoivent ni le positionnement, ni les offres, ni le ton : seule la localisation y parvient, comme zone du client ; au Cerveau, la configuration n'est envoyée que si l'audience, la promesse, le secteur ou le style est rempli ; le mode automatique ne la lit pas pour le brief et l'emplacement : il redemande un « Contexte business » à chaque run ; dans la rédaction guidée, « Contexte envoyé à Claude » affiche toute la configuration alors que le sommaire et le premier jet ne la reçoivent pas)
@@ -579,9 +579,10 @@ L'outil doit mettre à jour, dans la même seconde, tout affichage d'une donnée
 - Après un changement d'article, aucun élément de l'article précédent ne reste affiché.
 
 ### FR-UI-VOCABULAIRE-VERROUILLER — « Verrouiller » pour figer un choix de mot-clé
-**Statut :** non tenue (les cadenas des titres de la structure disent « Deverrouiller », sans accent)
+**Statut :** active
 L'outil doit employer « Verrouiller » pour le geste qui fige un mot-clé, et « Déverrouiller » pour l'inverse.
 - Au Capitaine, le cadenas d'une carte porte l'infobulle « Verrouiller », puis « Déverrouiller » une fois le mot-clé figé.
+- Dans la structure proposée aux Lieutenants, le cadenas d'un titre dit de même « Verrouiller », puis « Déverrouiller ».
 - Aucun bouton ne dit « Valider ce Capitaine », « Valider les Lieutenants » ni « Valider le Lexique ».
 
 ### Retirées (MOT)
@@ -628,7 +629,7 @@ L'outil doit faire juger par l'IA si chaque candidat a sa place dans un article 
 **Statut :** active
 L'outil doit proposer, sur demande, une sélection de 20 à 30 candidats pertinents avec, pour chacun, une raison courte et une priorité.
 - Le panneau « Analyse IA Discovery » est toujours affiché ; son bouton est désactivé tant qu'il n'y a pas de résultats, pendant le filtrage, ou s'il ne reste aucun pertinent, avec un message qui dit pourquoi.
-- Chaque proposition affiche son rang, sa priorité (haute, moyenne, basse), sa raison et une case ; « Tout selectionner » coche l'ensemble.
+- Chaque proposition affiche son rang, sa priorité (haute, moyenne, basse), sa raison et une case ; « Tout sélectionner » coche l'ensemble.
 - Un échec affiche un état d'erreur, jamais une zone vide.
 - Relancer demande une confirmation, car l'appel est payant.
 - L'analyse réussie est sauvegardée avec la découverte.
@@ -756,12 +757,12 @@ Une carte dépliée doit montrer ses questions PAA en arbre à deux niveaux.
 - Chaque question affiche un badge d'accord avec le sujet, son score sémantique en pourcentage s'il existe, et le nombre de sous-questions.
 - La réponse de Google et les sous-questions se déplient au clic.
 - La mention « PAA en cache » apparaît quand les questions viennent de la base.
-- Une carte sans question affiche « Aucune PAA trouvee ».
+- Une carte sans question affiche « Aucune PAA trouvée ».
 
 ### FR-RAD-LONGTAIL-GENERATE — Proposer des longues traînes à partir des mots-clés scannés
 **Statut :** non tenue (une réponse vide est enregistrée et resservie pendant 7 jours, sans bouton pour réessayer)
 Dès que le scan a produit au moins 2 cartes, l'utilisateur doit pouvoir demander à l'IA des longues traînes (requêtes plus longues et plus précises) dérivées de ces mots-clés.
-- La section « Suggestions longue-traine » apparaît à partir de 2 cartes scannées.
+- La section « Suggestions longue traîne » apparaît à partir de 2 cartes scannées.
 - L'IA propose au plus 10 suggestions, chacune avec une note de préférence de 1 à 10, une justification et ses mots-clés sources.
 - Une nouvelle demande avec les mêmes entrées réutilise le résultat mis en cache 7 jours, sans nouvel appel d'IA.
 - Une réponse d'IA mal formée n'est ni enregistrée ni mise en cache ; l'utilisateur peut réessayer.
@@ -777,7 +778,7 @@ Chaque suggestion doit être cochable, et les choix de l'utilisateur doivent sur
 ### FR-RAD-LONGTAIL-REGENERATE — Régénérer sans payer deux fois
 **Statut :** non tenue (les suggestions enregistrées ne sont pas réaffichées ; un nouveau scan les efface de la base)
 L'utilisateur doit pouvoir régénérer les longues traînes ; le cache évite un appel d'IA inutile.
-- Après une génération réussie, le bouton devient « ⟳ Regenerer ».
+- Après une génération réussie, le bouton devient « ⟳ Régénérer ».
 - Sans changement des mots-clés sources, régénérer relit le cache.
 - Après changement des mots-clés sources, régénérer rappelle l'IA ; les cases encore présentes restent cochées.
 - Au rechargement, les suggestions déjà générées sont restaurées.
@@ -2040,8 +2041,8 @@ Toutes les propositions de lieutenants d'un article (de l'IA ou ajoutées à la 
 **Statut :** active
 Une découverte de mots-clés sur un mot de départ doit être gardée avec ses sources et son analyse IA ; au retour, l'utilisateur voit sa date et peut la recharger sans coût ou repartir de zéro.
 - La découverte est gardée par mot de départ et langue, jusqu'à ce que l'utilisateur la rafraîchisse.
-- Au retour, un bandeau indique la date, le nombre de mots-clés et la présence de l'analyse IA, avec « Charger » et « Rafraichir ».
-- « Rafraichir » efface la découverte gardée ; la suivante sera facturée.
+- Au retour, un bandeau indique la date, le nombre de mots-clés et la présence de l'analyse IA, avec « Charger » et « Rafraîchir ».
+- « Rafraîchir » efface la découverte gardée ; la suivante sera facturée.
 
 ### FR-INFRA-ARTICLE-STRATEGIES — La stratégie d'un article est gardée
 **Statut :** active
@@ -2574,10 +2575,13 @@ Les zones d'action d'un écran du Moteur (panneaux d'IA, boutons principaux, sec
 - Une zone lourde repliée peut n'être construite qu'au dépli, avec une silhouette de même taille.
 
 ### NFR-UX-SCREEN-TEXT — Un texte d'écran s'affiche tel qu'il est écrit
-**Statut :** non tenue (des textes fixes sont écrits sans accents (« Deverrouiller », « Rafraichir », « Reinitialiser », « Derniere analyse », « mots-cles », « Suggerer », « Regenerer », « Resultats SERP », « Angle differenciant », « Contexte strategique », « Differenciateur »…) et la vérification rapide ne les repère pas ; d'autres restent techniques ou en anglais : « Discovered via suggest-alphabet », identifiant d'alerte « lieutenants-too-few » à la publication ; les compteurs ne s'accordent pas (« 1 articles »))
-Tout texte fixe de l'interface doit s'afficher en français lisible, accents compris : jamais un code technique à la place d'une lettre (« th\\u00e9matique » au lieu de « thématique »).
+**Statut :** active
+Tout texte fixe de l'interface doit s'afficher en français lisible, accents compris : jamais un code technique à la place d'une lettre (« th\\u00e9matique » au lieu de « thématique »), jamais un mot privé de ses accents (« Resultats » au lieu de « Résultats »), jamais un identifiant technique ou une phrase anglaise à la place d'une explication.
 - Aucun texte fixe d'un écran ne contient de séquence d'échappement : les accents sont écrits directement.
-- La vérification rapide du projet échoue sur un texte fautif, en nommant le fichier et la ligne.
+- Aucun texte fixe d'un écran n'est écrit sans ses accents. Le texte des articles, écrit par l'IA, n'est pas concerné : la porte de publication le juge.
+- Un compteur s'accorde avec son nombre : « 0 article », « 1 article », « 2 articles ».
+- Un mot-clé envoyé de Discovery au Radar sans raison de l'IA dit d'où il vient, en français (« Trouvé par Discovery : Alphabet (A-Z). »).
+- La vérification rapide du projet échoue sur un texte fautif (séquence d'échappement, mot courant privé de ses accents, compteur au pluriel figé), en nommant le fichier et la ligne.
 
 ### NFR-UX-ACTIONS-VISIBLE — Un bouton utilisable est visible
 **Statut :** active

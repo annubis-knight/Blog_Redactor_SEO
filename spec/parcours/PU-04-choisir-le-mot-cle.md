@@ -51,7 +51,7 @@ Chaque carte montre « VOL », « KD », « CPC », « PAA », les icônes d'int
 ### 7. Chercher des longues traînes (facultatif)
 **Exigences :** FR-RAD-AI-SUGGESTIONS ⚠, FR-RAD-LONGTAIL-GENERATE ⚠, FR-RAD-LONGTAIL-UI ⚠, FR-RAD-LONGTAIL-REGENERATE ⚠
 
-Le panneau « Suggestions IA Radar » reprend, sans appel d'IA, les cinq meilleures cartes notées 40 ou plus. Dès deux cartes, la section « Suggestions longue-traine » propose, par « ✨ Suggerer des combinaisons », dix combinaisons au plus des mots-clés scannés, chacune notée « N/10 » avec sa justification et ses mots-clés d'origine ; les cinq meilleures arrivent cochées. « ⟳ Regenerer » avec les mêmes cartes resservit la même liste, sans nouvel appel.
+Le panneau « Suggestions IA Radar » reprend, sans appel d'IA, les cinq meilleures cartes notées 40 ou plus. Dès deux cartes, la section « Suggestions longue traîne » propose, par « ✨ Suggérer des combinaisons », dix combinaisons au plus des mots-clés scannés, chacune notée « N/10 » avec sa justification et ses mots-clés d'origine ; les cinq meilleures arrivent cochées. « ⟳ Régénérer » avec les mêmes cartes resservit la même liste, sans nouvel appel.
 
 ### 8. Envoyer les meilleurs candidats au Capitaine
 **Exigences :** FR-RAD-SEND-CAPTAIN ⚠, FR-MOT-CROSS-TAB-PAYLOAD, FR-CAP-LIST-SIDEPANEL ⚠
@@ -83,7 +83,7 @@ Verrouiller un autre candidat remplace l'ancien dans le même geste, après sa p
 ### Il rouvre l'article le lendemain
 **Exigences :** FR-DIS-CACHE ⚠, FR-RAD-PERSIST ⚠, FR-CAP-PERSIST ⚠, FR-CAP-ROOTS ⚠, FR-CAP-AI-PANEL ⚠
 
-Rien de ce qui a été payé ne doit l'être à nouveau. À Discovery, l'écran repart vide ; retaper la racine fait apparaître le bandeau « Derniere analyse du JJ/MM/AAAA · N mots-cles · analyse IA incluse », et « Charger » rend les sections, les jugements du filtre et l'analyse IA sans appel (« Rafraichir » oublie la sauvegarde). Au Radar, la liste d'attente et les cartes du dernier scan reviennent d'elles-mêmes, avec les mêmes notes, sans scan (« Charger Radar » n'y ajoute rien) ; au Capitaine, les candidats reviennent, le Capitaine verrouillé en tête. Aujourd'hui : la courte-traîne n'est pas sauvegardée et une sauvegarde n'expire jamais ; les longues traînes ne reviennent pas ; les racines reviennent sans note ; l'avis de l'IA est redemandé, et repayé, pour chaque candidat.
+Rien de ce qui a été payé ne doit l'être à nouveau. À Discovery, l'écran repart vide ; retaper la racine fait apparaître le bandeau « Dernière analyse du JJ/MM/AAAA · N mots-clés · analyse IA incluse », et « Charger » rend les sections, les jugements du filtre et l'analyse IA sans appel (« Rafraîchir » oublie la sauvegarde). Au Radar, la liste d'attente et les cartes du dernier scan reviennent d'elles-mêmes, avec les mêmes notes, sans scan (« Charger Radar » n'y ajoute rien) ; au Capitaine, les candidats reviennent, le Capitaine verrouillé en tête. Aujourd'hui : la courte-traîne n'est pas sauvegardée et une sauvegarde n'expire jamais ; les longues traînes ne reviennent pas ; les racines reviennent sans note ; l'avis de l'IA est redemandé, et repayé, pour chaque candidat.
 
 ### Il refait une mesure déjà payée
 **Exigences :** FR-CAP-SCAN ⚠, FR-INFRA-KEYWORD-METRICS ⚠, NFR-COST-CACHE-FIRST ⚠, FR-MOT-CACHE-CASCADE ⚠
