@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -50,7 +50,7 @@ sequenceDiagram
     - `validateOwnInput`, `validateSuggestion`, `validateAll` (fusion) ;
     - `canValidate`, `canDeepen` ;
     - le `watch` sur `stepData.input`, qui ignore une valeur distante vide quand la saisie locale ne l'est pas (FR-CER-SAISIE-PRESERVEE, test `tests/unit/components/strategy-step-saisie.test.ts`).
-  - [`SubQuestionCard.vue`](../src/components/strategy/SubQuestionCard.vue), [`ContextRecap.vue`](../src/components/strategy/ContextRecap.vue).
+  - [`SubQuestionCard.vue`](../src/components/strategy/SubQuestionCard.vue), [`ContextRecap.vue`](../src/components/strategy/ContextRecap.vue) — « Articles du cocon » : chaque entrée « Titre (niveau) » est lue par `splitArticleLevelSuffix` ([`shared/utils/article-level.ts`](../shared/utils/article-level.ts), tous formats de niveau), groupée par `ARTICLE_LEVELS`, titrée `articleLevelToDisplayLabel` ; une entrée sans niveau lisible va sous « Autre », titre intact (FR-CER-AIGUILLAGE).
 - **Code — store :** [`src/stores/strategy/cocoon-strategy.store.ts`](../src/stores/strategy/cocoon-strategy.store.ts) :
   - `steps` = cible, douleur, angle, promesse, cta, articles ;
   - `fetchStrategy` (étape courante = `min(completedSteps, 5)`), `saveStrategy`, `requestSuggestion`, `requestDeepen`, `requestEnrich` ;
@@ -161,7 +161,7 @@ sequenceDiagram
     - `serpTop` : `getSerpResultsFresh` (analyse du Moteur de moins de 7 jours), sinon `getOrFetch('serp-top', slugify(keyword), 7 jours, fetchSerp)` ; `SERP_TOP = 3`.
   - [`server/services/strategy/cocoon-context.service.ts`](../server/services/strategy/cocoon-context.service.ts) — `cocoonContextForNewArticle`, `parentSectionText` (2 000 caractères au plus) ; rendu par [`shared/cocoon-context.ts`](../shared/cocoon-context.ts) (cf. [Infrastructure transversale](20-infrastructure.md), FR-INFRA-COCOON-CONTEXT).
   - [`server/prompts/cocoon-child-keywords.md`](../server/prompts/cocoon-child-keywords.md) — 3 à 5 candidats : `keyword`, `title`, `rationale`, `painPoint`, `painIntentExpected`.
-  - [`server/services/external/mock-fixtures/cocoon-child.ts`](../server/services/external/mock-fixtures/cocoon-child.ts) — mode simulé : 4 candidats tirés de la section du parent ou du nom du cocon.
+  - [`server/services/external/mock-fixtures/cocoon-child.ts`](../server/services/external/mock-fixtures/cocoon-child.ts) — mode simulé : 4 candidats tirés de la section du parent ou du nom du cocon ; `baseTopic` retire les mots vides avec des bornes Unicode (`STOP_WORDS`), jamais `\b`, qui coupait « démarrer » après son « d ».
   - Les mesures groupées du bac à sable DataForSEO sont rattachées aux mots-clés demandés par `pairWithRequested` ([`server/services/external/dataforseo/keywords.ts`](../server/services/external/dataforseo/keywords.ts)).
 - **Code — écran :**
   - [`CocoonCandidatesPanel.vue`](../src/components/production/brain/CocoonCandidatesPanel.vue) — `INTENT_LABELS`, `canCreate`, choix vidé à chaque nouvelle liste, titre prérempli.
@@ -210,7 +210,7 @@ sequenceDiagram
   - `generation.ts` — `createGenerationPipeline` : `articles-structure`, `articles-paa-queries`, `POST /paa/batch`, repli sur les questions du nom du cocon, `articles-spe`, message de troncature ;
   - `parsers.ts` — `parseSingleArticle`, `parseArticlesFromSuggestion` ;
   - `builders.ts` — `buildSingleArticle` : `parseArticleLevel(obj.type) ?? fallbackType`, `coercePainIntentExpected` ;
-  - `computeds.ts` — alertes : ratio de 2 à 3 spécialisés par intermédiaire, `no_pilier` ;
+  - `computeds.ts` — alertes : ratio de 2 à 3 spécialisés par intermédiaire, `no_pilier`, `missing_parent` en phrase (« Ce spécialisé n’est rattaché à aucun intermédiaire : rattachez-le avec « Lien ». », sans renvoi à « Lien » s'il n'existe aucun intermédiaire ; « Cet intermédiaire n’est rattaché à aucun pilier. ») — aucun nom du code dans un message (NFR-UX-SCREEN-TEXT, `tests/unit/composables/article-proposals-warnings.test.ts`, lancé par `npm run verify`) ;
   - `regeneration.ts`, `topics.ts` (génération d'office quand `currentStep` passe à 5 sans sujets).
 - **Code — serveur :**
   - [`server/services/strategy/cocoon-add-article-prompt.ts`](../server/services/strategy/cocoon-add-article-prompt.ts) — `addArticlePromptVariables` : niveau inconnu → exception, donc la route répond 500.
@@ -260,14 +260,14 @@ sequenceDiagram
 *Exigences : FR-CER-MICRO-CONTEXT, FR-CER-WORD-COUNT-RECOMMEND · Design : DESIGN-CER-MICRO-CONTEXT, DESIGN-CER-WORD-COUNT-RECOMMEND*
 
 - **Code — micro-contexte :**
-  - [`src/components/workflow/BriefStructureStep.vue`](../src/components/workflow/BriefStructureStep.vue) — `loadMicroContext`, `saveMicroContext` (au `blur` ; un enregistrement en cours met le suivant en attente), `suggestMicroContext` (`/api/generate/micro-context-suggest`, en flux, avec la configuration du thème envoyée par le front), `applySuggestion`, `handleTargetWordCountUpdate`.
+  - [`src/components/workflow/BriefStructureStep.vue`](../src/components/workflow/BriefStructureStep.vue) — `loadMicroContext`, `saveMicroContext` (au `blur` ; un enregistrement en cours met le suivant en attente), `suggestMicroContext` (`/api/generate/micro-context-suggest`, en flux, avec la configuration du thème envoyée par le front ; `keyword` = capitaine s'il n'est pas vide, sinon le titre de l'article — le store garde `''` sans capitaine, que `??` laissait passer vers un 400 ; l'`error` du flux s'affiche, `suggest-error`), `applySuggestion`, `handleTargetWordCountUpdate`.
   - [`server/routes/generate/_helpers.ts`](../server/routes/generate/_helpers.ts) — `buildMicroContextBlock` : vide sans angle ; ajoute la longueur visée. Il sert le premier jet ([`article-draft.routes.ts`](../server/routes/generate/article-draft.routes.ts)).
   - Le sommaire ([`outline.routes.ts`](../server/routes/generate/outline.routes.ts)) et l'explication du brief ([`brief-explain.routes.ts`](../server/routes/generate/brief-explain.routes.ts)) construisent le même bloc en ligne, sans la longueur. Tous relisent la base par `loadArticleMicroContext`.
 - **Code — longueur :**
   - [`server/services/article/target-word-count.service.ts`](../server/services/article/target-word-count.service.ts) — `recommendTargetWordCount` (l'IA n'est appelée que si la moyenne des concurrents **et** le sommaire existent), `computeHeuristicTarget` (60 / 40), `askAi` (`classifyWithTool`, borné), `typeBase` depuis `ARTICLE_TYPE_RULES`.
   - La route `POST /api/articles/:id/recommend-word-count` lit `article_keywords.hn_structure` (`flattenHnStructure`) et `keyword_metrics.content_gap_analysis.averageWordCount` du capitaine.
   - [`src/stores/strategy/brief.store.ts`](../src/stores/strategy/brief.store.ts) — `fetchBrief` (heuristique synchrone, puis recommandation non bloquante ; `AbortController`), `targetWordCount = retainedWordCount ?? contentLengthRecommendation`.
-  - [`src/components/brief/ContentRecommendation.vue`](../src/components/brief/ContentRecommendation.vue) — fourchette ±20 %, pas de 100, bornes 500–10 000.
+  - [`src/components/brief/ContentRecommendation.vue`](../src/components/brief/ContentRecommendation.vue) — fourchette ±20 %, pas de 100, bornes 500–10 000 ; « Base : ~N mots (type …) » nomme le niveau par `articleLevelToDisplayLabel(parseArticleLevel(articleType))`.
   - [`src/composables/moteur/useStructureHn.ts`](../src/composables/moteur/useStructureHn.ts) — `recommendWordCount` : n'écrit `targetWordCount` que s'il manque, avec l'angle provisoire « Angle à préciser (suggéré à la validation de la structure) » quand il n'y a pas d'angle.
 - **Données :** `article_micro_contexts(article_id PK → articles ON DELETE CASCADE, angle, tone, directives, target_word_count, updated_at)` ; `ARTICLE_TYPE_RULES` ([`shared/constants/article-type-rules.ts`](../shared/constants/article-type-rules.ts)).
 - **API :**

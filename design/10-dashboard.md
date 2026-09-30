@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -20,7 +20,7 @@ L'accueil, la page d'un silo et la page d'un cocon ne font que lire. Leur seule 
   - [`src/components/dashboard/SiloCard.vue`](../src/components/dashboard/SiloCard.vue) — carrousel de `CocoonCard`, lien `/silo/${silo.id}`.
   - [`src/components/dashboard/CocoonCard.vue`](../src/components/dashboard/CocoonCard.vue) — lien `/cocoon/${cocoon.id}`, `stats.byType`, `stats.completionPercent`.
   - [`src/views/SiloDetailView.vue`](../src/views/SiloDetailView.vue) — silo trouvé par `s.id === Number(route.params.siloId)`.
-  - [`src/views/CocoonLandingView.vue`](../src/views/CocoonLandingView.vue) — `loadData` : `fetchCocoons` si le cocon manque, puis `articlesStore.fetchArticlesByCocoon` et `keywordsStore.fetchKeywordsByCocoon(name)`.
+  - [`src/views/CocoonLandingView.vue`](../src/views/CocoonLandingView.vue) — `loadData` : `fetchCocoons` si le cocon manque, puis `articlesStore.fetchArticlesByCocoon` et `keywordsStore.fetchKeywordsByCocoon(name)`. Cocon absent d'une liste lue sans erreur → `notFound` (« Cocon introuvable », lien vers `/`), sans appel des articles : plus de 404 anglais ni de « Réessayer » qui le refait. `error` = erreur des cocons, sinon des articles.
   - [`src/components/dashboard/WorkflowChoice.vue`](../src/components/dashboard/WorkflowChoice.vue) — trois `RouterLink`. La prop `strategyProgress` n'est jamais passée : le badge Cerveau vaut toujours « 6 étapes ».
 - **Code — stores :**
   - [`src/stores/strategy/silos.store.ts`](../src/stores/strategy/silos.store.ts) — `fetchSilos` (`/theme` et `/silos` en parallèle), `globalCompletion` (moyenne pondérée), `addCocoon`.

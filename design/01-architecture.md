@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -72,7 +72,7 @@ Versions résolues du verrou (`package-lock.json`) : vue 3.5.29, pinia 3.0.4, vu
 | `src/stores/` | 29 stores Pinia (état partagé de l'écran) en 5 domaines : `article/` (10), `keyword/` (5), `strategy/` (6), `external/` (2), `ui/` (6). |
 | `src/composables/` | 56 fichiers de logique réutilisable en 9 domaines : `article`, `editor`, `intent`, `keyword`, `lexique`, `moteur`, `seo`, `strategy`, `ui`. |
 | `src/services/api.service.ts` | Le seul client HTTP de l'écran (cf. [Conventions](01-architecture.md)). |
-| `src/utils/`, `src/directives/` | Calculs purs côté écran : scores SEO et GEO (`seo-calculator.ts`, `geo-calculator.ts`), journal (`logger.ts`)… ; directive `v-safe-html` (HTML assaini avant affichage). |
+| `src/utils/`, `src/directives/` | Calculs purs côté écran : scores SEO et GEO (`seo-calculator.ts`, `geo-calculator.ts`), journal (`logger.ts`)… ; directives `v-safe-html` (HTML assaini avant affichage) et `v-safe-svg` (icônes de l'application, un tracé seul est assaini dans un `<svg>`). |
 | `src/router/index.ts` | Les routes de l'écran et leurs gardes. |
 | [`../server/`](../server/) | L'API Express. Point d'entrée `index.ts`. |
 | `server/routes/` | 25 fichiers `*.routes.ts` montés sous `/api`, plus `generate/` (11 sous-routeurs fusionnés). |

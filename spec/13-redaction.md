@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -44,7 +44,7 @@ L'étape rassemble ce que la rédaction va utiliser, en quatre blocs repliables.
 |---|---|---|
 | « Contexte strategique » | Thème, silo, cocon, articles du cocon, stratégie du cocon, configuration du client ; « Micro-contexte article » | Saisir « Angle differenciant » (requis), « Ton / Style » et « Consignes specifiques » (optionnels), enregistrés en quittant le champ (« Sauvegarde » s'affiche) ; « Suggerer par IA » propose les trois champs, avec aperçu « Appliquer » / « Annuler » si des champs étaient déjà remplis |
 | « Mots-cles » | Mots-clés du cocon et décisions de l'article (capitaine, lieutenants, lexique) | Voir [Moteur — Lexique](11-lexique.md) (« Le lexique hors de l'onglet ») |
-| « Recommandation de contenu » | Fourchette « min – max mots » (±20 % autour de la cible), « Cible : N », « Base : ~N mots (type …) » | « − » et « + » ajustent la cible de 100 mots (entre 500 et 10 000) ; « Reinitialiser » revient à la recommandation ; la cible choisie est enregistrée pour l'article |
+| « Recommandation de contenu » | Fourchette « min – max mots » (±20 % autour de la cible), « Cible : N », « Base : ~N mots (type …) », le niveau en toutes lettres (« Spécialisé ») | « − » et « + » ajustent la cible de 100 mots (entre 500 et 10 000) ; « Reinitialiser » revient à la recommandation ; la cible choisie est enregistrée pour l'article |
 | « Structure / Sommaire » | Le sommaire de l'article | Voir ci-dessous |
 
 **Le sommaire.** Il est tiré de la structure validée au Moteur, sans appel à l'IA :
@@ -53,9 +53,9 @@ L'étape rassemble ce que la rédaction va utiliser, en quatre blocs repliables.
 - jamais de niveau au-delà de H3 : un second H1 devient H2.
 
 Chaque ligne montre son niveau, son titre, son annotation (« Sommaire », « Contenu valeur », « Rappel », « Answer Capsule ») et son statut (« Suggestion IA », « Contenu généré »). Avant validation, l'utilisateur peut :
-- renommer un titre (double-clic ou ✎ ; Entrée valide, Échap annule) ;
+- renommer un titre (double-clic ou ✎ ; Entrée, ou un clic ailleurs, valide ; Échap rend le titre d'avant) ;
 - supprimer une section, ajouter un H2 ou un H3 après une section (« + Ajouter H2 », « + Ajouter H3 » en fin de liste) ;
-- réordonner par glisser-déposer (le H1 ne bouge pas).
+- réordonner par glisser-déposer (le H1 ne bouge pas et reste en tête : une section lâchée sur lui se place juste après).
 
 Les boutons Annuler / Rétablir sont affichés mais **ne s'activent jamais** (écart connu).
 
@@ -242,7 +242,7 @@ Dans l'éditeur, sélectionner du texte fait apparaître la mini-barre ; « ✦ 
 
 **« Lien interne »** n'appelle pas l'IA : il ouvre « Choisir l'article cible », qui liste les articles chargés par la dernière page de cocon visitée (« Aucun article disponible dans ce cocon. » si l'éditeur a été ouvert directement). Choisir un article pose sur la sélection le même lien que le panneau « Maillage » et l'enregistre dans le réseau de liens.
 
-**Blocs dynamiques** (panneau « Blocs » de l'éditeur, par glisser-déposer) : « Sources chiffrées » et « Exemples réels » (recherche web) travaillent sur le paragraphe et le titre voisins ; « Ce qu'il faut retenir » résume la section. Une place s'affiche pendant l'écriture, puis le résultat la remplace ; en cas d'erreur, la place affiche le message. Les deux blocs à recherche web cherchent comme la passe Sources (France, heure de Paris, ville du client ; Claude seulement) ; leurs liens absents des résultats sont retirés avant l'affichage. Le panneau « Blocs » propose aussi des blocs simples : paragraphe, titre H2, titre H3, listes, citation.
+**Blocs dynamiques** (panneau « Blocs » de l'éditeur, par glisser-déposer) : « Sources chiffrées » et « Exemples réels » (recherche web) travaillent sur le paragraphe et le titre voisins ; « Ce qu'il faut retenir » résume la section. Une place s'affiche pendant l'écriture, puis le résultat la remplace ; en cas d'erreur, la place affiche le message. Les deux blocs à recherche web cherchent comme la passe Sources (France, heure de Paris, ville du client ; Claude seulement) ; leurs liens absents des résultats sont retirés avant l'affichage. Le panneau « Blocs » propose aussi des blocs simples : paragraphe, titre H2, titre H3, listes, citation, chacun avec son icône (« H2 », « H3 » pour les titres).
 
 ### Le maillage interne
 *Exigences : FR-RED-LINKING-MANUAL*

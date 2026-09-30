@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { Outline, OutlineSection } from '@shared/types/index.js'
+import { moveOutlineSection } from '@shared/structure-outline.js'
 import OutlineNode from './OutlineNode.vue'
 
 const props = defineProps<{
@@ -33,10 +34,8 @@ function onDrop(toIndex: number) {
     dragIndex.value = null
     return
   }
-  const sections = [...props.outline.sections]
-  const moved = sections.splice(fromIndex, 1)[0]
-  if (!moved) return
-  sections.splice(toIndex, 0, moved)
+  // Le H1 reste en tête, quelle que soit la ligne où l'on lâche (FR-RED-OUTLINE).
+  const sections = moveOutlineSection(props.outline.sections, fromIndex, toIndex)
   emit('update:outline', { sections })
   dragIndex.value = null
 }

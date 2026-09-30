@@ -1,7 +1,7 @@
 ---
 title: Recette — Discovery et Radar
 module: 04
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/06-discovery.md
@@ -327,16 +327,17 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 
 **Tu dois voir :**
 - sur une ligne : la case, le triangle ▶, le mot-clé (les noms de ville et le mot qui suit « pour » en italique coloré), les icônes d'intention, les indicateurs « VOL », « KD », « CPC », « PAA », puis l'anneau ;
-- au survol d'une icône : « Informationnel », « Commercial », « Transactionnel » ou « Navigationnel » ;
+- chaque icône d'intention dessinée ; à son survol : « Informationnel », « Commercial », « Transactionnel » ou « Navigationnel » ;
 - les valeurs : volume en « 1.2k » au-delà de 1 000, KD en entier, CPC en « 1.20 € », PAA en points (« 2.5 pts ») ; « — » quand une donnée manque ;
 - sous l'anneau, « Score KPI » (en capitales) sur **toutes** les cartes ;
-- nulle part « Score Pertinence », jamais deux notes sur une carte ; dans « Suggestions IA Radar », la pastille « P » vaut toujours « — » ;
+- nulle part « Score Pertinence », jamais deux notes sur une carte ; dans « Suggestions IA Radar », la pastille « P » vaut toujours « — », et son infobulle dit qu'elle se calcule au Capitaine ;
 - aucune carte grisée.
 
 **C'est un bug si :**
 - une carte du Radar affiche « Score Pertinence », ou deux notes ;
 - un volume, un KD ou un CPC absent s'affiche « 0 » au lieu de « — » ;
-- une carte ou un badge parle de la douleur.
+- une carte ou un badge parle de la douleur ;
+- une icône d'intention est vide : seule son infobulle apparaît au survol de la place.
 
 **⚠ Défaut connu :** une intention inconnue compte comme une composante rouge du Score Marché au lieu d'être écartée : une carte sans icône d'intention a « Intent (15%) … 0/100 » dans son info-bulle (voir RAD-5), ce qui baisse sa note. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -364,7 +365,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 
 **⚠ Défaut connu :** une intention inconnue n'est pas écartée : une carte sans icône d'intention a « Intent (15%) … 0/100 ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
-**⚠ Défaut connu :** le nombre de suggestions Google est noté comme une position. Pour un article intermédiaire (badge « INTERMEDIAIRE »), un mot-clé que Google complète 8 fois ou plus reçoit « Autocomplete … 0/100 », un mot-clé qui en a 1 à 4 reçoit « 100/100 », et 0 suggestion vaut 0/100. Plus il y a de suggestions, meilleure devrait être la note. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** le nombre de suggestions Google est noté comme une position. Pour un article intermédiaire (badge « INTERMÉDIAIRE »), un mot-clé que Google complète 8 fois ou plus reçoit « Autocomplete … 0/100 », un mot-clé qui en a 1 à 4 reçoit « 100/100 », et 0 suggestion vaut 0/100. Plus il y a de suggestions, meilleure devrait être la note. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-RAD-SCORE-RING-TOOLTIP — dans l'info-bulle, une composante sans donnée s'affiche « 50/100 » avec son poids, alors qu'elle n'entre pas dans le total. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -487,7 +488,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 
 **Tu dois voir :**
 - le sous-titre « Top candidats Capitaine — tri local par mix marché + pertinence (verdicts NOGO exclus). » ; le classement s'affiche sans attente ni appel d'IA ;
-- au plus 5 lignes, chacune avec le mot-clé, « M n » et « P — » ;
+- au plus 5 lignes, chacune avec le mot-clé, « M n » et « P — » ; au survol de « P — » : « Score Pertinence indisponible au Radar : il se calcule au Capitaine, quand le mot-clé y est étudié » ;
 - « M n » égal à la note de l'anneau de la même carte : le serveur et l'écran notent avec le niveau de l'article ;
 - les lignes rangées par « M » décroissant ; aucune carte de note inférieure à 40 ; ce sont les 5 meilleures cartes à 40 ou plus ;
 - si toutes les cartes sont sous 40 : « Aucun candidat à proposer pour l'instant. Élargis ta sélection ou relance un scan — les cartes verdict NOGO/NOGO sont filtrées. » ;

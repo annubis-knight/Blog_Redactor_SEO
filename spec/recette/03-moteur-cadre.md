@@ -1,7 +1,7 @@
 ---
 title: Recette — Moteur, cadre commun
 module: 03
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/05-moteur.md
@@ -50,7 +50,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 **Tu dois voir :**
 - « Contexte stratégique » s'ouvre sur Cible, Douleur, Angle, Promesse, CTA, avec les textes écrits au Cerveau. Un champ vide n'a pas de ligne ;
 - ouvrir un bloc referme celui qui était ouvert : un seul bloc ouvert à la fois ;
-- dans « Articles suggérés », les articles rangés sous un badge de niveau (« PILIER », puis « INTERMEDIAIRE ») ;
+- dans « Articles suggérés », les articles rangés sous un badge de niveau coloré (« PILIER », puis « INTERMÉDIAIRE », puis « SPÉCIALISÉ ») ;
 - chaque ligne : le titre, six points en deux groupes (deux, puis quatre), puis le mot-clé ;
 - les infobulles des points, dans l'ordre : « Discovery », « Radar », « Capitaine », « Lieutenants », « Structure », « Lexique » ;
 - pour le pilier : les points Capitaine, Lieutenants et Structure pleins, Lexique plein si tu as retenu un terme au parcours express ; Discovery et Radar vides si personne n'y est passé pour lui. Son mot-clé en trait plein (Capitaine verrouillé) ;

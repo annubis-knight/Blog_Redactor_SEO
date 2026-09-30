@@ -2,7 +2,7 @@
 title: 'Exigences — Blog Redactor SEO'
 status: référence
 version: 1.0.0
-last_updated: 2026-09-29
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 synced_with:
   - spec/ (chapitres de la spécification, sommaire spec/README.md)
@@ -206,6 +206,7 @@ La page d'un cocon doit ouvrir ses trois ateliers — Cerveau (stratégie), Mote
 - Chaque carte ouvre son atelier pour ce cocon ; aucune carte n'est désactivée.
 - Chaque carte porte un repère : « 6 étapes » (Cerveau), le nombre de mots-clés du cocon (Moteur), le nombre d'articles et l'avancement (Rédaction).
 - Dans la Rédaction, la génération du texte d'un article attend que le Cerveau du cocon soit terminé (cf. FR-RED-GEN-UNLOCK) ; la carte, elle, reste ouverte.
+- L'adresse d'un cocon qui n'existe pas affiche « Cocon introuvable » et un lien de retour à l'accueil, sans message technique ni « Réessayer ».
 
 ### Retirées (FR-DASH)
 
@@ -244,12 +245,13 @@ L'outil doit permettre de poser, pour un article, sa stratégie en six étapes �
 - Quand elle existe, la stratégie de l'article l'emporte sur celle du cocon pour le premier jet.
 
 ### FR-CER-AIGUILLAGE — Le niveau d'un article découle de sa place dans le cocon
-**Statut :** non tenue (« Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur)
+**Statut :** active
 L'outil doit donner à chaque article un niveau parmi trois — Pilier (la tête du cocon), Intermédiaire (un sous-thème du pilier), Spécialisé (un sujet précis sous un intermédiaire) — et en tirer les règles de la suite.
 - Le niveau découle de l'endroit où l'article naît : pilier d'un cocon vide, intermédiaire depuis une section du pilier, spécialisé depuis une section d'un intermédiaire.
 - Un pilier n'a pas de parent ; un intermédiaire a pour parent le pilier ; un spécialisé, un intermédiaire du même cocon.
 - Le niveau ne se change pas après la création.
-- Le niveau s'affiche avec l'article (arbre du Cerveau, listes du Moteur et de la Rédaction) ; il règle les seuils de mots-clés du Moteur et la longueur visée de la Rédaction.
+- Le niveau s'affiche avec l'article (arbre du Cerveau, listes du Moteur et de la Rédaction, « Articles du cocon », longueur conseillée) ; il règle les seuils de mots-clés du Moteur et la longueur visée de la Rédaction.
+- Il s'affiche en toutes lettres — « Pilier », « Intermédiaire », « Spécialisé » —, jamais sous son code ; dans une liste groupée par niveau, chaque article est rangé sous le sien, et chaque badge de niveau a sa couleur.
 - Sur la carte indicative, une carte sans pilier est signalée : « Aucun article Pilier dans la liste. »
 
 ### FR-CER-COCOON-PROGRESSIVE — Le cocon se construit article par article
@@ -295,6 +297,7 @@ L'outil ne doit annoncer un article créé que s'il existe, et doit dire chaque 
 - Un mot-clé refusé par le pool du cocon (déjà visé par un autre cocon) n'annule pas l'article ; un avertissement nomme le cocon concurrent.
 - Une carte du cocon qui n'a pas pu être enregistrée après une création est dite par un avertissement ; l'article reste créé.
 - Un retrait refusé (l'article a des enfants dans le cocon) est dit, et la carte garde l'article.
+- Le mode automatique crée l'article dans le cocon que l'utilisateur nomme à la question « Cocon cible » (sans compter la casse ni les espaces), comme avec `--cocoon` ; un nom qui ne désigne aucun cocon est dit, et la question revient ; sans réponse, l'emplacement est proposé puis soumis à la pause 1.
 
 ### FR-CER-TYPE-TOLERANT — Le niveau d'un article est compris quel que soit son format
 **Statut :** non tenue (sur la carte, un niveau illisible rendu par l'IA devient « Spécialisé » — ou le niveau demandé pour un ajout — sans message propre à la ligne)
@@ -311,6 +314,7 @@ L'outil doit permettre d'attacher à un article un micro-contexte — angle, ton
 - Il est optionnel : sans lui, l'article se génère avec les valeurs par défaut.
 - Quand il est renseigné, le sommaire, le premier jet et l'explication du brief le reçoivent.
 - L'IA peut le suggérer ; une suggestion ne remplace des valeurs déjà saisies qu'après « Appliquer ».
+- La suggestion marche aussi pour un article sans capitaine : son titre sert alors de sujet. Une suggestion qui échoue le dit à l'écran.
 - Le modifier ne relance aucune génération.
 
 ### FR-CER-WORD-COUNT-RECOMMEND — Recommandation de longueur cible
@@ -828,11 +832,12 @@ Au-dessus des cartes, l'outil doit résumer la chaleur du sujet par une note sur
 - La note globale agrège les notes que les cartes affichent.
 
 ### FR-RAD-AI-SUGGESTIONS — Panneau « Suggestions IA Radar »
-**Statut :** non tenue (le bouton « Marquer comme candidats Capitaine » n'a aucun effet ; la pastille « P » est toujours vide au Radar, et son infobulle en accuse à tort une douleur absente)
+**Statut :** non tenue (le bouton « Marquer comme candidats Capitaine » n'a aucun effet ; la pastille « P » est toujours vide au Radar)
 Sous les cartes, l'outil doit proposer les 5 meilleurs candidats Capitaine, et permettre de les marquer.
 - Le panneau classe localement les cartes par la moyenne de leurs scores disponibles, sans appel d'IA.
 - Une carte dont les scores disponibles sont tous au verdict NOGO est écartée.
 - Les scores absents s'affichent « — ».
+- L'infobulle d'une pastille « P » vide en donne la vraie raison : la pertinence se calcule au Capitaine ; elle n'accuse pas une douleur absente.
 - « Marquer comme candidats Capitaine (N) » transmet la sélection au Capitaine.
 
 ---
@@ -1176,7 +1181,7 @@ La porte de la structure doit juger la structure enregistrée avant d'accorder l
 - 🔴 : aucune structure enregistrée ; H1 sans le capitaine en entier ; nombre de H2 de fond hors du type (pilier 6-8, intermédiaire 4-6, spécialisé 3-5, introduction et conclusion non comptées) ; trop de H2 citant la ville du client (pilier 2, sinon 0) ; pour un pilier, un H2 qui contient le capitaine d'un autre article du cocon et le développe en H3.
 - 🟠 : lieutenant retenu absent des titres (moins des trois quarts de ses mots) ; H2 « Introduction » ou « Conclusion » ; plus de 3 H3 sous un H2 ; pour un pilier, H2 qui recoupe un article du cocon sans le développer.
 - Chaque lieutenant absent et chaque article recoupé se déroge séparément ; une dérogation tombe si la structure, le type, le capitaine, les lieutenants, la ville ou les articles recoupés changent.
-- Le mode automatique demande l'étape à la même porte et s'arrête sur un refus, sans jamais déroger.
+- Le mode automatique demande l'étape à la même porte et s'arrête sur un refus, sans jamais déroger seul (sauf une porte toute 🟠 que l'utilisateur dit avoir lue, cf. FR-INFRA-VERIFIER-SHARED).
 
 ---
 
@@ -1356,11 +1361,12 @@ L'outil doit héberger l'analyse du brief dans un panneau dédié de la rédacti
 - Sans analyse affichée, le panneau invite à cliquer sur « Relancer l'analyse ».
 
 ### FR-RED-OUTLINE — Le sommaire de l'article
-**Statut :** non tenue (les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique ; un article sans sommaire affiche, déjà validé, celui de l'article ouvert juste avant : « Générer l'article » rédige (et paie) sur ce sommaire ; un chapitre lâché sur la ligne du H1 passe au-dessus de lui ; Échap garde le titre tapé au lieu d'annuler)
+**Statut :** non tenue (les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique ; un article sans sommaire affiche, déjà validé, celui de l'article ouvert juste avant : « Générer l'article » rédige (et paie) sur ce sommaire)
 L'outil doit fournir à la rédaction un sommaire H1 / H2 / H3 tiré de la structure validée au Moteur, que l'utilisateur peut retoucher puis valider.
 - Le sommaire reprend le H1 de la structure (à défaut le titre de l'article), ajoute une « Introduction » et une « Conclusion » sauf si la structure en porte déjà une, et garde les chapitres et sous-parties dans l'ordre ; aucun niveau au-delà de H3.
 - Sans sommaire enregistré, l'écran le dit et renvoie au Moteur ; l'écran ne génère pas de sommaire par IA (seul le mode automatique le fait, quand l'article n'a pas de structure).
 - Avant validation, l'utilisateur peut renommer un titre, supprimer une section, ajouter un H2 ou un H3, réordonner les sections par glisser-déposer (sauf le H1).
+- Le H1 reste en tête : une section lâchée sur lui se place juste après. Pendant qu'on renomme un titre, Échap rend le titre d'avant ; Entrée, ou un clic ailleurs, garde le nouveau.
 - Annuler et Rétablir restaurent l'état précédent du sommaire après toute modification.
 - « Valider le sommaire » enregistre le sommaire ; il survit à un rechargement et peut être rouvert (« Modifier le sommaire »).
 
@@ -1514,6 +1520,7 @@ L'outil doit enregistrer les scores SEO et GEO avec le texte qu'ils notent, et j
 L'outil doit proposer, sur une sélection de texte dans l'éditeur, des actions IA dont le résultat remplace la sélection seulement si l'utilisateur l'accepte.
 - La mini-barre de sélection ouvre un menu de huit actions IA (« Reformuler », « Simplifier », « Convertir en liste », « Exemple PME », « Optimiser mot-clé », « Statistique sourcée », « Answer Capsule », « Formuler en question ») et « Lien interne ».
 - Trois autres actions (« Sources chiffrées », « Exemples réels », « Ce qu'il faut retenir ») se posent comme blocs glissés depuis le panneau « Blocs ».
+- Dans le panneau « Blocs », chaque bloc a une icône qui lui correspond : « Titre H2 » montre « H2 », « Titre H3 » montre « H3 ».
 - Chaque action reçoit le mot-clé principal de l'article.
 - « Sources chiffrées » et « Exemples réels » cherchent sur le web (France, heure de Paris, ville du client), avec Claude seulement ; leurs liens absents des résultats sont retirés avant l'affichage, et le nombre de liens retirés est dit.
 - Une réponse coupée avant la fin n'est pas proposée ; « Accepter » reste grisé sans résultat ; « Rejeter » garde la sélection intacte.
@@ -1744,6 +1751,7 @@ Ce domaine garantit qu'une brique d'écran utilisée à plusieurs endroits garde
 L'outil doit afficher les mots-clés du Radar et du Capitaine avec une seule et même carte, dont seuls le score affiché et le geste de sélection changent selon l'endroit.
 - Trois usages : résultats de scan de l'onglet Radar (case à cocher, « Score KPI »), liste du Capitaine (cadenas, « Score Pertinence »), fiche du Capitaine en mode libre (« Score Pertinence » ; aucun écran ne l'affiche aujourd'hui).
 - Même en-tête partout : mot-clé, pictogrammes d'intention, ligne « vol · KD · CPC · PAA », anneau de score avec son détail, chevron qui déplie les questions PAA en arbre.
+- Chaque pictogramme d'intention est dessiné, jamais une place vide, et nomme son intention au survol.
 - Un score absent s'affiche « — » avec sa raison, jamais 0.
 - Une modification de la carte vaut pour tous les usages : la carte n'est copiée nulle part.
 
@@ -2045,7 +2053,7 @@ Une règle de qualité doit être écrite une seule fois et évaluée par le ser
 - Les trois (écran, serveur, audit) donnent le même verdict pour les mêmes données.
 - Un refus renvoie la liste complète des points : message, risque en clair, extrait, pistes quand l'outil en a ; chaque point porte un niveau (🟠 attention, 🔴 risque, ⛔ technique) et un nom stable.
 - Une étape refusée n'est pas enregistrée ; une publication refusée ne change pas le statut.
-- Le mode automatique subit les mêmes portes, s'arrête sur un refus en listant chaque point, et ne déroge jamais.
+- Le mode automatique subit les mêmes portes et ne déroge jamais seul : sur un refus, il liste chaque point et s'arrête. Seule exception, une porte dont tous les points sont 🟠, quand l'utilisateur est au terminal : le robot demande « J'ai lu, continuer ? [o/N] » ; sur « o », il envoie la même reconnaissance que la case « J'ai lu » de l'écran, puis redemande l'étape. Un 🔴 ou un ⛔ se décide toujours à l'écran.
 - L'audit du projet signale tout article rédigé que la porte de publication refuserait, avec le nombre de points par niveau.
 
 ### FR-INFRA-GATE-WAIVER — Passer outre en prenant sa responsabilité, par écrit
@@ -2537,7 +2545,7 @@ Les zones d'action d'un écran du Moteur (panneaux d'IA, boutons principaux, sec
 - Une zone lourde repliée peut n'être construite qu'au dépli, avec une silhouette de même taille.
 
 ### NFR-UX-SCREEN-TEXT — Un texte d'écran s'affiche tel qu'il est écrit
-**Statut :** non tenue (des textes fixes sont écrits sans accents (« Deverrouiller », « Rafraichir », « Reinitialiser », « Derniere analyse », « mots-cles », « Suggerer », « Regenerer », « Resultats SERP », « Angle differenciant », « Contexte strategique », « Differenciateur »…) et la vérification rapide ne les repère pas ; d'autres restent techniques ou en anglais : « Discovered via suggest-alphabet », niveaux affichés « INTERMEDIAIRE » ou « specifique », « (parentTitle manquant) », identifiant d'alerte « lieutenants-too-few » à la publication ; les compteurs ne s'accordent pas (« 1 articles »))
+**Statut :** non tenue (des textes fixes sont écrits sans accents (« Deverrouiller », « Rafraichir », « Reinitialiser », « Derniere analyse », « mots-cles », « Suggerer », « Regenerer », « Resultats SERP », « Angle differenciant », « Contexte strategique », « Differenciateur »…) et la vérification rapide ne les repère pas ; d'autres restent techniques ou en anglais : « Discovered via suggest-alphabet », identifiant d'alerte « lieutenants-too-few » à la publication ; les compteurs ne s'accordent pas (« 1 articles »))
 Tout texte fixe de l'interface doit s'afficher en français lisible, accents compris : jamais un code technique à la place d'une lettre (« th\\u00e9matique » au lieu de « thématique »).
 - Aucun texte fixe d'un écran ne contient de séquence d'échappement : les accents sont écrits directement.
 - La vérification rapide du projet échoue sur un texte fautif, en nommant le fichier et la ligne.

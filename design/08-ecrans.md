@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -135,12 +135,14 @@ montage seulement si la liste est vide. Le silo est trouvé par son rang (`s.id 
 
 Vue [`CocoonLandingView.vue`](../src/views/CocoonLandingView.vue). `loadData` au montage : `fetchCocoons`
 (`GET /cocoons`) si le cocon manque, puis `articlesStore.fetchArticlesByCocoon` (`GET /cocoons/:id/articles`)
-et `keywordsStore.fetchKeywordsByCocoon` (`GET /keywords/:cocoonName`).
+et `keywordsStore.fetchKeywordsByCocoon` (`GET /keywords/:cocoonName`). Un cocon absent de la liste (lue
+sans erreur) pose `notFound` : la page affiche « Cocon introuvable » et le lien de retour, sans demander ses
+articles (FR-DASH-WORKFLOW-CHOICE).
 
 | Section | Composant | Repères | Déclenché par | Appelle | États |
 |---|---|---|---|---|---|
 | Fil d'Ariane, nom du cocon, « N articles · N% complété » | `Breadcrumb.vue`, `CocoonLandingView.vue` | — | Cocon trouvé | — | Nom « Cocon » tant qu'il n'est pas trouvé |
-| « Choisissez une phase de travail : » et les cartes « Cerveau » (« 6 étapes »), « Moteur » (« N mots-clés »), « Rédaction » (« N articles, N% ») | `dashboard/WorkflowChoice.vue` | — | `v-if="cocoon"` dans `AsyncContent` | Liens `/cocoon/:id/cerveau`, `/moteur`, `/redaction` | Chargement : trois cartes fantômes ; erreur des articles + « Réessayer » ; cocon inconnu : rien sous le titre |
+| « Choisissez une phase de travail : » et les cartes « Cerveau » (« 6 étapes »), « Moteur » (« N mots-clés »), « Rédaction » (« N articles, N% ») | `dashboard/WorkflowChoice.vue` | — | `v-if="cocoon"` dans `AsyncContent` | Liens `/cocoon/:id/cerveau`, `/moteur`, `/redaction` | Chargement : trois cartes fantômes ; erreur de la liste des cocons ou des articles + « Réessayer » ; cocon inconnu (`cocoon-not-found`) : « Cocon introuvable : il n’existe pas, ou il a été supprimé. » + « ← Retour au dashboard » |
 
 La prop `strategyProgress` de `WorkflowChoice` n'est jamais passée : le badge du Cerveau dit toujours
 « 6 étapes ».

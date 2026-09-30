@@ -2,7 +2,7 @@
 name: score-capitaine
 description: Les deux notes sur 100 d'un mot-clé candidat — Score Marché (le mot-clé pèse-t-il en SEO ?) affiché au Radar, Score Pertinence (sert-il la douleur de l'article ?) affiché au Capitaine — et le verdict de l'étude. Aucune n'est enregistrée comme donnée : elles sont recalculées.
 type: "MarketScoreResult { total: number, verdict: 'GO'|'ORANGE'|'NOGO', components } ; RelevanceScoreResult { total, verdict, breakdown, rootsContext } | null ; ScanVerdict { level: 'GO'|'ORANGE'|'NO-GO'|'GRAY', … }"
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 related_fr: [FR-RAD-SCORING-BIMODAL, FR-RAD-MARKET-COMPUTED-LIVE, FR-RAD-MARKET-LEVEL-AWARE, FR-RAD-NO-RELEVANCE-IN-SCAN, FR-CAP-SCORING-BIMODAL, FR-CAP-SCAN, FR-CAP-AUTO-NOGO, FR-CAP-RELEVANCE-LIVE, FR-CAP-LOCK-INTEGRITY, FR-CAP-LOCK-GATE, FR-CAP-AI-PANEL, FR-INFRA-SCORE-MODULE, FR-INFRA-NO-SCORE-FALLBACK, FR-INFRA-KPI-SCORING-NULLSAFE, FR-INFRA-KPI-CONSISTENCY]
 ---
 
@@ -48,7 +48,7 @@ Les anciens instantanés du Radar peuvent encore contenir un `relevanceScore` : 
 ### Affichage (UI)
 
 - **Radar** — anneau de `RadarKeywordCard` en mode `kpi` : `computeKpiScore(card.kpis, articleLevel).total` ; « — » si la carte n'a pas de KPI (longue traîne). Info-bulle : détail des composantes ([`RadarCardScoreRing.vue`](../../src/components/intent/radar-card/RadarCardScoreRing.vue)).
-- **Suggestions IA du Radar** — [`RadarAiPanel.vue`](../../src/components/moteur/RadarAiPanel.vue) : pastilles « M » (`card.marketScore.total`) et « P » (`card.relevanceScore.total`) par `formatScore` (« — » si absent).
+- **Suggestions IA du Radar** — [`RadarAiPanel.vue`](../../src/components/moteur/RadarAiPanel.vue) : pastilles « M » (`card.marketScore.total`) et « P » (`card.relevanceScore.total`) par `formatScore` (« — » si absent ; au Radar, « P » est toujours « — », et son infobulle renvoie au Capitaine).
 - **Capitaine** — anneau en mode `relevance` (via [`CaptainInteractiveWords.vue`](../../src/components/moteur/CaptainInteractiveWords.vue)) : `card.relevanceScore.total` ; « — » et la raison (`relevanceUnavailableReason` du serveur, sinon une raison devinée par l'écran).
 - **Racines** — [`CaptainRootsSidebar.vue`](../../src/components/moteur/CaptainRootsSidebar.vue) : `ScoreRing` de chaque racine (`variant.card.relevanceScore.total`) et leur moyenne.
 - **Verdict** — badge du panneau latéral ([`CaptainSidePanel.vue`](../../src/components/moteur/CaptainSidePanel.vue)) : niveau de `entry.validation.verdict`, raison détaillée pour un NO-GO.

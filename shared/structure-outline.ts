@@ -8,6 +8,23 @@ import { isConclusionTitle, isIntroductionTitle } from './verifiers/structure.js
 import type { Outline, OutlineSection } from './types/outline.types.js'
 import type { ProposeLieutenantsHnNode } from './types/serp-analysis.types.js'
 
+/**
+ * Déplace une section du sommaire (glisser-déposer de l'éditeur de sommaire).
+ * Le H1 reste en tête : il ne bouge pas, et une section lâchée sur lui ou
+ * avant lui se place juste après (FR-RED-OUTLINE, recette du 2026-09-30,
+ * RED-7 : un chapitre lâché sur la ligne du H1 passait au-dessus de lui).
+ * Renvoie une nouvelle liste ; la liste reçue n'est pas modifiée.
+ */
+export function moveOutlineSection(sections: readonly OutlineSection[], from: number, to: number): OutlineSection[] {
+  const moved = sections[from]
+  if (!moved || moved.level === 1 || from === to) return [...sections]
+  const next = sections.filter((_, i) => i !== from)
+  const h1 = next.findIndex(s => s.level === 1)
+  const target = Math.min(Math.max(to, h1 + 1), next.length)
+  next.splice(target, 0, moved)
+  return next
+}
+
 export function structureToOutline(nodes: ProposeLieutenantsHnNode[], articleTitle: string): Outline {
   const now = Date.now()
   const sections: OutlineSection[] = []
