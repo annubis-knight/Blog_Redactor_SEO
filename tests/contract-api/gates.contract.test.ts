@@ -20,9 +20,9 @@ interface Evaluation {
   gateId: string
   passed: boolean
   inputHash: string
-  issues: Array<{ rule: string; level: string }>
-  blocking: Array<{ rule: string; level: string }>
-  waived: unknown[]
+  issues: Array<{ rule: string; level: string; fingerprint?: string; message?: string }>
+  blocking: Array<{ rule: string; level: string; fingerprint?: string; message?: string }>
+  waived: Array<{ issue: { rule: string } }>
 }
 
 const RAISON = 'Longue traîne assumée : demandes réelles reçues par téléphone'
@@ -58,13 +58,13 @@ describe('Porte « verrouiller le capitaine »', () => {
 
     const tropCourte = await apiPost<{ refused: Array<{ rule: string; problem: string }>; evaluation: Evaluation }>(
       `/articles/${article.id}/gates/captain-lock/waivers`,
-      { waivers: [{ rule: 'captain-volume-unknown', category: 'longue-traine', reason: 'trop court' }] },
+      { waivers: [{ rule: 'captain-volume-unknown', fingerprint: risque?.fingerprint, category: 'longue-traine', reason: 'trop court' }] },
     )
     expect(tropCourte.data!.refused.map(r => r.rule)).toContain('captain-volume-unknown')
     expect(tropCourte.data!.evaluation.passed).toBe(false)
 
     const drafts = evaluation.data!.blocking.map(i => (
-      i.level === 'risque' ? { rule: i.rule, category: 'longue-traine', reason: RAISON } : { rule: i.rule }
+      i.level === 'risque' ? { rule: i.rule, fingerprint: i.fingerprint, category: 'longue-traine', reason: RAISON } : { rule: i.rule, fingerprint: i.fingerprint }
     ))
     const acceptee = await apiPost<{ refused: unknown[]; evaluation: Evaluation }>(
       `/articles/${article.id}/gates/captain-lock/waivers`, { waivers: drafts },
@@ -81,7 +81,7 @@ describe('Porte « verrouiller le capitaine »', () => {
     const article = await nouvelArticle()
     await apiPut(`/articles/${article.id}/keywords`, { capitaine: `premier-${ctx.runId}`, lieutenants: [], lexique: [] })
     const avant = await apiGet<Evaluation>(`/articles/${article.id}/gates/captain-lock`)
-    const drafts = avant.data!.blocking.map(i => (i.level === 'risque' ? { rule: i.rule, category: 'autre', reason: RAISON } : { rule: i.rule }))
+    const drafts = avant.data!.blocking.map(i => (i.level === 'risque' ? { rule: i.rule, fingerprint: i.fingerprint, category: 'autre', reason: RAISON } : { rule: i.rule, fingerprint: i.fingerprint }))
     const pose = await apiPost<{ evaluation: Evaluation }>(`/articles/${article.id}/gates/captain-lock/waivers`, { waivers: drafts })
     expect(pose.data!.evaluation.passed).toBe(true)
 
@@ -138,7 +138,7 @@ describe('Porte « valider la structure » (FR-HN-LOCK-GATE)', () => {
 
     const waiver = await apiPost<{ refused: Array<{ rule: string }> }>(
       `/articles/${article.id}/gates/hn-lock/waivers`,
-      { waivers: [{ rule: 'hn-h1-missing', category: 'autre', reason: 'Je veux passer quand même, en connaissance de cause' }] },
+      { waivers: [{ rule: 'hn-h1-missing', fingerprint: details.blocking.find(i => i.rule === 'hn-h1-missing')?.fingerprint, category: 'autre', reason: 'Je veux passer quand même, en connaissance de cause' }] },
     )
     expect(waiver.data!.refused.map(r => r.rule)).toContain('hn-h1-missing')
   })
@@ -244,7 +244,7 @@ describe('Porte « publier »', () => {
 
     const tentative = await apiPost<{ refused: Array<{ rule: string }> }>(
       `/articles/${article.id}/gates/publish/waivers`,
-      { waivers: [{ rule: 'content-empty', category: 'autre', reason: RAISON }] },
+      { waivers: [{ rule: 'content-empty', fingerprint: details.blocking.find(i => i.rule === 'content-empty')?.fingerprint, category: 'autre', reason: RAISON }] },
     )
     expect(tentative.data!.refused.map(r => r.rule)).toContain('content-empty')
   })
@@ -254,7 +254,7 @@ describe('Porte « publier »', () => {
     const article = await nouvelArticle()
     await apiPut(`/articles/${article.id}/keywords`, { capitaine: `ancien-${ctx.runId}`, lieutenants: [], lexique: [] })
     const avant = await apiGet<Evaluation>(`/articles/${article.id}/gates/captain-lock`)
-    const drafts = avant.data!.blocking.map(i => (i.level === 'risque' ? { rule: i.rule, category: 'autre', reason: RAISON } : { rule: i.rule }))
+    const drafts = avant.data!.blocking.map(i => (i.level === 'risque' ? { rule: i.rule, fingerprint: i.fingerprint, category: 'autre', reason: RAISON } : { rule: i.rule, fingerprint: i.fingerprint }))
     await apiPost(`/articles/${article.id}/gates/captain-lock/waivers`, { waivers: drafts })
 
     const pendant = await apiGet<Evaluation>(`/articles/${article.id}/gates/publish`)
@@ -276,7 +276,7 @@ describe('Porte « publier »', () => {
     await apiPut(`/articles/${pilier.id}/keywords`, { capitaine: `isolation ${ctx.runId}`, lieutenants: [lieutenant], lexique: [] })
     const lt = await apiGet<Evaluation>(`/articles/${pilier.id}/gates/lieutenants-lock`)
     await apiPost(`/articles/${pilier.id}/gates/lieutenants-lock/waivers`, {
-      waivers: lt.data!.blocking.map(i => (i.level === 'risque' ? { rule: i.rule, category: 'autre', reason: RAISON } : { rule: i.rule })),
+      waivers: lt.data!.blocking.map(i => (i.level === 'risque' ? { rule: i.rule, fingerprint: i.fingerprint, category: 'autre', reason: RAISON } : { rule: i.rule, fingerprint: i.fingerprint })),
     })
 
     // Un voisin sans rapport : la dérogation tient toujours.
@@ -313,6 +313,56 @@ describe('Porte « publier »', () => {
     const rules = new Map(publication.data!.issues.map(i => [i.rule, i.level]))
     expect(rules.get(`child-section-too-long:${enfant.id}`)).toBe('risque')
     expect(rules.get(`link-to-unpublished:${enfant.id}`)).toBe('attention')
+  })
+
+  // Recette du 2026-09-30 (INFRA-19, express 10 b) — FR-INFRA-GATE-WAIVER :
+  // une dérogation vaut pour le point qu'elle couvre et les données de CE point.
+  const repete = 'Un site clair rassure le client et lui donne envie de vous appeler sans attendre la semaine prochaine.'
+  const texteRepete = (intro: string) =>
+    `<h1>Rénovation : le guide</h1><p>${intro}</p><h2>Le prix</h2><p>${repete}</p><h2>Le délai</h2><p>${repete}</p>`
+
+  it('une réponse à un point qui a changé depuis sa lecture est refusée', async ({ skip }) => {
+    if (!ctx.serverOk) skip()
+    const article = await nouvelArticle()
+    await apiPut(`/articles/${article.id}/keywords`, { capitaine: `empreinte-${ctx.runId}`, lieutenants: [], lexique: [] })
+    const evaluation = await apiGet<Evaluation>(`/articles/${article.id}/gates/captain-lock`)
+    const risque = evaluation.data!.blocking.find(i => i.level === 'risque')!
+    const perimee = await apiPost<{ refused: Array<{ rule: string; problem: string }> }>(
+      `/articles/${article.id}/gates/captain-lock/waivers`,
+      { waivers: [{ rule: risque.rule, fingerprint: 'point-lu-avant', category: 'autre', reason: RAISON }] },
+    )
+    expect(perimee.data!.refused.find(r => r.rule === risque.rule)?.problem).toMatch(/changé/)
+  })
+
+  it('un mot changé ailleurs ne redemande pas un paragraphe répété déjà dérogé à la publication', async ({ skip }) => {
+    if (!ctx.serverOk) skip()
+    const article = await nouvelArticle()
+    await apiPut(`/articles/${article.id}`, { content: texteRepete('Vous cherchez un artisan.') })
+    const avant = await apiGet<Evaluation>(`/articles/${article.id}/gates/publish`)
+    const point = avant.data!.blocking.find(i => i.rule.startsWith('repeated-paragraph'))!
+    await apiPost(`/articles/${article.id}/gates/publish/waivers`, {
+      waivers: [{ rule: point.rule, fingerprint: point.fingerprint, category: 'autre', reason: RAISON }],
+    })
+    await apiPut(`/articles/${article.id}`, { content: texteRepete('Vous voulez savoir comment choisir un artisan.') })
+    const apres = await apiGet<Evaluation>(`/articles/${article.id}/gates/publish`)
+    expect(apres.data!.blocking.map(i => i.rule)).not.toContain(point.rule)
+    expect(apres.data!.waived.map(w => w.issue.rule)).toContain(point.rule)
+  })
+
+  it('dérogé au premier jet, un paragraphe répété n’est pas redemandé à la publication : il revient en 🟠 à relire', async ({ skip }) => {
+    if (!ctx.serverOk) skip()
+    const article = await nouvelArticle()
+    await apiPut(`/articles/${article.id}`, { content: texteRepete('Vous cherchez un artisan.') })
+    const jet = await apiGet<Evaluation>(`/articles/${article.id}/gates/draft`)
+    const auJet = jet.data!.blocking.find(i => i.rule.startsWith('draft-repeated-paragraph'))!
+    await apiPost(`/articles/${article.id}/gates/draft/waivers`, {
+      waivers: [{ rule: auJet.rule, fingerprint: auJet.fingerprint, category: 'autre', reason: RAISON }],
+    })
+    const publication = await apiGet<Evaluation>(`/articles/${article.id}/gates/publish`)
+    expect(publication.data!.issues.some(i => i.rule.startsWith('repeated-paragraph'))).toBe(false)
+    const relire = publication.data!.blocking.find(i => i.rule.startsWith('waiver-reconfirm:draft:'))
+    expect(relire?.level).toBe('attention')
+    expect(relire?.message).toContain(RAISON)
   })
 
   it('un changement de statut autre que la publication n’est pas gardé', async ({ skip }) => {
@@ -352,7 +402,7 @@ describe('Validation des entrées', () => {
     const article = await nouvelArticle()
     await apiPut(`/articles/${article.id}/keywords`, { capitaine: `relu-${ctx.runId}`, lieutenants: [], lexique: [] })
     const evaluation = await apiGet<Evaluation>(`/articles/${article.id}/gates/captain-lock`)
-    const drafts = evaluation.data!.blocking.map(i => (i.level === 'risque' ? { rule: i.rule, category: 'autre', reason: RAISON } : { rule: i.rule }))
+    const drafts = evaluation.data!.blocking.map(i => (i.level === 'risque' ? { rule: i.rule, fingerprint: i.fingerprint, category: 'autre', reason: RAISON } : { rule: i.rule, fingerprint: i.fingerprint }))
     await apiPost(`/articles/${article.id}/gates/captain-lock/waivers`, { waivers: drafts })
     const liste = await apiGet<Array<{ gateId: string; rule: string; reason: string | null }>>(`/articles/${article.id}/waivers`)
     expect(liste.data!.some(w => w.gateId === 'captain-lock' && w.reason === RAISON)).toBe(true)

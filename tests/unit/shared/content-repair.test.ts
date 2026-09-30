@@ -176,3 +176,26 @@ describe('trimTruncatedBlocks — éléments de liste', () => {
     expect(trimTruncatedBlocks(input).html).toBe(input)
   })
 })
+
+// Recette du 2026-09-30 (RED-22) — FR-RED-PUBLISH-GATE : l'éditeur range le
+// texte de chaque cellule dans un <p> ; « Quand s'y mettre » est un libellé,
+// pas une phrase coupée. Tout tableau accepté rendait l'article impubliable (⛔).
+describe('trimTruncatedBlocks — cellules de tableau (FR-RED-PUBLISH-GATE)', () => {
+  const tableau = '<table><thead><tr><th><p>Étape pour le prix</p></th><th><p>Quand s’y mettre</p></th></tr></thead>'
+    + '<tbody><tr><td><p>Faire le point sur le prix</p></td><td><p>Dès cette semaine</p></td></tr></tbody></table>'
+
+  it('un libellé de cellule sans point final est un usage normal', () => {
+    const { html, trimmed } = trimTruncatedBlocks(tableau)
+    expect(trimmed).toEqual([])
+    expect(html).toBe(tableau)
+  })
+
+  it('une cellule qui finit sur un fragment après une phrase complète est coupée, comme un élément de liste', () => {
+    const { trimmed } = trimTruncatedBlocks('<table><tbody><tr><td><p>Première phrase complète. Puis un frag</p></td></tr></tbody></table>')
+    expect(trimmed).toEqual(['Puis un frag'])
+  })
+
+  it('un paragraphe coupé hors du tableau reste signalé', () => {
+    expect(trimTruncatedBlocks(`${tableau}<p>Très</p>`).trimmed).toEqual(['Très'])
+  })
+})

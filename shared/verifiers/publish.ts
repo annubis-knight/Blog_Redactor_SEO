@@ -12,11 +12,13 @@
  *   🔴 risque    — écarts SEO (capitaine absent d'un emplacement clé, texte trop
  *                  court…), chiffres invérifiables, marqueurs « à sourcer » restants ;
  *   🟠 attention — avertissements, et chaque dérogation déjà posée sur l'article,
- *                  réaffichée pour être reconfirmée.
+ *                  réaffichée pour être reconfirmée : celles des portes du
+ *                  Moteur encore valables, et celles du premier jet dont le point
+ *                  (même extrait) est encore là — il n'est pas redemandé en 🔴.
  */
 import { validateArticleContent, validateArticleMeta, type ContentIssue } from '../content-validators.js'
 import { validateArticleSeo, type SeoInput } from '../seo-validators.js'
-import type { GateIssue, GateLevel, GateWaiver } from './gate.js'
+import { hashGateInput, pointFingerprint, textPointKind, waiverProblem, type GateId, type GateIssue, type GateLevel, type GateWaiver, type WaivedIssue } from './gate.js'
 import { ARTICLE_TYPE_RULES, CHILD_SUMMARY_WORDS } from '../constants/article-type-rules.js'
 import { countWordsHtml, detectNonFrenchSentences, detectRepeatedParagraphs, detectUnsourcedFigures } from '../text-quality.js'
 import { listChapters, sectionKey } from '../chapters.js'
@@ -33,8 +35,10 @@ const TOLERATED_AT_PUBLISH = new Set(['hn-h1-in-body'])
 const RISKY_CONTENT_WARNINGS = new Set(['unverifiable-claim', 'seo-capitaine-not-in-meta-title'])
 
 export interface PublishGateInput extends SeoInput {
-  /** Dérogations déjà posées sur l'article, aux autres portes. */
-  existingWaivers: GateWaiver[]
+  /** Points des portes du Moteur couverts aujourd'hui par une dérogation, avec elle. */
+  existingWaivers: WaivedIssue[]
+  /** Dérogations posées au premier jet : elles couvrent le même point du texte (même extrait). */
+  draftWaivers?: GateWaiver[]
   /** Les enfants de l'article dans le cocon, et la section dont chacun est né (C7). */
   children?: Array<{ id: number; title: string; section: string }>
   /** Articles vers lesquels le texte renvoie et qui ne sont pas encore publiés (C7). */
@@ -47,6 +51,51 @@ const GATE_LABELS: Record<string, string> = {
   'lexique-lock': 'validation du lexique',
   'hn-lock': 'verrouillage de la structure',
   'draft': 'premier jet',
+}
+
+const RECONFIRM_RISK = 'Vérifiez que ce choix tient toujours au moment de publier.'
+
+/** Une phrase sans son point final : on la recompose sans « .. ». */
+const withoutFinalDot = (text: string): string => text.trim().replace(/[.\s]+$/u, '')
+
+/**
+ * Le point dérogé, en clair, et la réponse de l'utilisateur : sa raison pour un
+ * 🔴, la lecture pour un 🟠 (recette du 2026-09-30 : l'écran montrait
+ * l'identifiant interne de la règle, et rien pour une dérogation 🟠).
+ */
+function reconfirmMessage(gateId: string, issueMessage: string, waiver: GateWaiver): string {
+  const answer = waiver.reason?.trim()
+    ? `Votre raison : « ${withoutFinalDot(waiver.reason)} ».`
+    : 'Vous l’aviez lu (point 🟠 : pas de raison à écrire).'
+  return `Dérogation posée au ${GATE_LABELS[gateId] ?? 'étape précédente'}. ${withoutFinalDot(issueMessage)}. ${answer}`
+}
+
+/** 🟠 à relire : une dérogation d'une autre porte qui couvre encore ce point. */
+function reconfirmIssue(gateId: GateId, issue: GateIssue, waiver: GateWaiver, point: string): GateIssue {
+  return {
+    rule: `waiver-reconfirm:${gateId}:${issue.rule}`,
+    level: 'attention',
+    message: reconfirmMessage(gateId, issue.message, waiver),
+    risk: RECONFIRM_RISK,
+    excerpt: issue.excerpt,
+    // Relire tient tant que le point et la réponse d'origine ne changent pas.
+    fingerprint: hashGateInput({ reconfirm: gateId, point, category: waiver.category ?? null, reason: waiver.reason ?? null }),
+  }
+}
+
+/**
+ * Un point du texte déjà dérogé au premier jet (même nature, même message, même
+ * extrait) n'est pas redemandé : il revient en 🟠, à relire.
+ */
+function withDraftWaivers(issues: GateIssue[], draftWaivers: GateWaiver[]): GateIssue[] {
+  if (draftWaivers.length === 0) return issues
+  return issues.map((issue) => {
+    if (issue.level === 'technique') return issue
+    const point = pointFingerprint('draft', issue, '')
+    const waiver = draftWaivers.find(w => w.gateId === 'draft' && w.inputHash === point
+      && textPointKind(w.rule) === textPointKind(issue.rule) && waiverProblem(issue, w) === null)
+    return waiver ? reconfirmIssue('draft', issue, waiver, point) : issue
+  })
 }
 
 export function fromContentIssue(issue: ContentIssue, errorLevel: GateLevel): GateIssue | null {
@@ -81,6 +130,22 @@ export function distinctRules(issues: GateIssue[]): GateIssue[] {
     used.add(rule)
     return { ...issue, rule }
   })
+}
+
+const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': '\'', nbsp: ' ' }
+
+/**
+ * Le H1 publié : celui du texte, sinon le titre de l'article. La porte le juge
+ * et l'export le publie, par cette même expression (FR-RED-EXPORT-HTML) : le
+ * fichier affichait le titre de l'article, pas le H1 que la porte avait jugé.
+ */
+export function publishedTitle(html: string, fallback: string): string {
+  const h1 = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html)?.[1]
+    ?.replace(/<[^>]*>/g, '')
+    .replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (_m, name: string) => ENTITIES[name] ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return h1 || fallback
 }
 
 /** Mots du texte visible (balises retirées). */
@@ -128,7 +193,7 @@ export function verifyPublish(input: PublishGateInput): GateIssue[] {
   for (const paragraph of detectRepeatedParagraphs(input.content)) {
     collect({ rule: 'repeated-paragraph', level: 'risque', message: `Paragraphe répété : « ${paragraph}… ».`, risk: 'Un texte qui se répète lasse le lecteur et ressemble à du remplissage.', excerpt: paragraph })
   }
-  distinctRules(found).forEach(push)
+  withDraftWaivers(distinctRules(found), input.draftWaivers ?? []).forEach(push)
 
   // Le plancher de longueur est déjà vérifié (`seo-thin-content`) ; le plafond
   // vient des règles par type : le pilier 1013 faisait 15 601 mots pour 2 500 visés.
@@ -165,15 +230,19 @@ export function verifyPublish(input: PublishGateInput): GateIssue[] {
 
   issues.push(...childSummaryIssues(input), ...unpublishedLinkIssues(input))
 
-  for (const waiver of input.existingWaivers.filter(w => w.gateId !== 'publish')) {
-    issues.push({
-      rule: `waiver-reconfirm:${waiver.gateId}:${waiver.rule}`,
-      level: 'attention',
-      message: `Dérogation posée au ${GATE_LABELS[waiver.gateId] ?? waiver.gateId} (« ${waiver.rule} »)${waiver.reason ? ` : ${waiver.reason}` : ''}.`,
-      risk: 'Vérifiez que ce choix tient toujours au moment de publier.',
-    })
+  for (const { issue, waiver } of input.existingWaivers.filter(w => w.waiver.gateId !== 'publish' && w.waiver.gateId !== 'draft')) {
+    issues.push(reconfirmIssue(waiver.gateId, issue, waiver, issue.fingerprint ?? waiver.inputHash))
   }
   return issues
+}
+
+/**
+ * Mots d'une section sans son titre H2 : la mesure du résumé d'un enfant, la
+ * même pour la porte de publication et pour la passe « Résumer », qui ne
+ * repropose pas une section déjà résumée (FR-CER-CHILD-FROM-PILLAR-H2).
+ */
+export function childSectionWords(chapterHtml: string): number {
+  return countWordsHtml(chapterHtml.replace(/^\s*<h2\b[^>]*>[\s\S]*?<\/h2>/i, ''))
 }
 
 /**
@@ -196,7 +265,7 @@ function childSummaryIssues(input: PublishGateInput): GateIssue[] {
       })
       continue
     }
-    const words = countWordsHtml(chapter.html.replace(/^\s*<h2\b[^>]*>[\s\S]*?<\/h2>/i, ''))
+    const words = childSectionWords(chapter.html)
     if (words > CHILD_SUMMARY_WORDS.max) {
       issues.push({
         rule: `child-section-too-long:${child.id}`,

@@ -318,7 +318,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 - après le rechargement, la pastille « Lieutenants » est pleine.
 
 ### INFRA-15 — Déroger par écrit, pour les seules données examinées
-**Exigences :** FR-INFRA-GATE-WAIVER ⚠
+**Exigences :** FR-INFRA-GATE-WAIVER
 
 **Gestes :**
 1. Rouvre l'alarme (« Voir pourquoi / décider »). Dans « Votre raison », tape une vingtaine d'espaces.
@@ -326,7 +326,8 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 3. Ajoute un `e` à la fin (20 caractères), puis clique **« Je prends la responsabilité et je continue »**.
 4. Décoche A et coche à la place la deuxième mieux notée (81 en MOCK). Appelons-la B.
 5. Décoche B et recoche A.
-6. Coche aussi B : A et B sont cochées.
+6. *(Facultatif.)* Décoche B si besoin pour faire revenir le bandeau, ouvre l'alarme et laisse-la ouverte. Dans un second onglet, sur les Lieutenants du même enfant, coche puis décoche une autre proposition. Reviens au premier onglet, réponds (catégorie, raison de 20 caractères) et valide.
+7. Coche aussi B : A et B sont cochées.
 
 **Tu dois voir :**
 - geste 1 : le compteur reste « 0 / 20 » : les espaces ne comptent pas ; le bouton reste grisé ;
@@ -334,15 +335,15 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 - geste 3 : « 20 / 20 » en vert, bouton actif, puis « Enregistrement… » ; l'alarme se ferme, le bandeau disparaît, la pastille « Lieutenants » se remplit ;
 - geste 4 : le bandeau revient : la dérogation ne couvrait que A ;
 - geste 5 : pas de bandeau : la dérogation posée pour A vaut toujours pour A ;
-- geste 6 : pas de bandeau, deux lieutenants suffisent.
+- geste 6 : un refus sous le point, « Ce point a changé depuis que vous l’avez lu : relisez-le, puis répondez de nouveau. », et l'alarme reste ouverte avec les données du moment ;
+- geste 7 : pas de bandeau, deux lieutenants suffisent.
 
 **C'est un bug si :**
 - les espaces comptent dans la raison ;
 - le bouton s'active sous 20 caractères, ou sans catégorie ;
 - la dérogation posée pour A couvre B ;
-- A redemande une dérogation au geste 5.
-
-**⚠ Défaut connu :** FR-INFRA-GATE-WAIVER — le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+- A redemande une dérogation au geste 5 ;
+- au geste 6, la dérogation est acceptée pour des données que tu n'as pas lues.
 
 ### INFRA-16 — Les propositions de lieutenants survivent au rechargement
 **Exigences :** FR-INFRA-LIEUTENANT-EXPLORATIONS ⚠, FR-INFRA-KPI-CONSISTENCY
@@ -404,27 +405,29 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 
 **⚠ Défaut connu :** « Tout réinitialiser » n'archive les lieutenants qu'à l'écran : l'archivage enregistré n'est jamais demandé. Après un rechargement, ils reviennent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide, et la porte refuse l'étape. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
-### INFRA-19 — À la publication, la reconfirmation suit les données
-**Exigences :** FR-INFRA-GATE-WAIVER ⚠, FR-INFRA-VERIFIER-SHARED
+### INFRA-19 — À la publication, la reconfirmation suit les données de chaque point
+**Exigences :** FR-INFRA-GATE-WAIVER, FR-INFRA-VERIFIER-SHARED
 
 **Gestes :**
 1. Rédaction du pilier : **« Éditer l'article »**, puis **« Visualiser l'article »**. Dans l'onglet d'aperçu, clique **« Exporter HTML »**.
-2. Dans l'éditeur, change un mot du texte, puis **« Sauvegarder »** (ou Ctrl+S). Dans l'aperçu, recharge la page, puis **« Exporter HTML »**.
-3. Clique **« Revenir corriger »**.
-4. Exporte à nouveau, coche chaque « J'ai lu », puis **« J'ai lu, je continue »**.
+2. Dans l'éditeur, change un mot de l'introduction (hors de tout passage signalé), puis **« Sauvegarder »** (ou Ctrl+S). Dans l'aperçu, **« Exporter HTML »**.
+3. Dans un chapitre, ajoute `Un site vitrine coûte 2 000 € en moyenne.` et enregistre. Exporte.
+4. Clique **« Revenir corriger »**.
+5. Efface la phrase ajoutée, enregistre, et exporte à nouveau.
 
 **Tu dois voir :**
-- geste 1 : pas d'alarme, le fichier se télécharge : tes « J'ai lu » de l'étape 10 valent pour ces données, qui n'ont pas changé ;
-- geste 2 : l'alarme « Avant de publier » revient, avec en 🟠 « Dérogation posée au valider les lieutenants (« … ») : Mot-clé très locale. » : le texte a changé, il faut reconfirmer ;
-- geste 3 : « Publication annulée : corrigez les points signalés, puis exportez à nouveau. », et aucun téléchargement ;
-- geste 4 : le téléchargement.
+- geste 1 : pas d'alarme, le fichier se télécharge : tes réponses de l'étape 10 valent pour ces données, qui n'ont pas changé ;
+- geste 2 : pas d'alarme non plus : chaque dérogation couvre un point, et aucun point n'a changé ; le fichier téléchargé contient ton mot ;
+- geste 3 : l'alarme « Avant de publier », avec **seulement** le nouveau point, 🔴 « Chiffre sans source : « Un site vitrine coûte 2 000 € en moyenne. » » ; tes dérogations passées sont rangées sous « 🛡 … dérogations déjà posées » ;
+- geste 4 : « Publication annulée : corrigez les points signalés, puis exportez à nouveau. », et aucun téléchargement ;
+- geste 5 : pas d'alarme, le téléchargement.
 
 **C'est un bug si :**
-- une alarme s'ouvre au geste 1 alors que tu n'as rien changé au pilier depuis l'étape 10 ;
-- aucune alarme au geste 2 ;
-- un fichier se télécharge au geste 3.
+- une alarme s'ouvre au geste 1 ou au geste 2 ;
+- au geste 3, l'alarme redemande des raisons déjà données pour des points inchangés ;
+- un fichier se télécharge au geste 4.
 
-**⚠ Défaut connu :** FR-INFRA-GATE-WAIVER — le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+> Un article publié avant le 2026-09-30 garde ses anciennes dérogations de publication, posées sur tout le texte : la première retouche les redemande une fois, ensuite seules celles des points changés reviennent.
 
 ### INFRA-20 — Une erreur du serveur s'affiche en clair, sans trace technique
 **Exigences :** FR-INFRA-ERROR-HANDLER ⚠, NFR-OBS-KNOWN-ERRORS ⚠

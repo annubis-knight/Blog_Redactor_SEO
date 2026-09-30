@@ -23,8 +23,9 @@ import { apiGet } from '@/services/api.service'
 import { useEditorStore } from '@/stores/article/editor.store'
 import { log } from '@/utils/logger'
 import { listChapters, replaceChapter, insertChapter, faqInsertIndex, sectionKey, type Chapter } from '@shared/chapters.js'
-import { countToSourceMarkers } from '@shared/verifiers/publish.js'
+import { childSectionWords, countToSourceMarkers } from '@shared/verifiers/publish.js'
 import { detectUnsourcedFigures } from '@shared/text-quality.js'
+import { CHILD_SUMMARY_WORDS } from '@shared/constants/article-type-rules.js'
 import type { EnrichmentPass } from '@shared/verifiers/enrichment.js'
 import type { EnrichmentProposal } from '@shared/types/enrichment.types.js'
 
@@ -55,9 +56,25 @@ export interface EnrichmentContext {
 }
 
 const FAQ_TITLE = /questions fr[ée]quentes|\bfaq\b/i
+/** Le H2 « Introduction » : l'éditeur le range dans la zone Introduction (`splitByH2Regex`, `isIntro`). */
+const INTRO_TITLE = /^introduction$/i
 
 /** Même comparaison que le vérificateur : les espaces entre balises ne comptent pas. */
 const squash = (html: string): string => html.replace(/\s+/g, ' ').replace(/>\s+</g, '><').trim()
+
+/**
+ * Attributs que l'éditeur pose ou retire en réaffichant un texte (nouvel
+ * onglet, `rel`, style et largeur des colonnes d'un tableau) : ils ne sont pas
+ * une modification de l'utilisateur. Le lien (`href`), le texte et les blocs,
+ * si (recette du 2026-09-30, RED-18 : une carte passait « chapitre modifié
+ * depuis » sans que personne y ait touché).
+ */
+const PRESENTATION_ATTRS = /\s(?:target|rel|style|colwidth|colspan="1"|rowspan="1")(?:="[^"]*")?(?=[\s>/])/gi
+
+/** Un chapitre tel que l'utilisateur peut l'avoir changé : sans ce que l'éditeur ajoute de lui-même. */
+const comparable = (html: string): string => squash(
+  html.replace(/<colgroup\b[\s\S]*?<\/colgroup>/gi, '').replace(/<[a-z][^>]*>/gi, tag => tag.replace(PRESENTATION_ATTRS, '')),
+)
 
 export const useEnrichmentStore = defineStore('enrichment', () => {
   const items = ref<EnrichmentItem[]>([])
@@ -85,9 +102,11 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
   function targetsFor(pass: EnrichmentPass, html: string, sections: string[] = childSections.value): Chapter[] {
     const chapters = listChapters(html)
     if (pass === 'resumes') {
-      // Seuls les chapitres dont est né un article enfant se résument (C7).
+      // Seuls les chapitres dont est né un article enfant se résument (C7), et
+      // seulement s'ils ne le sont pas déjà : la mesure de la porte de
+      // publication (`childSectionWords`), qui ne signale qu'au-delà de 250 mots.
       const keys = new Set(sections.map(sectionKey))
-      return chapters.filter(c => c.index >= 0 && keys.has(sectionKey(c.title)))
+      return chapters.filter(c => c.index >= 0 && keys.has(sectionKey(c.title)) && childSectionWords(c.html) > CHILD_SUMMARY_WORDS.max)
     }
     if (pass === 'faq') {
       if (chapters.some(c => FAQ_TITLE.test(c.title))) return []
@@ -96,8 +115,9 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
     if (pass === 'sources') {
       return chapters.filter(c => countToSourceMarkers(c.html) > 0 || detectUnsourcedFigures(c.html).length > 0)
     }
-    // Exemples, tableaux, images : le corps de l'article, sans chapeau, FAQ ni conclusion.
-    const body = chapters.filter(c => c.index >= 0 && !FAQ_TITLE.test(c.title))
+    // Exemples, tableaux, images : le corps de l'article, sans chapeau, chapitre
+    // « Introduction », FAQ ni conclusion.
+    const body = chapters.filter(c => c.index >= 0 && !FAQ_TITLE.test(c.title) && !INTRO_TITLE.test(c.title.trim()))
     return body.length > 1 ? body.slice(0, -1) : body
   }
 
@@ -206,7 +226,7 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
       editorStore.setContent(insertChapter(current, item.chapterIndex, proposal.html))
     } else {
       const chapter = listChapters(current).find(c => c.index === item.chapterIndex)
-      if (!chapter || squash(chapter.html) !== squash(proposal.before)) {
+      if (!chapter || comparable(chapter.html) !== comparable(proposal.before)) {
         // Le chapitre a changé depuis la proposition : on n'écrase pas.
         item.status = 'stale'
         item.staleReason = 'Le chapitre a changé depuis cette proposition : relancez la passe pour ne rien écraser.'

@@ -36,7 +36,7 @@ code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 | **Verrouiller** | Figer une décision (capitaine, lieutenants, structure, lexique). |
 | **Porte (de qualité)** | Un contrôle placé à un passage sensible : verrouiller le capitaine, valider les lieutenants, la structure, le lexique, accepter le premier jet, publier. |
 | **Alarme graduée** | La fenêtre ouverte par une porte qui refuse. Trois niveaux : 🟠 « Attention » (« J’ai lu » suffit), 🔴 « Risque » (catégorie + raison d'au moins 20 caractères), ⛔ « À corriger » (« il ne se déroge pas »). |
-| **Dérogation** | La décision écrite de passer outre une alerte 🟠 ou 🔴. Elle tombe dès que les données vérifiées changent. |
+| **Dérogation** | La décision écrite de passer outre une alerte 🟠 ou 🔴. Elle vaut pour ce point et ses données : elle tombe dès que ce point change, pas quand on retouche autre chose. |
 | **Premier jet** | La première version de l'article, écrite en un seul appel, sans recherche web. |
 | **À sourcer** | Le marqueur posé sur un chiffre sans source, que la passe « sources » doit confirmer ou faire disparaître. |
 | **Passe d'enrichissement** | Une amélioration proposée chapitre par chapitre après le premier jet (sources, exemples, tableaux, images, FAQ, résumés). |

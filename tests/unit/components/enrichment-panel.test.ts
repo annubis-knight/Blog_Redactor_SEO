@@ -114,6 +114,8 @@ describe('EnrichmentPanel', () => {
       result: { pass: 'resumes', chapterIndex: body.chapterIndex, before: body.chapterHtml, html: '<h2>Les étapes</h2><p>Résumé.</p>', issues: [], webSources: [], blocked: false, usage: null },
       usage: null, errorMessage: null, aborted: false,
     }))
+    // Un chapitre pas encore résumé (plus de 250 mots) : la passe le vise.
+    useEditorStore().setContent(ARTICLE.replace('On avance.', 'On avance pas à pas, sans brûler les étapes. '.repeat(40)))
     const wrapper = mountPanel()
     await flushPromises()
     await wrapper.get('[data-testid="enrich-pass-resumes"]').trigger('click')
@@ -127,7 +129,7 @@ describe('EnrichmentPanel', () => {
     await flushPromises()
     await sansEnfant.get('[data-testid="enrich-pass-resumes"]').trigger('click')
     await flushPromises()
-    expect(sansEnfant.get('[data-testid="enrich-empty"]').text()).toMatch(/aucun chapitre n’a encore donné naissance/i)
+    expect(sansEnfant.get('[data-testid="enrich-empty"]').text()).toMatch(/rien à résumer : aucun chapitre n’a encore donné naissance/i)
   })
 
   it('les sources trouvées sont listées, liens ouverts ailleurs', async () => {

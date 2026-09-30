@@ -74,16 +74,16 @@ La rédaction guidée s'ouvre sur « Brief & Structure ». Dans « Micro-context
 « Éditer l'article » ouvre l'éditeur, avec les scores « SEO » et « GEO » qui suivent chaque modification. Le panneau « Enrichir » propose des passes (« Sources », « Exemples », « Tableaux », « Images », « FAQ »), chapitre par chapitre : « Rien ne change dans l'article tant que vous n'acceptez pas ». L'utilisateur ouvre « Comparer avant / après », puis « Accepter » ou « Refuser » chaque proposition. Il retouche le texte à la main ; « Sauvegarder » ou Ctrl+S enregistre (« ✓ Sauvegardé … »), et l'éditeur enregistre aussi de lui-même.
 
 ### 12. Visualiser l'article et le publier
-**Exigences :** FR-RED-PUBLISH-GATE, FR-RED-EXPORT-HTML ⚠, FR-RED-PROGRESS ⚠
+**Exigences :** FR-RED-PUBLISH-GATE, FR-RED-EXPORT-HTML, FR-RED-PROGRESS ⚠
 
 « Visualiser l'article », proposé dès que le texte, le titre et la description existent, ouvre l'aperçu au gabarit du site dans un nouvel onglet. « Exporter HTML » passe la porte de publication, qui rejoue les contrôles du texte, de la méta et des quatre verrous du Moteur. Si elle ne signale rien, ou une fois ses points lus et assumés, un fichier HTML se télécharge et l'article passe au statut « Publié ».
 
 ## Ce qui peut mal tourner
 
 ### Une porte alerte en chemin
-**Exigences :** FR-INFRA-VERIFIER-SHARED, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-INFRA-GATE-WAIVER ⚠
+**Exigences :** FR-INFRA-VERIFIER-SHARED, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-INFRA-GATE-WAIVER
 
-Un Capitaine sans volume ou que Google ne suggère pas, trop peu de lieutenants, une structure hors des règles du pilier : l'alarme « Avant de … » s'ouvre et rien n'est validé. Un point 🟠 se passe en cochant « J'ai lu » ; un 🔴 demande une catégorie et une raison d'au moins 20 caractères, puis « Je prends la responsabilité et je continue » ; un ⛔ ne se déroge pas. « Revenir corriger » ou Échap ferme l'alarme sans rien enregistrer. Chaque dérogation revient à la publication, pour être reconfirmée. Aujourd'hui, le serveur enregistre une dérogation pour les données du moment, même si elles ont changé depuis l'ouverture de l'alarme.
+Un Capitaine sans volume ou que Google ne suggère pas, trop peu de lieutenants, une structure hors des règles du pilier : l'alarme « Avant de … » s'ouvre et rien n'est validé. Un point 🟠 se passe en cochant « J'ai lu » ; un 🔴 demande une catégorie et une raison d'au moins 20 caractères, puis « Je prends la responsabilité et je continue » ; un ⛔ ne se déroge pas. « Revenir corriger » ou Échap ferme l'alarme sans rien enregistrer. Chaque dérogation revient à la publication, pour être reconfirmée. Si les données d'un point changent pendant que l'alarme est ouverte, la réponse à ce point est refusée : « Ce point a changé depuis que vous l’avez lu : relisez-le, puis répondez de nouveau. »
 
 ### La carte complète du cocon est relancée après la création du pilier
 **Exigences :** FR-CER-COCOON-PROGRESSIVE ⚠
@@ -101,9 +101,9 @@ Sans ce clic, la rédaction guidée garde l'étape « Article » grisée, avec l
 Si l'IA tombe en panne en pleine écriture, la rédaction s'arrête ; les chapitres terminés restent enregistrés, et l'utilisateur relance par « Générer l'article ». L'outil doit le dire par un message. Aujourd'hui, aucune des deux vues de rédaction n'affiche de message : l'écriture s'arrête sans un mot.
 
 ### La publication est refusée
-**Exigences :** FR-RED-PUBLISH-GATE, FR-RED-ENRICH-PASSES, FR-RED-EXPORT-HTML ⚠
+**Exigences :** FR-RED-PUBLISH-GATE, FR-RED-ENRICH-PASSES, FR-RED-EXPORT-HTML
 
-Une image encore « à fournir » (posée par la passe « Images »), une méta coupée ou un autre défaut ⛔ bloquent : le bouton affiche « Correction nécessaire ». Après « Revenir corriger », l'écran dit « Publication annulée : corrigez les points signalés, puis exportez à nouveau. », rien n'est marqué publié ni téléchargé. L'utilisateur corrige dans l'éditeur, enregistre, puis doit fermer et rouvrir l'aperçu avant d'exporter à nouveau : sinon le fichier téléchargé est l'ancienne version.
+Une image encore « à fournir » (posée par la passe « Images »), une méta coupée ou un autre défaut ⛔ bloquent : le bouton affiche « Correction nécessaire ». Après « Revenir corriger », l'écran dit « Publication annulée : corrigez les points signalés, puis exportez à nouveau. », rien n'est marqué publié ni téléchargé. L'utilisateur corrige dans l'éditeur, enregistre, puis exporte à nouveau depuis l'aperçu : le fichier téléchargé est le texte que la porte vient de juger.
 
 ## Défauts connus sur ce parcours
 
@@ -127,5 +127,3 @@ Une image encore « à fournir » (posée par la passe « Images »), une méta 
 - FR-RED-DRAFT-SINGLE-PASS — une panne de rédaction n'affiche aucun message, ni dans la rédaction guidée ni dans l'éditeur ; l'échec de la méta, d'une réduction ou d'une humanisation n'en affiche pas non plus.
 - FR-RED-META — la méta ne se modifie pas à la main et ne se relance pas seule : réessayer relance tout l'article.
 - FR-RED-EDITOR-TIPTAP — un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement.
-- FR-RED-EXPORT-HTML — le fichier téléchargé perd tous les liens internes posés dans l'éditeur, et son H1 est le titre de l'article, pas le H1 jugé par la porte ; réexporter après une correction, sans recharger l'aperçu, télécharge la version chargée à l'ouverture de l'onglet, pas celle que la porte vient d'accepter.
-- FR-INFRA-GATE-WAIVER — le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis.

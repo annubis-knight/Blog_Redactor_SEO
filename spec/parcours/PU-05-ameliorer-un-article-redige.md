@@ -59,9 +59,9 @@ Le panneau « Maillage » (« Suggestions de maillage ») propose d'abord la fam
 Le bloc « Meta SEO » montre « Meta Title » (n/60) et « Meta Description » (n/160), générés juste après le premier jet ; la carte « Meta » du panneau SEO dit si chacun contient le capitaine (« Capitaine ✓ » ou « Capitaine ✗ »). La méta se lit mais ne se modifie pas à l'écran : seul « Régénérer l'article » la refait, en réécrivant tout le texte.
 
 ### 9. Ouvrir l'aperçu
-**Exigences :** FR-RED-EXPORT-HTML ⚠
+**Exigences :** FR-RED-EXPORT-HTML
 
-« Visualiser l'article », qui n'apparaît que si le texte, le titre et la description existent, enregistre si besoin et ouvre un nouvel onglet : la page telle qu'elle sera publiée, avec son fil d'Ariane, un seul H1, un sommaire et le texte, sous la barre « ← Retour à l'éditeur » et « Exporter HTML ». L'aperçu ne se recharge pas seul : après une retouche, l'utilisateur le recharge ou le rouvre.
+« Visualiser l'article », qui n'apparaît que si le texte, le titre et la description existent, enregistre si besoin et ouvre un nouvel onglet : la page telle qu'elle sera publiée, avec son fil d'Ariane, un seul H1, un sommaire et le texte, sous la barre « ← Retour à l'éditeur » et « Exporter HTML ». L'aperçu ne se recharge pas seul pendant les retouches ; le fichier exporté, lui, est toujours le texte que la porte juge, et l'aperçu se recharge après l'export.
 
 ### 10. Demander la publication
 **Exigences :** FR-RED-PUBLISH-GATE, FR-INFRA-VERIFIER-SHARED
@@ -69,14 +69,14 @@ Le bloc « Meta SEO » montre « Meta Title » (n/60) et « Meta Description » 
 « Exporter HTML » passe d'abord par la porte de publication, qui rejoue les contrôles du texte, de la méta et des étapes du Moteur. Si elle ne signale rien, le fichier se télécharge et l'article passe « Publié ». Sinon, l'alarme « Avant de publier » liste les points : ⛔ un défaut à corriger (image encore à fournir, méta absente ou coupée, texte abîmé), avec le bouton grisé « Correction nécessaire » ; 🔴 un risque (chiffre sans source, passage « à sourcer » restant, phrase qui n'est pas en français, section dont est né un enfant de plus de 250 mots) ; 🟠 une attention (lien vers un article pas encore publié, dérogations passées à reconfirmer). « Revenir corriger » ou Échap affiche « Publication annulée : corrigez les points signalés, puis exportez à nouveau. », et rien n'est téléchargé.
 
 ### 11. Corriger ou assumer, puis publier
-**Exigences :** FR-RED-PUBLISH-GATE, FR-INFRA-GATE-WAIVER ⚠, FR-RED-PROGRESS ⚠
+**Exigences :** FR-RED-PUBLISH-GATE, FR-INFRA-GATE-WAIVER, FR-RED-PROGRESS ⚠
 
-Pour un ⛔, il corrige dans l'éditeur (par exemple 📷 « Remplacer l'image » sur la place « à fournir »), enregistre, recharge l'aperçu et exporte de nouveau. Un 🟠 se passe en cochant « J’ai lu » ; un 🔴 demande « Pourquoi passer outre ? » et « Votre raison », d'au moins 20 caractères, puis « Je prends la responsabilité et je continue ». La publication reprend alors d'elle-même : le fichier se télécharge et la carte de l'article affiche « Publié » sur la page Rédaction ; cette phase ne reculera plus.
+Pour un ⛔, il corrige dans l'éditeur (par exemple 📷 « Remplacer l'image » sur la place « à fournir »), enregistre et exporte de nouveau depuis l'aperçu. Un 🟠 se passe en cochant « J’ai lu » ; un 🔴 demande « Pourquoi passer outre ? » et « Votre raison », d'au moins 20 caractères, puis « Je prends la responsabilité et je continue ». La publication reprend alors d'elle-même : le fichier se télécharge et la carte de l'article affiche « Publié » sur la page Rédaction ; cette phase ne reculera plus.
 
 ### 12. Republier après une retouche
-**Exigences :** FR-RED-PUBLISH-GATE, FR-INFRA-GATE-WAIVER ⚠
+**Exigences :** FR-RED-PUBLISH-GATE, FR-INFRA-GATE-WAIVER
 
-Plus tard, il retouche l'article publié (par exemple parce que l'enfant est enfin en ligne), enregistre, rouvre l'aperçu et clique « Exporter HTML ». La porte rejoue tout : si rien n'a changé depuis la dernière publication, ses réponses tiennent et le fichier se télécharge ; si le texte a changé, ses dérogations passées reviennent en 🟠, à reconfirmer, et une dérogation dont les données ont changé revient à son niveau d'origine, à justifier de nouveau. L'article reste « Publié ».
+Plus tard, il retouche l'article publié (par exemple parce que l'enfant est enfin en ligne), enregistre, rouvre l'aperçu et clique « Exporter HTML ». La porte rejoue tout, point par point : chaque réponse vaut pour son point, si bien qu'une retouche ailleurs dans le texte ne redemande rien ; seul un point dont les données ont changé revient, à son niveau d'origine, à justifier de nouveau, et un point nouveau s'ajoute. L'article reste « Publié ».
 
 ## Ce qui peut mal tourner
 
@@ -91,9 +91,9 @@ Passer d'un article à l'autre sans recharger doit montrer le bon article, ou un
 Entre la proposition d'une passe et son acceptation, il a retouché ce chapitre dans l'éditeur. La carte passe « chapitre modifié depuis », avec « Le chapitre a changé depuis cette proposition : relancez la passe pour ne rien écraser. » : sa retouche est gardée, rien n'est écrasé. Un chapitre en échec affiche son erreur et la passe continue avec les suivants ; une proposition marquée ⛔ ne peut pas être acceptée.
 
 ### Il réexporte sans recharger l'aperçu
-**Exigences :** FR-RED-EXPORT-HTML ⚠
+**Exigences :** FR-RED-EXPORT-HTML
 
-Après une correction dans l'éditeur, il clique « Exporter HTML » dans l'onglet d'aperçu resté ouvert. La porte juge bien la nouvelle version, mais le fichier téléchargé est celle chargée à l'ouverture de l'onglet : un paragraphe effacé peut s'y trouver encore. Il faut toujours recharger ou rouvrir l'aperçu avant d'exporter. Autres écarts du fichier aujourd'hui : les liens internes posés dans l'éditeur en sont retirés (leur texte reste), et son H1 est le titre de l'article, pas le H1 jugé par la porte.
+Après une correction dans l'éditeur, il clique « Exporter HTML » dans l'onglet d'aperçu resté ouvert. La porte juge la nouvelle version, et le fichier est demandé au serveur juste après elle : c'est cette version qui se télécharge, puis l'aperçu se recharge. Dans le fichier, le H1 est celui que la porte a jugé, et chaque lien interne vers un article rédigé pointe vers son adresse de blog ; un lien vers un article pas encore rédigé est retiré, son texte gardé.
 
 ### Une opération d'IA échoue ou est annulée
 **Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-HUMANIZE-SECTION ⚠, FR-RED-CONTEXTUAL-ACTIONS ⚠, FR-INFRA-API-STREAM ⚠
@@ -115,8 +115,6 @@ Après une correction dans l'éditeur, il clique « Exporter HTML » dans l'ongl
 - FR-RED-CONTEXTUAL-ACTIONS — l'éditeur n'envoie pas le mot-clé de l'article : « Optimiser mot-clé » et les autres actions travaillent sans lui ; les blocs « Sources chiffrées » et « Exemples réels » retirent les liens absents de la recherche sans dire combien ; l'échec d'une action s'affiche sous l'éditeur, caché par le voile ; « Convertir en liste » montre ses balises dans la fenêtre de résultat.
 - FR-RED-LINKING-MANUAL — dans la rédaction guidée, « Appliquer » une suggestion ne fait rien ; dans l'éditeur, l'ancre n'est cherchée que dans la zone active : ailleurs, « Appliquer » ne fait rien, sans message, et la suggestion reste affichée.
 - FR-RED-META — la méta ne se modifie pas à la main et ne se relance pas seule : réessayer relance tout l'article.
-- FR-RED-EXPORT-HTML — le fichier téléchargé perd tous les liens internes posés dans l'éditeur, et son H1 est le titre de l'article, pas le H1 jugé par la porte ; réexporter après une correction, sans recharger l'aperçu, télécharge la version chargée à l'ouverture de l'onglet, pas celle que la porte vient d'accepter.
-- FR-INFRA-GATE-WAIVER — le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis.
 - FR-RED-OUTLINE — les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique ; un article sans sommaire affiche, déjà validé, celui de l'article ouvert juste avant : « Générer l'article » rédige (et paie) sur ce sommaire.
 - FR-RED-DRAFT-SINGLE-PASS — une panne de rédaction n'affiche aucun message, ni dans la rédaction guidée ni dans l'éditeur ; l'échec de la méta, d'une réduction ou d'une humanisation n'en affiche pas non plus.
 - FR-INFRA-API-STREAM — quand l'utilisateur annule, l'écran s'arrête mais le serveur continue la génération jusqu'au bout et la facture.

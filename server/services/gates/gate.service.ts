@@ -1,29 +1,33 @@
 /**
- * AUTHORITY: PostgreSQL `gate_waivers` (dérogations aux portes de qualité).
+ * AUTHORITY: PostgreSQL `gate_waivers` (dérogations aux portes de qualité ;
+ *            `input_hash` = empreinte du point dérogé, voir design/data-flows/gate-waivers.md).
  * READS FROM: articles (type, slug, titre, pain_intent_expected, cocoon_id),
  *             article_keywords (capitaine, lieutenants), keyword_metrics,
- *             captain_explorations (candidats explorés), article_content,
+ *             captain_explorations (candidats explorés), lieutenant_explorations
+ *             (propositions non cochées : pistes de l'alarme), article_content,
  *             article_keywords des autres articles du cocon (getCocoonSiblings),
  *             article_keywords.hn_structure, theme_config (zone du client),
  *             article_micro_contexts.target_word_count ; pour la publication
  *             (publishCocoonLinks, C7) : articles.parent_id / parent_section
  *             (enfants et leur section), internal_links (liens enregistrés),
- *             statut des articles liés.
+ *             statut des articles liés, dérogations du premier jet.
  * WRITES TO: gate_waivers (saveGateWaivers).
  * CONSUMERS: server/routes/gates.routes.ts (évaluation, dérogations),
  *            server/routes/articles.routes.ts (POST /progress/check, PUT /status :
  *            la publication rejoue les portes amont, structure comprise),
- *            scripts/verify-content.ts (liste des dérogations).
+ *            scripts/verify-content.ts (liste des dérogations),
+ *            GateAlarm.vue via gate-alarm.store (points, empreintes, dérogations).
  * RELATED FR: FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE,
  *             FR-LIE-LOCK-GATE, FR-HN-LOCK-GATE (article_keywords.hn_structure, zone du client), FR-RED-PUBLISH-GATE, FR-LEX-METIER-ONLY (lexique-lock),
  *             FR-RED-DRAFT-SINGLE-PASS (draft : article_micro_contexts.target_word_count),
  *             FR-CER-PARENT-WRITTEN-GATE (draft sur le parent), FR-CER-CHILD-FROM-PILLAR-H2
- *             et FR-RED-LINKING-MANUAL (publication : résumés des enfants, liens non publiés)
+ *             et FR-RED-LINKING-MANUAL (publication : résumés des enfants, liens non publiés),
+ *             FR-RED-EXPORT-HTML (H1 publié = H1 jugé : `publishedTitle`)
  *
  * Le serveur est le seul évaluateur : il charge les données, appelle le
- * vérificateur partagé (`shared/verifiers/`) et applique les dérogations
- * enregistrées. L'écran affiche son verdict ; aucune empreinte ne peut donc
- * diverger entre le navigateur et le serveur.
+ * vérificateur partagé (`shared/verifiers/`), pose l'empreinte de chaque point
+ * et applique les dérogations enregistrées. L'écran affiche son verdict ;
+ * aucune empreinte ne peut donc diverger entre le navigateur et le serveur.
  */
 import { pool } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
@@ -35,8 +39,8 @@ import { computeVerdict, getThresholds, scoreKpi } from '../../../shared/kpi-sco
 import {
   evaluateGate,
   hashGateInput,
-  standingWaivers,
   waiverProblem,
+  withFingerprints,
   type GateEvaluation,
   type GateId,
   type GateIssue,
@@ -47,7 +51,7 @@ import {
 } from '../../../shared/verifiers/gate.js'
 import { verifyCaptain, type CaptainGateInput } from '../../../shared/verifiers/captain.js'
 import { verifyLieutenants, normalizeKeyword, type CocoonKeywordClaim } from '../../../shared/verifiers/lieutenants.js'
-import { verifyPublish } from '../../../shared/verifiers/publish.js'
+import { publishedTitle, verifyPublish } from '../../../shared/verifiers/publish.js'
 import { verifyLexique } from '../../../shared/verifiers/lexique.js'
 import { verifyDraft } from '../../../shared/verifiers/draft.js'
 import { verifyStructure, structureHeadings, type CocoonArticleRef, type StructureGateInput } from '../../../shared/verifiers/structure.js'
@@ -126,6 +130,7 @@ async function captainGate(articleId: number, keywordOverride?: string): Promise
 
   const metrics = await getKeywordMetrics(keyword)
   let verdict: CaptainGateInput['verdict'] = null
+  let autocompletePosition: number | null = null
   if (metrics) {
     const summaries = captainKpisFromMetricsRow({
       keyword,
@@ -140,22 +145,54 @@ async function captainGate(articleId: number, keywordOverride?: string): Promise
     }, metrics.paaQuestions ?? [])
     const config = getThresholds(article.type)
     verdict = summaries.length > 0 ? computeVerdict(summaries.map(s => scoreKpi(s.name, s.rawValue, config))).level : null
+    // FR-CAP-LOCK-GATE : la valeur « Autocomplete » que montre le panneau du
+    // Capitaine, pas le nombre brut de suggestions — Google renvoie des
+    // suggestions approchées pour une requête qu'il ne suggère pas (recette du
+    // 2026-09-30, CAP-10 : « 0 matches » à l'écran, 5 suggestions pour la porte).
+    autocompletePosition = summaries.find(s => s.name === 'autocomplete')?.rawValue ?? null
   }
 
   const input: CaptainGateInput = {
     keyword,
     level: article.type,
     volume: metrics?.searchVolume ?? null,
-    autocompleteCount: metrics && metrics.autocompleteSource ? metrics.autocompleteSuggestions.length : null,
+    autocompletePosition,
     verdict,
     serpIntent: (metrics?.intentLabel ?? null) as PainIntentExpected | null,
     expectedIntent: article.painIntentExpected ?? null,
     alternatives: await exploredCandidates(articleId),
   }
-  // Les alternatives n'entrent pas dans l'empreinte : explorer un nouveau
-  // candidat ne doit pas annuler une dérogation sur le capitaine choisi.
-  const { alternatives: _alternatives, ...hashInput } = { ...input, keyword: normalizeKeyword(keyword) }
+  // Empreinte des données examinées : le mot-clé et ses mesures (la liste des
+  // suggestions y figure par sa taille). Les alternatives n'y entrent pas :
+  // explorer un nouveau candidat ne doit pas annuler une dérogation sur le
+  // capitaine choisi. Forme inchangée depuis la création de la porte : les
+  // dérogations déjà posées restent valables.
+  const hashInput = {
+    keyword: normalizeKeyword(keyword),
+    level: input.level,
+    volume: input.volume,
+    autocompleteCount: metrics && metrics.autocompleteSource ? metrics.autocompleteSuggestions.length : null,
+    verdict,
+    serpIntent: input.serpIntent,
+    expectedIntent: input.expectedIntent,
+  }
   return { issues: verifyCaptain(input), hashInput }
+}
+
+/**
+ * Propositions de lieutenants que l'utilisateur n'a pas cochées, les mieux
+ * notées d'abord : les pistes « À la place : » de l'alarme (FR-LIE-LOCK-GATE ;
+ * recette du 2026-09-30, INFRA-14 : l'alarme n'en proposait jamais).
+ */
+async function unselectedLieutenants(articleId: number, locked: string[]): Promise<string[]> {
+  const res = await pool.query(
+    `SELECT keyword FROM lieutenant_explorations
+     WHERE article_id = $1 AND status = 'suggested'
+     ORDER BY score DESC NULLS LAST, keyword`,
+    [articleId],
+  )
+  const taken = new Set(locked.map(normalizeKeyword))
+  return (res.rows as Array<{ keyword: string }>).map(r => r.keyword).filter(k => !taken.has(normalizeKeyword(k)))
 }
 
 async function lieutenantsGate(articleId: number): Promise<{ issues: GateIssue[]; hashInput: unknown }> {
@@ -186,11 +223,12 @@ async function lieutenantsGate(articleId: number): Promise<{ issues: GateIssue[]
     captain: kw?.capitaine ?? null,
     lieutenants,
     cocoonClaims: claims,
-    unselectedCandidates: [] as string[],
+    unselectedCandidates: await unselectedLieutenants(articleId, lieutenants),
   }
   // Seuls les mots-clés du cocon qui recoupent ceux de l'article entrent dans
   // l'empreinte : un voisin sans rapport, créé plus tard, ne doit pas faire
-  // tomber une dérogation ; un voisin qui prend un de nos lieutenants, si.
+  // tomber une dérogation ; un voisin qui prend un de nos lieutenants, si. Les
+  // pistes (propositions non cochées) n'y entrent pas.
   const own = new Set([input.captain ?? '', ...lieutenants].filter(Boolean).map(normalizeKeyword))
   const hashInput = {
     level: input.level,
@@ -318,22 +356,25 @@ async function publishGate(articleId: number): Promise<{ issues: GateIssue[]; ha
   const content = await getArticleContent(articleId)
   const { data: kw } = await getArticleKeywords(articleId)
   const html = content.content ?? ''
-  const h1 = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1]?.replace(/<[^>]*>/g, '').trim()
   // Publier rejoue les portes en amont (capitaine, lieutenants, structure, lexique) sur les données
   // d'aujourd'hui. Une dérogation encore debout est réaffichée pour être
   // reconfirmée ; une dérogation tombée (données changées) ne l'est pas, et
-  // l'alerte qu'elle couvrait revient à la place, à son niveau d'origine.
+  // l'alerte qu'elle couvrait revient à la place, à son niveau d'origine. Un
+  // point amont garde son empreinte : y déroger ici vaut tant qu'il ne change pas.
   const upstream = [
     await evaluateArticleGate(articleId, 'captain-lock'),
     await evaluateArticleGate(articleId, 'lieutenants-lock'),
     await evaluateArticleGate(articleId, 'hn-lock'),
     await evaluateArticleGate(articleId, 'lexique-lock'),
   ]
-  const existingWaivers = standingWaivers(upstream.flatMap(e => e.waived.map(w => w.waiver)), {})
+  const existingWaivers = upstream.flatMap(e => e.waived)
+  // La porte du premier jet n'est pas rejouée, mais ses dérogations couvrent
+  // encore le même point du texte (même extrait) : il n'est pas redemandé.
+  const draftWaivers = (await listArticleWaivers(articleId)).filter(w => w.gateId === 'draft')
   const cocoonLinks = await publishCocoonLinks(articleId, html)
   const upstreamBlocking: GateIssue[] = upstream.flatMap(e => e.blocking.map(i => ({ ...i, rule: `${e.gateId}:${i.rule}` })))
   const input = {
-    title: h1 || article.title,
+    title: publishedTitle(html, article.title),
     slug: article.slug,
     level: article.type,
     content: html,
@@ -342,17 +383,17 @@ async function publishGate(articleId: number): Promise<{ issues: GateIssue[]; ha
     capitaine: kw?.capitaine ?? article.captainKeywordLocked ?? null,
     lieutenants: kw?.lieutenants ?? [],
     existingWaivers,
+    draftWaivers,
     ...cocoonLinks,
   }
-  const { existingWaivers: _waivers, ...rest } = input
-  // L'empreinte des portes amont et leurs dérogations debout entrent dans celle
-  // de la publication : un changement en amont rouvre la décision. Les
-  // dérogations de la publication elle-même en sont exclues : sinon, en
-  // enregistrer une changerait l'empreinte et l'annulerait aussitôt.
+  const { existingWaivers: _waivers, draftWaivers: _draftWaivers, ...rest } = input
+  // Empreinte de toute la porte : ne sert plus qu'aux dérogations posées avant
+  // l'empreinte par point (2026-09-30), qui valent tant que rien n'a changé.
+  // Chaque point porte désormais la sienne (`withFingerprints`).
   const hashInput = {
     ...rest,
     upstream: upstream.map(e => `${e.gateId}:${e.inputHash}`),
-    waivers: existingWaivers.map(w => `${w.gateId}:${w.rule}:${w.inputHash}`).sort(),
+    waivers: existingWaivers.map(w => `${w.waiver.gateId}:${w.waiver.rule}:${w.waiver.inputHash}`).sort(),
   }
   return { issues: [...upstreamBlocking, ...verifyPublish(input)], hashInput }
 }
@@ -372,19 +413,22 @@ export async function evaluateArticleGate(
     case 'publish': built = await publishGate(articleId); break
   }
   const inputHash = hashGateInput(built.hashInput)
+  const issues = withFingerprints(gateId, built.issues, inputHash)
   const waivers = (await listArticleWaivers(articleId)).filter(w => w.gateId === gateId)
-  const result = evaluateGate(gateId, built.issues, waivers, inputHash)
+  const result = evaluateGate(gateId, issues, waivers, inputHash)
   log.info('[gate] évaluation', {
     articleId, gateId, passed: result.passed,
     blocking: result.blocking.map(i => `${i.level}:${i.rule}`),
     waived: result.waived.length,
   })
-  return { gateId, issues: built.issues, inputHash, ...result }
+  return { gateId, issues, inputHash, ...result }
 }
 
 /**
- * Enregistre les dérogations recevables pour l'évaluation COURANTE de la porte
- * (même empreinte), et renvoie la nouvelle évaluation ainsi que les refus motivés.
+ * Enregistre les dérogations recevables pour l'évaluation COURANTE de la porte,
+ * chacune sur l'empreinte du point qu'elle couvre, et renvoie la nouvelle
+ * évaluation ainsi que les refus motivés. Une réponse à un point qui a changé
+ * depuis que l'utilisateur l'a lu (empreinte différente) est refusée.
  */
 export async function saveGateWaivers(
   articleId: number,
@@ -400,6 +444,11 @@ export async function saveGateWaivers(
       refused.push({ rule: draft.rule, problem: 'Cette alerte n’existe plus : les données ont changé, relancez la vérification.' })
       continue
     }
+    // FR-INFRA-GATE-WAIVER : on ne déroge qu'aux données lues à l'écran.
+    if (!issue.fingerprint || issue.fingerprint !== draft.fingerprint) {
+      refused.push({ rule: draft.rule, problem: 'Ce point a changé depuis que vous l’avez lu : relisez-le, puis répondez de nouveau.' })
+      continue
+    }
     const problem = waiverProblem(issue, draft)
     if (problem) {
       refused.push({ rule: draft.rule, problem })
@@ -410,7 +459,7 @@ export async function saveGateWaivers(
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (article_id, gate_id, rule, input_hash)
        DO UPDATE SET level = EXCLUDED.level, category = EXCLUDED.category, reason = EXCLUDED.reason, created_at = now()`,
-      [articleId, gateId, issue.rule, issue.level, draft.category ?? null, draft.reason?.trim() || null, before.inputHash],
+      [articleId, gateId, issue.rule, issue.level, draft.category ?? null, draft.reason?.trim() || null, issue.fingerprint],
     )
   }
   log.info('[gate] dérogations', { articleId, gateId, saved: drafts.length - refused.length, refused: refused.length })

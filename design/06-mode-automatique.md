@@ -247,7 +247,7 @@ sinon le texte reste tel quel et la porte suivante le dira.
   (`isAttentionOnly`) et qu'un humain est au terminal (`PhaseDeps.gateReader`, posé par `index.ts` pour un
   run interactif seulement), `emitCheck` montre les points et demande « J’ai lu, continuer ? [o/N] »
   (`isYes`). Sur « o », il envoie `POST /articles/:id/gates/:gateId/waivers` avec les dérogations de
-  `waiverDraftsFrom` (`{ rule }` par point, exactement ce qu'envoie la case « J'ai lu » de `GateAlarm`), puis
+  `waiverDraftsFrom` (`{ rule, fingerprint }` par point, l'empreinte étant celle reçue dans le refus : exactement ce qu'envoie la case « J'ai lu » de `GateAlarm`), puis
   redemande l'étape une fois ; une évaluation encore refusée arrête le run. `--config` et `--resume` n'ont
   pas de `gateReader` : tout refus les arrête.
 - **Rien n'est créé avant le point 1.**

@@ -81,6 +81,7 @@ Une porte est un contrôle fait par le serveur avant d'accorder une étape de pr
 | Lieutenant = lieutenant d'un autre article du cocon | 🟠 | « « … » est aussi un lieutenant de « … ». » |
 | Lieutenant = capitaine de l'article | 🟠 | « « … » est déjà le capitaine de cet article. » |
 
+- Sous « trop peu de lieutenants », « À la place : » propose jusqu'à cinq propositions de l'IA non cochées, les mieux notées d'abord.
 - Les comparaisons ignorent casse, accents et espaces superflus. Chaque lieutenant en conflit se déroge séparément.
 - Une dérogation tombe si le type, le capitaine, les lieutenants ou les mots-clés du cocon qui recoupent ceux de l'article changent ; un article du cocon sans rapport, créé plus tard, ne la fait pas tomber.
 
@@ -88,5 +89,4 @@ Une porte est un contrôle fait par le serveur avant d'accorder une étape de pr
 
 - Relancer la proposition de l'IA décoche les lieutenants retenus à l'écran et retire l'étape, alors que la liste enregistrée les garde ; au rechargement, ceux que l'IA n'a pas reproposés reviennent cochés.
 - Le panneau de l'IA n'offre pas de bouton de relance tant qu'il affiche les failles de contenu ; « Tout relancer (SERP + IA) » relit alors les propositions de moins de 7 jours sans rappeler l'IA.
-- L'alerte « trop peu de lieutenants » ne suggère aucun candidat, bien que les candidats non retenus soient visibles.
 - La règle géographique n'est qu'une consigne de l'IA : aucun contrôle ne l'applique aux lieutenants (la porte de la structure contrôle, elle, la ville dans les chapitres).

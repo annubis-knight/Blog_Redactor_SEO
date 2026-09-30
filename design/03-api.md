@@ -53,7 +53,7 @@ contrats relève du domaine de chaque route.
 | `content-gap.routes.ts` | `/content-gap/analyze` | Thèmes absents par rapport aux concurrents | Explorateur (orphelin : aucun écran actif) |
 | `generate/` (via `generate.routes.ts`) | `/generate/outline`, `/article-draft`, `/meta`, `/reduce-section`, `/humanize-section`, `/action`, `/enrich/:pass`, `/section-rewrite`, `/micro-context-suggest`, `/brief-explain`, `/auto-intake`, `/placement-suggest` | Générations IA de la Rédaction et du robot | Rédaction |
 | `links.routes.ts` | `/links/matrix`, `/links/suggest`, `PUT /links` | Maillage interne | Rédaction |
-| `export.routes.ts` | `/preview/:id`, `POST /export/:id` | Aperçu HTML, export (robot) | Rédaction |
+| `export.routes.ts` | `/preview/:id`, `POST /export/:id` | Aperçu HTML, page publiée (écran après la porte, robot) | Rédaction |
 | `dataforseo.routes.ts` | `/dataforseo/brief`, `/dataforseo/cost-status` | Brief SEO d'un mot-clé, dépense de la fenêtre + bac à sable | Intégrations |
 | `cost-status.routes.ts` | `/cost-status` | Dépense DataForSEO estimée (récap du robot) | Intégrations |
 | `gsc.routes.ts` | `/gsc/status`, `/auth`, `/callback`, `/performance`, `/keyword-gap` | Google Search Console (OAuth, performances) | Intégrations |

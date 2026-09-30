@@ -56,11 +56,21 @@ const drafts = computed(() => waiverDraftsFrom(blocking.value, answers))
 const ready = computed(() => blocking.value.length > 0 && drafts.value.missing.length === 0)
 
 const title = computed(() => (current.value ? gateTitle(current.value.gateId) : ''))
+// Chaque point attend sa propre réponse : une case « J'ai lu » par 🟠, une
+// raison par 🔴 (recette du 2026-09-30 : « une case cochée suffit » induisait
+// en erreur, et « 1 point… Lisez-les » ne s'accordait pas).
 const intro = computed(() => {
   const n = blocking.value.length
   const points = `${n} point${n > 1 ? 's' : ''} à regarder`
   if (hasTechnique.value) return `${points}. Un défaut ⛔ se corrige avant de continuer : aucune dérogation n’est possible.`
-  if (onlyAttention.value) return `${points}. Lisez-les : une case cochée suffit pour continuer.`
+  if (onlyAttention.value) {
+    return n > 1
+      ? `${points}. Lisez-les, puis cochez « J’ai lu » pour chacun avant de continuer.`
+      : `${points}. Lisez-le, puis cochez « J’ai lu » pour continuer.`
+  }
+  if (blocking.value.some(i => i.level === 'attention')) {
+    return `${points}. Vous pouvez passer outre : cochez « J’ai lu » pour chaque 🟠 et expliquez chaque 🔴 (votre raison est enregistrée).`
+  }
   return `${points}. Vous pouvez passer outre, mais en expliquant pourquoi : votre raison est enregistrée.`
 })
 const acceptLabel = computed(() => {
