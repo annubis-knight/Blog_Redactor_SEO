@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { apiGet, apiPut } from '@/services/api.service'
+import { apiGet, apiPost, apiPut } from '@/services/api.service'
 import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import { log } from '@/utils/logger'
 
@@ -41,9 +41,9 @@ async function loadPreview() {
   }
 }
 
-function downloadHtml() {
-  if (!previewHtml.value || !articleId.value) return
-  const blob = new Blob([previewHtml.value], { type: 'text/html;charset=utf-8' })
+function downloadHtml(html: string) {
+  if (!articleId.value) return
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -59,6 +59,11 @@ function downloadHtml() {
  * téléchargement : un article refusé n'est ni marqué publié ni exporté. Si la
  * porte refuse, l'alarme montre chaque point (et réaffiche les dérogations
  * posées en amont) ; après dérogation, la publication est rejouée.
+ *
+ * FR-RED-EXPORT-HTML — le fichier est demandé au serveur APRÈS la porte : c'est
+ * le texte qu'elle vient de juger, liens internes résolus, et non l'aperçu
+ * chargé à l'ouverture de l'onglet (recette du 2026-09-30, RED-23). L'aperçu
+ * est ensuite rechargé, pour montrer ce qui vient d'être publié.
  */
 async function handleExport() {
   const id = articleId.value
@@ -74,8 +79,15 @@ async function handleExport() {
       log.info('Export suspendu par la porte de publication', { articleId: id })
       return
     }
-    downloadHtml()
-    log.info('Article published and exported', { articleId: id })
+    try {
+      const page = await apiPost<{ html: string; id: number }>(`/export/${id}`, {})
+      downloadHtml(page.html)
+      log.info('Article publié et exporté', { articleId: id })
+    } catch (err) {
+      exportNotice.value = `Article publié, mais le fichier n’a pas pu être produit : ${(err as Error).message} Exportez à nouveau.`
+      log.error('Export du fichier impossible après publication', { articleId: id, error: (err as Error).message })
+    }
+    void loadPreview()
   } catch (err) {
     exportNotice.value = `Publication impossible : ${(err as Error).message}`
     log.error('Export status update failed', { articleId: id, error: (err as Error).message })

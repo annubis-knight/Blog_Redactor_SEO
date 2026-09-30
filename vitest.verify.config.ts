@@ -23,10 +23,15 @@ export default mergeConfig(
         'tests/unit/scripts/**/*.test.ts',
         'tests/unit/architecture/**/*.test.ts',
         'tests/unit/services/export-page-structure.test.ts',
+        // Page publiée : H1 jugé par la porte, liens internes résolus (FR-RED-EXPORT-HTML).
+        'tests/unit/services/export-article-page.test.ts',
         'tests/unit/services/claude-stream-filter.test.ts',
         'tests/unit/services/linking.service.test.ts',
         'tests/unit/services/linking-anchor.test.ts',
         'tests/unit/services/cocoon-add-article-prompt.test.ts',
+        // Portes de qualité côté serveur, I/O simulées (recette du 2026-09-30) :
+        // dérogation par point, « Google ne suggère pas », pistes des lieutenants.
+        'tests/unit/services/gate.service.test.ts',
         // Réponses simulées (NFR-COST-AI-MOCK) : consigne réelle, bon choix de
         // réponse, forme acceptée par le contrat ou le parseur consommateur.
         'tests/unit/services/mock-captain-ai-panel.test.ts',
