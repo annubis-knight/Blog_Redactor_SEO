@@ -38,7 +38,7 @@ Règles :
 ## Reprendre une découverte de mots-clés
 *Exigences : FR-INFRA-KEYWORD-DISCOVERIES*
 
-Le bandeau de reprise (« Charger », « Rafraichir ») est décrit dans [Moteur — Discovery](06-discovery.md) (« Sauvegarde et reprise »). La découverte gardée est commune à tous les articles et n'expire pas : seul « Rafraichir » l'efface, et la découverte suivante est alors facturée.
+Le bandeau de reprise (« Charger », « Rafraîchir ») est décrit dans [Moteur — Discovery](06-discovery.md) (« Sauvegarde et reprise »). La découverte gardée est commune à tous les articles et n'expire pas : seul « Rafraîchir » l'efface, et la découverte suivante est alors facturée.
 
 ## Retrouver son travail d'une session à l'autre
 *Exigences : FR-INFRA-ARTICLE-STRATEGIES, FR-INFRA-COCOON-STRATEGIES, FR-INFRA-MICRO-CONTEXTS, FR-INFRA-KEYWORDS-SEO, FR-INFRA-PAA-EXPLORATIONS, FR-INFRA-LIEUTENANT-EXPLORATIONS, FR-INFRA-LOCAL-ENTITIES*

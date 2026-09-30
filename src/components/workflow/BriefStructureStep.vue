@@ -219,7 +219,7 @@ onMounted(async () => {
 <template>
   <div class="brief-structure-step">
     <!-- Section 1: Contexte strategique + Micro-contexte -->
-    <CollapsableSection title="Contexte strategique" :default-open="true">
+    <CollapsableSection title="Contexte stratégique" :default-open="true">
       <ContextRecap
         :theme-name="silosStore.theme?.nom ?? themeConfigStore.config?.avatar?.sector ?? ''"
         :theme-description="silosStore.theme?.description"
@@ -235,7 +235,7 @@ onMounted(async () => {
       <RecapToggle panel-id="micro-context" label="Micro-contexte article" variant="panel">
         <div class="micro-context-form">
           <div class="form-group">
-            <label class="form-label required">Angle differenciant</label>
+            <label class="form-label required">Angle différenciant</label>
             <textarea
               v-model="angle"
               class="form-textarea"
@@ -253,19 +253,19 @@ onMounted(async () => {
               type="text"
               class="form-input"
               data-testid="brief-tone"
-              placeholder="Ex: pedagogique, expert, conversationnel..."
+              placeholder="Ex: pédagogique, expert, conversationnel..."
               @blur="saveMicroContext"
             />
           </div>
 
           <div class="form-group">
-            <label class="form-label">Consignes specifiques <span class="optional-tag">(optionnel)</span></label>
+            <label class="form-label">Consignes spécifiques <span class="optional-tag">(optionnel)</span></label>
             <textarea
               v-model="directives"
               class="form-textarea"
               data-testid="brief-directives"
               rows="3"
-              placeholder="Points d'attention, CTA, maillage interne, exemples a inclure..."
+              placeholder="Points d'attention, CTA, maillage interne, exemples à inclure..."
               @blur="saveMicroContext"
             />
           </div>
@@ -276,7 +276,7 @@ onMounted(async () => {
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
-              Sauvegarde
+              Sauvegardé
             </span>
           </Transition>
 
@@ -318,14 +318,14 @@ onMounted(async () => {
             :disabled="isSuggesting"
             @click="suggestMicroContext"
           >
-            {{ isSuggesting ? 'Suggestion en cours...' : 'Suggerer par IA' }}
+            {{ isSuggesting ? 'Suggestion en cours...' : 'Suggérer par IA' }}
           </button>
         </div>
       </RecapToggle>
     </CollapsableSection>
 
     <!-- Section 2: Mots-cles -->
-    <CollapsableSection title="Mots-cles" :default-open="false">
+    <CollapsableSection title="Mots-clés" :default-open="false">
       <KeywordList v-if="briefStore.briefData" :keywords="briefStore.briefData.keywords" />
       <ArticleKeywordsPanel
         :article-id="articleId"
@@ -386,7 +386,7 @@ onMounted(async () => {
             {{ outlineStore.error }}
           </p>
           <p v-if="outlineStore.isValidated" class="validation-msg">
-            Sommaire valide et sauvegarde.
+            Sommaire validé et sauvegardé.
           </p>
           <button
             v-if="outlineStore.isValidated"

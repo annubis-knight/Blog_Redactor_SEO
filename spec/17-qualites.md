@@ -60,7 +60,7 @@ Avant tout appel payant, l'outil relit ce qu'il sait déjà. Tout est conservé 
 
 **Règles.**
 - Deux articles qui visent le même mot-clé partagent la même mesure.
-- Aucun appel payant n'est forcé en silence : pour rafraîchir, l'utilisateur passe par un geste explicite (« Rafraîchir » du panneau SEO de la Rédaction, « Rafraichir » d'une découverte) ou attend l'expiration. « Vider le cache » du Moteur ne force aucun nouvel appel (voir § 10).
+- Aucun appel payant n'est forcé en silence : pour rafraîchir, l'utilisateur passe par un geste explicite (« Rafraîchir » du panneau SEO de la Rédaction, « Rafraîchir » d'une découverte) ou attend l'expiration. « Vider le cache » du Moteur ne force aucun nouvel appel (voir § 10).
 - Toutes les heures, le serveur supprime seul les entrées de cache court expirées. Les mesures permanentes ne sont jamais purgées : une mesure trop vieille est simplement redemandée quand on en a besoin.
 - L'analyse des résultats Google d'un mot-clé sert à la fois aux Lieutenants, à la Structure et au Lexique. Le Lexique peut la déclencher lui-même s'il passe en premier ; les Lieutenants la relisent ensuite.
 - Une liste de résultats Google sans aucune page lue ne compte pas comme une analyse : l'étape suivante relancera la lecture des pages.

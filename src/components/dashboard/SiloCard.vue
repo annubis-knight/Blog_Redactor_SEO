@@ -5,6 +5,7 @@ import type { Silo } from '@shared/types/index.js'
 import { useSilosStore } from '@/stores/strategy/silos.store'
 import CocoonCard from './CocoonCard.vue'
 import ProgressBar from '@/components/shared/ProgressBar.vue'
+import { plural } from '@/utils/plural'
 
 const props = defineProps<{
   silo: Silo
@@ -125,7 +126,7 @@ function handleKeydown(e: KeyboardEvent) {
       <div class="silo-meta">
         <span class="silo-stat">{{ silo.cocons.length }} cocon{{ silo.cocons.length > 1 ? 's' : '' }}</span>
         <span class="silo-sep">&middot;</span>
-        <span class="silo-stat">{{ silo.stats?.totalArticles ?? 0 }} articles</span>
+        <span class="silo-stat">{{ silo.stats?.totalArticles ?? 0 }} {{ plural(silo.stats?.totalArticles ?? 0, 'article') }}</span>
         <span class="silo-sep">&middot;</span>
         <span class="silo-stat">{{ silo.stats?.completionPercent ?? 0 }}%</span>
       </div>

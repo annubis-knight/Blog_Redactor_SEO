@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AnalysisResult } from '@shared/types/discovery-tab.types'
+import { plural } from '@/utils/plural'
 
 defineProps<{
   analysisResult: AnalysisResult | null
@@ -19,14 +20,14 @@ defineEmits<{
   <section v-if="analysisResult" class="analysis-results">
     <div class="analysis-results__header">
       <h3 class="analysis-results__title">Recommandation IA</h3>
-      <span class="analysis-results__count">{{ analysisResult.keywords.length }} mots-cles</span>
+      <span class="analysis-results__count">{{ analysisResult.keywords.length }} {{ plural(analysisResult.keywords.length, 'mot-clé', 'mots-clés') }}</span>
       <label class="analysis-results__check-all" @click.stop>
         <input
           type="checkbox"
           :checked="isAllAnalysisSelected()"
           @change="$emit('toggle-select-all')"
         />
-        Tout selectionner
+        Tout sélectionner
       </label>
     </div>
     <p class="analysis-results__summary">{{ analysisResult.summary }}</p>

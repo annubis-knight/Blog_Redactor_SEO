@@ -39,3 +39,29 @@ describe('Niveaux d’article — pas de table de traduction fantôme', () => {
     expect(PHANTOM.test(`{ Pilier: 'pilier', Cluster: 'intermediaire', Support: 'specifique' }`)).toBe(true)
   })
 })
+
+/**
+ * FR-CER-AIGUILLAGE — le niveau s'affiche en toutes lettres, jamais sous son
+ * code. Recette du 2026-09-30, rejeu du 30/09 au soir : le Lexique montrait le
+ * badge « INTERMEDIAIRE » (la valeur `intermediaire` mise en capitales). Un
+ * template n'écrit jamais `{{ … articleLevel }}` brut : il passe par
+ * `articleLevelToDisplayLabel`.
+ */
+const RAW_LEVEL = /\{\{\s*[\w.?]*\barticleLevel\s*\}\}/
+
+describe('FR-CER-AIGUILLAGE — le niveau d’un article ne s’affiche jamais sous son code', () => {
+  it('aucun template n’affiche `articleLevel` brut', () => {
+    const offenders = sourceFiles(join(ROOT, 'src'))
+      .filter(f => f.endsWith('.vue'))
+      .flatMap(f => readFileSync(f, 'utf8').split('\n')
+        .map((line, i) => (RAW_LEVEL.test(line) ? `${relative(ROOT, f)}:${i + 1} — ${line.trim()}` : null))
+        .filter((x): x is string => x !== null))
+    expect(offenders, `Niveau affiché sous son code : passe par articleLevelToDisplayLabel.\n${offenders.join('\n')}`).toEqual([])
+  })
+
+  it('sentinelle : repère l’affichage brut, pas le libellé', () => {
+    expect(RAW_LEVEL.test('<span class="level-badge">{{ articleLevel }}</span>')).toBe(true)
+    expect(RAW_LEVEL.test('Niveau : <strong>{{ currentResult.articleLevel }}</strong>')).toBe(true)
+    expect(RAW_LEVEL.test('{{ articleLevelToDisplayLabel(articleLevel) }}')).toBe(false)
+  })
+})

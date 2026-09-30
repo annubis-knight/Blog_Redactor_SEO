@@ -156,15 +156,15 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 1. Déplie le panneau « Analyse IA Discovery » si besoin. Lis son message et son bouton.
 2. Clique **« Analyser les N résultats pertinents »**.
 3. Coche une proposition, puis cherche le même mot-clé dans les sections.
-4. Coche « Tout selectionner », puis décoche-la.
+4. Coche « Tout sélectionner », puis décoche-la.
 5. Clique **« Relancer l'analyse »** ; à la question, clique Annuler.
 
 **Tu dois voir :**
 - avant : « Prêt à analyser N mots-clés pertinents. », avec le même N que « X pertinents » de la ligne du filtre ; si tu l'ouvres pendant un filtrage : bouton grisé et « Filtrage de pertinence en cours… L'analyse IA sera disponible une fois le filtrage terminé. » ;
 - pendant : le bouton dit « Analyse en cours… » et des lignes grises clignotent ;
-- après : « Recommandation IA », « N mots-cles », « Tout selectionner », un paragraphe de synthèse, puis une ligne par mot-clé : son rang (1, 2, 3…), une pastille 🔴 (haute), 🟡 (moyenne) ou 🟢 (basse), le mot-clé, « ×N » s'il y a lieu, sa raison et une case. En MOCK : 20 à 25 mots-clés, 8 🔴, puis 8 🟡, puis le reste en 🟢, et une synthèse « Sélection de N mots-clés stratégiques… » ;
+- après : « Recommandation IA », « N mots-clés », « Tout sélectionner », un paragraphe de synthèse, puis une ligne par mot-clé : son rang (1, 2, 3…), une pastille 🔴 (haute), 🟡 (moyenne) ou 🟢 (basse), le mot-clé, « ×N » s'il y a lieu, sa raison et une case. En MOCK : 20 à 25 mots-clés, 8 🔴, puis 8 🟡, puis le reste en 🟢, et une synthèse « Sélection de N mots-clés stratégiques… » ;
 - cocher une proposition coche aussi ce mot-clé dans les sections (une seule sélection), sans notification « Validation Capitaine » ;
-- « Tout selectionner » coche toute la liste et la barre du bas augmente d'autant ; la décocher la retire ;
+- « Tout sélectionner » coche toute la liste et la barre du bas augmente d'autant ; la décocher la retire ;
 - le bouton est devenu **« Relancer l'analyse »** ; il demande « Relancer l'analyse IA ? Cela consommera un appel Claude. » ; Annuler ne change rien.
 
 **C'est un bug si :**
@@ -183,21 +183,21 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 3. Dans « Mot-clé racine », efface la dernière lettre et retape-la.
 4. Note le nombre d'appels de la pastille, puis clique **« Charger »**.
 5. Déplie le panneau « Analyse IA Discovery ».
-6. Recharge (F5), rechoisis l'article, ouvre Discovery, refais le geste 3, puis clique **« Rafraichir »**. Refais encore le geste 3.
+6. Recharge (F5), rechoisis l'article, ouvre Discovery, refais le geste 3, puis clique **« Rafraîchir »**. Refais encore le geste 3.
 7. Clique **« Découvrir »** pour reconstruire la découverte (elle sert à la suite).
 
 **Tu dois voir :**
 - après F5 : des sections vides, et pas de bandeau tant que le champ n'a pas changé (limite connue) ;
-- moins d'une seconde après le geste 3 : un bandeau vert « Derniere analyse du JJ/MM/AAAA · N mots-cles · analyse IA incluse » avec **« Charger »** et **« Rafraichir »** ;
+- moins d'une seconde après le geste 3 : un bandeau vert « Dernière analyse du JJ/MM/AAAA · N mots-clés · analyse IA incluse » avec **« Charger »** et **« Rafraîchir »** ;
 - après « Charger » : les sections, les jugements du filtre (même « X pertinents / N total »), les groupes de mots et l'analyse IA reviennent aussitôt, sans rond de chargement ; le bandeau disparaît ; aucun appel d'IA en plus dans la pastille ;
 - le panneau d'analyse replié dit « Cliquez pour voir les suggestions IA. » et, déplié, montre la « Recommandation IA » d'avant ;
-- « Rafraichir » : le bandeau disparaît, l'écran se vide ; au geste 3 suivant, plus aucun bandeau ;
+- « Rafraîchir » : le bandeau disparaît, l'écran se vide ; au geste 3 suivant, plus aucun bandeau ;
 - geste 7 : une découverte complète, sauvegardée seule quand les sources et le filtre ont fini.
 
 **C'est un bug si :**
 - « Charger » relance des recherches (« Recherche... », ronds de chargement) ;
 - l'analyse IA ou les jugements du filtre ne reviennent pas ;
-- le bandeau réapparaît pour cette racine après « Rafraichir ».
+- le bandeau réapparaît pour cette racine après « Rafraîchir ».
 
 **⚠ Défaut connu :** la section Courte-traîne n'est ni sauvegardée ni restaurée : après « Charger », elle est vide. Si tu la vois revenir, le défaut a peut-être disparu : note-le.
 
@@ -238,7 +238,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 6. Reviens sur **Discovery** : tes cases sont toujours cochées. Clique encore **« Envoyer au Radar → »**.
 
 **Tu dois voir :**
-- geste 1 : six points en deux groupes ; le premier (infobulle « Discovery ») est vide, malgré les lancements, cochages, chargements et « Rafraichir » des vérifications précédentes ;
+- geste 1 : six points en deux groupes ; le premier (infobulle « Discovery ») est vide, malgré les lancements, cochages, chargements et « Rafraîchir » des vérifications précédentes ;
 - la barre « N mot(s)-clé(s) sélectionné(s) » ;
 - après l'envoi : l'onglet Radar s'ouvre sur « N mots-clés à scanner », avec N puces, le même N que la barre ;
 - la puce IA Claude montre sa raison en infobulle ;
@@ -305,7 +305,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 
 **Tu dois voir :**
 - avant le scan, la zone de résultats est déjà là, estompée et en pointillés : le thermomètre « ○ », « —/100 », « En attente » (affiché en capitales) ; « Autocomplete (0) » avec « Aucune suggestion — lance un scan » ; « Cartes radar (0) » avec « Les cartes apparaîtront après le scan » ; plus bas, « Suggestions IA Radar » avec « Lance un scan ci-dessus pour voir ici les meilleurs candidats à pousser vers le Capitaine, triés par mix marché × pertinence. » et **« Marquer comme candidats Capitaine (0) »** grisé ;
-- pendant le scan : un rond qui tourne et la phase, « Autocomplete + KPIs... », puis « Analyse PAA... » avec une barre et « s/t mots-cles », puis « Calcul du score... ». Cette progression est estimée d'après le temps, pas mesurée. La liste d'attente et la zone de résultats sont masquées le temps du scan ;
+- pendant le scan : un rond qui tourne et la phase, « Autocomplete + KPIs... », puis « Analyse PAA... » avec une barre et « s/t mots-clés », puis « Calcul du score... ». Cette progression est estimée d'après le temps, pas mesurée. La liste d'attente et la zone de résultats sont masquées le temps du scan ;
 - après : une carte par mot-clé de la liste ; la liste d'attente reste affichée au-dessus, pour ajouter, retirer, relancer ;
 - chaque carte porte le volume, la difficulté (KD), le CPC, l'intention (icônes) et les questions PAA ;
 - le deuxième point (infobulle « Radar ») est plein.
@@ -398,19 +398,19 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 4. Déplie une carte sans question, s'il y en a une.
 
 **Tu dois voir :**
-- en tête du corps, la raison du mot-clé en italique. Pour un mot-clé venu d'une section Google ou DataForSEO, elle s'écrit « Discovered via … » : texte technique, note-le ;
-- chaque question de premier niveau porte un badge parmi « Exact », « Match », « Partiel exact », « Partiel », « Semantique », « Sem. partiel », « Hors sujet » ; un pourcentage de similarité s'il existe ; « (n) » quand elle a des sous-questions ;
+- en tête du corps, la raison du mot-clé en italique. Pour un mot-clé venu d'une section Google ou DataForSEO, elle nomme sa section : « Trouvé par Discovery : Alphabet (A-Z). », par exemple ;
+- chaque question de premier niveau porte un badge parmi « Exact », « Match », « Partiel exact », « Partiel », « Sémantique », « Sem. partiel », « Hors sujet » ; un pourcentage de similarité s'il existe ; « (n) » quand elle a des sous-questions ;
 - ▶ déplie les sous-questions, chacune avec son badge ;
 - un clic sur une question qui a une réponse déplie la réponse de Google ;
 - aucun badge ne parle de la douleur ;
-- une carte sans question : « Aucune PAA trouvee ».
+- une carte sans question : « Aucune PAA trouvée ».
 
 **C'est un bug si :**
-- une carte sans question reste vide, sans « Aucune PAA trouvee » ;
+- une carte sans question reste vide, sans « Aucune PAA trouvée » ;
 - une sous-question s'affiche au premier niveau ;
 - un badge mentionne la douleur.
 
-> En MOCK, le bac à sable peut ne renvoyer aucune question : toutes les cartes disent alors « Aucune PAA trouvee ». L'arbre complet se vérifie en RÉEL (RAD-R1).
+> En MOCK, le bac à sable peut ne renvoyer aucune question : toutes les cartes disent alors « Aucune PAA trouvée ». L'arbre complet se vérifie en RÉEL (RAD-R1).
 
 ### RAD-8 — Trier : la liste suit la note affichée
 **Exigences :** FR-RAD-MARKET-COMPUTED-LIVE
@@ -505,19 +505,19 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 **Exigences :** FR-RAD-LONGTAIL-GENERATE ⚠
 
 **Gestes :**
-1. Sous les cartes, repère la section « Suggestions longue-traine ».
-2. Clique **« ✨ Suggerer des combinaisons »**.
+1. Sous les cartes, repère la section « Suggestions longue traîne ».
+2. Clique **« ✨ Suggérer des combinaisons »**.
 3. *(Facultatif.)* Sur le pilier, ajoute un seul mot-clé à la main et lance le scan.
 
 **Tu dois voir :**
-- dès 2 cartes : le titre « Suggestions longue-traine », le sous-titre « Combinaisons IA generees a partir des mots-cles Radar. Coche celles a envoyer au Capitaine. » et **« ✨ Suggerer des combinaisons »** ;
-- pendant la génération : « L'IA genere les suggestions… » ;
-- en MOCK : une liste de combinaisons des mots-clés du Radar (7 au plus), chacune avec « N/10 », sa justification et ses mots-clés d'origine, les 5 mieux notées pré-cochées. Si une recette précédente a gardé une réponse vide pour ces mêmes cartes (gardée 7 jours), « L'IA n'a propose aucune combinaison pertinente cette fois. » revient sans nouvel appel, et aucun bouton ne reste pour réessayer (défaut connu) : ajoute ou retire une carte pour obtenir la liste. La qualité des combinaisons se juge en RÉEL (RAD-R2) ;
-- geste facultatif : avec une seule carte, pas de section « Suggestions longue-traine ».
+- dès 2 cartes : le titre « Suggestions longue traîne », le sous-titre « Combinaisons IA générées à partir des mots-clés Radar. Coche celles à envoyer au Capitaine. » et **« ✨ Suggérer des combinaisons »** ;
+- pendant la génération : « L'IA génère les suggestions… » ;
+- en MOCK : une liste de combinaisons des mots-clés du Radar (7 au plus), chacune avec « N/10 », sa justification et ses mots-clés d'origine, les 5 mieux notées pré-cochées. Si une recette précédente a gardé une réponse vide pour ces mêmes cartes (gardée 7 jours), « L'IA n'a proposé aucune combinaison pertinente cette fois. » revient sans nouvel appel, et aucun bouton ne reste pour réessayer (défaut connu) : ajoute ou retire une carte pour obtenir la liste. La qualité des combinaisons se juge en RÉEL (RAD-R2) ;
+- geste facultatif : avec une seule carte, pas de section « Suggestions longue traîne ».
 
 **C'est un bug si :**
 - la section apparaît avec moins de 2 cartes ;
-- le bouton ne donne ni liste, ni message, ni « Erreur : … » avec **« Reessayer »**.
+- le bouton ne donne ni liste, ni message, ni « Erreur : … » avec **« Réessayer »**.
 
 **⚠ Défaut connu :** FR-RAD-LONGTAIL-GENERATE — une réponse vide est enregistrée et resservie pendant 7 jours, sans bouton pour réessayer. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -585,7 +585,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 ## En mode RÉEL (payant)
 
 Passe le bouton en **RÉEL**. Trois précautions avant de commencer :
-- **Le MOCK a laissé des traces relues en RÉEL** : la découverte sauvegardée (bandeau « Derniere analyse… »), les suggestions DataForSEO de la racine (gardées 24 h), les questions PAA des mots-clés scannés (gardées 1 jour) et les longues traînes simulées (gardées 7 jours pour les mêmes mots-clés). Prends donc une **autre racine** et des **mots-clés jamais scannés aujourd'hui**.
+- **Le MOCK a laissé des traces relues en RÉEL** : la découverte sauvegardée (bandeau « Dernière analyse… »), les suggestions DataForSEO de la racine (gardées 24 h), les questions PAA des mots-clés scannés (gardées 1 jour) et les longues traînes simulées (gardées 7 jours pour les mêmes mots-clés). Prends donc une **autre racine** et des **mots-clés jamais scannés aujourd'hui**.
 - **Chaque case cochée à l'unité dans Discovery lance, 5 s plus tard, une étude Capitaine payante.** Clique « Annuler » dans la notification si tu n'en veux pas, ou coche par « Tout ».
 - **Aucun geste de ce module n'annonce son coût avant de partir.** Suis la dépense dans la pastille des coûts, en bas à gauche : dépliée, elle montre « Coûts API », la ligne « DataForSEO » marquée « PROD » (dépense / plafond sur 30 min) et une ligne par appel d'IA. Garde 3 ou 4 mots-clés au Radar : chacun coûte une page de résultats Google, plus une par question PAA.
 
@@ -629,7 +629,7 @@ Repasse en **MOCK** à la fin.
 - de vraies questions de Google, sur deux niveaux (« (n) », puis les sous-questions), souvent avec la réponse de Google ;
 - « Exact » quand la question reprend les mots du titre tels quels ; « Match » quand elle en reprend les racines (un pluriel, « stratégies » pour « stratégie », « croissant » pour « croissance ») ; « Partiel exact » ou « Partiel » quand elle en reprend une partie ; « Hors sujet » sinon ;
 - les petits mots (« le », « de », « pour »…) et les mots de moins de 3 lettres ne comptent pas ;
-- « Semantique » ou « Sem. partiel », avec un pourcentage, quand la proximité de sens a relevé le badge ;
+- « Sémantique » ou « Sem. partiel », avec un pourcentage, quand la proximité de sens a relevé le badge ;
 - une bordure verte autour des questions « Exact » ;
 - après le second scan : « PAA en cache » en tête des questions.
 
@@ -642,16 +642,16 @@ Repasse en **MOCK** à la fin.
 **Mode :** RÉEL — le coût ne s'affiche pas avant l'appel : suis-le dans la pastille des coûts.
 
 **Gestes :**
-1. Après le scan de RAD-R1 (au moins 2 cartes, liste différente de celle du MOCK), clique **« ✨ Suggerer des combinaisons »**.
+1. Après le scan de RAD-R1 (au moins 2 cartes, liste différente de celle du MOCK), clique **« ✨ Suggérer des combinaisons »**.
 2. Décoche une suggestion pré-cochée, coche une autre, puis attends une seconde.
-3. Clique **« ⟳ Regenerer »**.
+3. Clique **« ⟳ Régénérer »**.
 4. Si une longue traîne cochée porte exactement le même mot-clé qu'une carte, coche cette carte ; sinon, coche 2 cartes. Lis **« Envoyer au Capitaine (N) »**, puis clique-le.
 5. Reviens au Radar. Recharge (F5), rechoisis l'article, ouvre Radar et clique « DB » dans « Charger Radar ».
 
 **Tu dois voir :**
 - 10 suggestions au plus ; chaque ligne : une case, « N/10 » (vert à partir de 8, orange à 6 et 7, gris sinon), le mot-clé, sa justification, « Sources : » et les mots-clés d'origine ;
 - les 5 mieux notées pré-cochées ; « Envoyer au Capitaine (N) » les compte déjà ;
-- après la génération, le bouton devient **« ⟳ Regenerer »** ; avec les mêmes cartes, la même liste revient aussitôt (résultat gardé 7 jours, sans nouvel appel d'IA), et tes cases encore présentes restent cochées ;
+- après la génération, le bouton devient **« ⟳ Régénérer »** ; avec les mêmes cartes, la même liste revient aussitôt (résultat gardé 7 jours, sans nouvel appel d'IA), et tes cases encore présentes restent cochées ;
 - N compte chaque mot-clé une seule fois ; en cas de doublon, la carte l'emporte sur la longue traîne ;
 - le Capitaine s'ouvre et étudie chaque mot-clé reçu (voile « Validation… »).
 
@@ -660,7 +660,7 @@ Repasse en **MOCK** à la fin.
 - la régénération décoche une case encore présente dans la nouvelle liste ;
 - N compte deux fois le même mot-clé.
 
-**⚠ Défaut connu :** au rechargement, suggestions et cases cochées ne reviennent pas à l'écran : après le geste 5, la section repart sur « ✨ Suggerer des combinaisons ». Si elles reviennent, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** au rechargement, suggestions et cases cochées ne reviennent pas à l'écran : après le geste 5, la section repart sur « ✨ Suggérer des combinaisons ». Si elles reviennent, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** les suggestions enregistrées ne sont pas réaffichées, et un nouveau scan les efface de la base. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 

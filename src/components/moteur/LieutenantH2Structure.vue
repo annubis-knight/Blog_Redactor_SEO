@@ -140,7 +140,7 @@ function onRegenerate(): void {
                     type="button"
                 class="hn-lock-btn"
                 :class="{ 'is-locked': isHeadingLocked(node.level, node.text) }"
-                :title="isHeadingLocked(node.level, node.text) ? 'Deverrouiller — l\'IA pourra modifier ce titre' : 'Verrouiller — l\'IA conservera ce titre tel quel'"
+                :title="isHeadingLocked(node.level, node.text) ? 'Déverrouiller — l\'IA pourra modifier ce titre' : 'Verrouiller — l\'IA conservera ce titre tel quel'"
                 :aria-pressed="isHeadingLocked(node.level, node.text)"
                 @click="toggleHeadingLock(node.level, node.text)"
               >
@@ -162,7 +162,7 @@ function onRegenerate(): void {
                         type="button"
                   class="hn-lock-btn"
                   :class="{ 'is-locked': isHeadingLocked(child.level, child.text) }"
-                  :title="isHeadingLocked(child.level, child.text) ? 'Deverrouiller' : 'Verrouiller'"
+                  :title="isHeadingLocked(child.level, child.text) ? 'Déverrouiller' : 'Verrouiller'"
                   :aria-pressed="isHeadingLocked(child.level, child.text)"
                   @click="toggleHeadingLock(child.level, child.text)"
                 >

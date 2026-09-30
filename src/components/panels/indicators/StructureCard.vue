@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { SeoScore } from '@shared/types/seo.types.js'
 import IndicatorCard from './IndicatorCard.vue'
+import { plural } from '@/utils/plural'
 
 const props = defineProps<{
   score: SeoScore | null
@@ -55,7 +56,7 @@ const miniScore = computed(() => {
       <!-- Mots -->
       <div
         class="ind-row"
-        :title="`Objectif : ${contentLengthTarget} mots (basé sur le type d'article)`"
+        :title="`Objectif : ${contentLengthTarget} ${plural(contentLengthTarget, 'mot')} (basé sur le type d'article)`"
       >
         <span class="ind-row-label">Mots</span>
         <span class="ind-row-value">{{ score.wordCount }} / {{ contentLengthTarget }}</span>

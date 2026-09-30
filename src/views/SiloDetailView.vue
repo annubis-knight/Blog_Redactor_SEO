@@ -5,6 +5,7 @@ import { useSilosStore } from '@/stores/strategy/silos.store'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import ProgressBar from '@/components/shared/ProgressBar.vue'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
+import { plural } from '@/utils/plural'
 
 const route = useRoute()
 const silosStore = useSilosStore()
@@ -79,7 +80,7 @@ onMounted(() => {
         >
           <div class="cocoon-info">
             <span class="cocoon-name">{{ cocoon.name }}</span>
-            <span class="cocoon-meta">{{ cocoon.stats.totalArticles }} articles</span>
+            <span class="cocoon-meta">{{ cocoon.stats.totalArticles }} {{ plural(cocoon.stats.totalArticles, 'article') }}</span>
           </div>
           <div class="cocoon-progress">
             <ProgressBar

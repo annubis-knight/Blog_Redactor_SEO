@@ -29,6 +29,7 @@ import type { useCostLogStore } from '@/stores/ui/cost-log.store'
 import type { SelectedArticle, SerpAnalysisResult } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { HnRecurrenceItem, ProposeLieutenantsHnNode } from '@shared/types/serp-analysis.types.js'
+import { plural } from '@/utils/plural'
 
 export interface StructureHnDeps {
   selectedArticle: Ref<SelectedArticle | null>
@@ -216,9 +217,9 @@ export function useStructureHn(deps: StructureHnDeps): StructureHnApi {
       }
       activityLog.addMessage(
         'info',
-        `💡 Longueur conseillée : ${reco.recommended.toLocaleString('fr-FR')} mots`,
+        `💡 Longueur conseillée : ${reco.recommended.toLocaleString('fr-FR')} ${plural(reco.recommended, 'mot')}`,
         custom
-          ? `${reco.breakdown.reasoning} · Valeur choisie conservée (${existing?.targetWordCount} mots).`
+          ? `${reco.breakdown.reasoning} · Valeur choisie conservée (${existing?.targetWordCount} ${plural(existing?.targetWordCount ?? 0, 'mot')}).`
           : `${reco.breakdown.reasoning} · Modifiable dans la Rédaction.`,
       )
     } catch (err) {

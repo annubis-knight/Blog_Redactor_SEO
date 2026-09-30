@@ -21,7 +21,7 @@ synced_with:
 ### 1. Créer le cocon depuis l'accueil
 **Exigences :** FR-DASH-COCOON-CREATE ⚠, FR-DASH-WORKFLOW-CHOICE
 
-Sur l'accueil, chaque silo se termine par une carte en pointillés « Nouveau cocon ». L'utilisateur clique dessus, tape le nom dans « Nom du cocon... » et appuie sur Entrée (Échap annule). La page du cocon s'ouvre aussitôt : « 0 articles · 0% complété », puis « Choisissez une phase de travail : » et trois cartes, « Cerveau » (« 6 étapes »), « Moteur » (« 0 mots-clés ») et « Rédaction » (« 0 articles, 0% »).
+Sur l'accueil, chaque silo se termine par une carte en pointillés « Nouveau cocon ». L'utilisateur clique dessus, tape le nom dans « Nom du cocon... » et appuie sur Entrée (Échap annule). La page du cocon s'ouvre aussitôt : « 0 articles · 0% complété », puis « Choisissez une phase de travail : » et trois cartes, « Cerveau » (« 6 étapes »), « Moteur » (« 0 mot-clé ») et « Rédaction » (« 0 article, 0% »).
 
 ### 2. Poser la stratégie du cocon en cinq étapes
 **Exigences :** FR-CER-STEPS-COCOON ⚠, FR-CER-SAISIE-PRESERVEE ⚠
@@ -61,7 +61,7 @@ Onglet « Finalisation » : quatre sections en lecture seule, Capitaine, Lieuten
 ### 9. Préparer le brief et arrêter le sommaire
 **Exigences :** FR-CER-MICRO-CONTEXT ⚠, FR-RED-WORD-COUNT-TARGET, FR-RED-OUTLINE ⚠
 
-La rédaction guidée s'ouvre sur « Brief & Structure ». Dans « Micro-contexte article », l'utilisateur écrit au moins « Angle differenciant » ; chaque champ s'enregistre quand il le quitte (« Sauvegarde »). « Recommandation de contenu » affiche la « Cible : » en mots, ajustable par pas de 100. Le sommaire vient de la structure validée au Moteur, avec « Introduction » et « Conclusion » ajoutées : l'utilisateur le retouche s'il veut, puis « Valider le sommaire » (ou « Continuer vers l'Article » s'il est déjà validé) mène à l'étape « Article ».
+La rédaction guidée s'ouvre sur « Brief & Structure ». Dans « Micro-contexte article », l'utilisateur écrit au moins « Angle différenciant » ; chaque champ s'enregistre quand il le quitte (« Sauvegardé »). « Recommandation de contenu » affiche la « Cible : » en mots, ajustable par pas de 100. Le sommaire vient de la structure validée au Moteur, avec « Introduction » et « Conclusion » ajoutées : l'utilisateur le retouche s'il veut, puis « Valider le sommaire » (ou « Continuer vers l'Article » s'il est déjà validé) mène à l'étape « Article ».
 
 ### 10. Faire écrire et accepter le premier jet
 **Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-RED-DRAFT-TO-SOURCE, FR-RED-META ⚠, FR-RED-META-CAPTAIN, FR-CER-PARENT-WRITTEN-GATE

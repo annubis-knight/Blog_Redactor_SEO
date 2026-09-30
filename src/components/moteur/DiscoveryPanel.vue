@@ -11,10 +11,11 @@ import KeywordDiscoveryCacheBar from '@/components/moteur/discovery/KeywordDisco
 import KeywordDiscoveryRelevanceToggle from '@/components/moteur/discovery/KeywordDiscoveryRelevanceToggle.vue'
 import type { AiPanelState } from '@/composables/moteur/useAiPanel'
 import { log } from '@/utils/logger'
-import type { DiscoverySource, DiscoveredKeyword } from '@shared/types/discovery-tab.types'
+import { DISCOVERY_SOURCE_LABELS, type DiscoverySource, type DiscoveredKeyword } from '@shared/types/discovery-tab.types'
 import type { RadarKeyword } from '@shared/types/intent.types'
 import type { DiscoveryContext } from '@shared/types/discovery-cache.types'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
+import { plural } from '@/utils/plural'
 
 const props = withDefaults(defineProps<{
   pilierKeyword: string
@@ -242,13 +243,13 @@ function handleSectionAction(key: DiscoverySource) {
 }
 
 const sections = computed<SourceSection[]>(() => [
-  { key: 'suggest-alphabet', icon: '🔤', label: 'Alphabet (A-Z)', list: suggestAlphabetKw.value, loading: suggestLoading.value, showReasoning: false, showKpis: false },
-  { key: 'suggest-questions', icon: '❓', label: 'Questions', list: suggestQuestionsKw.value, loading: suggestLoading.value, showReasoning: false, showKpis: false },
-  { key: 'suggest-intents', icon: '🎯', label: 'Intent Modifiers', list: suggestIntentsKw.value, loading: suggestLoading.value, showReasoning: false, showKpis: false },
-  { key: 'suggest-prepositions', icon: '🔗', label: 'Prepositions', list: suggestPrepositionsKw.value, loading: suggestLoading.value, showReasoning: false, showKpis: false },
-  { key: 'ai', icon: '🤖', label: 'IA Claude', list: aiKeywords.value, loading: aiLoading.value, showReasoning: true, showKpis: false },
-  { key: 'dataforseo', icon: '📊', label: 'DataForSEO', list: dataforseoKeywords.value, loading: dataforseoLoading.value, showReasoning: false, showKpis: true },
-  { key: 'longtail-ai', icon: '🎯', label: 'Courte-traîne IA (PAA-friendly)', list: longtailKeywords.value, loading: longtailLoading.value, showReasoning: true, showKpis: false, actionLabel: 'Générer' },
+  { key: 'suggest-alphabet', icon: '🔤', label: DISCOVERY_SOURCE_LABELS['suggest-alphabet'], list: suggestAlphabetKw.value, loading: suggestLoading.value, showReasoning: false, showKpis: false },
+  { key: 'suggest-questions', icon: '❓', label: DISCOVERY_SOURCE_LABELS['suggest-questions'], list: suggestQuestionsKw.value, loading: suggestLoading.value, showReasoning: false, showKpis: false },
+  { key: 'suggest-intents', icon: '🎯', label: DISCOVERY_SOURCE_LABELS['suggest-intents'], list: suggestIntentsKw.value, loading: suggestLoading.value, showReasoning: false, showKpis: false },
+  { key: 'suggest-prepositions', icon: '🔗', label: DISCOVERY_SOURCE_LABELS['suggest-prepositions'], list: suggestPrepositionsKw.value, loading: suggestLoading.value, showReasoning: false, showKpis: false },
+  { key: 'ai', icon: '🤖', label: DISCOVERY_SOURCE_LABELS.ai, list: aiKeywords.value, loading: aiLoading.value, showReasoning: true, showKpis: false },
+  { key: 'dataforseo', icon: '📊', label: DISCOVERY_SOURCE_LABELS.dataforseo, list: dataforseoKeywords.value, loading: dataforseoLoading.value, showReasoning: false, showKpis: true },
+  { key: 'longtail-ai', icon: '🎯', label: DISCOVERY_SOURCE_LABELS['longtail-ai'], list: longtailKeywords.value, loading: longtailLoading.value, showReasoning: true, showKpis: false, actionLabel: 'Générer' },
 ])
 
 // FR-DIS-LONGTAIL-GENERATION : génération courte-traîne IA déplacée depuis Radar.
@@ -418,7 +419,7 @@ const aiCtaLabel = computed(() => {
       <!-- Filtering suspect warning -->
       <div v-if="showFilteringSuspect" class="filtering-suspect-warning">
         <strong>Attention :</strong> le filtrage de pertinence semble ne pas avoir fonctionné
-        ({{ relevantCount }}/{{ uniqueKeywordCount }} mots-clés conservés).
+        ({{ relevantCount }}/{{ uniqueKeywordCount }} {{ plural(uniqueKeywordCount, 'mot-clé conservé', 'mots-clés conservés') }}).
         Les appels API de scoring ont probablement échoué. Vérifiez votre clé API Claude ou relancez la découverte.
       </div>
 

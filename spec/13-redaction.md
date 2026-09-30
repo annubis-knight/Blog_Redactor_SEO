@@ -42,9 +42,9 @@ L'étape rassemble ce que la rédaction va utiliser, en quatre blocs repliables.
 
 | Bloc | Contenu | Gestes |
 |---|---|---|
-| « Contexte strategique » | Thème, silo, cocon, articles du cocon, stratégie du cocon, configuration du client ; « Micro-contexte article » | Saisir « Angle differenciant » (requis), « Ton / Style » et « Consignes specifiques » (optionnels), enregistrés en quittant le champ (« Sauvegarde » s'affiche) ; « Suggerer par IA » propose les trois champs, avec aperçu « Appliquer » / « Annuler » si des champs étaient déjà remplis |
-| « Mots-cles » | Mots-clés du cocon et décisions de l'article (capitaine, lieutenants, lexique) | Voir [Moteur — Lexique](11-lexique.md) (« Le lexique hors de l'onglet ») |
-| « Recommandation de contenu » | Fourchette « min – max mots » (±20 % autour de la cible), « Cible : N », « Base : ~N mots (type …) », le niveau en toutes lettres (« Spécialisé ») | « − » et « + » ajustent la cible de 100 mots (entre 500 et 10 000) ; « Reinitialiser » revient à la recommandation ; la cible choisie est enregistrée pour l'article |
+| « Contexte stratégique » | Thème, silo, cocon, articles du cocon, stratégie du cocon, configuration du client ; « Micro-contexte article » | Saisir « Angle différenciant » (requis), « Ton / Style » et « Consignes spécifiques » (optionnels), enregistrés en quittant le champ (« Sauvegardé » s'affiche) ; « Suggérer par IA » propose les trois champs, avec aperçu « Appliquer » / « Annuler » si des champs étaient déjà remplis |
+| « Mots-clés » | Mots-clés du cocon et décisions de l'article (capitaine, lieutenants, lexique) | Voir [Moteur — Lexique](11-lexique.md) (« Le lexique hors de l'onglet ») |
+| « Recommandation de contenu » | Fourchette « min – max mots » (±20 % autour de la cible), « Cible : N », « Base : ~N mots (type …) », le niveau en toutes lettres (« Spécialisé ») | « − » et « + » ajustent la cible de 100 mots (entre 500 et 10 000) ; « Réinitialiser » revient à la recommandation ; la cible choisie est enregistrée pour l'article |
 | « Structure / Sommaire » | Le sommaire de l'article | Voir ci-dessous |
 
 **Le sommaire.** Il est tiré de la structure validée au Moteur, sans appel à l'IA :
@@ -59,7 +59,7 @@ Chaque ligne montre son niveau, son titre, son annotation (« Sommaire », « Co
 
 Les boutons Annuler / Rétablir sont affichés mais **ne s'activent jamais** (écart connu).
 
-« Valider le sommaire » enregistre le sommaire (« Sommaire valide et sauvegarde. ») et passe à l'étape « Article » ; « Modifier le sommaire » le rouvre ; « Continuer vers l'Article » passe à l'étape suivante. Un sommaire validé survit au rechargement.
+« Valider le sommaire » enregistre le sommaire (« Sommaire validé et sauvegardé. ») et passe à l'étape « Article » ; « Modifier le sommaire » le rouvre ; « Continuer vers l'Article » passe à l'étape suivante. Un sommaire validé survit au rechargement.
 
 Sans sommaire enregistré, le bloc affiche : « Aucun sommaire disponible. Retournez au Moteur pour générer et valider les lieutenants avec leur structure Hn. » (le sommaire naît en fait à la validation de l'onglet Structure du Moteur). L'écran ne génère pas de sommaire par IA ; seul le mode automatique le fait, pour un article sans structure.
 
@@ -268,14 +268,14 @@ Le réseau de liens suit le texte : à chaque enregistrement du texte, un lien q
 
 | Bouton | Rédaction guidée | Éditeur | Sans texte |
 |---|---|---|---|
-| « SEO » | oui (ouvert par défaut) | oui | grisé, « Generez un article pour activer le scoring SEO » |
+| « SEO » | oui (ouvert par défaut) | oui | grisé, « Générez un article pour activer le scoring SEO » |
 | « GEO » | oui | oui | grisé |
 | « Maillage » | oui | oui | grisé |
 | « Enrichir » | oui | oui | grisé, « Rédigez le premier jet pour l’enrichir » |
 | « Blocs » | non | oui (ouvert par défaut) | grisé |
 | « IA Brief » | oui | non | actif |
 
-Un seul panneau à la fois ; recliquer le bouton actif le ferme ; Échap aussi. Un panneau ouvert sans texte affiche « Generez un article pour activer ce panneau ». La zone se redimensionne à la souris par son bord gauche (240 px au moins, 300 par défaut) ; la largeur reste mémorisée par le navigateur, d'une session à l'autre.
+Un seul panneau à la fois ; recliquer le bouton actif le ferme ; Échap aussi. Un panneau ouvert sans texte affiche « Générez un article pour activer ce panneau ». La zone se redimensionne à la souris par son bord gauche (240 px au moins, 300 par défaut) ; la largeur reste mémorisée par le navigateur, d'une session à l'autre.
 
 ### Les scores SEO et GEO
 *Exigences : FR-RED-SEO-LIVE, FR-RED-GEO-LIVE, FR-RED-SEO-SCORE-PERSIST*

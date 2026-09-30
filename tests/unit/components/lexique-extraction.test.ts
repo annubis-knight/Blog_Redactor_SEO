@@ -170,9 +170,10 @@ describe('LexiquePanel', () => {
       expect(badges[1].text()).toBe('solutions')
     })
 
-    it('displays article level badge', () => {
+    // FR-CER-AIGUILLAGE — le niveau en toutes lettres, jamais sous son code.
+    it('displays article level badge in full words (FR-CER-AIGUILLAGE)', () => {
       const wrapper = mountComponent()
-      expect(wrapper.find('.level-badge').text()).toBe('intermediaire')
+      expect(wrapper.find('.level-badge').text()).toBe('Intermédiaire')
     })
 
     it('shows dash when captain keyword is null', () => {
@@ -263,15 +264,16 @@ describe('LexiquePanel', () => {
     it('shows differenciateur section title with count', async () => {
       const wrapper = await mountWithResults()
       const titles = wrapper.findAll('.collapsable-title')
-      expect(titles[1].text()).toContain('Differenciateur (30-70%)')
-      expect(titles[1].text()).toContain('1 termes')
+      expect(titles[1].text()).toContain('Différenciateur (30-70%)')
+      expect(titles[1].text()).toContain('1 terme')
+      expect(titles[1].text()).not.toContain('1 termes')
     })
 
     it('shows optionnel section title with count', async () => {
       const wrapper = await mountWithResults()
       const titles = wrapper.findAll('.collapsable-title')
       expect(titles[2].text()).toContain('Optionnel (<30%)')
-      expect(titles[2].text()).toContain('1 termes')
+      expect(titles[2].text()).toMatch(/1 terme$/)
     })
 
     it('renders term text and density', async () => {

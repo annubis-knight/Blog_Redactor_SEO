@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { plural } from '@/utils/plural'
 defineProps<{
   isGenerating: boolean
   hasContent: boolean
@@ -54,7 +55,7 @@ defineEmits<{
       data-testid="reduce-button"
       @click="$emit('reduce')"
     >
-      <span v-if="wordCountDelta && wordCountDelta > 0">Réduire (-{{ wordCountDelta }} mots)</span>
+      <span v-if="wordCountDelta && wordCountDelta > 0">Réduire (-{{ wordCountDelta }} {{ plural(wordCountDelta, 'mot') }})</span>
       <span v-else>Réduire l'article</span>
     </button>
 

@@ -12,6 +12,7 @@ import { useSortableList, type SortOption } from '@/composables/moteur/useSortab
 import { computeKpiScore } from '@shared/scoring-kpi.js'
 import type { RadarKeyword, RadarCard } from '@shared/types/intent.types'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types'
+import { plural } from '@/utils/plural'
 
 const modifiersStore = useKeywordModifiersStore()
 
@@ -475,7 +476,7 @@ defineExpose({ mergeFromRadarSource })
       :data-testid="generatedKeywords.length > 0 ? 'radar-keywords-preview' : 'radar-keywords-empty'"
     >
       <div class="keywords-header">
-        <h4>{{ generatedKeywords.length > 0 ? `${generatedKeywords.length} mots-clés à scanner` : 'Mots-clés à scanner' }}</h4>
+        <h4>{{ generatedKeywords.length > 0 ? `${generatedKeywords.length} ${plural(generatedKeywords.length, 'mot-clé', 'mots-clés')} à scanner` : 'Mots-clés à scanner' }}</h4>
         <button
           class="btn-action"
           :disabled="generatedKeywords.length === 0"
@@ -537,7 +538,7 @@ defineExpose({ mergeFromRadarSource })
           />
         </div>
         <span class="scanner-progress__text">
-          {{ scanProgress.scanned }}/{{ scanProgress.total }} mots-cles
+          {{ scanProgress.scanned }}/{{ scanProgress.total }} {{ plural(scanProgress.total, 'mot-clé', 'mots-clés') }}
         </span>
       </div>
     </div>

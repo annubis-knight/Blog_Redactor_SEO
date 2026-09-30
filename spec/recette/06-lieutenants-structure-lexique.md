@@ -27,8 +27,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 3. Dans le groupe « 2 Valider », clique **Lieutenants**.
 
 **Tu dois voir :**
-- « Verrouillez votre Capitaine dans l'onglet precedent pour analyser la SERP. » ;
-- le curseur « Resultats SERP : 10 » et **« Analyser SERP »** grisés ;
+- « Verrouillez votre Capitaine dans l'onglet précédent pour analyser la SERP. » ;
+- le curseur « Résultats SERP : 10 » et **« Analyser SERP »** grisés ;
 - aucune carte, aucun bandeau, aucune analyse qui démarre.
 
 **C'est un bug si :**
@@ -135,13 +135,13 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 3. Parcours les termes des trois listes.
 
 **Tu dois voir :**
-- « Obligatoire (70%+) — N termes » et « Differenciateur (30-70%) — N termes » ouvertes, « Optionnel (<30%) — N termes » repliée ;
+- « Obligatoire (70%+) — N termes » et « Différenciateur (30-70%) — N termes » ouvertes, « Optionnel (<30%) — N termes » repliée ;
 - sur chaque ligne : une case, le terme, sa densité (« ×2.5/page », par exemple), son pourcentage de pages ;
 - des pourcentages rangés au bon endroit : 70 % ou plus en Obligatoire, 30 à 69 % en Differenciateur, moins de 30 % en Optionnel ;
 - dans chaque liste, les densités de la plus forte à la plus faible, et 50 termes au plus ;
 - des mots isolés : aucun terme de deux mots ;
 - aucun mot vide ni décor de page (« être », « votre », « vos », « nos », « voir », « permet », « cookies », « mentions », « newsletter », « panier », « cliquez »), aucun nombre, aucun mot de moins de 3 lettres ;
-- une liste vide qui le dit : « Aucun terme obligatoire identifie. » (ou « differenciateur », « optionnel »).
+- une liste vide qui le dit : « Aucun terme obligatoire identifié. » (ou « différenciateur », « optionnel »).
 
 **C'est un bug si :**
 - un terme contient une espace ;
@@ -225,7 +225,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - un bandeau « Étape non validée. » apparaît pour des mots du métier ;
 - une liste se recharge ou change d'ordre quand tu coches.
 
-> **Parade si les listes sont vides (MOCK).** Page du cocon → **« Rédaction »** → carte du nouvel enfant → section « Mots-cles » → « Lexique semantique » : tape un terme du métier dans « Ajouter un terme... », clique **« + »**, puis **« Sauvegarder »**. De retour dans l'onglet Lexique, l'étape est demandée d'elle-même. Dans ce cas, saute les gestes 2 et 3 de FIN-3.
+> **Parade si les listes sont vides (MOCK).** Page du cocon → **« Rédaction »** → carte du nouvel enfant → section « Mots-clés » → « Lexique sémantique » : tape un terme du métier dans « Ajouter un terme... », clique **« + »**, puis **« Sauvegarder »**. De retour dans l'onglet Lexique, l'étape est demandée d'elle-même. Dans ce cas, saute les gestes 2 et 3 de FIN-3.
 
 ### LEX-7 — Tester un autre mot-clé : un onglet par exploration
 **Exigences :** FR-LEX-MULTI-KEYWORD, FR-LEX-MULTI-KEYWORD-TABS ⚠, FR-LEX-LECTURE-VS-VERROUILLAGE, FR-LEX-PRECHECK-PERSISTE
@@ -289,9 +289,9 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 
 **Tu dois voir :**
 - « Analyse SERP en cours (n/N) », chaque mot-clé avec ✓ et « N concurrents », « scraping... » ou « en attente » ;
-- les étapes « Scraping SERP Google (n / N mots-cles) », « Analyse IA — proposition de lieutenants », « Filtrage et selection des meilleurs candidats » ;
+- les étapes « Scraping SERP Google (n / N mots-clés) », « Analyse IA — proposition de lieutenants », « Filtrage et sélection des meilleurs candidats » ;
 - dans « Coûts API », « Analyse SERP lancée (N mots-clés) » ;
-- le résumé « N concurrents affiches » suivi de « (cache) » : le capitaine est relu en base, ses pages ayant été lues par le Lexique. Puis « N questions PAA » ou « 0 PAA — les lieutenants seront bases sur les headings et la strategie du cocon » ;
+- le résumé « N concurrents affichés » suivi de « (cache) » : le capitaine est relu en base, ses pages ayant été lues par le Lexique. Puis « N questions PAA » ou « 0 PAA — les lieutenants seront basés sur les headings et la stratégie du cocon » ;
 - un onglet par mot-clé analysé (le capitaine, puis ses racines), chacun avec « N concurrents, M PAA » et au plus 10 lignes : « #rang », « Blog » ou « Autre » (en capitales), le domaine, le titre cliquable ;
 - « ! » sur une page non lue, ligne barrée, infobulle « Scraping impossible : … » ;
 - les filtres Blogs / Autres qui restreignent la liste.
@@ -312,7 +312,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 
 **Tu dois voir :**
 - sans clic, « Analyse IA en cours... » dans la liste, et le texte brut de l'IA qui défile dans le panneau « Suggestions IA Lieutenants » (très vite en MOCK) ;
-- puis « Lieutenants proposes par l'IA », le badge du type, le compteur « 0 / 6 sélectionnés » et, en MOCK, cinq cartes notées de 88 à 60 (les questions « Autres questions » reçues, puis « prix <capitaine> », « <capitaine> avis », « comment choisir <capitaine> »…), chacune avec « H2 » ou « H3 », ses pastilles de source et une raison, puis « Autres candidats (1) » ;
+- puis « Lieutenants proposés par l'IA », le badge du type, le compteur « 0 / 6 sélectionnés » et, en MOCK, cinq cartes notées de 88 à 60 (les questions « Autres questions » reçues, puis « prix <capitaine> », « <capitaine> avis », « comment choisir <capitaine> »…), chacune avec « H2 » ou « H3 », ses pastilles de source et une raison, puis « Autres candidats (1) » ;
 - aucune carte cochée ;
 - le panneau « Suggestions IA Lieutenants » sous la liste et sous les deux sections « Sources IA », sans aucune case à cocher, avec « 6 propositions générées par l'IA. » et « Régénérer les suggestions » ;
 - aucune structure H1/H2/H3 dans l'onglet : elle est dans l'onglet Structure.
@@ -333,7 +333,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 
 **Tu dois voir :**
 - les deux sections repliées à l'arrivée ;
-- PAA dépliée : une phrase d'explication, puis les questions (et leurs réponses), ou « Google n'a renvoye aucune question PAA pour ces mots-cles — c'est normal sur des requetes techniques ou de niche. » ;
+- PAA dépliée : une phrase d'explication, puis les questions (et leurs réponses), ou « Google n'a renvoyé aucune question PAA pour ces mots-clés — c'est normal sur des requêtes techniques ou de niche. » ;
 - clusters dépliée : les groupes de mots avec « N termes », ou « Aucun cluster disponible. Lance un scan Discovery pour ce cocon, puis reviens ici. »
 
 **C'est un bug si :**
@@ -366,13 +366,13 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 
 **Gestes :**
 1. Compte les lignes de l'onglet du capitaine.
-2. Glisse le curseur « Resultats SERP » de 10 à 3.
+2. Glisse le curseur « Résultats SERP » de 10 à 3.
 3. Remets-le à 10.
 
 **Tu dois voir :**
-- « Resultats SERP : 3 » ;
+- « Résultats SERP : 3 » ;
 - aucune analyse, aucune nouvelle ligne dans « Coûts API » ;
-- « 3 concurrents affiches », et une liste de concurrents réduite à 3 (c'est aussi ce que l'IA recevrait).
+- « 3 concurrents affichés », et une liste de concurrents réduite à 3 (c'est aussi ce que l'IA recevrait).
 
 **C'est un bug si :**
 - baisser le curseur lance « Analyse SERP en cours ».
@@ -456,11 +456,11 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 
 **Gestes :**
 1. Ouvre le pilier au Moteur, onglet **Finalisation** : note son capitaine (P) et son lieutenant retenu (L).
-2. Page du cocon → **« Rédaction »** → carte du nouvel enfant. Déplie la section « Mots-cles ».
+2. Page du cocon → **« Rédaction »** → carte du nouvel enfant. Déplie la section « Mots-clés ».
 3. Sous « Lieutenants (2) », dans « Ajouter un lieutenant... », ajoute un à un, avec **« + »** : P écrit en MAJUSCULES, avec deux espaces entre deux mots ; le capitaine du nouvel enfant ; L. Clique **« Sauvegarder »**.
 4. Retourne au Moteur, rouvre le nouvel enfant, onglet Lieutenants. Décoche puis recoche « … avis ».
 5. Clique **« Voir pourquoi / décider »**. Remplis la catégorie et la raison du seul point 🔴, puis regarde le bouton. Clique **« Revenir corriger »**.
-6. Nettoie : Rédaction du nouvel enfant, « Mots-cles », retire les trois mots ajoutés (**×** sur chacun), **« Sauvegarder »**. Retourne au Moteur, rouvre le nouvel enfant, onglet Lieutenants.
+6. Nettoie : Rédaction du nouvel enfant, « Mots-clés », retire les trois mots ajoutés (**×** sur chacun), **« Sauvegarder »**. Retourne au Moteur, rouvre le nouvel enfant, onglet Lieutenants.
 
 **Tu dois voir :**
 - (4) « Étape non validée. », la première raison et « (+2 autres) » ; l'étape Lieutenants retirée ;
@@ -551,7 +551,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 **Exigences :** FR-LEX-METIER-ONLY, FR-LEX-PRECHECK-PERSISTE
 
 **Gestes :**
-1. Sur la même page, déplie « Mots-cles ». Regarde « Lexique semantique (N) ».
+1. Sur la même page, déplie « Mots-clés ». Regarde « Lexique sémantique (N) ».
 2. Dans « Ajouter un terme... », tape `votre`, puis clique **« + »**.
 3. Tape `vos cookies`, puis **« + »**.
 4. Tape `pompe chaleur`, puis **« + »**. Retire-le aussitôt avec **×**, sans sauvegarder.
@@ -831,7 +831,7 @@ Sur le cocon du parcours express refait en RÉEL (étapes 1 à 6), bouton sur **
 **Exigences :** FR-LEX-METIER-ONLY
 **Mode :** RÉEL (payant)
 **Gestes :**
-1. Fais-le en dernier : la suggestion remplace le lexique de l'article. Rédaction de l'article RÉEL, section « Mots-cles » : clique **« Suggerer le Lexique via Claude »**.
+1. Fais-le en dernier : la suggestion remplace le lexique de l'article. Rédaction de l'article RÉEL, section « Mots-clés » : clique **« Suggérer le Lexique via Claude »**.
 
 **Tu dois voir :**
 - « Generation... », puis un nouveau lexique sans mot générique ;

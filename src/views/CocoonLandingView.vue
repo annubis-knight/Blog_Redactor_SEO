@@ -8,6 +8,7 @@ import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import WorkflowChoice from '@/components/dashboard/WorkflowChoice.vue'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
 import SkeletonCard from '@/components/shared/SkeletonCard.vue'
+import { plural } from '@/utils/plural'
 
 const route = useRoute()
 const cocoonsStore = useCocoonsStore()
@@ -73,7 +74,7 @@ onMounted(() => {
       <div class="title-row">
         <h2 class="cocoon-title">{{ cocoon?.name ?? 'Cocon' }}</h2>
         <div v-if="cocoon" class="cocoon-summary">
-          <span class="summary-stat">{{ cocoon.stats.totalArticles }} articles</span>
+          <span class="summary-stat">{{ cocoon.stats.totalArticles }} {{ plural(cocoon.stats.totalArticles, 'article') }}</span>
           <span class="summary-sep">&middot;</span>
           <span class="summary-stat">{{ cocoon.stats.completionPercent }}% complété</span>
         </div>

@@ -370,7 +370,7 @@ La **douleur** est le problème concret du lecteur : ce qui le pousse à taper s
 
 **Ce qu'elle oriente, au Moteur.**
 - Discovery : dès 10 caractères, le tri de pertinence écarte un mot-clé qu'une personne vivant cette douleur ne taperait pas ; l'« Analyse IA Discovery » en tient compte.
-- La source « Courte-traîne IA » de Discovery et les « Suggestions longue-traine » du Radar partent d'elle.
+- La source « Courte-traîne IA » de Discovery et les « Suggestions longue traîne » du Radar partent d'elle.
 - Le Capitaine : l'avis de l'IA la garde comme fil rouge, et le Score Pertinence mesure combien un mot-clé la sert ([Capitaine](08-capitaine.md)).
 - Les Lieutenants : l'IA écarte ceux qui n'éclairent pas la douleur.
 - La Structure : au moins deux chapitres sur cinq y répondent.
@@ -398,12 +398,12 @@ Ces deux réglages se font dans la Rédaction, à l'étape « Brief & Structure 
 
 | Champ | Saisie |
 |---|---|
-| « Angle differenciant » | marqué obligatoire |
+| « Angle différenciant » | marqué obligatoire |
 | « Ton / Style » | « (optionnel) » |
-| « Consignes specifiques » | « (optionnel) » |
+| « Consignes spécifiques » | « (optionnel) » |
 
-- Chaque champ s'enregistre quand on le quitte ; « Sauvegarde » s'affiche brièvement.
-- « Suggerer par IA » (« Suggestion en cours... ») propose les trois champs. S'ils sont déjà remplis, un aperçu « Suggestion IA » montre l'avant et l'après, avec « Appliquer » ou « Annuler ». Sans capitaine, le titre de l'article sert de sujet ; un échec affiche « La suggestion n’a pas abouti. Réessayez dans un instant. ».
+- Chaque champ s'enregistre quand on le quitte ; « Sauvegardé » s'affiche brièvement.
+- « Suggérer par IA » (« Suggestion en cours... ») propose les trois champs. S'ils sont déjà remplis, un aperçu « Suggestion IA » montre l'avant et l'après, avec « Appliquer » ou « Annuler ». Sans capitaine, le titre de l'article sert de sujet ; un échec affiche « La suggestion n’a pas abouti. Réessayez dans un instant. ».
 - Le sommaire, le premier jet et l'explication du brief reçoivent le micro-contexte. Le premier jet reçoit aussi la longueur visée.
 - Le modifier ne relance aucune génération.
 
@@ -414,8 +414,8 @@ Ces deux réglages se font dans la Rédaction, à l'étape « Brief & Structure 
   - la pile d'activité affiche « 💡 Longueur conseillée : N mots », avec sa raison et « Modifiable dans la Rédaction. » (ou « Valeur choisie conservée (N mots). »).
 - **Dans la Rédaction**, « Recommandation de contenu » montre une fourchette de ±20 % autour de la longueur visée (« min – max mots »), puis « Cible : » avec « − » et « + ».
   - Les boutons changent la longueur par pas de 100 mots, de 500 à 10 000.
-  - « Reinitialiser » revient à la recommandation.
-  - Une valeur modifiée porte « ajuste » ; la ligne « Base : ~N mots (type …) » rappelle la recommandation.
+  - « Réinitialiser » revient à la recommandation.
+  - Une valeur modifiée porte « ajusté » ; la ligne « Base : ~N mots (type …) » rappelle la recommandation.
 - À l'ouverture du brief, la longueur visée du niveau s'affiche d'abord, puis la recommandation la remplace quand elle arrive.
 
 **Le calcul de la recommandation :**

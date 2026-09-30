@@ -25,7 +25,7 @@ Le bloc du haut s'intitule « Mots-clés à scanner », ou « N mots-clés à sc
 ## Lancer le scan
 *Exigences : FR-RAD-SCAN-2PASS, FR-RAD-AUTOCOMPLETE-PER-KEYWORD, FR-RAD-MARKET-LEVEL-AWARE, FR-RAD-CHECK*
 
-Le bouton « Lancer le scan » est grisé tant que la liste est vide. Pendant le scan, une barre indique la phase (« Autocomplete + KPIs », « Analyse PAA », « Calcul du score ») et « s/t mots-cles ». Cette progression est estimée d'après le temps écoulé, pas mesurée.
+Le bouton « Lancer le scan » est grisé tant que la liste est vide. Pendant le scan, une barre indique la phase (« Autocomplete + KPIs », « Analyse PAA », « Calcul du score ») et « s/t mots-clés ». Cette progression est estimée d'après le temps écoulé, pas mesurée.
 
 Pour chaque mot-clé, le scan collecte :
 
@@ -38,7 +38,7 @@ Pour chaque mot-clé, le scan collecte :
 
 - La profondeur est toujours de deux niveaux de questions (choix produit : pas de sélecteur).
 - Le niveau de l'article part avec le scan : il fixe les seuils de notation (cf. Score Marché).
-- Chaque question PAA est comparée au titre de l'article : badge « Exact », « Match », « Partiel exact », « Partiel », « Semantique », « Sem. partiel » ou « Hors sujet ». Un calcul de similarité par embeddings (vecteurs de sens) peut relever « Hors sujet » en « partiel » (similarité ≥ 0,5) et « partiel » en « total » (≥ 0,7).
+- Chaque question PAA est comparée au titre de l'article : badge « Exact », « Match », « Partiel exact », « Partiel », « Sémantique », « Sem. partiel » ou « Hors sujet ». Un calcul de similarité par embeddings (vecteurs de sens) peut relever « Hors sujet » en « partiel » (similarité ≥ 0,5) et « partiel » en « total » (≥ 0,7).
 - Les cartes arrivent rangées par Score Marché décroissant, notes absentes en dernier.
 - Un échec du scan affiche le message d'erreur et un bouton « Fermer ». Aucune carte n'est produite.
 - Un scan réussi pose l'étape « Radar fait » de l'article (point de progression). Un nouveau scan ne la duplique pas.
@@ -103,7 +103,7 @@ Une longue traîne sans indicateurs n'affiche ni indicateurs ni icônes, et son 
 - la raison du mot-clé (en italique), s'il y en a une ;
 - « PAA en cache » quand les questions viennent de la base ;
 - l'arbre des questions : niveau 1, avec son badge, sa similarité en %, et « (n) » sous-questions ; un clic sur « ▶ » déplie les sous-questions, un clic sur la question déplie la réponse de Google ;
-- « Aucune PAA trouvee » s'il n'y a aucune question.
+- « Aucune PAA trouvée » s'il n'y a aucune question.
 
 Les badges du Radar ne parlent jamais de la douleur. Une carte d'un ancien scan qui porte encore un vieux signal de douleur inférieur à 35 est grisée.
 
@@ -120,14 +120,14 @@ Au-dessus des cartes : un compteur (« N mots-clés », ou « x / y mots-clés �
 ## Longues traînes
 *Exigences : FR-RAD-LONGTAIL-GENERATE, FR-RAD-LONGTAIL-UI, FR-RAD-LONGTAIL-REGENERATE*
 
-La section « Suggestions longue-traine » apparaît sous les cartes dès que le scan en compte au moins deux. Sous-titre : « Combinaisons IA generees a partir des mots-cles Radar. Coche celles a envoyer au Capitaine. »
+La section « Suggestions longue traîne » apparaît sous les cartes dès que le scan en compte au moins deux. Sous-titre : « Combinaisons IA générées à partir des mots-clés Radar. Coche celles à envoyer au Capitaine. »
 
-1. « ✨ Suggerer des combinaisons » lance la génération (« L'IA genere les suggestions… »). L'outil combine d'abord localement les mots des cartes, puis l'IA choisit et reformule au plus 10 suggestions, en tenant compte du titre, du point de douleur et de la stratégie du cocon.
+1. « ✨ Suggérer des combinaisons » lance la génération (« L'IA génère les suggestions… »). L'outil combine d'abord localement les mots des cartes, puis l'IA choisit et reformule au plus 10 suggestions, en tenant compte du titre, du point de douleur et de la stratégie du cocon.
 2. Chaque ligne : case, note « N/10 » (vert ≥ 8, orange ≥ 6, gris sinon), mot-clé, justification, « Sources : » et les mots-clés d'origine.
 3. Les 5 mieux notées sont pré-cochées.
 4. Chaque clic sur une case est enregistré une demi-seconde après le dernier clic. La pré-sélection initiale n'est enregistrée qu'au premier clic.
-5. « ⟳ Regenerer » relance avec les cartes du moment. Avec les mêmes entrées (mots-clés, titre, douleur), le résultat vient du cache de 7 jours, sans appel d'IA. Les cases encore présentes dans la nouvelle liste restent cochées.
-6. En cas d'échec : « Erreur : … » et le bouton « Reessayer ». Réponse vide : « L'IA n'a propose aucune combinaison pertinente cette fois. »
+5. « ⟳ Régénérer » relance avec les cartes du moment. Avec les mêmes entrées (mots-clés, titre, douleur), le résultat vient du cache de 7 jours, sans appel d'IA. Les cases encore présentes dans la nouvelle liste restent cochées.
+6. En cas d'échec : « Erreur : … » et le bouton « Réessayer ». Réponse vide : « L'IA n'a proposé aucune combinaison pertinente cette fois. »
 
 Limites actuelles :
 - Au rechargement de l'article, la section repart vide : les suggestions et les cases cochées enregistrées en base ne sont pas réaffichées.

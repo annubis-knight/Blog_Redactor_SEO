@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Cocoon } from '@shared/types/index.js'
+import { plural } from '@/utils/plural'
 
 defineProps<{
   cocoonId: number
@@ -44,7 +45,7 @@ defineProps<{
           Exploration, intention, local, concurrents, mots-cl&eacute;s et audit DataForSEO
         </p>
         <!-- eslint-disable-next-line no-restricted-syntax -- "0 mots-cles" est semantique (vrai etat vide), pas un fallback masquant -->
-        <span class="choice-badge">{{ keywordCount ?? 0 }} mots-cl&eacute;s</span>
+        <span class="choice-badge">{{ keywordCount ?? 0 }} {{ plural(keywordCount ?? 0, 'mot-clé', 'mots-clés') }}</span>
       </RouterLink>
 
       <!-- Phase 3: Rédaction (Writing) -->
@@ -59,7 +60,7 @@ defineProps<{
         <p class="choice-desc">
           Strat&eacute;gie article, brief, sommaire et r&eacute;daction pour chaque article du cocon
         </p>
-        <span class="choice-badge">{{ cocoon.stats.totalArticles }} articles, {{ cocoon.stats.completionPercent }}%</span>
+        <span class="choice-badge">{{ cocoon.stats.totalArticles }} {{ plural(cocoon.stats.totalArticles, 'article') }}, {{ cocoon.stats.completionPercent }}%</span>
       </RouterLink>
     </div>
   </div>

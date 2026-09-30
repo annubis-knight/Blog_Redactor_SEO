@@ -224,7 +224,7 @@ describe('RadarPanel — phase scanning', () => {
     expect((fill.element as HTMLElement).style.width).toBe('25%')
   })
 
-  it('progress text "5/20 mots-cles"', () => {
+  it('progress text "5/20 mots-clés"', () => {
     mockIsScanning.value = true
     mockScanProgress.value = { phase: 'scan', scanned: 5, total: 20 }
     const wrapper = mountScanner()

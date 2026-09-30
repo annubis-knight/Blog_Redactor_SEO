@@ -90,7 +90,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 **Gestes :**
 1. Dans le Cerveau, recharge la page, puis passe par les étapes « Cible » à « CTA » avec la barre.
 2. Ouvre le Moteur et déplie « Contexte stratégique ».
-3. Reviens au Cerveau, étape « Articles ». Sous l'article enfant, clique « Le rédiger ». Dans « Contexte strategique », déplie « Contexte envoyé à Claude ».
+3. Reviens au Cerveau, étape « Articles ». Sous l'article enfant, clique « Le rédiger ». Dans « Contexte stratégique », déplie « Contexte envoyé à Claude ».
 4. Fais de même pour le pilier (lien « Ouvrir sa rédaction »).
 
 **Tu dois voir :**
@@ -169,14 +169,14 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 
 **Gestes :**
 1. Rédaction de l'enfant, étape « Brief & Structure » : déplie « Micro-contexte article ».
-2. Dans « Angle differenciant », écris `Angle de recette enfant`, puis clique ailleurs. Dans « Ton / Style », écris `Direct`, puis clique ailleurs.
+2. Dans « Angle différenciant », écris `Angle de recette enfant`, puis clique ailleurs. Dans « Ton / Style », écris `Direct`, puis clique ailleurs.
 3. Dans « Recommandation de contenu », clique **« + »** une fois.
 4. Recharge la page, et rouvre « Micro-contexte article ».
 5. Ouvre la rédaction du pilier et son « Micro-contexte article ».
 
 **Tu dois voir :**
-- « Sauvegarde », avec une coche verte, après chaque sortie de champ et après le « + » ;
-- « Cible : 1 900 », la mention « ajuste » et le bouton « Reinitialiser » ;
+- « Sauvegardé », avec une coche verte, après chaque sortie de champ et après le « + » ;
+- « Cible : 1 900 », la mention « ajusté » et le bouton « Réinitialiser » ;
 - après le rechargement : l'angle, le ton et la cible de 1 900 mots sont toujours là ;
 - le pilier garde son propre angle, celui de l'étape 6 du parcours express.
 
@@ -188,7 +188,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 **Exigences :** FR-INFRA-API-STREAM ⚠, NFR-PERF-SSE-FIRST-TOKEN ⚠
 
 **Gestes :**
-1. Déplie la pile. Dans le « Micro-contexte article » de l'enfant, clique **« Suggerer par IA »**.
+1. Déplie la pile. Dans le « Micro-contexte article » de l'enfant, clique **« Suggérer par IA »**.
 2. Quand le cadre « Suggestion IA » apparaît, clique **« Annuler »**.
 3. Ouvre la rédaction du pilier, étape « Article », puis **« Enrichir »**. Lance la passe **« Exemples »**. Dès que « Chapitre 2/… » s'affiche, clique **« Arrêter »**. En MOCK, ça va vite : si la passe finit avant ton clic, relance-la.
 
@@ -201,7 +201,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 
 **C'est un bug si :**
 - « Arrêter » affiche une erreur ;
-- « Suggerer par IA » ne montre rien : ni « Suggestion en cours... », ni suggestion, ni « La suggestion n’a pas abouti. Réessayez dans un instant. » ;
+- « Suggérer par IA » ne montre rien : ni « Suggestion en cours... », ni suggestion, ni « La suggestion n’a pas abouti. Réessayez dans un instant. » ;
 - la ligne de coût arrive avant la fin du texte ;
 - « Annuler » remplace ton angle.
 
@@ -218,10 +218,10 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 3. Dans la pile, **« Effacer »**. Recharge la page, reviens sur l'enfant, onglet « Discovery ». Retape exactement le même mot-clé racine, puis attends une seconde. Essaie aussi un autre mot, puis reviens au premier.
 4. Clique **« Charger »**.
 5. Clique **« Courte-traîne IA »**.
-6. Clique **« Rafraichir »**, efface le mot-clé racine et retape-le.
+6. Clique **« Rafraîchir »**, efface le mot-clé racine et retape-le.
 
 **Tu dois voir :**
-- au geste 3, un bandeau vert « Derniere analyse du <date du jour> · N mots-cles · analyse IA incluse », avec « Charger » et « Rafraichir » ; pas de bandeau pour l'autre mot ;
+- au geste 3, un bandeau vert « Dernière analyse du <date du jour> · N mots-clés · analyse IA incluse », avec « Charger » et « Rafraîchir » ; pas de bandeau pour l'autre mot ;
 - au geste 4, les résultats reviennent tout de suite, sans nouvelle ligne d'IA dans la pile ;
 - au geste 5, la section « Courte-traîne IA (PAA-friendly) » se remplit ;
 - au geste 6, le bandeau disparaît et ne revient pas : la prochaine découverte sera refaite, et facturée en RÉEL.
@@ -229,7 +229,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 **C'est un bug si :**
 - le bandeau manque après le rechargement ;
 - « Charger » relance une recherche (sections en attente, nouvelles lignes d'IA) ;
-- le bandeau revient après « Rafraichir ».
+- le bandeau revient après « Rafraîchir ».
 
 **⚠ Défaut connu :** le coût de la génération des longues traînes et du jugement des questions PAA ne remonte pas à l'écran : au geste 5, aucune ligne n'apparaît dans la pile. Et seules les opérations en base des mots-clés d'article et des explorations Capitaine / Lieutenants y apparaissent. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -249,7 +249,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 **C'est un bug si :**
 - une question disparaît, change ou apparaît en double après le rechargement.
 
-> Si la carte affiche « Aucune PAA trouvee », le bac à sable n'a pas fourni de questions pour ce mot-clé : refais cette vérification en RÉEL.
+> Si la carte affiche « Aucune PAA trouvée », le bac à sable n'a pas fourni de questions pour ce mot-clé : refais cette vérification en RÉEL.
 
 ### INFRA-12 — Un indicateur absent s'affiche « — », se trie en bas, partout pareil
 **Exigences :** FR-INFRA-SCORE-MODULE, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-DISPLAY-DASH ⚠, FR-INFRA-KPI-NULLABLE ⚠
@@ -287,7 +287,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 
 **Tu dois voir :**
 - au geste 3, la mention « (cache) » juste après le nombre de concurrents : les Lieutenants relisent le relevé fait pour le Lexique, sans relire les pages ;
-- en MOCK, six propositions pour l'enfant intermédiaire, notées de 88 à 53 : d'abord les questions « Autres questions » reçues (factices en MOCK), puis des variantes du capitaine (« prix <capitaine> », « <capitaine> avis », « comment choisir <capitaine> »…) ; cinq sous « Lieutenants proposes par l'IA », la sixième dans « Autres candidats (1) » ;
+- en MOCK, six propositions pour l'enfant intermédiaire, notées de 88 à 53 : d'abord les questions « Autres questions » reçues (factices en MOCK), puis des variantes du capitaine (« prix <capitaine> », « <capitaine> avis », « comment choisir <capitaine> »…) ; cinq sous « Lieutenants proposés par l'IA », la sixième dans « Autres candidats (1) » ;
 - au geste 4, le message du geste 1 ne revient pas, et « Extraire le Lexique » est proposé.
 
 **C'est un bug si :**

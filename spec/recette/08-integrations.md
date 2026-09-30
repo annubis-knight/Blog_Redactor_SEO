@@ -81,7 +81,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 **Tu dois voir :**
 - pour chaque question : un badge d'accord avec le sujet, puis un pourcentage (« 42% » par exemple) : la proximité de sens entre la question et le sujet de l'article, calculée sur ton ordinateur, gratuitement ;
 - après un redémarrage, le premier scan peut durer jusqu'à une minute de plus : le modèle de calcul se charge. Les scans suivants sont plus rapides ;
-- si le bac à sable ne renvoie aucune question (« Aucune PAA trouvee »), tu ne peux pas conclure : refais ce geste au Radar pendant la section RÉEL.
+- si le bac à sable ne renvoie aucune question (« Aucune PAA trouvée »), tu ne peux pas conclure : refais ce geste au Radar pendant la section RÉEL.
 
 **C'est un bug si :**
 - le scan échoue ou l'écran se bloque pendant le calcul de proximité ;

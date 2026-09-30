@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { plural } from '@/utils/plural'
 /**
  * Vague 5 — Sous-composant Vue extrait de ArticleWorkflowView.
  *
@@ -22,7 +23,7 @@ const percent = computed(() => {
 <template>
   <div class="word-count-bar">
     <div class="word-count-info">
-      <span class="word-count-value">{{ wordCount }} mots</span>
+      <span class="word-count-value">{{ wordCount }} {{ plural(wordCount, 'mot') }}</span>
       <span v-if="target" class="word-count-target">/ {{ target }} cible</span>
     </div>
     <div v-if="target" class="word-count-progress">

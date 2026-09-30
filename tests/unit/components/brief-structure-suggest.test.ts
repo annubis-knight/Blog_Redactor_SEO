@@ -1,5 +1,5 @@
 /**
- * FR-CER-MICRO-CONTEXT — « Suggerer par IA » marche sur un article sans
+ * FR-CER-MICRO-CONTEXT — « Suggérer par IA » marche sur un article sans
  * capitaine, et un échec se dit à l'écran.
  *
  * Recette du 2026-09-30 (INFRA-9) : sur un enfant sans capitaine,

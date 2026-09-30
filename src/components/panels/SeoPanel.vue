@@ -9,6 +9,7 @@ import ScoreGauge from '@/components/shared/ScoreGauge.vue'
 import KeywordsTab from '@/components/panels/KeywordsTab.vue'
 import IndicatorsTab from '@/components/panels/indicators/IndicatorsTab.vue'
 import SerpDataTab from '@/components/panels/SerpDataTab.vue'
+import { plural } from '@/utils/plural'
 
 const props = withDefaults(defineProps<{
   articleSlug?: string
@@ -63,7 +64,7 @@ const serpData = computed(() => briefStore.briefData?.dataForSeo ?? null)
       <ScoreGauge :score="seoStore.score?.global ?? 0" label="SEO" />
       <div class="score-meta">
         <span class="word-count" title="Nombre total de mots dans le contenu de l'article">
-          {{ seoStore.score ? `${seoStore.score.wordCount} mots` : '- mots' }}
+          {{ seoStore.score ? `${seoStore.score.wordCount} ${plural(seoStore.score.wordCount, 'mot')}` : '- mots' }}
         </span>
         <span v-if="seoStore.score" class="reading-time" title="Temps de lecture estimé à 200 mots/min">
           ~{{ seoStore.score.readingTimeMinutes }} min

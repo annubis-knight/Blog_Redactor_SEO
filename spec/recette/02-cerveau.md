@@ -181,7 +181,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - à l'étape 6, « Création… » sur le bouton, puis la notification « « <titre> bis » est créé. », et un avertissement : « « <titre> bis » est créé, mais son mot-clé n'a pas rejoint le pool du cocon : Le mot-clé « <mot-clé> » est déjà utilisé dans le cocon « Recette <date> » : deux cocons qui visent le même mot-clé se font concurrence. Choisissez-en un autre au Moteur. » ;
 - dans l'arbre, le pilier : badge « Pilier », « À rédiger », « Pas encore de section : elles apparaissent quand sa structure est validée ou son texte rédigé. » ; « Créer le pilier » a disparu ;
 - sur la carte, une nouvelle ligne marquée « Créé » dans « Pilier », à côté de celle posée par Claude : deux piliers, c'est connu (la carte et l'arbre sont deux listes) ;
-- sur la page du cocon, la carte « Moteur » affiche toujours « 0 mots-clés » : le mot-clé refusé n'a pas rejoint ce cocon.
+- sur la page du cocon, la carte « Moteur » affiche toujours « 0 mot-clé » : le mot-clé refusé n'a pas rejoint ce cocon.
 
 **C'est un bug si :**
 - l'article refusé apparaît dans l'arbre, ou l'article annoncé créé n'y est pas ;
@@ -476,22 +476,22 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 **Gestes :**
 1. Sous A, « Le rédiger » : étape « Brief & Structure ». Déplie « Micro-contexte article ».
 2. Dans « Ton / Style », tape `Direct, sans jargon`, puis clique à côté. Recharge la page.
-3. Clique **« Suggerer par IA »**, puis **« Annuler »**.
-4. Clique de nouveau **« Suggerer par IA »**, puis **« Appliquer »**. Attends deux secondes, puis recharge.
+3. Clique **« Suggérer par IA »**, puis **« Annuler »**.
+4. Clique de nouveau **« Suggérer par IA »**, puis **« Appliquer »**. Attends deux secondes, puis recharge.
 5. Remplace l'angle par `Des chantiers toulousains chiffrés`, puis clique à côté.
 
 **Tu dois voir :**
-- « Angle differenciant » (marqué obligatoire), « Ton / Style (optionnel) », « Consignes specifiques (optionnel) » ; l'angle déjà rempli : « Angle à préciser (suggéré à la validation de la structure) », écrit par la validation de la structure (voir le défaut) ;
-- en quittant un champ, « Sauvegarde » un instant ; après rechargement, `Direct, sans jargon` est toujours là ;
+- « Angle différenciant » (marqué obligatoire), « Ton / Style (optionnel) », « Consignes spécifiques (optionnel) » ; l'angle déjà rempli : « Angle à préciser (suggéré à la validation de la structure) », écrit par la validation de la structure (voir le défaut) ;
+- en quittant un champ, « Sauvegardé » un instant ; après rechargement, `Direct, sans jargon` est toujours là ;
 - « Suggestion en cours... », puis un aperçu « Suggestion IA » : pour chaque champ déjà rempli, l'ancienne valeur → la nouvelle, avec « Appliquer » et « Annuler » ;
 - « Annuler » : rien ne change ;
-- « Appliquer » : les trois champs prennent la suggestion (en MOCK, l'angle « Traiter « <mot-clé> » par les situations réelles du lecteur : … », un ton propre au niveau de A, et des consignes rédigées en phrases), « Sauvegarde » s'affiche, et les valeurs restent après rechargement ;
+- « Appliquer » : les trois champs prennent la suggestion (en MOCK, l'angle « Traiter « <mot-clé> » par les situations réelles du lecteur : … », un ton propre au niveau de A, et des consignes rédigées en phrases), « Sauvegardé » s'affiche, et les valeurs restent après rechargement ;
 - aucune génération ne part : l'étape « Article » ne change pas, et la pile « Coûts API » n'ajoute que la suggestion.
 
 **C'est un bug si :**
 - la suggestion remplace les champs sans « Appliquer » ;
-- « Sauvegarde » n'apparaît pas, ou les valeurs sont perdues au rechargement ;
-- « Consignes specifiques » affiche une liste collée par des virgules.
+- « Sauvegardé » n'apparaît pas, ou les valeurs sont perdues au rechargement ;
+- « Consignes spécifiques » affiche une liste collée par des virgules.
 
 **⚠ Défaut connu :** le micro-contexte n'est transmis que si l'angle est rempli : un ton ou des consignes seuls sont ignorés ; et l'angle provisoire écrit d'office à la validation de la structure part tel quel à l'IA. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -501,13 +501,13 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 **Gestes :**
 1. Même page, bloc « Recommandation de contenu ».
 2. Clique « + » deux fois, puis recharge.
-3. Clique **« Reinitialiser »**.
-4. Clique « − » jusqu'à ce que la valeur ne bouge plus. Puis **« Reinitialiser »**.
+3. Clique **« Réinitialiser »**.
+4. Clique « − » jusqu'à ce que la valeur ne bouge plus. Puis **« Réinitialiser »**.
 
 **Tu dois voir :**
 - une fourchette « min – max mots » (± 20 % autour de la cible), « Cible : » entre « − » et « + », et « Base : ~N mots (type …) » : N est la longueur 💡 de CER-19, et le type celui de A ;
-- chaque « + » ajoute 100 mots, la fourchette suit ; « ajuste » et « Reinitialiser » apparaissent ; la valeur ajustée reste après rechargement ;
-- « Reinitialiser » revient à N, « ajuste » disparaît ;
+- chaque « + » ajoute 100 mots, la fourchette suit ; « ajusté » et « Réinitialiser » apparaissent ; la valeur ajustée reste après rechargement ;
+- « Réinitialiser » revient à N, « ajusté » disparaît ;
 - « − » s'arrête à 500.
 
 **C'est un bug si :**
@@ -603,7 +603,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 
 **Gestes :**
 1. Sur la page du cocon, lis la carte « Rédaction ».
-2. Ouvre la rédaction de A, étape « Brief & Structure » : sous « Contexte strategique », déplie « Contexte envoyé à Claude ».
+2. Ouvre la rédaction de A, étape « Brief & Structure » : sous « Contexte stratégique », déplie « Contexte envoyé à Claude ».
 3. Au Cerveau, déplie la ligne « Créé » de A et lis « Douleur ».
 4. Au Moteur, ouvre A et parcours ses onglets ; à la Rédaction, son brief.
 

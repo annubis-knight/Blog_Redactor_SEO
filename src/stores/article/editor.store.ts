@@ -14,7 +14,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
-import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import { useStreaming, startStreamOnce, type StreamOnceResult } from '@/composables/editor/useStreaming'
 import { apiDelete, apiPost, apiPut } from '@/services/api.service'
 import {
@@ -215,10 +214,8 @@ export const useEditorStore = defineStore('editor', () => {
       })
       metaTitle.value = data.metaTitle
       metaDescription.value = data.metaDescription
-      if (data.usage) {
-        lastMetaUsage.value = data.usage
-        try { useCostLogStore().addEntry('Génération meta', data.usage) } catch { /* noop */ }
-      }
+      // Le coût de l'appel est inscrit une fois, par apiPost (champ `usage`).
+      if (data.usage) lastMetaUsage.value = data.usage
       log.info('[editor] Meta generated', {
         metaTitle: data.metaTitle,
         metaTitleLength: data.metaTitle.length,

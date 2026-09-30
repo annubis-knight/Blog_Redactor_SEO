@@ -97,7 +97,7 @@ Le panneau « Analyse IA Discovery » (« Sélection intelligente des 20-30 mots
 L'IA reçoit les mots-clés visibles (dédupliqués, avec leurs sources et métriques), les 30 premiers groupes de mots, la racine, le titre et la douleur de l'article, et le contexte métier du site. Elle rend 20 à 30 mots-clés.
 
 Résultat, sous le titre « Recommandation IA » :
-- le nombre de mots-clés et une case « Tout selectionner » ;
+- le nombre de mots-clés et une case « Tout sélectionner » ;
 - un paragraphe de synthèse ;
 - pour chaque mot-clé : son rang, sa priorité (🔴 haute, 🟡 moyenne, 🟢 basse), son badge « ×N » s'il y a lieu, sa raison et une case.
 
@@ -108,9 +108,9 @@ Les cases de l'analyse et celles des sections partagent la même sélection.
 
 Quand toutes les sources et le filtre ont fini, la découverte est sauvegardée pour son mot-clé racine (à la lettre près). Elle est sauvegardée de nouveau après une analyse IA réussie. La sauvegarde contient les six premières sections, les jugements de pertinence, les groupes de mots et l'analyse IA. Elle est commune à tous les articles : une même racine donne la même sauvegarde.
 
-Quand le champ change (saisie, ou changement d'article avec l'onglet déjà ouvert), l'outil vérifie 400 ms plus tard s'il existe une sauvegarde. Tant qu'aucune découverte n'a été lancée dans l'onglet, un bandeau s'affiche alors : « Derniere analyse du {date} · N mots-cles · analyse IA incluse ». Il porte deux boutons :
+Quand le champ change (saisie, ou changement d'article avec l'onglet déjà ouvert), l'outil vérifie 400 ms plus tard s'il existe une sauvegarde. Tant qu'aucune découverte n'a été lancée dans l'onglet, un bandeau s'affiche alors : « Dernière analyse du {date} · N mots-clés · analyse IA incluse ». Il porte deux boutons :
 - « Charger » (« Chargement... ») restaure la découverte sans aucun appel externe ;
-- « Rafraichir » supprime la sauvegarde et vide l'écran.
+- « Rafraîchir » supprime la sauvegarde et vide l'écran.
 
 **Limites actuelles.**
 - Une sauvegarde n'expire jamais : elle est proposée quel que soit son âge.

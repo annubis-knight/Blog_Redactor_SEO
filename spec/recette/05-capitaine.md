@@ -98,7 +98,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - le triangle déplie la liste des questions, puis la replie, sans sélectionner la carte (pas de bordure bleue, pas de panneau) ;
 - une seule pastille par question, issue du jugement de l'IA : verte « pertinent », orange « partiel » ou grise « hors-sujet », avec une courte justification en info-bulle ;
 - l'indicateur « PAA » de la carte en note sur 100 (« n/100 ») ;
-- un clic sur une question qui a une réponse déplie cette réponse ; une carte sans question affiche « Aucune PAA trouvee » ;
+- un clic sur une question qui a une réponse déplie cette réponse ; une carte sans question affiche « Aucune PAA trouvée » ;
 - en MOCK, les questions viennent du bac à sable : elles sont factices.
 
 **C'est un bug si :**
@@ -406,7 +406,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - un anneau gris « — », jamais « 0 » ;
 - une raison qui colle à la carte :
   - si elle a des questions PAA : « Score Pertinence indisponible — aucune suggestion autocomplete trouvée. Relance la validation pour récupérer les suggestions depuis la SERP. » ;
-  - si elle affiche « Aucune PAA trouvee » : « Score Pertinence indisponible — aucune question PAA trouvée pour ce mot-clé. Relance la validation pour récupérer les PAA depuis la SERP. ».
+  - si elle affiche « Aucune PAA trouvée » : « Score Pertinence indisponible — aucune question PAA trouvée pour ce mot-clé. Relance la validation pour récupérer les PAA depuis la SERP. ».
 
 **C'est un bug si :**
 - un « 0 » à la place de « — » ;

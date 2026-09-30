@@ -106,7 +106,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 - enfant, Capitaine : aucune étude ne démarre seule ; la liste reste vide, avec « Aucun mot-clé à valider pour cet article. » ;
 - la barre du bas : quatre puces, Radar, Capitaine, Lieutenants, Lexique, chacune avec « DB 0 » et « C 0 ». Les zéros restent affichés, estompés ;
 - Radar : « Mots-clés à scanner », le message « Aucun mot-clé en attente. Passe par l'onglet Discovery pour envoyer une sélection, … » et « Cartes radar (0) » ;
-- Lieutenants : « Verrouillez votre Capitaine dans l'onglet precedent pour analyser la SERP. », et aucune proposition ;
+- Lieutenants : « Verrouillez votre Capitaine dans l'onglet précédent pour analyser la SERP. », et aucune proposition ;
 - Structure : « Lecture de la structure des concurrents… », puis « Les concurrents n’ont pas encore été analysés : l’analyse partira avec « Générer la structure ». ». C'est une simple lecture, gratuite ;
 - Finalisation : « Aucun lieutenant verrouillé. », « Aucune structure validée. », « Aucun terme validé. » ;
 - une seule action payante est admise à l'ouverture du Capitaine : l'IA juge les questions « Autres questions posées » des cartes. Elle ne se voit presque pas.
@@ -151,7 +151,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 **Tu dois voir :**
 - Lexique : le bandeau « Verrouillez d'abord le Capitaine pour débloquer les actions Lexique. », et « Extraire le Lexique » grisé ;
 - Structure : « Retenez d’abord au moins un lieutenant dans l’onglet Lieutenants : la structure se construit à partir d’eux. », et « Générer la structure » et « Valider la structure » grisés ;
-- Lieutenants : « Verrouillez votre Capitaine dans l'onglet precedent pour analyser la SERP. », et « Analyser SERP » grisé ;
+- Lieutenants : « Verrouillez votre Capitaine dans l'onglet précédent pour analyser la SERP. », et « Analyser SERP » grisé ;
 - Finalisation de l'enfant : le titre « ⏳ Préparation en cours », et la ligne « Étapes restantes : Capitaine à verrouiller, Lieutenants à verrouiller, Structure à valider, Lexique à valider » ;
 - les deux boutons vers la Rédaction grisés, avec la même liste en infobulle ; un clic ne fait rien ;
 - Finalisation du pilier : « ✅ Prêt pour la Rédaction » et les deux boutons actifs. « Continuer vers la Rédaction → » ouvre la Rédaction sur le pilier ;
@@ -330,7 +330,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 
 **Tu dois voir :**
 - l'analyse part du Capitaine verrouillé : le premier onglet de résultats porte son mot-clé. En MOCK, les propositions viennent des questions « Autres questions » reçues (factices en MOCK), puis du capitaine (« prix … », « … avis », « comment choisir … ») ;
-- le badge de niveau « Intermédiaire », en toutes lettres (affiché en capitales), à côté de « Lieutenants proposes par l'IA » ;
+- le badge de niveau « Intermédiaire », en toutes lettres (affiché en capitales), à côté de « Lieutenants proposés par l'IA » ;
 - avec une seule case : le bandeau « Étape non validée. 1 lieutenant pour un article Intermédiaire : le minimum conseillé est 2. », avec « Voir pourquoi / décider ». Le point « Lieutenants » reste vide ;
 - avec deux cases : le bandeau disparaît et le point « Lieutenants » se remplit ;
 - le seuil suit le niveau : le pilier demandait 3 lieutenants au parcours express (« … pour un article Pilier : le minimum conseillé est 3. ») ;

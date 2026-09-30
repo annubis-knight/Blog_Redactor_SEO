@@ -42,7 +42,7 @@ defineEmits<{
       :class="{ active: showSeoPanel, disabled: !hasBody }"
       :aria-pressed="showSeoPanel"
       :disabled="!hasBody"
-      :title="!hasBody ? 'Generez un article pour activer le scoring SEO' : undefined"
+      :title="!hasBody ? 'Générez un article pour activer le scoring SEO' : undefined"
       @click="$emit('toggle-seo')"
     >
       SEO
@@ -52,7 +52,7 @@ defineEmits<{
       :class="{ active: showGeoPanel, disabled: !hasBody }"
       :aria-pressed="showGeoPanel"
       :disabled="!hasBody"
-      :title="!hasBody ? 'Generez un article pour activer le scoring GEO' : undefined"
+      :title="!hasBody ? 'Générez un article pour activer le scoring GEO' : undefined"
       @click="$emit('toggle-geo')"
     >
       GEO
@@ -62,7 +62,7 @@ defineEmits<{
       :class="{ active: showLinkSuggestions, disabled: !hasBody }"
       :aria-pressed="showLinkSuggestions"
       :disabled="!hasBody"
-      :title="!hasBody ? 'Generez un article pour activer le maillage' : undefined"
+      :title="!hasBody ? 'Générez un article pour activer le maillage' : undefined"
       @click="$emit('toggle-linking')"
     >
       Maillage
@@ -84,7 +84,7 @@ defineEmits<{
       :class="{ active: showBlocksPanel, disabled: !hasBody }"
       :aria-pressed="showBlocksPanel"
       :disabled="!hasBody"
-      :title="!hasBody ? 'Generez un article pour activer les blocs' : undefined"
+      :title="!hasBody ? 'Générez un article pour activer les blocs' : undefined"
       @click="$emit('toggle-blocks')"
     >
       Blocs

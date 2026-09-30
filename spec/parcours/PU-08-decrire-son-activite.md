@@ -51,7 +51,7 @@ Aux étapes « Cible », « Douleur », « Angle », « Promesse » et « CTA »
 ### 7. La retrouver à la Rédaction
 **Exigences :** FR-CER-CONTEXT-FOR-MOTEUR ⚠, FR-CER-MICRO-CONTEXT ⚠, FR-INFRA-MICRO-CONTEXTS
 
-La page Rédaction du cocon montre la même barre « Contexte stratégique ». Dans la rédaction guidée d'un article, « Contexte strategique » › « Contexte envoyé à Claude » affiche ta configuration et « Stratégie cocon validée ». Le sommaire, le premier jet et les passes d'enrichissement reçoivent la stratégie du cocon, ou celle de l'article quand le mode automatique en a écrit une. Pour un seul article, « Micro-contexte article » ajoute un angle, un ton et des consignes ; « Suggerer par IA » les propose à partir de toute ta configuration.
+La page Rédaction du cocon montre la même barre « Contexte stratégique ». Dans la rédaction guidée d'un article, « Contexte stratégique » › « Contexte envoyé à Claude » affiche ta configuration et « Stratégie cocon validée ». Le sommaire, le premier jet et les passes d'enrichissement reçoivent la stratégie du cocon, ou celle de l'article quand le mode automatique en a écrit une. Pour un seul article, « Micro-contexte article » ajoute un angle, un ton et des consignes ; « Suggérer par IA » les propose à partir de toute ta configuration.
 
 ### 8. Vérifier dans un texte généré
 **Exigences :** FR-INFRA-LOCAL-ENTITIES, FR-INFRA-COCOON-CONTEXT, FR-RED-ENRICH-SOURCES
@@ -73,7 +73,7 @@ Hors Discovery, les consignes du Moteur et de la Rédaction ne reçoivent ni le 
 ### Une stratégie vide, incomplète, ou un micro-contexte sans angle
 **Exigences :** FR-CER-CONTEXT-FOR-MOTEUR ⚠, NFR-INT-STRATEGY-OPTIONAL ⚠, FR-CER-SAISIE-PRESERVEE ⚠, FR-CER-MICRO-CONTEXT ⚠
 
-Sans stratégie, l'IA travaille quand même, de façon générique ; mais une stratégie sans aucune valeur validée affiche une barre « Contexte stratégique » vide, et en passant d'un cocon à l'autre la barre du précédent reste affichée le temps du chargement. Une réponse tapée pendant un enregistrement reste à l'écran sans entrer dans la stratégie, et un texte validé puis abandonné sans « Suivant » est perdu au rechargement. Le micro-contexte n'est transmis que si « Angle differenciant » est rempli : un ton ou des consignes seuls sont ignorés.
+Sans stratégie, l'IA travaille quand même, de façon générique ; mais une stratégie sans aucune valeur validée affiche une barre « Contexte stratégique » vide, et en passant d'un cocon à l'autre la barre du précédent reste affichée le temps du chargement. Une réponse tapée pendant un enregistrement reste à l'écran sans entrer dans la stratégie, et un texte validé puis abandonné sans « Suivant » est perdu au rechargement. Le micro-contexte n'est transmis que si « Angle différenciant » est rempli : un ton ou des consignes seuls sont ignorés.
 
 ### Une zone que le référentiel des lieux ne décrit pas
 **Exigences :** FR-INFRA-LOCAL-ENTITIES

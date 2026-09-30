@@ -28,8 +28,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 6. Dans la barre du haut, clique l'étape « Article ».
 
 **Tu dois voir :**
-- « SEO », « GEO », « Maillage » et « Enrichir » grisés ; au survol : « Generez un article pour activer le scoring SEO », « Generez un article pour activer le scoring GEO », « Generez un article pour activer le maillage », « Rédigez le premier jet pour l’enrichir » ;
-- le panneau SEO ouvert d'office, voilé par « Generez un article pour activer ce panneau » ;
+- « SEO », « GEO », « Maillage » et « Enrichir » grisés ; au survol : « Générez un article pour activer le scoring SEO », « Générez un article pour activer le scoring GEO », « Générez un article pour activer le maillage », « Rédigez le premier jet pour l’enrichir » ;
+- le panneau SEO ouvert d'office, voilé par « Générez un article pour activer ce panneau » ;
 - « IA Brief » actif ;
 - « Aucun sommaire disponible. Retournez au Moteur pour générer et valider les lieutenants avec leur structure Hn. », sans bouton « Valider le sommaire » ;
 - au clic sur « IA Brief » : le panneau « Analyse IA du Brief », une analyse qui part seule, le bouton « Analyse en cours... » grisé, puis le texte mis en forme et le bouton **« Relancer l'analyse »** ;
@@ -56,8 +56,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 **Tu dois voir :**
 - « Aucun contenu. Générez l'article ou retournez au workflow. » et le lien **« Retour au workflow »** ;
 - pas de « Générer l'article » (pas de sommaire), ni « Supprimer le contenu », ni « Visualiser l'article » ; « Sauvegarder » grisé ;
-- dans la barre : « SEO », « GEO », « Maillage », « Enrichir » et « Blocs », tous grisés (« Generez un article pour activer les blocs » sur « Blocs ») ; pas de « IA Brief » ;
-- le panneau « Blocs » ouvert d'office, voilé par « Generez un article pour activer ce panneau ».
+- dans la barre : « SEO », « GEO », « Maillage », « Enrichir » et « Blocs », tous grisés (« Générez un article pour activer les blocs » sur « Blocs ») ; pas de « IA Brief » ;
+- le panneau « Blocs » ouvert d'office, voilé par « Générez un article pour activer ce panneau ».
 
 **C'est un bug si :**
 - « IA Brief » existe dans l'éditeur ;
@@ -107,25 +107,25 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 
 **Gestes :**
 1. Page du cocon « Recette <date> », recharge (F5), puis **« Rédaction »** → carte du pilier. Étape « Brief & Structure ».
-2. Dans « Contexte strategique », déplie « Micro-contexte article ». Change une phrase de « Angle differenciant », puis clique ailleurs.
-3. Clique **« Suggerer par IA »**. Dans l'aperçu qui s'ouvre, clique **« Annuler »**.
-4. Relance **« Suggerer par IA »**, puis clique **« Appliquer »**.
-5. Ajoute un mot dans « Consignes specifiques », puis clique ailleurs. Recharge (F5) et rouvre « Micro-contexte article ».
+2. Dans « Contexte stratégique », déplie « Micro-contexte article ». Change une phrase de « Angle différenciant », puis clique ailleurs.
+3. Clique **« Suggérer par IA »**. Dans l'aperçu qui s'ouvre, clique **« Annuler »**.
+4. Relance **« Suggérer par IA »**, puis clique **« Appliquer »**.
+5. Ajoute un mot dans « Consignes spécifiques », puis clique ailleurs. Recharge (F5) et rouvre « Micro-contexte article ».
 6. Clique **« IA Brief »**. Regarde le bouton du panneau pendant puis après l'analyse. Clique **« Relancer l'analyse »**.
 7. Recharge (F5), puis rouvre **« IA Brief »**.
 
 **Tu dois voir :**
-- après chaque sortie de champ, « Sauvegarde » (avec une coche) pendant deux secondes ;
+- après chaque sortie de champ, « Sauvegardé » (avec une coche) pendant deux secondes ;
 - pendant la suggestion, « Suggestion en cours... » ; puis, les champs étant remplis, un encadré « Suggestion IA » : Angle, Ton, Consignes, l'ancien texte barré → le nouveau, avec « Appliquer » et « Annuler » ;
 - « Annuler » ne change rien ; « Appliquer » remplace les trois champs ;
-- en MOCK, après « Appliquer », les trois champs prennent un texte préparé propre au pilier (un angle qui cite son mot-clé, un ton, des consignes rédigées en phrases), et « Sauvegarde » s'affiche ;
+- en MOCK, après « Appliquer », les trois champs prennent un texte préparé propre au pilier (un angle qui cite son mot-clé, un ton, des consignes rédigées en phrases), et « Sauvegardé » s'affiche ;
 - après F5, les champs tels que tu les as laissés ;
 - l'analyse : « Analyse en cours... » grisé pendant l'écriture, un texte qui s'affiche au fil, puis « Relancer l'analyse » de nouveau actif ; la nouvelle analyse remplace l'ancienne ;
 - après F5, l'ancienne analyse a disparu : une nouvelle part à l'ouverture du panneau.
 
 **C'est un bug si :**
 - « Annuler » modifie un champ ;
-- après F5, un champ que tu as vu enregistré (« Sauvegarde ») a perdu son texte ;
+- après F5, un champ que tu as vu enregistré (« Sauvegardé ») a perdu son texte ;
 - l'analyse d'avant le rechargement est encore affichée.
 
 **⚠ Défaut connu :** FR-RED-BRIEF — l'analyse n'est pas enregistrée : un rechargement la perd, et la revoir la fait repayer. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
@@ -138,14 +138,14 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 2. Clique **« Continuer vers l'Article »**. Lis la barre de mots, en bas du bloc « Article ».
 3. Clique **« Revoir le Brief »**, puis une fois **« + »**. Puis **« Continuer vers l'Article »**.
 4. Ouvre **« SEO »**, onglet « Indicateurs », carte « Structure » : survole l'objectif de longueur.
-5. Reviens au brief, clique **« Reinitialiser »**. Recharge (F5).
+5. Reviens au brief, clique **« Réinitialiser »**. Recharge (F5).
 
 **Tu dois voir :**
 - « min – max mots » à ±20 % de la cible, « Cible : » entre « − » et « + », « Base : ~N mots (type Pilier) » ;
 - en bas du bloc « Article » : « X mots / N cible » avec une jauge, verte à partir de 80 % de la cible, orange en dessous ; N est la cible du brief ;
-- après « + » : la cible augmente de 100, la fourchette suit, le badge « ajuste » et « Reinitialiser » apparaissent ; la barre de mots passe aussitôt à la nouvelle cible, sans rechargement ; la carte « Structure » donne le même objectif ;
-- après « Reinitialiser » : la cible revient à la « Base », et y reste après F5 ;
-- si « ajuste » est déjà là à l'ouverture, la longueur retenue au premier jet diffère de la recommandation du jour : c'est normal.
+- après « + » : la cible augmente de 100, la fourchette suit, le badge « ajusté » et « Réinitialiser » apparaissent ; la barre de mots passe aussitôt à la nouvelle cible, sans rechargement ; la carte « Structure » donne le même objectif ;
+- après « Réinitialiser » : la cible revient à la « Base », et y reste après F5 ;
+- si « ajusté » est déjà là à l'ouverture, la longueur retenue au premier jet diffère de la recommandation du jour : c'est normal.
 
 **C'est un bug si :**
 - la « Cible », la barre de mots et la carte « Structure » donnent deux nombres différents ;
@@ -165,7 +165,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 7. Clique **« Valider le sommaire »**. Puis **« Revoir le Brief »**, et recharge (F5).
 
 **Tu dois voir :**
-- à l'ouverture, le sommaire déjà validé (il vient de l'onglet Structure du Moteur) : « Sommaire valide et sauvegarde. », « Modifier le sommaire » et « Continuer vers l'Article » ;
+- à l'ouverture, le sommaire déjà validé (il vient de l'onglet Structure du Moteur) : « Sommaire validé et sauvegardé. », « Modifier le sommaire » et « Continuer vers l'Article » ;
 - le H1 (★) en tête, puis « Introduction », les chapitres (●) et sous-parties (·) dans l'ordre, et « Conclusion » à la fin ; aucun niveau au-delà de H3 ;
 - en édition : le titre « Sommaire », « + Ajouter H2 », « + Ajouter H3 », et sur chaque ligne ✎, ✕ (pas sur le H1), +H2, +H3 ;
 - Entrée garde le nouveau titre ; Échap rend le titre d'avant ;
@@ -589,7 +589,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 2. **« Revoir le Brief »** : clique **« − »** jusqu'à une cible inférieure à X ÷ 1,15 (pour 2 500 mots : 2 100 ou moins). Puis **« Continuer vers l'Article »**.
 3. Clique **« Réduire (-N mots) »**, puis aussitôt **« Annuler réduction »**.
 4. Relance la réduction et laisse finir.
-5. **« Revoir le Brief »**, puis **« Reinitialiser »**.
+5. **« Revoir le Brief »**, puis **« Réinitialiser »**.
 
 **Tu dois voir :**
 - au geste 1 : le bouton grisé tant que le texte ne dépasse pas la cible de plus de 15 % ;
@@ -736,7 +736,7 @@ Passe le bouton en **RÉEL** pour ces vérifications, fais-les sur le cocon de r
 **Exigences :** FR-RED-REDUCE-SECTION, FR-RED-LANG-REVIEW, FR-RED-HUMANIZE-SECTION ⚠
 **Mode :** RÉEL (payant)
 **Gestes :**
-1. Refais RED-25 (cible abaissée, **« Réduire (-N mots) »**) jusqu'au bout, puis **« Reinitialiser »** la cible.
+1. Refais RED-25 (cible abaissée, **« Réduire (-N mots) »**) jusqu'au bout, puis **« Réinitialiser »** la cible.
 2. Ajoute dans un paragraphe `Chaque lead compte. We help small businesses grow online.`, Ctrl+S, puis **« Enrichir »**, **« Relecture de la langue »**.
 3. **« Humaniser l'article »**, jusqu'au bout.
 
@@ -756,7 +756,7 @@ Passe le bouton en **RÉEL** pour ces vérifications, fais-les sur le cocon de r
 **Exigences :** FR-RED-BRIEF ⚠
 **Mode :** RÉEL (payant)
 **Gestes :**
-1. Rédaction guidée de l'article enfant : remplis « Angle differenciant », puis clique ailleurs.
+1. Rédaction guidée de l'article enfant : remplis « Angle différenciant », puis clique ailleurs.
 2. Clique **« IA Brief »** et lis l'analyse jusqu'au bout.
 
 **Tu dois voir :**

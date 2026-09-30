@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useNlpAnalysis } from '@/composables/intent/useNlpAnalysis'
+import { plural } from '@/utils/plural'
 
 const emit = defineEmits<{
   'nlp-activated': []
@@ -95,7 +96,7 @@ async function handleRetry() {
     <!-- State: Analyzing -->
     <template v-else-if="nlpState === 'analyzing'">
       <div class="nlp-banner-content">
-        <span class="nlp-banner-title">NLP — Analyse de {{ analysisProgress.total }} mots-clés...</span>
+        <span class="nlp-banner-title">NLP — Analyse de {{ analysisProgress.total }} {{ plural(analysisProgress.total, 'mot-clé', 'mots-clés') }}...</span>
         <div class="nlp-dots">
           <span
             v-for="i in analysisProgress.total"

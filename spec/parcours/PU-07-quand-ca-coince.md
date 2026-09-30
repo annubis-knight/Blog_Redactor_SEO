@@ -61,7 +61,7 @@ Un clic sur « MOCK » passe le bouton à « RÉEL », en vert, et la pile affic
 ### 9. Reprendre sans repayer
 **Exigences :** FR-INFRA-API-CACHE, FR-INFRA-GET-OR-FETCH, FR-INFRA-KEYWORD-DISCOVERIES, FR-MOT-EXPLORATIONS-HYDRATATION, NFR-INT-SERP-ONCE, NFR-COST-CACHE-FIRST ⚠
 
-Rouvre l'article et relance l'action : ce qui a été obtenu avant l'incident est relu, pas racheté. Au Moteur, l'invite « Charger … » et son bouton « DB n » rappellent les candidats étudiés et les lieutenants proposés ; une nouvelle « Analyser SERP » revient avec « (cache) » ; en Discovery, le bandeau « Derniere analyse du … » propose « Charger », sans nouvel appel. Seuls « Rafraîchir » (« Rafraichir » en Discovery) et une mesure de plus de 7 jours repaient. Exception : le scan Radar rachète ses mesures à chaque fois.
+Rouvre l'article et relance l'action : ce qui a été obtenu avant l'incident est relu, pas racheté. Au Moteur, l'invite « Charger … » et son bouton « DB n » rappellent les candidats étudiés et les lieutenants proposés ; une nouvelle « Analyser SERP » revient avec « (cache) » ; en Discovery, le bandeau « Dernière analyse du … » propose « Charger », sans nouvel appel. Seuls « Rafraîchir » (« Rafraîchir » en Discovery) et une mesure de plus de 7 jours repaient. Exception : le scan Radar rachète ses mesures à chaque fois.
 
 ## Ce qui peut mal tourner
 

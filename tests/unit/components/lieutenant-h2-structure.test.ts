@@ -86,7 +86,7 @@ describe('LieutenantH2Structure', () => {
     expect(wrapper.emitted('regenerate-hn')![0]).toEqual([[]])
   })
 
-  it('verrou + Regenerer → emit regenerate-hn avec lockedHeadings du H2 verrouillé', async () => {
+  it('verrou + Régénérer → emit regenerate-hn avec lockedHeadings du H2 verrouillé', async () => {
     const hnStructure: ProposeLieutenantsHnNode[] = [
       { level: 2, text: 'H2 à garder' },
       { level: 2, text: 'H2 jetable' },
@@ -103,6 +103,22 @@ describe('LieutenantH2Structure', () => {
     const emitted = wrapper.emitted('regenerate-hn')
     expect(emitted).toBeTruthy()
     expect(emitted![0][0]).toEqual([{ level: 2, text: 'H2 à garder', children: undefined }])
+  })
+
+  // FR-UI-VOCABULAIRE-VERROUILLER — recette du 2026-09-30 : le cadenas disait « Deverrouiller ».
+  it('FR-UI-VOCABULAIRE-VERROUILLER — le cadenas d’un titre dit « Verrouiller », puis « Déverrouiller »', async () => {
+    const hnStructure: ProposeLieutenantsHnNode[] = [{ level: 2, text: 'H2', children: [{ level: 3, text: 'H3' }] }]
+    const wrapper = mount(LieutenantH2Structure, {
+      props: { ...BASE, hnStructure, selectedCardsSize: 3 },
+      global: { stubs: STUBS },
+    })
+    const [h2Lock, h3Lock] = wrapper.findAll('.hn-lock-btn')
+    expect(h2Lock!.attributes('title')).toMatch(/^Verrouiller/)
+    expect(h3Lock!.attributes('title')).toBe('Verrouiller')
+    await h2Lock!.trigger('click')
+    await h3Lock!.trigger('click')
+    expect(h2Lock!.attributes('title')).toMatch(/^Déverrouiller — /)
+    expect(h3Lock!.attributes('title')).toBe('Déverrouiller')
   })
 
   it('hnRegenStreaming=true → texte "Regeneration..." + bouton désactivé', () => {

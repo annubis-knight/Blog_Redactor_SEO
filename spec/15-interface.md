@@ -21,7 +21,7 @@ Contenu, identique partout :
 - En-tête : chevron, mot-clé (mots cliquables au Capitaine), pictogrammes d'intention (Informationnel, Commercial, Transactionnel, Navigationnel), ligne « vol · KD · CPC · PAA », anneau de score coloré du rouge (0) au vert (100) avec son libellé et le détail de ses composantes.
 - Une carte sans mesure de marché (longue traîne) n'affiche ni intention ni ligne de mesures.
 - Un score absent s'affiche « — ». En mode pertinence, l'outil en donne la raison : douleur manquante, longue traîne, questions PAA ou autocomplétion absentes, signaux nuls.
-- Le chevron déplie le raisonnement et l'arbre des questions PAA (questions filles sous leur question mère, réponse dépliable). Sans question : « Aucune PAA trouvee ».
+- Le chevron déplie le raisonnement et l'arbre des questions PAA (questions filles sous leur question mère, réponse dépliable). Sans question : « Aucune PAA trouvée ».
 
 ## Les panneaux d'assistance IA
 *Exigences : FR-UI-AI-PANELS-PATTERN*
@@ -46,7 +46,7 @@ Structure commune (Discovery, Lexique, Capitaine) :
 *Exigences : FR-UI-ARTICLE-SHARED*
 
 La vue de rédaction guidée (ouverte depuis la liste Rédaction du cocon) et l'éditeur libre (« Éditer l'article », ou son adresse ; voir § 18) partagent :
-- la barre de panneaux « SEO », « GEO », « Maillage », « Enrichir » ; chaque bouton reste grisé tant que l'article n'a pas de texte (« Generez un article pour activer le scoring SEO », « Rédigez le premier jet pour l'enrichir »…) ;
+- la barre de panneaux « SEO », « GEO », « Maillage », « Enrichir » ; chaque bouton reste grisé tant que l'article n'a pas de texte (« Générez un article pour activer le scoring SEO », « Rédigez le premier jet pour l'enrichir »…) ;
 - la zone de panneaux redimensionnable, qui contient le panneau « Enrichir » ;
 - la barre de progression des sections ;
 - la génération du premier jet (affichage chapitre par chapitre, sauvegarde, coût, porte « accepter le premier jet », voir [Rédaction](13-redaction.md)).

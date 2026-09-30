@@ -27,6 +27,7 @@ import { useCapitaineScan } from '@/composables/keyword/useCapitaineScan'
 import { useCompositionCheck } from '@/composables/seo/useCompositionCheck'
 import { useExploredKeywords, isVariantMeasured } from '@/composables/keyword/useExploredKeywords'
 import { candidatesFromHistory } from '@shared/captain-candidates.js'
+import { articleLevelToDisplayLabel } from '@shared/utils/article-level.js'
 import type { ExploredKeywordEntry } from '@/composables/keyword/useExploredKeywords'
 import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
 import { useStreaming } from '@/composables/editor/useStreaming'
@@ -1346,7 +1347,7 @@ onUnmounted(() => abortAllAiStreams())
         </CollapsableSection>
 
         <p class="level-info">
-          Niveau : <strong>{{ currentResult.articleLevel }}</strong>
+          Niveau : <strong>{{ articleLevelToDisplayLabel(currentResult.articleLevel) }}</strong>
           <span v-if="currentResult.fromCache"> — résultat en cache</span>
         </p>
 

@@ -95,12 +95,12 @@ onMounted(() => {
           <span class="section-label">Capitaine</span>
         </button>
         <div v-show="showCapitaine" class="kw-section-body">
-          <p class="section-hint">Le mot-cle principal cible dans le Title, H1 et URL</p>
+          <p class="section-hint">Le mot-clé principal ciblé dans le Title, H1 et URL</p>
           <div class="capitaine-input">
             <input
               :value="store.keywords.capitaine"
               class="input-capitaine"
-              placeholder="Mot-cle principal..."
+              placeholder="Mot-clé principal..."
               @input="store.setCapitaine(($event.target as HTMLInputElement).value)"
             />
           </div>
@@ -146,10 +146,10 @@ onMounted(() => {
           <svg class="kw-chevron" :class="{ open: showLexique }" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          <span class="section-label">Lexique semantique <span class="count">({{ store.keywords.lexique.length }})</span></span>
+          <span class="section-label">Lexique sémantique <span class="count">({{ store.keywords.lexique.length }})</span></span>
         </button>
         <div v-show="showLexique" class="kw-section-body">
-          <p class="section-hint">10-15 termes LSI a inclure naturellement dans le corps de texte</p>
+          <p class="section-hint">10-15 termes LSI à inclure naturellement dans le corps de texte</p>
           <div class="kw-tags">
             <KeywordLevelBadge
               v-for="term in store.keywords.lexique"
@@ -175,7 +175,7 @@ onMounted(() => {
             :disabled="store.isSuggestingLexique || !store.keywords.capitaine"
             @click="handleSuggestLexique"
           >
-            {{ store.isSuggestingLexique ? 'Generation...' : 'Suggerer le Lexique via Claude' }}
+            {{ store.isSuggestingLexique ? 'Génération...' : 'Suggérer le Lexique via Claude' }}
           </button>
         </div>
       </div>

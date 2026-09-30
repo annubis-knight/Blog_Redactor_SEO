@@ -12,6 +12,18 @@ export type DiscoverySource =
   | 'suggest-prepositions'
   | 'longtail-ai'
 
+/** Libellé affiché de chaque source : titre de sa section dans Discovery, raison d'une carte venue de Discovery. */
+export const DISCOVERY_SOURCE_LABELS: Record<DiscoverySource, string> = {
+  'autocomplete': 'Suggestions Google',
+  'suggest-alphabet': 'Alphabet (A-Z)',
+  'suggest-questions': 'Questions',
+  'suggest-intents': 'Intent Modifiers',
+  'suggest-prepositions': 'Prepositions',
+  'ai': 'IA Claude',
+  'dataforseo': 'DataForSEO',
+  'longtail-ai': 'Courte-traîne IA (PAA-friendly)',
+}
+
 export interface DiscoveredKeyword {
   keyword: string
   source: DiscoverySource
@@ -76,7 +88,7 @@ export function toRadarKeywords(keywords: DiscoveredKeyword[]): RadarKeyword[] {
     seen.add(key)
     result.push({
       keyword: k.keyword,
-      reasoning: k.reasoning ?? `Discovered via ${k.source}`,
+      reasoning: k.reasoning ?? `Trouvé par Discovery : ${DISCOVERY_SOURCE_LABELS[k.source]}.`,
     })
   }
   return result

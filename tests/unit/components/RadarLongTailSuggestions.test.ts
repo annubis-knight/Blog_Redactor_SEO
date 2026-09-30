@@ -61,7 +61,7 @@ describe('moteur:radar RadarLongTailSuggestions', () => {
   })
 
   describe('generation flow', () => {
-    it('clicks Suggerer → loading → success → list with checkboxes', async () => {
+    it('clicks Suggérer → loading → success → list with checkboxes', async () => {
       // Promesse manuelle pour controller le moment de resolution
       let resolveApi!: (value: { suggestions: LongTailSuggestion[]; fromCache: boolean }) => void
       const apiPromise = new Promise<{ suggestions: LongTailSuggestion[]; fromCache: boolean }>((resolve) => {
@@ -153,13 +153,13 @@ describe('moteur:radar RadarLongTailSuggestions', () => {
   })
 
   describe('error state', () => {
-    it('shows error message and Reessayer button when generation fails', async () => {
+    it('shows error message and Réessayer button when generation fails', async () => {
       mockApiPost.mockRejectedValueOnce(new Error('AI down'))
       const wrapper = mount(RadarLongTailSuggestions, { props: baseProps })
       await wrapper.find('[data-testid="btn-suggest-longtail"]').trigger('click')
       await flushPromises()
       expect(wrapper.text()).toMatch(/Erreur/i)
-      expect(wrapper.find('[data-testid="btn-suggest-longtail"]').text()).toMatch(/Reessayer/i)
+      expect(wrapper.find('[data-testid="btn-suggest-longtail"]').text()).toMatch(/Réessayer/i)
     })
   })
 })

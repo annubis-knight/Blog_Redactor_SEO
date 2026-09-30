@@ -209,7 +209,7 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
 
 **Gestes :**
 1. Depuis l'arbre du Cerveau (lien « Le rédiger »), ou depuis la page du cocon puis « Rédaction » et la carte de l'article.
-2. Bloc « Micro-contexte article » : remplis au moins « Angle differenciant ».
+2. Bloc « Micro-contexte article » : remplis au moins « Angle différenciant ».
 3. Si **« Valider le sommaire »** est affiché, clique-le : il t'amène directement à l'étape Article. Si le sommaire est déjà validé, clique **« Continuer vers l'Article »**.
 4. Clique **« Générer l'article »**.
 

@@ -689,7 +689,7 @@ async function analyzeSERPWithStep(): Promise<void> {
 
     <!-- F5 — Soft gate uniquement au premier passage (avant toute analyse IA) -->
     <div v-if="!isCaptaineLocked && !hasEverAnalyzed" class="soft-gate-message">
-      <p>Verrouillez votre Capitaine dans l'onglet precedent pour analyser la SERP.</p>
+      <p>Verrouillez votre Capitaine dans l'onglet précédent pour analyser la SERP.</p>
     </div>
 
     <!-- Suggestions de keywords issues du Radar DB-first, à ajouter comme lieutenants candidats. -->
