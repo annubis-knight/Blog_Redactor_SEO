@@ -16,7 +16,7 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 ## Vérifications
 
 ### CAP-1 — À la première visite, le mot-clé de l'article attend ton clic
-**Exigences :** FR-CAP-SCAN ⚠, FR-MOT-NO-AUTO-ACTION ⚠
+**Exigences :** FR-CAP-SCAN ⚠, FR-MOT-NO-AUTO-ACTION
 
 Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot-clé de l'article est proposé, et c'est toi qui lances son étude.
 
@@ -35,8 +35,6 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - une étude démarre au geste 2, sans ton clic (payant en RÉEL) ;
 - après ton clic, la carte reste bloquée en cours d'étude ;
 - le mot-clé apparaît deux fois.
-
-**⚠ Défaut connu :** FR-MOT-NO-AUTO-ACTION — aujourd'hui, le mot-clé de l'article est encore étudié d'office dès l'ouverture de l'onglet (« Validation en cours... » sans clic). C'est attendu tant que le défaut n'est pas corrigé. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -181,7 +179,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - « Régénérer » relance sans rien demander, ou « Annuler » relance quand même ;
 - l'avis reste vide, sans texte ni message d'erreur.
 
-**⚠ Défaut connu :** l'avis n'est jamais enregistré et il est redemandé pour chaque candidat à chaque réouverture ; la stratégie du cocon n'est pas transmise. La réouverture se vérifie à la CAP-14. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-8 — Le verdict d'un candidat
 **Exigences :** FR-CAP-SCAN ⚠
@@ -233,7 +231,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - la « Moyenne » ne correspond pas aux anneaux des racines notées (une racine « — » ne compte pas) ;
 - afficher une combinaison ajoute une carte à la liste, ou remet des notes à « — ».
 
-**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-10 — Verrouiller passe d'abord par la porte
 **Exigences :** FR-CAP-LOCK-GATE
@@ -352,7 +350,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - aucune carte verte alors que le point « Capitaine » de l'article est plein ;
 - une mesure a changé (par exemple un « — » devenu « 0 »).
 
-**⚠ Défaut connu :** la provenance radar / longue traîne / saisie n'est pas enregistrée ; un écran dont les mots-clés ne sont pas encore chargés peut envoyer un Capitaine vide et des listes vides, qui effacent les décisions enregistrées (défaut latent) ; déverrouiller en archivant les lieutenants envoie deux enregistrements concurrents. Et l'avis de l'IA n'est jamais enregistré : il est redemandé pour chaque candidat à chaque réouverture (une ligne « Analyse IA capitaine » par carte), sans la stratégie du cocon. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** la provenance radar / longue traîne / saisie n'est pas enregistrée ; un écran dont les mots-clés ne sont pas encore chargés peut envoyer un Capitaine vide et des listes vides, qui effacent les décisions enregistrées (défaut latent) ; l'avis de l'IA est rédigé sans la stratégie du cocon. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-CAP-LIST-SIDEPANEL — après un envoi depuis le Radar, le Capitaine verrouillé n'est plus marqué ni en tête, et les candidats déjà étudiés quittent la liste ; sur un article qui avait déjà des candidats, les autres cartes envoyées n'apparaissent qu'à la réouverture. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -375,7 +373,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - les racines n'ont plus de note (« — » partout) et « Moyenne » a disparu ;
 - une racine mesurée à la CAP-9 s'affiche avec « — » partout et un verdict « GRAY ».
 
-**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-16 — Le Score Pertinence ne change pas entre l'étude et la réouverture
 **Exigences :** FR-CAP-RELEVANCE-LIVE ⚠, FR-CAP-RELEVANCE-INPUTS, FR-CAP-RELEVANCE-INTENT-SIGNAL
@@ -485,7 +483,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 
 **⚠ Défaut connu :** dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
-**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-CAP-INPUT — ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -596,7 +594,7 @@ Passe le bouton en **RÉEL**, travaille sur l'article enfant (sauf mention), et 
 - l'avis est vide, en anglais, ou sans ses trois parties ;
 - il cite les notes brutes (« 72/100 »).
 
-**⚠ Défaut connu :** l'avis n'est jamais enregistré et il est redemandé pour chaque candidat à chaque réouverture (une ligne payante par carte) ; la stratégie du cocon n'est pas transmise (l'avis n'en parle jamais). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** la stratégie du cocon n'est pas transmise (l'avis n'en parle jamais). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-R4 — Les racines d'un mot-clé peu cherché sont étudiées d'office
 **Exigences :** FR-CAP-ROOTS ⚠
@@ -613,7 +611,7 @@ Passe le bouton en **RÉEL**, travaille sur l'article enfant (sauf mention), et 
 - aucune racine alors que le volume est sous le seuil ;
 - une racine n'est pas un début du mot-clé, ou plus de 5 racines.
 
-**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ## Hors recette
 

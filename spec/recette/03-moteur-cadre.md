@@ -92,7 +92,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 **⚠ Défaut connu :** les résultats et les cases cochées de Discovery survivent au changement d'article : seul le mot-clé racine change. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### MOT-4 — Choisir un article ne lance rien de payant
-**Exigences :** FR-MOT-NO-AUTO-ACTION ⚠, FR-MOT-EXPLORATIONS-HYDRATATION, FR-MOT-EXPLORATION-COUNTS, FR-MOT-PHASES
+**Exigences :** FR-MOT-NO-AUTO-ACTION, FR-MOT-EXPLORATIONS-HYDRATATION, FR-MOT-EXPLORATION-COUNTS, FR-MOT-PHASES
 
 **Gestes :**
 1. Choisis le pilier. Le Moteur s'ouvre sur Lexique : ne clique rien pendant 10 secondes.
@@ -114,9 +114,9 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 **C'est un bug si :**
 - une puce affiche un nombre non nul pour cet article jamais ouvert ;
 - des propositions de Lieutenants, des termes de Lexique ou des mots-clés à scanner apparaissent sans que tu aies rien fait ;
-- Radar, Lieutenants, Structure ou Finalisation lancent seuls une analyse (roue qui tourne, « Analyse … en cours »).
-
-**⚠ Défaut connu :** ouvrir l'onglet Lexique, Capitaine verrouillé, peut lancer seul l'analyse IA du lexique quand aucune recommandation n'est enregistrée ; ouvrir le Capitaine d'un article sans candidat étudie seul le premier mot-clé suggéré (une carte « Validation en cours... » apparaît), avec de possibles appels DataForSEO et Google. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+- Radar, Lieutenants, Structure ou Finalisation lancent seuls une analyse (roue qui tourne, « Analyse … en cours ») ;
+- le Capitaine étudie seul le mot-clé proposé (une carte « Validation en cours... » apparaît), ou le Lexique lance seul son extraction ou son analyse IA ;
+- « Coûts API » gagne une ligne « Analyse IA capitaine » alors que tu n'as rien étudié.
 
 ### MOT-5 — Ouvrir n'importe quel onglet, dans n'importe quel ordre
 **Exigences :** FR-MOT-FREE-NAV, FR-MOT-PHASES
@@ -422,7 +422,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 **⚠ Défaut connu :** FR-MOT-CACHE-PANEL-COUNT — la puce Radar affiche « C 1 » dès qu'un scan est connu, même enregistré, et le bouton « C 1 » de l'invite ne recharge rien. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### MOT-17 — Rouvrir un article déjà travaillé : ce qui repart seul, ce qui est resservi
-**Exigences :** FR-MOT-PHASES, FR-MOT-NO-AUTO-ACTION ⚠, FR-MOT-CACHE-CASCADE ⚠
+**Exigences :** FR-MOT-PHASES, FR-MOT-NO-AUTO-ACTION, FR-MOT-CACHE-CASCADE ⚠
 
 **Gestes :**
 1. Recharge la page (F5). Choisis l'enfant, puis ne clique rien pendant 10 secondes.
@@ -438,8 +438,6 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 **C'est un bug si :**
 - « (cache) » manque pour un mot-clé analysé quelques minutes plus tôt ;
 - la nouvelle analyse décoche les lieutenants retenus.
-
-**⚠ Défaut connu :** ouvrir l'onglet Lexique, Capitaine verrouillé, peut lancer seul l'analyse IA du lexique quand aucune recommandation n'est enregistrée ; ouvrir le Capitaine d'un article sans candidat étudie seul le premier mot-clé suggéré, avec de possibles appels DataForSEO et Google. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** les appels d'IA de Discovery (génération, filtre de pertinence, analyse) ne consultent aucun cache ; seul le rechargement d'une découverte sauvegardée évite de les refaire ; un mot-clé sans difficulté ni coût par clic est remesuré, et repayé, à chaque étude. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 

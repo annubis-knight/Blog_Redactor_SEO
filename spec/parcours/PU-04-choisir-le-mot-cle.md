@@ -19,7 +19,7 @@ synced_with:
 ## Les étapes
 
 ### 1. Ouvrir le Moteur sur l'article
-**Exigences :** FR-MOT-ARTICLE-SELECTION ⚠, FR-MOT-FREE-NAV, FR-MOT-NO-AUTO-ACTION ⚠
+**Exigences :** FR-MOT-ARTICLE-SELECTION ⚠, FR-MOT-FREE-NAV, FR-MOT-NO-AUTO-ACTION
 
 Depuis la page du cocon, l'utilisateur clique la carte « Moteur », ouvre « Articles suggérés (N) » et clique le titre de l'article. Les onglets s'activent et le Moteur s'ouvre sur « Capitaine », le premier onglet utile d'un article qui n'a franchi aucune étape ; la barre « Résultats déjà calculés » apparaît en bas. Pour explorer avant de décider, il clique « Discovery » dans le groupe « 1 Générer » : Discovery et Radar restent ouverts à tout moment, explorer ne fige rien. Aujourd'hui, cette ouverture du Capitaine étudie déjà seule le mot-clé suggéré, avec de possibles appels payants.
 
@@ -108,7 +108,6 @@ Choisir un autre article doit repartir de ses propres données : le Radar, les c
 ## Défauts connus sur ce parcours
 
 - FR-MOT-ARTICLE-SELECTION — les résultats et les cases cochées de Discovery survivent au changement d'article : seul le mot-clé racine change ; sans article choisi, le bouton du bas « Continuer vers Lieutenants → » reste affiché et cliquable.
-- FR-MOT-NO-AUTO-ACTION — ouvrir l'onglet Lexique, Capitaine verrouillé, peut lancer seul l'analyse IA du lexique quand aucune recommandation n'est enregistrée ; ouvrir le Capitaine d'un article sans candidat étudie seul le premier mot-clé suggéré, avec de possibles appels DataForSEO et Google ; ouvrir le Capitaine, ou choisir un article dont l'onglet Capitaine a déjà été ouvert, redemande et fait payer l'avis expert IA de chaque candidat, même onglet caché.
 - FR-DIS-LONGTAIL-GENERATION — la courte-traîne générée avant « Découvrir » n'est pas filtrée et la ligne du filtre n'apparaît pas ; « Découvrir » l'efface ensuite.
 - FR-DIS-SEND-TO-RADAR — l'outil ouvre le Radar et demande l'étape avant d'avoir enregistré la liste, sans vérifier que l'enregistrement réussit ; les mots-clés cochés seulement en courte-traîne ne sont pas envoyés.
 - FR-RAD-MANUAL-ADD — un mot-clé déjà présent vide le champ sans aucun message.
@@ -125,8 +124,8 @@ Choisir un autre article doit repartir de ses propres données : le Radar, les c
 - FR-CAP-RELEVANCE-LIVE — juste après une étude, la note affichée vient d'un autre calcul que celle de la réouverture : sans racines, avec les anciens signaux du Radar.
 - FR-CAP-INPUT — ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête.
 - FR-CAP-SCAN — dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention ; un mot-clé dont le volume, la difficulté ou le CPC est absent est remesuré, et repayé, à chaque étude ; un échec d'étude s'affiche en anglais technique, sans cause (« Erreur : Keyword validation failed »).
-- FR-CAP-AI-PANEL — l'avis n'est jamais enregistré et il est redemandé pour chaque candidat à chaque réouverture ; la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur.
-- FR-CAP-ROOTS — à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte.
+- FR-CAP-AI-PANEL — la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur.
+- FR-CAP-ROOTS — à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte.
 - FR-CAP-LOCK-INTEGRITY — afficher une racine l'enregistre comme candidat et lance pour elle un avis IA payant ; la liste se reconstruit alors, et les notes des candidats étudiés pendant la session passent à « — » ; deux casses d'un même mot-clé comptent pour deux candidats.
 - FR-CAP-CHECK — déverrouiller le Capitaine retire l'étape même quand l'enregistrement du déverrouillage a échoué.
 - FR-INFRA-GATE-WAIVER — le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis.

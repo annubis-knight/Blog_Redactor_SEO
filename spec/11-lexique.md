@@ -16,8 +16,8 @@ Le lexique est la liste des mots du métier que l'article doit employer. L'ongle
 - L'outil vérifie, sans appel payant, si les pages concurrentes du capitaine ont déjà été lues :
   - lues, ou vérification sans réponse : le bouton « Extraire le Lexique » ;
   - jamais lues : « Le scrape SERP n'est pas encore disponible pour ce mot-clé. » et « Lancer l'analyse SERP (~$0.003 DataForSEO) ». Ce bouton ouvre « Lancer l'analyse SERP DataForSEO ? » (« Le scrape récupère les pages Top 10 Google et leur contenu pour calculer le TF-IDF. Coût estimé : $0.003. »), avec « Confirmer (~$0.003) » et « Annuler ». Seule la confirmation lance l'analyse, puis l'extraction.
-- Capitaine verrouillé : l'extraction déjà enregistrée pour le capitaine est relue avec l'avis de l'IA. S'il n'y en a pas et que les pages ont été lues, l'extraction part seule (elle ne paie aucun appel externe).
-- Chaque nouvelle extraction lance aussitôt l'analyse de l'IA si aucun avis n'est connu : ouvrir l'onglet peut donc déclencher un appel à l'IA sans clic.
+- Capitaine verrouillé : l'extraction déjà enregistrée pour le capitaine est relue avec l'avis de l'IA. S'il n'y en a pas, rien ne part seul : « Extraire le Lexique » attend ton clic.
+- L'analyse de l'IA ne part que sur un clic (« Analyser avec l'IA », « Régénérer l'analyse », « Relancer l'analyse IA ») : ni l'ouverture de l'onglet, ni une extraction, ni un changement d'onglet d'exploration ne la lancent.
 
 ## Extraire le lexique
 *Exigences : FR-LEX-TFIDF, FR-LEX-METIER-ONLY*
@@ -93,7 +93,6 @@ Le TF-IDF est ici une mesure simple : sur combien de pages concurrentes un mot a
 
 ## Limites connues (Lexique)
 
-- Ouvrir l'onglet peut lancer seul l'avis de l'IA (appel payant) quand une extraction part ou revient sans avis.
 - « Tester un mot-clé » peut payer une analyse des concurrents sans l'annoncer.
 - Capitaine déverrouillé : les explorations enregistrées ne sont pas relues d'elles-mêmes à l'ouverture de l'onglet.
 - Les termes manquants cités par l'IA à chaud ne passent pas le filtre des mots génériques ; ils le passent à la relecture.

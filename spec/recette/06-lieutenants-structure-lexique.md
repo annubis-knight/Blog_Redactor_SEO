@@ -160,7 +160,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 4. Recharge, puis ouvre l'onglet Lexique et ne clique rien.
 
 **Tu dois voir :**
-- « Analyse IA en cours... », puis un court résumé ;
+- juste après l'extraction, aucune analyse IA ne part d'elle-même : pas de « Analyse IA en cours... » avant ton clic ;
 - aucune case cochée, ni avant ni après l'analyse ;
 - le panneau « Analyse IA Lexique » replié (« Cliquez pour … ») ; déplié, le décompte « N termes analysés — n recommandés · m écartés. » et « Régénérer l'analyse » une fois l'analyse faite ;
 - au clic sur « Analyser avec l'IA » : « Analyse IA en cours... », puis le résumé ;
@@ -168,9 +168,10 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 
 **C'est un bug si :**
 - une case se coche toute seule ;
+- l'analyse IA part sans clic, ou deux fois pour un seul clic ;
 - le résumé n'apparaît jamais.
 
-**⚠ Défaut connu :** l'analyse part d'elle-même après chaque extraction, y compris l'extraction lancée seule à l'ouverture de l'onglet : un appel à l'IA part sans clic. Et le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 > En MOCK, l'IA simulée donne un avis par terme reçu : après l'analyse, chaque terme porte « IA recommandé » ou « IA optionnel », avec sa raison en info-bulle, et « Termes manquants : » s'affiche sous le résumé (« N termes analysés pour « <capitaine> » : X recommandés, Y écartés. … »). Le panneau « Analyse IA Lexique », lui, reste « à lancer » : c'est le défaut connu ci-dessus, pas la simulation. La pertinence des badges se juge en RÉEL (LEX-R1).
 
@@ -806,7 +807,7 @@ Sur le cocon du parcours express refait en RÉEL (étapes 1 à 6), bouton sur **
 - plus de 5 termes manquants ;
 - « Annuler » lance quand même l'analyse.
 
-**⚠ Défaut connu :** l'analyse part d'elle-même après chaque extraction, y compris l'extraction lancée seule à l'ouverture de l'onglet : un appel à l'IA part sans clic. Et le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LEX-R2 — Changer d'onglet ne rappelle pas l'IA
 **Exigences :** FR-LEX-MULTI-KEYWORD-TABS ⚠, FR-LEX-LECTURE-VS-VERROUILLAGE

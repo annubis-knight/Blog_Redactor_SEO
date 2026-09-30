@@ -109,7 +109,6 @@ flowchart LR
 ## Limites connues
 
 - **Déverrouillage non protégé** : `performUnlock` ne vérifie pas le résultat de `saveKeywords`. Si l'enregistrement échoue, l'écran se montre déverrouillé et l'étape est retirée, alors que la base garde le Capitaine ; la réconciliation remet l'étape à l'ouverture suivante.
-- **« Tout réinitialiser » envoie deux enregistrements concurrents** : `handleUnlockArchive` lance `saveKeywords` (capitaine encore présent) sans l'attendre, puis `performUnlock` en lance un second (capitaine vide). Le serveur les traite dans l'ordre d'arrivée.
 - **En-tête du Lexique vide après déverrouillage** : `captainKeyword` de `MoteurView` vaut alors `''` (l'opérateur `??` ne remplace pas une chaîne vide), et l'en-tête affiche une chaîne vide au lieu de « — ».
 - **Copie non garantie** : un échec de `updateArticleCaptainKeyword` n'est que journalisé. La Rédaction, qui lit la copie, retomberait alors sur le titre de l'article.
 - **Cannibalisation élargie** : la barre compare aussi les mots-clés **suggérés** ; seules ses lignes portent l'alerte, sans nommer l'article concurrent (FR-MOT-CANNIBALIZATION non tenue).

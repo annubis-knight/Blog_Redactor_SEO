@@ -440,10 +440,12 @@ L'outil doit proposer, en bas de chaque onglet, de passer à l'onglet suivant, s
 - Un lien « ← Retour au cocon » est toujours présent.
 
 ### FR-MOT-NO-AUTO-ACTION — Pas d'action coûteuse au changement d'onglet
-**Statut :** non tenue (ouvrir l'onglet Lexique, Capitaine verrouillé, peut lancer seul l'analyse IA du lexique quand aucune recommandation n'est enregistrée ; ouvrir le Capitaine d'un article sans candidat étudie seul le premier mot-clé suggéré, avec de possibles appels DataForSEO et Google ; ouvrir le Capitaine, ou choisir un article dont l'onglet Capitaine a déjà été ouvert, redemande et fait payer l'avis expert IA de chaque candidat, même onglet caché)
+**Statut :** active
 L'outil ne doit déclencher aucune action payante (appel d'IA, requête DataForSEO, lecture de pages web) au seul fait d'ouvrir un onglet ou de choisir un article, à une exception près, déclarée.
 - Ouvrir un onglet ne fait que relire ce qui est déjà enregistré.
 - Chaque action payante est derrière un bouton ou un geste explicite.
+- Choisir un article propose son mot-clé dans le champ du Capitaine sans l'étudier : l'étude part sur « Analyser » (décision du 2026-09-29).
+- Un avis ou une analyse de l'IA déjà obtenu est réaffiché tel quel ; celui qui manque attend un clic. Ouvrir le Lexique n'extrait rien et ne lance pas son analyse IA.
 - Exception : ouvrir l'onglet Capitaine lance le jugement par l'IA des questions « Autres questions posées » (PAA, les questions que Google affiche sous les résultats), une fois par article et par session.
 
 ### FR-MOT-RAW-KPIS — Métriques marché brutes, jamais « 0 » par défaut
@@ -848,6 +850,7 @@ L'utilisateur doit pouvoir taper un mot-clé pour l'étudier au Capitaine.
 - Une saisie vide est refusée.
 - Un mot-clé nouveau rejoint la liste et son étude (scan) démarre aussitôt.
 - Un mot-clé déjà présent (casse ignorée) est ré-étudié à sa place, sans doublon.
+- Une seule étude à la fois par mot-clé : un double clic sur « Analyser » n'en envoie qu'une.
 
 ### FR-CAP-SCAN — Étudier les indicateurs marché d'un mot-clé
 **Statut :** non tenue (dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention ; un mot-clé dont le volume, la difficulté ou le CPC est absent est remesuré, et repayé, à chaque étude ; un échec d'étude s'affiche en anglais technique, sans cause (« Erreur : Keyword validation failed »))
@@ -880,21 +883,23 @@ Au Capitaine, chaque carte doit afficher son Score Pertinence ; le Score Marché
 - L'intention de la SERP (la page de résultats Google) entre dans le Score Marché dès l'étude, mesurée ou relue en base.
 
 ### FR-CAP-AI-PANEL — Avis de l'IA sur un candidat
-**Statut :** non tenue (l'avis n'est jamais enregistré et il est redemandé pour chaque candidat à chaque réouverture ; la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur)
+**Statut :** non tenue (la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur)
 Pour chaque candidat étudié, l'outil doit afficher un avis d'expert rédigé par l'IA.
 - L'avis compte trois parties : potentiel éditorial, opportunités et risques, recommandation.
 - Le texte s'affiche au fil de la génération.
 - L'avis tient compte du mot-clé, du niveau, du point de douleur, des deux scores et de la stratégie du cocon.
 - Le bouton de régénération demande confirmation (« Cela consommera un appel Claude »).
-- Un avis déjà obtenu est réaffiché à la réouverture de l'article, sans nouvel appel.
+- L'avis est demandé d'office à la fin d'une étude que l'utilisateur a lancée (saisie, envoi depuis le Radar, recalcul), une seule fois ; jamais au choix d'un article ni à la réouverture. Un avis en échec n'est pas redemandé seul : « Régénérer » relance.
+- L'avis obtenu est enregistré avec le candidat, et réaffiché à la réouverture de l'article, sans nouvel appel.
 
 ### FR-CAP-ROOTS — Racines d'un mot-clé long
-**Statut :** non tenue (à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte)
+**Statut :** non tenue (à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte)
 L'outil doit décomposer un mot-clé d'au moins 3 mots en racines, par troncature depuis la fin, et permettre de les comparer.
 - Jusqu'à 5 racines, de la plus longue à la plus courte ; une racine garde au moins 2 mots significatifs (hors mots-outils).
 - Quand le volume du mot-clé n'est pas au vert, ses racines sont étudiées d'office.
 - Le panneau de détail liste les racines, avec leur Score Pertinence et leur moyenne ; un clic sur une racine l'affiche à la place du mot-clé.
 - Cliquer sur les mots d'une carte (au-delà des 2 premiers mots significatifs) étudie la combinaison choisie.
+- Une racine relue sans ses mesures est étudiée quand on la choisit (mot de la carte ou colonne de détail) ; une étude qui échoue l'annonce (« Impossible de valider "…" ») et la carte garde son mot-clé.
 
 ### FR-CAP-LOCK-RADIO — Un seul Capitaine par article
 **Statut :** active
@@ -928,7 +933,7 @@ Sans point de douleur d'au moins 10 caractères, l'outil doit continuer de fonct
 - Le Score Marché et le verdict restent calculés.
 
 ### FR-CAP-PERSIST — Les candidats étudiés sont enregistrés par article
-**Statut :** non tenue (la provenance radar / longue traîne / saisie n'est pas enregistrée ; un écran dont les mots-clés ne sont pas encore chargés peut envoyer un Capitaine vide et des listes vides, qui effacent les décisions enregistrées (défaut latent) ; déverrouiller en archivant les lieutenants envoie deux enregistrements concurrents)
+**Statut :** non tenue (la provenance radar / longue traîne / saisie n'est pas enregistrée ; un écran dont les mots-clés ne sont pas encore chargés peut envoyer un Capitaine vide et des listes vides, qui effacent les décisions enregistrées (défaut latent))
 Chaque candidat étudié pour un article doit être enregistré, avec ses questions PAA, et réaffiché à la réouverture.
 - Un candidat est enregistré dès son étude.
 - La réouverture réaffiche tous les candidats, leurs indicateurs et le Capitaine verrouillé.
@@ -1225,11 +1230,12 @@ L'utilisateur doit retenir les termes qu'il veut dans son article en cochant une
 - Recharger la page retrouve exactement les choix.
 
 ### FR-LEX-AI-PANEL — Analyse du lexique par l'IA
-**Statut :** non tenue (l'analyse part d'elle-même après chaque extraction, y compris l'extraction lancée seule à l'ouverture de l'onglet : un appel à l'IA part sans clic. Et le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles ; le résumé et les termes manquants enregistrés ne s'affichent plus après un rechargement, et un changement d'onglet montre ceux de la dernière analyse, faite sur un autre mot-clé)
+**Statut :** non tenue (le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles ; le résumé et les termes manquants enregistrés ne s'affichent plus après un rechargement, et un changement d'onglet montre ceux de la dernière analyse, faite sur un autre mot-clé)
 L'IA doit analyser les termes extraits au regard de la douleur de l'article et de la stratégie du cocon, et dire lesquels recommander, lesquels écarter et quels termes manquent. Elle ne part que sur un clic.
 - Chaque terme analysé porte un badge « IA recommandé » ou « IA optionnel », avec la raison en info-bulle ; un terme sans décision lisible n'a pas de badge.
 - Un résumé et au plus 5 « Termes manquants » s'affichent au-dessus des listes ; le panneau « Analyse IA Lexique » compte les termes analysés, recommandés et écartés.
 - L'utilisateur peut relancer l'analyse (« Analyser avec l'IA », « Régénérer l'analyse », « Relancer l'analyse IA » après une erreur).
+- Ni une extraction, ni l'ouverture de l'onglet, ni un changement d'onglet d'exploration ne lancent l'analyse ; un clic en lance une seule.
 - L'analyse ne coche aucun terme.
 
 ### FR-LEX-MULTI-KEYWORD — Tester le lexique d'un autre mot-clé
@@ -2001,7 +2007,7 @@ L'outil doit disposer d'un référentiel de lieux (régions et autres noms de la
 - Un lieu rattaché à une région n'est proposé que si la zone du client nomme cette région ; les lieux sans région forment le référentiel par défaut, proposé seulement si la zone nomme l'une de ses régions.
 
 ### FR-INFRA-LIEUTENANT-EXPLORATIONS — Les propositions de lieutenants sont gardées par article
-**Statut :** non tenue (« Tout réinitialiser » n'archive les lieutenants qu'à l'écran : l'archivage enregistré n'est jamais demandé. Après un rechargement, ils reviennent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide, et la porte refuse l'étape. Et un lieutenant ajouté depuis le panneau d'aide n'est enregistré qu'une fois coché ; le message annonce toujours « 0 lieutenant(s) archivé(s) »)
+**Statut :** non tenue (« Tout réinitialiser » n'archive les lieutenants qu'à l'écran : l'archivage enregistré n'est jamais demandé. Après un rechargement, ils reviennent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide, et la porte refuse l'étape. Et un lieutenant ajouté depuis le panneau d'aide n'est enregistré qu'une fois coché)
 Toutes les propositions de lieutenants d'un article (de l'IA ou ajoutées à la main) doivent être gardées avec leur contexte, leur niveau de titre suggéré, leur score, leurs indicateurs du moment et leur statut.
 - Une proposition est enregistrée dès qu'elle est générée ou ajoutée.
 - À la réouverture, la liste est triée par score décroissant, les scores absents en bas.

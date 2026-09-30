@@ -34,7 +34,7 @@ L'utilisateur clique « Créer l'article de cette section » (infobulle « Propo
 Cocher un candidat préremplit « Titre de l'article », que l'utilisateur peut modifier (3 caractères au moins). « Créer l'article » affiche « Création… », puis « « … » est créé. ». Dans l'arbre, la section montre désormais le lien vers l'enfant et « À rédiger » ; l'enfant apparaît sous le pilier, badge « Intermédiaire ». Sur la carte indicative, il s'inscrit avec la marque « Créé ». Son niveau vient de sa place : il ne se choisit pas et ne se change pas.
 
 ### 4. Ouvrir l'enfant au Moteur et verrouiller son Capitaine
-**Exigences :** FR-MOT-PHASES, FR-MOT-NO-AUTO-ACTION ⚠, FR-CAP-LOCK-GATE, FR-MOT-CANNIBALIZATION ⚠
+**Exigences :** FR-MOT-PHASES, FR-MOT-NO-AUTO-ACTION, FR-CAP-LOCK-GATE, FR-MOT-CANNIBALIZATION ⚠
 
 Page du cocon › « Moteur » › « Articles suggérés » : l'enfant est rangé sous son niveau, six points vides, son mot-clé en pointillé. Un clic sur son titre ouvre l'onglet « Capitaine », où l'outil étudie de lui-même le mot-clé choisi au Cerveau. L'utilisateur le verrouille par le cadenas, en passant la porte si elle alerte. Si l'enfant prenait le même Capitaine qu'un autre article du cocon, une icône d'alerte orange le signalerait sur les deux lignes (« Cannibalisation : un autre article utilise le même capitaine »).
 
@@ -105,7 +105,6 @@ Si un lieutenant de l'enfant est le Capitaine du pilier, la porte des lieutenant
 - FR-RED-PROGRESS — rouvrir la rédaction guidée d'un article déjà rédigé ramène toujours à « Brief & Structure ».
 - FR-CER-COCOON-PROGRESSIVE — « La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur ; « Régénérer › Titre » sur une ligne « Créé » ne change le titre que sur la carte, sans l'enregistrer : le Moteur montre alors un autre titre que l'arbre et la Rédaction.
 - FR-CER-AIGUILLAGE — « Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur.
-- FR-MOT-NO-AUTO-ACTION — ouvrir l'onglet Lexique, Capitaine verrouillé, peut lancer seul l'analyse IA du lexique quand aucune recommandation n'est enregistrée ; ouvrir le Capitaine d'un article sans candidat étudie seul le premier mot-clé suggéré, avec de possibles appels DataForSEO et Google ; ouvrir le Capitaine, ou choisir un article dont l'onglet Capitaine a déjà été ouvert, redemande et fait payer l'avis expert IA de chaque candidat, même onglet caché.
 - FR-MOT-CANNIBALIZATION — l'alerte n'existe que sur les lignes de la barre des articles, sans nommer l'article concurrent ; les cartes du Radar et du Capitaine n'ont pas de badge.
 - FR-HN-TAB — un refus d'enregistrement de la structure arrête la validation sans aucun message à l'écran ; seul le refus du sommaire est dit.
 - FR-CER-WORD-COUNT-RECOMMEND — sans avis de l'IA, la raison de la longueur conseillée s'affiche en jargon technique (« Heuristique : 60% SERP avg … »).

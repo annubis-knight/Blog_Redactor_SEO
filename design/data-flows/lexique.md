@@ -42,11 +42,11 @@ Construction détaillée : [Moteur — Lieutenants, Structure, Lexique](../15-li
 - `POST /api/serp/tfidf` ([`server/routes/serp-analysis.routes.ts`](../../server/routes/serp-analysis.routes.ts)) → `analyzeLexique` ([`server/services/keyword/lexique-analysis.service.ts`](../../server/services/keyword/lexique-analysis.service.ts)) : lecture éventuelle des pages, `getTextContent` (**sans filtre d'âge**), 404 `NOT_FOUND` (`LexiqueScrapeMissingError`) sans texte, `extractTfidf`, puis `saveLexiqueTfidf` → `lexique_explorations.tfidf_terms` si un `articleId` est fourni.
 - [`server/services/keyword/tfidf.service.ts`](../../server/services/keyword/tfidf.service.ts) : `tokenize` (minuscules, lettres accentuées et tiret, écarte tout mot `isGenericWord`, garde l'accent) ; `computeTfidfFromTexts` (fréquence documentaire → niveau, densité arrondie à 0,1).
 - [`shared/utils/generic-terms.ts`](../../shared/utils/generic-terms.ts) : **source unique** de ce qui n'est pas du métier (`normalizeTerm`, `isGenericWord`, `isGenericTerm`, `splitGenericTerms`). « site », « blog », « article », « recherche » en sont volontairement absents.
-- Côté écran, [`LexiquePanel.vue`](../../src/components/moteur/LexiquePanel.vue) `fetchTfidf` : lancé par « Extraire », par « Lancer l'analyse SERP », par « Tester un mot-clé », et **d'office** par le watcher de restauration (voir cas d'usage).
+- Côté écran, [`LexiquePanel.vue`](../../src/components/moteur/LexiquePanel.vue) `fetchTfidf` : lancé par « Extraire », par « Lancer l'analyse SERP », par « Tester un mot-clé » ; jamais par l'ouverture de l'onglet (le watcher de restauration ne fait que relire la base).
 
 ### ③ Recommandations de l'IA
 
-- Watcher `tfidfResult` de `LexiquePanel` → [`useLexiqueIa.generateLexiqueUpfront`](../../src/composables/lexique/useLexiqueIa.ts) dès qu'une proposition arrive sans recommandations restaurées : `POST /api/keywords/:keyword/ai-lexique-upfront` (SSE, [`server/routes/keyword-ai-panel.routes.ts`](../../server/routes/keyword-ai-panel.routes.ts), prompt `lexique-analysis-upfront.md`, douleur et stratégie du cocon). Le serveur enregistre le résultat avant l'événement `done` (`saveLexiqueAi`). `onDone` remplit la Map de `useLexiqueIa` et **ne coche rien**.
+- Clic « Analyser avec l'IA » (`LexiqueAiPanel` `trigger`), « Régénérer l'analyse » ou « Relancer l'analyse IA » → [`useLexiqueIa.generateLexiqueUpfront`](../../src/composables/lexique/useLexiqueIa.ts), jamais d'office (le watcher `tfidfResult` qui la lançait est retiré, 2026-09-30) : `POST /api/keywords/:keyword/ai-lexique-upfront` (SSE, [`server/routes/keyword-ai-panel.routes.ts`](../../server/routes/keyword-ai-panel.routes.ts), prompt `lexique-analysis-upfront.md`, douleur et stratégie du cocon). Le serveur enregistre le résultat avant l'événement `done` (`saveLexiqueAi`). `onDone` remplit la Map de `useLexiqueIa` et **ne coche rien**.
 
 ### ④ Le choix de l'utilisateur (seul producteur de la décision dans le Moteur)
 
@@ -118,7 +118,7 @@ flowchart TD
   DFS["DataForSEO + lecture des 10 pages<br/>extractTextContent"] --> SCR[("keyword_serp_scrapes.text_content")]
   SCR --> TF["POST /serp/tfidf<br/>tokenize sans mots génériques"]
   TF --> LEX_EXP[("lexique_explorations")]
-  TF -- "tfidfResult" --> IA["POST /keywords/:kw/ai-lexique-upfront"]
+  TF -- "clic Analyser avec l'IA" --> IA["POST /keywords/:kw/ai-lexique-upfront"]
   IA --> LEX_EXP
   IA -- "badges (rien de coché)" --> CB["cases à cocher<br/>selectedTerms"]
   TF --> CB
