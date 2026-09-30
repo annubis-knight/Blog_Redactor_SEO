@@ -253,3 +253,33 @@ describe('FR-CER-COCOON-PROGRESSIVE — « Régénérer » une ligne de la carte
     expect(parseArticlesFromSuggestion(text).length).toBeGreaterThan(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// « Créer l'article de cette section » — POST /api/cocoons/:id/child-candidates
+// ---------------------------------------------------------------------------
+
+describe('NFR-COST-AI-MOCK, FR-CER-KEYWORD-REAL-DATA — candidats d’un article né d’une section', () => {
+  // Consigne produite comme par `proposeChildCandidates` (child-candidates.service.ts).
+  async function candidats(parentSection: string): Promise<Array<{ keyword: string; title: string }>> {
+    const userPrompt = await loadPrompt('cocoon-child-keywords', {
+      cocoon_context: `## Cocon « ${CONTEXTE.cocoonName} »`,
+      articleLevel: 'intermédiaire',
+      parentSection,
+      type_rules: '',
+    })
+    return JSON.parse(repondre(await loadPrompt('system-propulsite'), userPrompt, 'cocoon-child-keywords')).candidates
+  }
+
+  // Recette du 2026-09-30 (F2) : `\b` ne connaît pas « é » : la section « Les
+  // étapes pour bien démarrer » donnait « étapes bien émarrer ».
+  it('les mots accentués restent entiers : « démarrer » garde son « d »', async () => {
+    const [large] = await candidats('Les étapes pour bien démarrer')
+    expect(large!.keyword).toBe('étapes bien démarrer')
+    expect(large!.title).toBe('Étapes bien démarrer : le guide complet')
+  })
+
+  it('les mots vides partent, y compris élidés (« d’un »)', async () => {
+    const [large] = await candidats('Le prix d’un site pour une TPE')
+    expect(large!.keyword).toBe('prix site tpe')
+  })
+})
