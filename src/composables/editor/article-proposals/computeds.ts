@@ -1,3 +1,13 @@
+/**
+ * AUTHORITY: PostgreSQL `cocoon_strategies.data.proposedArticles` (JSONB) — la carte
+ *            indicative du cocon, lue ici sans rien écrire.
+ * READS FROM: useCocoonStrategyStore.strategy (reçu en paramètre).
+ * WRITES TO: rien (computeds dérivés).
+ * CONSUMERS: useArticleProposals → BrainArticleProposalView (colonnes, pastilles
+ *            « ⚠ N » des lignes, alerte « Aucun article Pilier », groupes de spécialisés).
+ * RELATED FR: FR-CER-COCOON-PROGRESSIVE, FR-CER-AIGUILLAGE, NFR-UX-SCREEN-TEXT
+ *             (alertes en phrases, jamais un nom du code).
+ */
 import { computed } from 'vue'
 import { checkKeywordComposition } from '@/composables/seo/useCompositionCheck'
 import type { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
@@ -53,7 +63,7 @@ export function createArticleComputeds(store: ReturnType<typeof useCocoonStrateg
     articles.forEach((article, i) => {
       if (article.type === 'intermediaire') {
         if (!article.parentTitle || !article.parentTitle.trim()) {
-          pushWarning(i, 'missing_parent', 'Pas de lien vers le Pilier (parentTitle manquant).')
+          pushWarning(i, 'missing_parent', 'Cet intermédiaire n’est rattaché à aucun pilier.')
         } else if (!pilierTitles.has(normalizeTitle(article.parentTitle))) {
           pushWarning(i, 'orphan_inter', `Pilier inexistant : "${article.parentTitle}".`)
         }
@@ -67,7 +77,11 @@ export function createArticleComputeds(store: ReturnType<typeof useCocoonStrateg
       }
       if (article.type === 'specifique') {
         if (!article.parentTitle || !article.parentTitle.trim()) {
-          pushWarning(i, 'missing_parent', 'Pas de lien vers un Intermédiaire (parentTitle manquant).')
+          // « Lien » n'apparaît que s'il existe un intermédiaire où se rattacher
+          // (même liste que `availableParents` de la ligne).
+          pushWarning(i, 'missing_parent', intermediateTitles.value.length > 0
+            ? 'Ce spécialisé n’est rattaché à aucun intermédiaire : rattachez-le avec « Lien ».'
+            : 'Ce spécialisé n’est rattaché à aucun intermédiaire.')
         } else if (!interTitles.has(normalizeTitle(article.parentTitle))) {
           pushWarning(i, 'orphan_spe', `Intermédiaire inexistant : "${article.parentTitle}".`)
         }
