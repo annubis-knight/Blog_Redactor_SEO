@@ -8,8 +8,9 @@
  *   rechargement ; le compte des propositions est relu avec elles.
  * - FR-LIE-SERP-ANALYZE (FIN-4) : Capitaine déverrouillé (« Les garder »),
  *   « Analyser SERP » reste actif tant que des propositions existent.
- * - FR-UI-AI-PANELS-PATTERN (01-T9) : « Lancer une suggestion IA » ne fait rien
- *   sans analyse SERP ; il est grisé et dit pourquoi, jamais un clic muet.
+ * - FR-UI-AI-PANELS-PATTERN (01-T9) : « Lancer une suggestion IA » ne faisait rien
+ *   sans analyse SERP. Sans son préalable, il est grisé et dit pourquoi ; après
+ *   un rechargement, il relit d'abord l'analyse : jamais un clic muet.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises, enableAutoUnmount } from '@vue/test-utils'
@@ -143,26 +144,38 @@ describe('LieutenantsPanel — un article rouvert retrouve ses propositions', ()
 })
 
 describe('Suggestion IA des Lieutenants — préalable manquant (FR-UI-AI-PANELS-PATTERN)', () => {
-  it('sans analyse SERP, la relance est grisée et dit pourquoi', async () => {
-    const wrapper = mountPanel()
+  it('Capitaine ni verrouillé ni déjà analysé : la relance est grisée et dit pourquoi', async () => {
+    storeKeywords.value = { ...storeKeywords.value!, richLieutenants: [] }
+    const wrapper = mountPanel({ isCaptaineLocked: false })
     await flushPromises()
     const reason = layout(wrapper).props('proposeDisabledReason') as string | null
-    expect(reason).toMatch(/Analyser SERP/)
+    expect(reason).toMatch(/Verrouillez d’abord votre Capitaine/)
+  })
+
+  it('propositions relues sans analyse SERP : la relance n’est pas muette, elle relit d’abord l’analyse', async () => {
+    const { apiPost } = await import('../../../src/services/api.service')
+    const wrapper = mountPanel()
+    await flushPromises()
+    expect(layout(wrapper).props('proposeDisabledReason'), 'bouton actif').toBeNull()
+
+    layout(wrapper).vm.$emit('propose-retry')
+    await flushPromises()
+    expect(vi.mocked(apiPost)).toHaveBeenCalledWith('/serp/analyze', expect.objectContaining({ keyword: 'budget à prévoir' }), expect.anything())
   })
 
   it('le bouton grisé n’envoie rien au clic, et son infobulle donne la raison', async () => {
     const panel = mount(LieutenantsAiPanel, {
       props: {
         iaIsStreaming: false, iaChunks: '', iaError: null, contentGapInsights: '', totalGenerated: 0,
-        proposeDisabledReason: 'Lancez d’abord « Analyser SERP ».',
+        proposeDisabledReason: 'Verrouillez d’abord votre Capitaine : l’IA propose les lieutenants à partir de lui.',
       },
       global: { stubs: { AiPanelHeader: true } },
     })
     const button = panel.get('[data-testid="ai-regen-btn"]')
     expect(button.attributes('disabled')).toBeDefined()
-    expect(button.attributes('title')).toBe('Lancez d’abord « Analyser SERP ».')
+    expect(button.attributes('title')).toBe('Verrouillez d’abord votre Capitaine : l’IA propose les lieutenants à partir de lui.')
     await button.trigger('click')
     expect(panel.emitted('retry')).toBeUndefined()
-    expect(panel.text()).toContain('Lancez d’abord « Analyser SERP ».')
+    expect(panel.text()).toContain('Verrouillez d’abord votre Capitaine : l’IA propose les lieutenants à partir de lui.')
   })
 })

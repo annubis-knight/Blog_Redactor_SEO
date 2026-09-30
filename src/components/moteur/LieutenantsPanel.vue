@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, toRef } from 'vue'
+import { computed, nextTick, ref, watch, toRef } from 'vue'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
@@ -594,15 +594,35 @@ watch(
 )
 
 /**
- * Préalable de la proposition de l'IA (FR-UI-AI-PANELS-PATTERN) : sans lui, le
- * bouton du panneau est grisé et dit pourquoi. Un clic sans analyse SERP ne
+ * Préalable de la proposition de l'IA (FR-UI-AI-PANELS-PATTERN) : le même que
+ * celui d'« Analyser SERP » (Capitaine verrouillé, ou propositions déjà là).
+ * Sans lui, le bouton du panneau est grisé et dit pourquoi : un clic ne
  * faisait rien, sans message (recette du 2026-09-30, 01-T9).
  */
 const proposeDisabledReason = computed<string | null>(() => {
-  if (!props.captainKeyword) return 'Choisissez d’abord un Capitaine : l’IA propose les lieutenants à partir de lui.'
-  if (!serpResult.value) return 'Lancez d’abord « Analyser SERP » : l’IA part des pages concurrentes du Capitaine.'
+  if (!props.captainKeyword || !(props.isCaptaineLocked || hasEverAnalyzed.value)) {
+    return 'Verrouillez d’abord votre Capitaine : l’IA propose les lieutenants à partir de lui.'
+  }
+  if (isLoading.value) return 'Analyse SERP en cours…'
   return null
 })
+
+/**
+ * Relance de la proposition depuis le panneau de l'IA. Elle part des pages
+ * concurrentes du Capitaine : après un rechargement, les propositions sont
+ * relues en base mais pas l'analyse SERP, alors relue d'abord (en base si elle
+ * a moins de 7 jours, FR-LIE-SERP-ANALYZE), puis l'IA est relancée.
+ */
+async function relaunchProposal(): Promise<void> {
+  if (proposeDisabledReason.value) return
+  if (!serpResult.value) {
+    await analyzeSERPWithStep()
+    await nextTick()
+    // Sans carte à l'écran, l'analyse a déjà lancé la proposition d'elle-même.
+    if (iaIsStreaming.value) return
+  }
+  if (serpResult.value) proposeLieutenants()
+}
 
 // Bloc 6 — Auto-trigger SERP supprimé. Le SERP était relancé silencieusement
 // à chaque changement de captainKeyword, ce qui (a) gâchait des crédits API
@@ -733,7 +753,7 @@ async function analyzeSERPWithStep(): Promise<void> {
       :word-groups="wordGroups"
       :propose-disabled-reason="proposeDisabledReason"
       @toggle="toggleLieutenant"
-      @propose-retry="proposeLieutenants"
+      @propose-retry="relaunchProposal"
     />
   </div>
 </template>

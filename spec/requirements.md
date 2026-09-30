@@ -1146,7 +1146,7 @@ L'analyse des lieutenants doit fonctionner sans que le Lexique ait jamais été 
 **Statut :** non tenue (relancer la proposition de l'IA décoche à l'écran les lieutenants déjà retenus et retire l'étape, alors que la liste enregistrée les garde ; et le bouton de relance du panneau de l'IA disparaît tant que ce panneau affiche les failles de contenu de la dernière génération)
 Cocher la case d'un lieutenant doit le verrouiller en base ; la décocher le déverrouille. Aucune action de l'onglet ne doit défaire ces choix.
 - Cocher un lieutenant ne désactive jamais les autres cases ; il n'y a pas de bouton de verrouillage groupé.
-- « Tout relancer (SERP + IA) » et la relance de la proposition restent disponibles, quel que soit le nombre de lieutenants retenus. Tant que la relance ne peut pas partir (pas de Capitaine, analyse SERP pas encore relue), son bouton est grisé et dit pourquoi ; après un rechargement, le panneau de l'IA annonce les propositions relues (« N propositions générées par l'IA. »).
+- « Tout relancer (SERP + IA) » et la relance de la proposition restent disponibles, quel que soit le nombre de lieutenants retenus. Tant que la relance ne peut pas partir (Capitaine ni verrouillé ni déjà analysé), son bouton est grisé et dit pourquoi ; après un rechargement, le panneau de l'IA annonce les propositions relues (« N propositions générées par l'IA. »), et sa relance relit d'abord l'analyse SERP (en base si elle a moins de 7 jours) avant de rappeler l'IA : jamais un clic sans effet.
 - Après une relance de la proposition, les lieutenants retenus restent cochés et leur étape reste valable.
 
 ### Retirées (LIE)
