@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -149,7 +149,7 @@ flowchart LR
 | `draft` | `REDACTION_DRAFT_ACCEPTED` | contenu, capitaine, longueur visée, nombre de H2 du sommaire |
 | `publish` | statut `publié` | titre, slug, niveau, contenu, méta, capitaine, lieutenants, enfants, liens non publiés, empreintes amont, dérogations amont debout (celles de `publish` exclues) |
 
-- **Règles et décisions :** le serveur est le seul évaluateur ; le navigateur n'exécute que `waiverDraftsFrom` / `worstLevel` / `MIN_WAIVER_REASON_LENGTH` pour griser le bouton. La porte garde l'étape et le statut, pas l'enregistrement des décisions ni du texte. Une règle multi-éléments met l'élément dans `rule` (`lieutenant-cannibalization:<mot>`, `lexique-generic-term:<terme>`, `hn-lieutenant-missing:<l>`, `hn-overlaps-article:<titre>`). `publish` rejoue les quatre portes amont et préfixe leurs points (`<porte>:<règle>`) ; `draft` n'est pas rejouée. Pas de colonne auteur (outil local mono-utilisateur). L'audit tolère un refus (avertissement). Le mode automatique ne déroge jamais. Détail des règles de chaque porte : § 21 (Capitaine), § 23 à § 25 (Lieutenants, Structure, Lexique), § 27 (Rédaction).
+- **Règles et décisions :** le serveur est le seul évaluateur ; le navigateur n'exécute que `waiverDraftsFrom` / `worstLevel` / `MIN_WAIVER_REASON_LENGTH` pour griser le bouton. La porte garde l'étape et le statut, pas l'enregistrement des décisions ni du texte. Une règle multi-éléments met l'élément dans `rule` (`lieutenant-cannibalization:<mot>`, `lexique-generic-term:<terme>`, `hn-lieutenant-missing:<l>`, `hn-overlaps-article:<titre>`). `publish` rejoue les quatre portes amont et préfixe leurs points (`<porte>:<règle>`) ; `draft` n'est pas rejouée. Pas de colonne auteur (outil local mono-utilisateur). L'audit tolère un refus (avertissement). Le mode automatique ne déroge jamais seul : une porte toute 🟠 se reconnaît au terminal (« J'ai lu, continuer ? [o/N] », mêmes `waiverDraftsFrom` que l'alarme), cf. [Mode automatique](06-mode-automatique.md). Détail des règles de chaque porte : § 21 (Capitaine), § 23 à § 25 (Lieutenants, Structure, Lexique), § 27 (Rédaction).
 
 ## Démarrage du serveur, santé, journal
 *Exigences : FR-INFRA-LOGGER, FR-INFRA-HEALTH-CHECK, FR-INFRA-DB-CONNECTION-CHECK · Design : DESIGN-INFRA-LOGGER, DESIGN-INFRA-HEALTH-CHECK, DESIGN-INFRA-DB-CONNECTION-CHECK*

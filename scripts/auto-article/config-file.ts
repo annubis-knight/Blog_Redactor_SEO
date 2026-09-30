@@ -20,7 +20,8 @@ export function parseConfigInput(raw: unknown): InitialInput {
   if (!topic) throw new Error('Config : champ "topic" requis (string non vide)')
 
   // `cocoonName` est facultatif depuis l'ajout du gate d'emplacement : le script
-  // propose lui-même le cocon. S'il est fourni, il sert d'indice.
+  // propose lui-même le cocon. S'il est fourni, il impose le cocon, comme
+  // `--cocoon` (un nom inconnu arrête le run en listant les cocons existants).
   const cocoonName = typeof o.cocoonName === 'string' ? o.cocoonName.trim() : ''
 
   const businessContext = typeof o.businessContext === 'string' ? o.businessContext.trim() : ''

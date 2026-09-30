@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -163,7 +163,8 @@ Le robot déroule les trois ateliers à partir d'un sujet, même vague, et d'un 
 
 Règles du robot :
 
-- Il **ne déroge jamais** à une porte à la place de l'utilisateur : un refus arrête le run et dit pourquoi.
+- Il **ne déroge jamais** à une porte à la place de l'utilisateur : un refus arrête le run et dit pourquoi. Seule une porte dont tous les points sont 🟠 (à lire) lui fait demander « J’ai lu, continuer ? [o/N] » ; c'est alors l'utilisateur qui les reconnaît, comme à l'écran.
+- Le cocon nommé à la question « Cocon cible » impose l'emplacement ; un nom inconnu est dit et la question revient.
 - Une cannibalisation forte (deux articles trop proches) demande de taper « oui ».
 - Il sait reprendre un article interrompu, imposer un cocon, un niveau ou un capitaine, ou ne refaire
   que le maillage d'un article.

@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -63,7 +63,7 @@ La même carte sert au Radar et au Capitaine. Au Radar, elle affiche le **Score 
 
 En-tête, sur une ligne :
 - une case à cocher, un chevron « ▶ », le mot-clé ; les noms de ville ou de région (« local ») et le mot qui suit « pour » (la cible, « persona ») y sont colorés en italique, comme simple repère visuel ;
-- les icônes d'intention (Informationnel, Commercial, Transactionnel, Navigationnel), en info-bulle ;
+- les icônes d'intention, dessinées, nommées en info-bulle (Informationnel, Commercial, Transactionnel, Navigationnel) ;
 - les indicateurs « vol », « KD », « CPC », « PAA » (points pondérés, ex. « 2.5 pts ») ; « — » pour une donnée absente ;
 - l'anneau de score.
 
@@ -138,7 +138,7 @@ Limites actuelles :
 
 Sous les résultats, le panneau « Suggestions IA Radar » (« Top candidats Capitaine — tri local par mix marché + pertinence (verdicts NOGO exclus). ») classe les cartes sans appel d'IA :
 - note de classement = moyenne des scores disponibles ; comme le Radar n'a pas de Score Pertinence, c'est le Score Marché ;
-- une carte au verdict marché NOGO (score < 40) est écartée ; les 5 premières sont affichées avec les pastilles « M n » et « P — » ;
+- une carte au verdict marché NOGO (score < 40) est écartée ; les 5 premières sont affichées avec les pastilles « M n » et « P — » ; l'info-bulle de « P — » dit que la pertinence se calcule au Capitaine ;
 - avant scan : « Lance un scan ci-dessus pour voir ici les meilleurs candidats… » ; aucun candidat : « Aucun candidat à proposer pour l'instant… ».
 - Le bouton « Marquer comme candidats Capitaine (N) » vide la sélection, mais n'a aucun autre effet.
 

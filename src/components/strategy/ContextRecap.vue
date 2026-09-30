@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import type { ThemeContext } from '@shared/types/index.js'
 import RecapToggle from '@/components/shared/RecapToggle.vue'
+import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
+import { ARTICLE_LEVELS, articleLevelToDisplayLabel, splitArticleLevelSuffix } from '@shared/utils/article-level.js'
 
 const props = defineProps<{
   themeName?: string
@@ -25,31 +27,30 @@ const STEP_LABELS: Record<string, string> = {
   cta: 'CTA',
 }
 
-const TYPE_ORDER = ['Pilier', 'Intermédiaire', 'Spécialisé'] as const
-
+// « Articles du cocon » arrive en « Titre (niveau) », le niveau au format du
+// code (« pilier ») : on le lit dans tous les formats et on l'affiche en
+// toutes lettres (FR-CER-AIGUILLAGE, recette du 2026-09-30).
 interface ParsedArticle {
   title: string
-  type: string
 }
 
-function parseArticle(raw: string): ParsedArticle {
-  const match = raw.match(/^(.+?)\s*\(([^)]+)\)\s*$/)
-  if (match) return { title: match[1]!, type: match[2]! }
-  return { title: raw, type: 'Autre' }
+interface ArticleGroup {
+  /** Niveau, ou `autre` pour une entrée sans niveau lisible. */
+  key: ArticleLevel | 'autre'
+  label: string
+  articles: ParsedArticle[]
 }
 
-const articlesByType = computed(() => {
+const articlesByType = computed<ArticleGroup[]>(() => {
   if (!props.cocoonArticles?.length) return []
-  const parsed = props.cocoonArticles.map(parseArticle)
-  const groups: { type: string; articles: ParsedArticle[] }[] = []
-  for (const type of TYPE_ORDER) {
-    const matching = parsed.filter(a => a.type === type)
-    if (matching.length) groups.push({ type, articles: matching })
+  const parsed = props.cocoonArticles.map(splitArticleLevelSuffix)
+  const groups: ArticleGroup[] = []
+  for (const level of ARTICLE_LEVELS) {
+    const matching = parsed.filter(a => a.level === level)
+    if (matching.length) groups.push({ key: level, label: articleLevelToDisplayLabel(level), articles: matching })
   }
-  // Catch any types not in TYPE_ORDER
-  const known = new Set(TYPE_ORDER as readonly string[])
-  const other = parsed.filter(a => !known.has(a.type))
-  if (other.length) groups.push({ type: 'Autre', articles: other })
+  const other = parsed.filter(a => a.level === null)
+  if (other.length) groups.push({ key: 'autre', label: 'Autre', articles: other })
   return groups
 })
 </script>
@@ -172,10 +173,10 @@ const articlesByType = computed(() => {
 
     <!-- Panel 2: Articles du cocon -->
     <RecapToggle v-if="cocoonArticles?.length" panel-id="articles-cocon" :label="`Articles du cocon (${cocoonArticles.length})`">
-        <div v-for="group in articlesByType" :key="group.type" class="tree-group">
+        <div v-for="group in articlesByType" :key="group.key" class="tree-group">
           <div class="tree-type">
-            <span class="tree-type-badge" :class="'tree-type--' + group.type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')">
-              {{ group.type }}
+            <span class="tree-type-badge" :class="'tree-type--' + group.key">
+              {{ group.label }}
             </span>
             <span class="tree-type-count">({{ group.articles.length }})</span>
           </div>
@@ -335,7 +336,7 @@ const articlesByType = computed(() => {
   color: white;
 }
 
-.tree-type--specialise {
+.tree-type--specifique {
   background: var(--color-success, #4caf50);
   color: white;
 }

@@ -1,7 +1,7 @@
 ---
 title: Parcours — Choisir le mot-clé d'un article
 id: PU-04
-last_updated: 2026-09-29
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/18-recette-manuelle.md
@@ -114,7 +114,7 @@ Choisir un autre article doit repartir de ses propres données : le Radar, les c
 - FR-RAD-SCORING-BIMODAL — une intention inconnue compte comme une composante rouge du Score Marché au lieu d'être écartée.
 - FR-RAD-SCORE-RING-TOOLTIP — dans l'info-bulle, une composante sans donnée s'affiche « 50/100 » avec son poids, alors qu'elle n'entre pas dans le total.
 - FR-RAD-THERMOMETER — la chaleur est la moyenne d'un ancien score qui compte 0 là où les cartes affichent « — » ; elle ne reflète pas les notes affichées.
-- FR-RAD-AI-SUGGESTIONS — le bouton « Marquer comme candidats Capitaine » n'a aucun effet ; la pastille « P » est toujours vide au Radar, et son infobulle en accuse à tort une douleur absente.
+- FR-RAD-AI-SUGGESTIONS — le bouton « Marquer comme candidats Capitaine » n'a aucun effet ; la pastille « P » est toujours vide au Radar.
 - FR-RAD-LONGTAIL-GENERATE — une réponse vide est enregistrée et resservie pendant 7 jours, sans bouton pour réessayer.
 - FR-RAD-LONGTAIL-UI — au rechargement, suggestions et cases cochées ne reviennent pas à l'écran.
 - FR-RAD-LONGTAIL-REGENERATE — les suggestions enregistrées ne sont pas réaffichées ; un nouveau scan les efface de la base.

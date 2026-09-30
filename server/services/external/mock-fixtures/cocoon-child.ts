@@ -10,13 +10,20 @@
  */
 import { registerStreamFixture } from '../mock-registry.js'
 
+/**
+ * Mots vides retirés du sujet. Bornes Unicode, pas `\b` : pour `\b`, « é »
+ * n'est pas une lettre, et « démarrer » perdait son « d » (« étapes bien
+ * émarrer », recette du 2026-09-30, F2).
+ */
+const STOP_WORDS = /(?<![\p{L}\p{N}])(?:le|la|les|un|une|des|du|de|d|l|et|pour|son|sa|ses)(?![\p{L}\p{N}])/gu
+
 function baseTopic(userPrompt: string): string {
   const section = userPrompt.match(/naît de la section « ([^»]+) »/)?.[1]
   const cocoon = userPrompt.match(/## Cocon « ([^»]+) »/)?.[1]
   return (section ?? cocoon ?? 'site internet')
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
-    .replace(/\b(le|la|les|un|une|des|du|de|d|l|et|pour|son|sa|ses)\b/g, ' ')
+    .replace(STOP_WORDS, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 }

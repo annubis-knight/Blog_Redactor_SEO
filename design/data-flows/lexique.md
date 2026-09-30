@@ -2,7 +2,7 @@
 name: lexique
 description: Lexique d'un article — les mots du métier choisis par l'utilisateur parmi le TF-IDF des pages concurrentes, enregistrés dans `article_keywords.lexique` (TEXT[]), gardés par la porte `lexique-lock` et transmis à la rédaction.
 type: "TfidfResult { keyword, totalCompetitors, obligatoire[], differenciateur[], optionnel[] } (proposition, lexique_explorations) → string[] choisi par l'utilisateur → article_keywords.lexique TEXT[]"
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 related_fr: [FR-LEX-TFIDF, FR-LEX-METIER-ONLY, FR-LEX-PRECHECK-PERSISTE, FR-LEX-SORT, FR-LEX-SELECT, FR-LEX-AI-PANEL, FR-LEX-MULTI-KEYWORD, FR-LEX-MULTI-KEYWORD-TABS, FR-LEX-CHECK, FR-LEX-SCRAPE-DEDIE, FR-LEX-PRECHECK-SERP, FR-LEX-LECTURE-VS-VERROUILLAGE, FR-LEX-CHECKBOX-LOCK-IMMEDIATE, FR-MOT-NO-AUTO-ACTION, FR-MOT-CHECK-RECONCILIATION, FR-INFRA-GATE-WAIVER, FR-RED-PUBLISH-GATE, NFR-MOT-LEXIQUE-DECOUPLAGE, NFR-INT-SERP-ONCE]
 ---
 
@@ -55,7 +55,7 @@ Construction détaillée : [Moteur — Lieutenants, Structure, Lexique](../15-li
 ### Autres producteurs
 
 - **Rédaction, section « Mots-clés »** — [`ArticleKeywordsPanel.vue`](../../src/components/keywords/ArticleKeywordsPanel.vue) : ajout manuel (refusé avec un message si le terme est générique, `splitGenericTerms`), « suggérer » (`store.suggestLexique` → `POST /api/keywords/lexique-suggest`, qui écarte les termes génériques et **remplace** le lexique du store), « Enregistrer » (`saveDecisions`). Ni la porte ni l'étape ne sont revues à ce moment : la porte de publication les rattrape.
-- **Mode automatique** — [`scripts/auto-article/phases/moteur-valider.ts`](../../scripts/auto-article/phases/moteur-valider.ts) : `POST /serp/tfidf` (`triggerScrapeIfMissing: true`) → `pickLexique` ([`scripts/auto-article/heuristics/pick-lexique.ts`](../../scripts/auto-article/heuristics/pick-lexique.ts), écarte `isGenericTerm`) → `saveThenEmit` enregistre avant de demander l'étape ; le run ne déroge jamais.
+- **Mode automatique** — [`scripts/auto-article/phases/moteur-valider.ts`](../../scripts/auto-article/phases/moteur-valider.ts) : `POST /serp/tfidf` (`triggerScrapeIfMissing: true`) → `pickLexique` ([`scripts/auto-article/heuristics/pick-lexique.ts`](../../scripts/auto-article/heuristics/pick-lexique.ts), écarte `isGenericTerm`) → `saveThenEmit` enregistre avant de demander l'étape ; le run ne déroge jamais seul (une porte toute 🟠 se reconnaît au terminal).
 
 ## Persistance
 

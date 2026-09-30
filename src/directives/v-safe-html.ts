@@ -21,9 +21,19 @@ export function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html, strictConfig) as string
 }
 
-/** Sanitize SVG content with permissive config (for app-internal SVG only) */
-function sanitizeSvg(html: string): string {
-  return DOMPurify.sanitize(html, svgConfig) as string
+/**
+ * Sanitize SVG content with permissive config (for app-internal SVG only).
+ *
+ * Un tracé seul (`<circle/><path/>`, posé dans un `<svg>` du gabarit) est lu
+ * par DOMPurify comme du HTML : hors d'un `<svg>`, ses balises n'existent pas
+ * et sont retirées — l'icône sortait vide (FR-UI-RADAR-CARD, recette du
+ * 2026-09-30). On l'assainit donc dans un `<svg>` provisoire, dont on ne rend
+ * que l'intérieur : même filtre, mêmes balises autorisées.
+ */
+export function sanitizeSvg(markup: string): string {
+  if (/^\s*<svg[\s>]/i.test(markup)) return DOMPurify.sanitize(markup, svgConfig) as string
+  const body = DOMPurify.sanitize(`<svg>${markup}</svg>`, { ...svgConfig, RETURN_DOM: true }) as unknown as HTMLElement
+  return body.querySelector('svg')?.innerHTML ?? ''
 }
 
 function updateContent(el: HTMLElement, value: unknown, mode: 'strict' | 'svg') {
