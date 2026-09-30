@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -97,6 +97,10 @@ Avant chaque appel payant, l'outil estime son prix (selon le service appelé et 
 - Au premier appel après son démarrage, le serveur écrit dans son journal lequel des deux il utilise (« using SANDBOX (free, fake data) » ou un avertissement « using PRODUCTION — calls will be billed »). Il ne le répète pas après une bascule.
 - Le bac à sable répond par ses propres mots-clés factices. Pour une mesure groupée, l'outil attribue ses réponses, dans l'ordre, aux mots-clés demandés : chaque candidat reçoit une mesure, ce qui permet de créer un article en mode simulé.
 - Le bac à sable exige de vrais identifiants DataForSEO.
+- Ce qui est gardé en simulé ne sert qu'en simulé, et ce qui est gardé en réel ne sert qu'en réel : les longues traînes proposées au Radar, les découvertes enregistrées et les réponses gardées de 1 à 7 jours (fiche SEO de la rédaction, validations, scans du Radar enregistrés). Après une bascule, la même demande repart donc vers la source du nouveau mode. Les suggestions Google et Search Console, qui répondent pareil dans les deux modes, restent partagées.
+- Défaut connu : les mesures gardées par mot-clé pour tous les articles (volume, CPC, difficulté, intention, questions PAA, pages concurrentes lues par le Lexique) ne sont pas encore séparées ; obtenues en simulé, elles restent servies en réel pendant 7 jours.
+
+> **En situation.** Arnaud prépare l'article « plombier Toulouse » en « MOCK » : le Radar lui propose des longues traînes simulées et Discovery enregistre sa récolte. Il passe en « RÉEL » et rouvre Discovery : le bandeau « Dernière analyse » a disparu, la récolte simulée ne lui est pas resservie. Au Radar, « ⟳ Régénérer » dans « Suggestions longue traîne » interroge vraiment l'IA, au lieu de lui rendre les combinaisons simulées.
 
 ## Autocomplétion Google
 *Exigences : FR-EXT-AUTOCOMPLETE-GOOGLE*

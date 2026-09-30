@@ -1,7 +1,7 @@
 ---
 title: Parcours — Comprendre et repartir quand ça coince
 id: PU-07
-last_updated: 2026-09-29
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/18-recette-manuelle.md
@@ -83,7 +83,7 @@ Le serveur revient d'abord à sa configuration. La page, restée ouverte, le rem
 ### Une mesure faite en MOCK revient en RÉEL
 **Exigences :** FR-EXT-DATAFORSEO-SANDBOX ⚠, NFR-COST-CACHE-FIRST ⚠
 
-Les réponses du bac à sable sont gardées comme de vraies réponses, pendant 7 jours : en RÉEL, un mot-clé mesuré en MOCK affiche ses chiffres factices, sans nouvel appel, et ses questions PAA, longues traînes et mots-clés de Discovery simulés sont resservis. Rien, à l'écran, ne les distingue des vraies mesures. En RÉEL, prends des mots-clés jamais testés, ou force la mesure par « Rafraîchir » dans « SERP Data ».
+Les longues traînes, les découvertes enregistrées et les réponses gardées quelques jours ne servent qu'au mode qui les a obtenues : en RÉEL, Discovery ne propose plus la récolte simulée, et la même demande repart vers la vraie source. Mais les mesures gardées par mot-clé pour tous les articles le sont encore comme de vraies réponses, pendant 7 jours : en RÉEL, un mot-clé mesuré en MOCK affiche ses chiffres factices (volume, CPC, difficulté, intention), ses questions PAA et, au Lexique, les pages concurrentes du bac à sable, sans nouvel appel. Rien, à l'écran, ne les distingue des vraies mesures. En RÉEL, prends des mots-clés jamais testés, ou force la mesure par « Rafraîchir » dans « SERP Data ».
 
 ### Une panne pendant la rédaction se dit
 **Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-GEN-SAUVEGARDE-AU-FIL
@@ -100,7 +100,7 @@ Avant le premier mot, l'outil réessaie puis passe au fournisseur d'IA suivant. 
 - FR-EXT-GEMINI — le modèle par défaut, Gemini 2.0 Flash, n'est plus servi par Google : sans réglage, Gemini échoue et la chaîne passe à OpenRouter.
 - FR-EXT-DATAFORSEO — les mesures demandées en groupe et la fiche SEO du brief taisent un échec du fournisseur, y compris un refus du plafond de dépense : les valeurs restent vides, sans message ; un « Rafraîchir » qui échoue tout à fait remplace toute la page de rédaction par le bloc d'erreur, au lieu du seul panneau « SERP Data ».
 - FR-LIE-SERP-ECHEC-EXPLIQUE — le serveur remplace toute cause (aucun résultat, source muette) par « SERP analysis failed », affiché entre parenthèses ; une coupure réseau n'est pas reconnue ; le plafond de dépense invite à changer de mot-clé, et un quota épuisé à attendre au lieu de recharger les crédits.
-- FR-EXT-DATAFORSEO-SANDBOX — les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis.
+- FR-EXT-DATAFORSEO-SANDBOX — les mesures gardées par mot-clé pour tous les articles (volume, CPC, difficulté, intention, questions PAA, pages concurrentes lues par le Lexique) obtenues en simulé restent servies en réel : un mot-clé mesuré en simulé depuis moins de 7 jours y affiche des chiffres factices.
 - NFR-COST-CACHE-FIRST — un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine.
 - FR-INFRA-API-STREAM — quand l'utilisateur annule, l'écran s'arrête mais le serveur continue la génération jusqu'au bout et la facture.
 - NFR-PERF-SSE-FIRST-TOKEN — le premier jet n'a pas de bouton d'arrêt ; un arrêt côté écran ne coupe pas la génération côté serveur, qui continue et se facture.

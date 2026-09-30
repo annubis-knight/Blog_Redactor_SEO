@@ -68,8 +68,10 @@ describe('Moteur Workflow — Onglet Discovery', () => {
     })
     expect(saved.status).toBe(200)
 
+    // Serveur en simulé : la découverte est rangée sous `mock:<racine>`, pour
+    // ne jamais être resservie en réel (FR-EXT-DATAFORSEO-SANDBOX).
     const dbRes = await query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM keyword_discoveries WHERE seed = $1`,
+      `SELECT COUNT(*) AS count FROM keyword_discoveries WHERE seed IN ($1, 'mock:' || $1)`,
       [seed],
     )
     expect(dbRes.rows[0].count).toBe('1')

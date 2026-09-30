@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -32,7 +32,9 @@ Le coût remonte au navigateur par deux canaux : le champ `usage` (`ApiUsage`) d
   - Sans override, `getEffectiveMode` vaut `mock` si `AI_PROVIDER=mock` **ou** `DATAFORSEO_SANDBOX=true`.
   - **Une seule autorité** (recette 2026-09-30, F1) : `isSandbox()` = `getEffectiveMode() === 'mock'`, et `getProvider()` renvoie `mock` dès que le mode effectif l'est, même quand seul `DATAFORSEO_SANDBOX=true` l'a posé. Avant, `isSandbox` relisait `DATAFORSEO_SANDBOX` seul : avec `AI_PROVIDER=mock` et le bac à sable absent, le badge disait MOCK pendant que DataForSEO partait en production. Garde : `tests/unit/services/runtime-mode-consumers.test.ts` (toutes les combinaisons configuration × override : badge MOCK ⇔ rien de facturé).
   - `hydrate` (au montage de la barre) puis `startAutoResync` relisent le serveur au retour du focus, quand l'onglet redevient visible et toutes les 15 s. Serveur sans override alors que le navigateur a un choix (redémarrage) → le navigateur le renvoie ; serveur avec un autre override (robot, autre onglet) → le navigateur l'adopte et met `localStorage` à jour, sans jamais le renverser (repousser l'ancien choix ferait payer un run simulé). `toggle` n'envoie jamais `null` : l'écran ne sait pas rendre la main à la configuration.
-  - Consommateurs : `getProvider` (IA), `isSandbox` (URL, budget, rattachement des mesures groupées). Rien d'autre ne lit l'override.
+  - Consommateurs : `getProvider` (IA), `isSandbox` (URL, budget, rattachement des mesures groupées), `modeScopedKey` ([`server/db/cache-helpers.ts`](../server/db/cache-helpers.ts), clés de cache rangées par mode). Rien d'autre ne lit l'override.
+  - **Ce qui est gardé ne sert qu'au mode qui l'a obtenu** (FR-EXT-DATAFORSEO-SANDBOX, lot 6 de la recette 2026-09-30) : `modeScopedKey(key)` préfixe par `mock:` toute clé écrite ou lue en mode effectif `mock`, une clé réelle reste inchangée (les entrées réelles déjà gardées restent valables). `getCached`, `setCached`, `deleteCached` et `getOrFetch` l'appliquent à tous les types d'`external_api_cache` sauf `MODE_INDEPENDENT_CACHE_TYPES` (`gsc`, `suggest` : sources hors interrupteur) ; [`keyword-discovery-db.service.ts`](../server/services/keyword/keyword-discovery-db.service.ts) l'applique à la racine de `keyword_discoveries` (`KeywordDiscovery.seed` rend la racine demandée). Garde : [`tests/unit/services/sandbox-cache-isolation.test.ts`](../tests/unit/services/sandbox-cache-isolation.test.ts), dans `verify`.
+  - **Pas encore séparées** : `keyword_metrics` et ses tables filles (`keyword_serp_results`, `keyword_serp_scrapes`, `keyword_paa_questions`, `keyword_autocomplete`), où le bac à sable écrit comme la production. Leur clé `(keyword, lang, country)` est lue par une vingtaine de requêtes, dont des jointures sur le seul mot-clé (`gate.service.ts`, `article-explorations.routes.ts`) et des valeurs `'fr'` écrites en dur (`data.service.ts` `getCaptainExplorations`) : la ranger par mode reviendrait à réécrire tous ces lecteurs. Et ne rien y écrire en simulé casserait les parcours simulés, qui relisent la base (création d'article du Cerveau, porte `captain-lock`, relecture du Capitaine, Lexique). Écart consigné : la séparation demande une marque en base (colonne), proposée au lot 6, non appliquée.
 
 ## Coût des suites de tests
 *Exigences : FR-EXT-TESTS-NO-COST*

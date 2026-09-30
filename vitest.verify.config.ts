@@ -51,6 +51,9 @@ export default mergeConfig(
         'tests/unit/services/article-content.service.test.ts',
         'tests/unit/routes/articles.routes.test.ts',
         'tests/unit/composables/useResonanceScore.save.test.ts',
+        // Réponses simulées jamais resservies en réel, ni l'inverse
+        // (FR-EXT-DATAFORSEO-SANDBOX, recette du 2026-09-30, lot 6).
+        'tests/unit/services/sandbox-cache-isolation.test.ts',
       ],
       root: fileURLToPath(new URL('./', import.meta.url)),
     },

@@ -91,6 +91,7 @@ La fraîcheur n'est pas imposée par la base : chaque lecteur l'applique avec `i
 - **Formes mêlées dans `paa_questions`** : le Radar écrit un arbre (`depth`, `parentQuestion`), l'étude et le brief une liste plate ; chaque écriture remplace la précédente.
 - **Colonnes orphelines** : `local_analysis` et `local_comparison` n'ont plus d'écrivain ; `content_gap_analysis` n'est écrite que par une route qu'aucun écran n'appelle.
 - **Mot-clé à la casse près** : la clé est le mot-clé exact ; seule la porte (`exploredCandidates`) compare en minuscules.
+- **Mesures du bac à sable gardées comme réelles** (FR-EXT-DATAFORSEO-SANDBOX, non tenue) : en simulé, le bac à sable écrit ici et dans les tables filles comme la production ; en réel, ces lignes de moins de 7 jours sont resservies. Contrairement à `external_api_cache` et `keyword_discoveries`, rangés par mode (`modeScopedKey`), la clé `(keyword, lang, country)` ne peut pas l'être sans réécrire tous les lecteurs ; la séparation attend une marque en base (cf. [18 — Intégrations externes](../18-integrations.md) § « Interrupteur simulé / réel »).
 
 ## Tests de cohérence qui la gardent
 

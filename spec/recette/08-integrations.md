@@ -1,7 +1,7 @@
 ---
 title: Recette — Intégrations externes
 module: 08
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/14-integrations.md
@@ -40,7 +40,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 - le rechargement de la page change le mode ;
 - la dépense DataForSEO augmente alors que tu n'as fait que basculer.
 
-**⚠ Défaut connu :** FR-EXT-DATAFORSEO-SANDBOX — les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-EXT-DATAFORSEO-SANDBOX — les mesures gardées par mot-clé pour tous les articles (volume, CPC, difficulté, intention, questions PAA, pages concurrentes lues par le Lexique) obtenues en simulé restent servies en réel : un mot-clé mesuré en simulé depuis moins de 7 jours y affiche des chiffres factices. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -68,7 +68,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 - la dépense DataForSEO augmente en MOCK ;
 - « Autocomplete (0) » alors que Google propose des suggestions pour ce sujet et que tu as internet.
 
-**⚠ Défaut connu :** FR-EXT-DATAFORSEO-SANDBOX — les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-EXT-DATAFORSEO-SANDBOX — les mesures gardées par mot-clé pour tous les articles (volume, CPC, difficulté, intention, questions PAA, pages concurrentes lues par le Lexique) obtenues en simulé restent servies en réel : un mot-clé mesuré en simulé depuis moins de 7 jours y affiche des chiffres factices. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### EXT-3 — Au Radar, la proximité de sens de chaque question
 **Exigences :** FR-EXT-EMBEDDINGS
@@ -109,7 +109,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 - en MOCK, la ligne de la pile nomme un modèle Claude, Gemini ou OpenRouter, ou affiche un coût supérieur à « < $0.001 » ;
 - l'absence de suggestion Google fait apparaître un message d'erreur.
 
-**⚠ Défaut connu :** FR-EXT-DATAFORSEO-SANDBOX — les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-EXT-DATAFORSEO-SANDBOX — les mesures gardées par mot-clé pour tous les articles (volume, CPC, difficulté, intention, questions PAA, pages concurrentes lues par le Lexique) obtenues en simulé restent servies en réel : un mot-clé mesuré en simulé depuis moins de 7 jours y affiche des chiffres factices. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### EXT-5 — Une mesure déjà faite est resservie, « Rafraîchir » la refait
 **Exigences :** FR-EXT-DATAFORSEO ⚠, NFR-COST-CACHE-FIRST ⚠
