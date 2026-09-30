@@ -45,6 +45,10 @@ function startEdit(currentTitle: string) {
 }
 
 function confirmEdit() {
+  // Échap retire le champ, et le navigateur envoie alors son `blur` : sans
+  // cette garde, la saisie annulée était enregistrée quand même (FR-RED-OUTLINE,
+  // recette du 2026-09-30, RED-7). Entrée non plus n'enregistre qu'une fois.
+  if (!isEditing.value) return
   const trimmed = editValue.value.trim()
   if (trimmed) {
     emit('update:section', { title: trimmed })

@@ -1,7 +1,7 @@
 ---
 title: Recette — Règles transverses
 module: 09
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/16-infrastructure.md
@@ -195,7 +195,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 3. Ouvre la rédaction du pilier, étape « Article », puis **« Enrichir »**. Lance la passe **« Exemples »**. Dès que « Chapitre 2/… » s'affiche, clique **« Arrêter »**. En MOCK, ça va vite : si la passe finit avant ton clic, relance-la.
 
 **Tu dois voir :**
-- pendant la suggestion, « Suggestion en cours... » ; la ligne « Suggestion micro-contexte » n'arrive dans la pile qu'à la fin ;
+- pendant la suggestion, « Suggestion en cours... », même si l'enfant n'a pas encore de capitaine (son titre sert alors de sujet) ; la ligne « Suggestion micro-contexte » n'arrive dans la pile qu'à la fin ;
 - la proposition (en MOCK, « Approche pratique avec mini-cas concrets… ») à côté de ton angle barré ; après « Annuler », ton angle est intact ;
 - pendant la passe, « Chapitre n/N — <titre du chapitre> » et « Arrêter » ;
 - après « Arrêter » : aucun message d'erreur ; les chapitres traités sont « à relire », les autres « en attente » ; dans la pile, une ligne « Passe d’enrichissement » par chapitre terminé, aucune pour le chapitre interrompu ;
@@ -203,6 +203,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 
 **C'est un bug si :**
 - « Arrêter » affiche une erreur ;
+- « Suggerer par IA » ne montre rien : ni « Suggestion en cours... », ni suggestion, ni « La suggestion n’a pas abouti. Réessayez dans un instant. » ;
 - la ligne de coût arrive avant la fin du texte ;
 - « Annuler » remplace ton angle.
 

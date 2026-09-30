@@ -2,7 +2,7 @@
 name: completed-checks
 description: Progression d'un article — les six étapes du Moteur et l'étape « premier jet accepté » de la Rédaction, dans le tableau articles.completed_checks.
 type: "TEXT[] (PostgreSQL articles.completed_checks) + JSONB articles.check_timestamps ; côté écran ArticleProgress { phase, completedChecks, checkTimestamps }"
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 related_fr: [FR-MOT-CHECKS, FR-MOT-CHECKS-CONSTANTS, FR-INFRA-WORKFLOW-CHECKS-CONSTANTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE, FR-DASH-PROGRESS, FR-MOT-DISPLAY-FROM-STORE, FR-MOT-CHECK-RECONCILIATION, FR-MOT-SOFT-GATING, FR-MOT-WORKFLOW-GATING-DUAL, FR-FIN-CHECK, FR-HN-TAB, FR-HN-LOCK-GATE, FR-CER-PARENT-WRITTEN-GATE, FR-RED-DRAFT-SINGLE-PASS]
 synced_with: [captain-keyword-locked.md]
 ---
@@ -47,7 +47,7 @@ Portes (`CHECK_GATES`) : `moteur:capitaine_locked` → `captain-lock`, `moteur:l
 
 **Serveur, sans l'écran.** [`cocoon-article.service.ts`](../../server/services/article/cocoon-article.service.ts) `assertParentReady` : à la création ou au rattachement d'un enfant, un parent pas encore marqué voit sa porte `draft` jouée ; si elle passe, `addArticleCheck(parent, REDACTION_DRAFT_ACCEPTED)`.
 
-**Scripts.** Mode automatique : [`scripts/auto-article/checks.ts`](../../scripts/auto-article/checks.ts) (`emitCheck` → `POST …/progress/check`, `saveThenEmit`), appelé par `moteur-explorer.ts`, `moteur-valider.ts` et `redaction.ts`. Rattrapages (simulation par défaut, `--apply` pour écrire, `addArticleCheck` direct) : [`scripts/reconcile-hn-checks.ts`](../../scripts/reconcile-hn-checks.ts) (`npm run db:reconcile-hn`, accorde `moteur:hn_locked` aux articles dont la structure passe `hn-lock`) et [`scripts/backfill-cocoon.ts`](../../scripts/backfill-cocoon.ts) (`npm run db:backfill-cocoon`, accorde `redaction:draft_accepted` à un article publié, ou dont le premier jet passe `draft`).
+**Scripts.** Mode automatique : [`scripts/auto-article/checks.ts`](../../scripts/auto-article/checks.ts) (`emitCheck` → `POST …/progress/check`, `saveThenEmit` ; une porte toute 🟠 reconnue au terminal passe par `POST …/gates/:gateId/waivers` puis redemande l'étape), appelé par `moteur-explorer.ts`, `moteur-valider.ts` et `redaction.ts`. Rattrapages (simulation par défaut, `--apply` pour écrire, `addArticleCheck` direct) : [`scripts/reconcile-hn-checks.ts`](../../scripts/reconcile-hn-checks.ts) (`npm run db:reconcile-hn`, accorde `moteur:hn_locked` aux articles dont la structure passe `hn-lock`) et [`scripts/backfill-cocoon.ts`](../../scripts/backfill-cocoon.ts) (`npm run db:backfill-cocoon`, accorde `redaction:draft_accepted` à un article publié, ou dont le premier jet passe `draft`).
 
 ## Persistance
 

@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -18,7 +18,7 @@ On y entre par la carte « Cerveau » de la page du cocon. Deux réglages d'arti
 - **La barre d'étapes**, en haut de l'application : « Cible », « Douleur », « Angle », « Promesse », « CTA », « Articles ».
   - Une étape déjà atteinte se rouvre d'un clic ; les suivantes restent fermées.
   - Une étape passée par « Suivant » est marquée faite.
-- **« Contexte envoyé à Claude »**, un encadré repliable. Il montre tout ce que l'IA reçoit : thème, silo, cocon, configuration du thème, réponses déjà validées. Un second encadré, « Articles du cocon (N) », liste les articles déjà créés du cocon, rangés par niveau ; les propositions de la carte indicative n'y figurent pas.
+- **« Contexte envoyé à Claude »**, un encadré repliable. Il montre tout ce que l'IA reçoit : thème, silo, cocon, configuration du thème, réponses déjà validées. Un second encadré, « Articles du cocon (N) », liste les articles déjà créés du cocon, rangés par niveau (« Pilier », « Intermédiaire », « Spécialisé ») ; les propositions de la carte indicative n'y figurent pas.
 - **En bas** : « Précédent », puis « Suivant ». À l'étape Articles, « Suivant » devient « Terminer le brainstorm ».
 - **Messages** : « Chargement de la stratégie... » pendant le chargement ; « Cocon introuvable. » pour un cocon inconnu.
 
@@ -252,7 +252,7 @@ La carte complète est payante (plusieurs appels d'IA, plus la recherche des que
 
 **Chaque ligne** montre :
 - son titre (« Sans titre » s'il est vide) et la marque « Créé » pour un article déjà créé ;
-- une pastille « ⚠ N » ou « ✓ » : la composition du mot-clé et les alertes de structure, détaillées au survol ;
+- une pastille « ⚠ N » ou « ✓ » : la composition du mot-clé et les alertes de structure, détaillées au survol, en phrases (« Ce spécialisé n’est rattaché à aucun intermédiaire : rattachez-le avec « Lien ». ») ;
 - des flèches pour revenir aux titres déjà proposés ;
 - son adresse « /… ».
 
@@ -316,16 +316,17 @@ La porte elle-même est décrite dans [Rédaction](13-redaction.md).
 - Sinon, l'alarme s'ouvre sur le parent. L'utilisateur corrige, ou assume, et la création reprend d'elle-même. « Revenir corriger » ne crée rien.
 
 ## Mode automatique et rattrapage des anciens cocons
-*Exigences : FR-CER-COCOON-PROGRESSIVE, FR-CER-PARENT-WRITTEN-GATE, FR-CER-KEYWORD-REAL-DATA*
+*Exigences : FR-CER-COCOON-PROGRESSIVE, FR-CER-PARENT-WRITTEN-GATE, FR-CER-KEYWORD-REAL-DATA, FR-CER-CREATION-HONNETE*
 
 **Le mode automatique** (outil en ligne de commande) suit les mêmes règles.
+- Le cocon qu'on lui nomme à la question « Cocon cible » (majuscules et espaces ne comptent pas) impose l'emplacement, comme `--cocoon` ; un nom qui ne désigne aucun cocon est dit, et la question revient. Sans réponse, il propose un emplacement, soumis à la pause 1.
 - Il crée l'article dans la section libre d'un parent du bon niveau dont le titre parle le plus de son sujet ; à égalité, sous un parent déjà rédigé.
 - Sans parent du bon niveau, ou sans section libre, il s'arrête en le disant.
 - Si le parent n'est pas rédigé, il s'arrête, sans jamais déroger à la place de l'utilisateur.
 - Il ne pose aucun mot-clé à la création : le Moteur le mesure, puis le verrouille.
 - Si l'adresse est déjà prise, il reprend l'article existant.
 - Il enregistre une stratégie propre à l'article.
-- Après le premier jet, il demande l'étape « premier jet accepté ». Sur un refus, il s'arrête et renvoie à la Rédaction.
+- Après le premier jet, il demande l'étape « premier jet accepté ». Sur un refus, il s'arrête et renvoie à la Rédaction — sauf une porte dont tous les points sont 🟠, que l'utilisateur peut dire avoir lue (« J’ai lu, continuer ? [o/N] »).
 
 **Le rattrapage** des cocons d'avant la construction progressive se lance à la main.
 - Par défaut, il simule ; il n'écrit qu'à la demande.
@@ -402,7 +403,7 @@ Ces deux réglages se font dans la Rédaction, à l'étape « Brief & Structure 
 | « Consignes specifiques » | « (optionnel) » |
 
 - Chaque champ s'enregistre quand on le quitte ; « Sauvegarde » s'affiche brièvement.
-- « Suggerer par IA » (« Suggestion en cours... ») propose les trois champs. S'ils sont déjà remplis, un aperçu « Suggestion IA » montre l'avant et l'après, avec « Appliquer » ou « Annuler ».
+- « Suggerer par IA » (« Suggestion en cours... ») propose les trois champs. S'ils sont déjà remplis, un aperçu « Suggestion IA » montre l'avant et l'après, avec « Appliquer » ou « Annuler ». Sans capitaine, le titre de l'article sert de sujet ; un échec affiche « La suggestion n’a pas abouti. Réessayez dans un instant. ».
 - Le sommaire, le premier jet et l'explication du brief reçoivent le micro-contexte. Le premier jet reçoit aussi la longueur visée.
 - Le modifier ne relance aucune génération.
 

@@ -139,3 +139,27 @@ describe('RadarAiPanel', () => {
     expect(w.find('[data-testid="radar-ai-empty-no-candidates"]').exists()).toBe(true)
   })
 })
+
+// FR-RAD-AI-SUGGESTIONS — recette du 2026-09-30 (RAD-4) : au Radar, la pastille
+// « P » vaut « — » (la pertinence se calcule au Capitaine) ; son infobulle
+// accusait à tort une douleur absente, alors que l'article en avait une.
+describe('RadarAiPanel — infobulle de la pastille « P » (FR-RAD-AI-SUGGESTIONS)', () => {
+  it('sans score Pertinence : « — », et l’infobulle renvoie au Capitaine, sans parler de douleur', () => {
+    const cards = [makeCard({ keyword: 'kw', marketScore: { total: 70, verdict: 'GO', components: [] as never }, relevanceScore: null })]
+    const w = mount(RadarAiPanel, { props: { ...COMMON, ...POST_SCAN, cards } })
+    const pill = w.find('[data-testid="radar-ai-relevance-pill"]')
+    expect(pill.text()).toBe('P —')
+    expect(pill.attributes('title')).toContain('Capitaine')
+    expect(pill.attributes('title')).not.toMatch(/PainPoint|douleur/i)
+  })
+
+  it('avec un score Pertinence : « Score Pertinence »', () => {
+    const cards = [makeCard({
+      keyword: 'kw',
+      marketScore: { total: 70, verdict: 'GO', components: [] as never },
+      relevanceScore: { total: 60, verdict: 'GO', breakdown: {} as never, rootsContext: null },
+    })]
+    const w = mount(RadarAiPanel, { props: { ...COMMON, ...POST_SCAN, cards } })
+    expect(w.find('[data-testid="radar-ai-relevance-pill"]').attributes('title')).toBe('Score Pertinence')
+  })
+})

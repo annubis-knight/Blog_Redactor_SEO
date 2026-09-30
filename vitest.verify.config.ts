@@ -40,6 +40,8 @@ export default mergeConfig(
         'tests/unit/services/mock-redaction.test.ts',
         'tests/unit/services/mock-cerveau.test.ts',
         'tests/unit/infra/test-fixtures-cleanup.test.ts',
+        // Textes à l'écran sans nom du code (NFR-UX-SCREEN-TEXT, recette du 2026-09-30).
+        'tests/unit/composables/article-proposals-warnings.test.ts',
       ],
       root: fileURLToPath(new URL('./', import.meta.url)),
     },

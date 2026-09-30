@@ -148,7 +148,7 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
       // H1 ni capitaine, celle-ci ne passerait pas la porte « structure ».
       hnStructure: ctx.articleStructure ?? [],
     })
-    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_CAPITAINE_LOCKED)
+    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_CAPITAINE_LOCKED, deps.gateReader)
     report.addStep(
       `Moteur · Capitaine (${choice.keyword}${choice.imposed ? ' — imposé' : choice.forced ? ' — forcé' : ''})`,
     )
@@ -203,7 +203,7 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
     ctx.lieutenants = pickLieutenants(ctx.radarCandidates, ctx.capitaine, level, {
       competitorHeadings: headings,
     })
-    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_LIEUTENANTS_LOCKED)
+    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_LIEUTENANTS_LOCKED, deps.gateReader)
     report.addStep(
       `Moteur · Lieutenants (${ctx.lieutenants.length}${headings.length > 0 ? ', ancrés SERP' : ''})`,
     )
@@ -222,7 +222,7 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
     const proposed = (structureDone.outline as { hnStructure?: AutoRunContext['articleStructure'] } | undefined)?.hnStructure ?? []
     if (proposed.length === 0) throw new Error('Moteur : aucune structure proposée')
     ctx.articleStructure = proposed
-    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_HN_LOCKED)
+    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_HN_LOCKED, deps.gateReader)
     report.addStep(`Moteur · Structure (${proposed.filter((n) => n.level === 2).length} H2)`)
     logger.success(`Structure : ${proposed.filter((n) => n.level === 2).length} chapitres.`)
 
@@ -235,7 +235,7 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
     })
     // Exclut les mots déjà portés par le Capitaine/Lieutenants → lexique complémentaire.
     ctx.lexique = pickLexique(tf, { exclude: [choice.keyword, ...ctx.lieutenants] })
-    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_LEXIQUE_VALIDATED)
+    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_LEXIQUE_VALIDATED, deps.gateReader)
     report.addStep(`Moteur · Lexique (${ctx.lexique.length} termes)`)
     logger.success(`Lexique : ${ctx.lexique.length} termes.`)
 

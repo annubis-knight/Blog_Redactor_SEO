@@ -1,12 +1,12 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
 # Mode automatique
 
-*Exigences : `FR-INFRA-VERIFIER-SHARED` (mêmes portes, jamais de dérogation), `FR-CER-CHILD-FROM-PILLAR-H2`,
+*Exigences : `FR-INFRA-VERIFIER-SHARED` (mêmes portes, jamais de dérogation seul), `FR-CER-CREATION-HONNETE` (cocon nommé), `FR-CER-CHILD-FROM-PILLAR-H2`,
 `FR-CER-PARENT-WRITTEN-GATE`, `FR-HN-LOCK-GATE`, `FR-LEX-METIER-ONLY`, `FR-RED-DRAFT-TO-SOURCE`,
 `FR-RED-ENRICH-SOURCES`, `FR-INFRA-ARTICLE-STRATEGIES`, `FR-EXT-TESTS-NO-COST`*
 
@@ -32,7 +32,8 @@ Code : [`../scripts/auto-article/`](../scripts/auto-article/) — lancé par `np
 | `heuristics/` | Décisions pures : emplacement, section parente, candidats Radar, capitaine, lieutenants, lexique, cannibalisation, contrôle avant export |
 | `resume.ts`, `resume-plan.ts` | Reprise d'un article existant |
 | `gate.ts`, `gate-interactive.ts` | Points de contrôle humains |
-| `checks.ts` | Demande d'une étape de progression, lecture d'un refus de porte |
+| `checks.ts` | Demande d'une étape de progression, lecture d'un refus de porte, reconnaissance d'une porte toute 🟠 (`GateReader`) |
+| `cocoon.ts`, `prompts.ts` | Cocons par nom (`findCocoonByName`, `sameCocoonName`, `resolveCocoonAnswer`), saisie initiale |
 | `report.ts` | Récap : étapes, coût IA, coût DataForSEO estimé |
 
 Tests : `tests/unit/scripts/auto-article/` (un fichier par module pur), dans `npm run verify`.
@@ -49,8 +50,8 @@ npm run auto:article -- [options]
 | `--mode=mock` (défaut) | Mode simulé : IA simulée, DataForSEO en bac à sable. Aucune dépense. |
 | `--mode=real` | Mode réel : Claude et DataForSEO facturés. |
 | `--port=<n>` | Port du serveur (défaut : `PORT`, sinon 3400). |
-| `--cocoon=<nom>` | Impose le cocon (nom exact, sans tenir compte de la casse). Pas d'appel IA d'emplacement. Un cocon introuvable arrête le run en listant les cocons existants. |
-| `--level=pilier\|intermediaire\|specifique` | Impose le niveau. Sans `--cocoon`, il n'a pas d'effet : le niveau vient de l'emplacement proposé. |
+| `--cocoon=<nom>` | Impose le cocon (nom comparé sans la casse ni les espaces, `sameCocoonName`). Pas d'appel IA d'emplacement ; la question « Cocon cible » n'est pas posée. Un cocon introuvable arrête le run en listant les cocons existants. |
+| `--level=pilier\|intermediaire\|specifique` | Impose le niveau. Sans cocon imposé (`--cocoon` ou réponse à « Cocon cible »), il n'a pas d'effet : le niveau vient de l'emplacement proposé. |
 | `--capitaine=<mot-clé>` | Impose le mot-clé principal : ni scan des candidats, ni classement. La porte du capitaine le juge quand même. |
 | `--resume=<id>` | Reprend l'article `<id>` (cf. [Reprise](#reprise)). |
 | `--relink=<id>` | Refait seulement le maillage interne de l'article `<id>`, puis s'arrête. Gratuit (aucune IA). |
@@ -61,8 +62,12 @@ npm run auto:article -- [options]
 Chaque option accepte `--option=valeur` ou `--option valeur`.
 
 **Saisie.** Sans `--config` ni `--resume`, le robot affiche l'arbre des silos, cocons et articles, puis
-demande trois choses : le sujet (obligatoire), un cocon (facultatif, simple indice pour l'IA) et un
-contexte d'entreprise (facultatif). Le niveau n'est pas demandé.
+demande trois choses : le sujet (obligatoire), un cocon (facultatif) et un contexte d'entreprise
+(facultatif). Le niveau n'est pas demandé. Le cocon répondu est lu par `resolveCocoonAnswer` contre les
+cocons de l'arbre affiché : un cocon existant (casse et espaces ignorés, nom exact préféré) est gardé sous
+son nom et **impose l'emplacement**, comme `--cocoon` ; un nom inconnu (ou ambigu) est dit et la question
+revient ; Entrée laisse le robot proposer. Recette du 2026-09-30 (PU-06) : la réponse n'était qu'un indice
+pour l'IA, et le robot avait créé un pilier dans un autre cocon.
 
 **Fichier `--config`** ([`config-file.ts`](../scripts/auto-article/config-file.ts) — `parseConfigInput`) :
 
@@ -70,8 +75,8 @@ contexte d'entreprise (facultatif). Le niveau n'est pas demandé.
 { "topic": "aider les artisans du bâtiment à être visibles localement", "cocoonName": "Visibilité locale", "businessContext": "agence web" }
 ```
 
-`topic` est obligatoire. `cocoonName` n'est qu'un indice transmis à l'IA du brief : pour imposer le
-cocon, utiliser `--cocoon`. Le champ `articleType` est lu mais sans effet (le niveau vient de
+`topic` est obligatoire. `cocoonName`, s'il est donné, impose le cocon comme `--cocoon` (un nom inconnu
+arrête le run à la phase Cerveau, en listant les cocons). Le champ `articleType` est lu mais sans effet (le niveau vient de
 l'emplacement) : utiliser `--level`.
 
 ## Le déroulé
@@ -114,8 +119,8 @@ En deux temps : rien n'est écrit en base avant la validation du point 1.
    angle, promesse, appel à l'action.
 2. `GET /silos` : l'arbre.
 3. Emplacement :
-   - imposé par `--cocoon` (et `--level`, sinon `suggestLevel` : pas de pilier → pilier ; peu
-     d'intermédiaires → intermédiaire ; sinon spécialisé) ;
+   - imposé (`imposedCocoon` : `--cocoon`, sinon le cocon répondu à « Cocon cible ») — et `--level`, sinon
+     `suggestLevel` : pas de pilier → pilier ; peu d'intermédiaires → intermédiaire ; sinon spécialisé ;
    - sinon `preselectPlacements` retient trois cocons plausibles (affinité au **sujet seul** : le nom du
      cocon pèse 0,7, son contenu 0,3, un cocon vide dont le nom accroche reçoit un bonus), puis
      `POST /generate/placement-suggest` (prompt `auto-placement.md`) tranche et justifie. L'IA peut
@@ -234,10 +239,17 @@ sinon le texte reste tel quel et la porte suivante le dira.
 
 ## Garde-fous
 
-- **Mêmes portes que l'écran, jamais de dérogation.** Les étapes du Moteur et `redaction:draft_accepted`
+- **Mêmes portes que l'écran, jamais de dérogation seul.** Les étapes du Moteur et `redaction:draft_accepted`
   passent par `POST /articles/:id/progress/check`. Un refus (`422 GATE_BLOCKED`) arrête le run ;
   `describeGateRefusal` liste chaque point (⛔ technique, 🔴 risque, 🟠 attention) et dit où décider
-  (Moteur ou Rédaction). La dérogation reste un geste humain, à l'écran.
+  (Moteur ou Rédaction). La dérogation reste un geste humain. Seule exception, décidée le 2026-09-30
+  (PU-06 : en MOCK, la porte du capitaine lève toujours un 🟠 d'intention) : si **tous** les points sont 🟠
+  (`isAttentionOnly`) et qu'un humain est au terminal (`PhaseDeps.gateReader`, posé par `index.ts` pour un
+  run interactif seulement), `emitCheck` montre les points et demande « J’ai lu, continuer ? [o/N] »
+  (`isYes`). Sur « o », il envoie `POST /articles/:id/gates/:gateId/waivers` avec les dérogations de
+  `waiverDraftsFrom` (`{ rule, fingerprint }` par point, l'empreinte étant celle reçue dans le refus : exactement ce qu'envoie la case « J'ai lu » de `GateAlarm`), puis
+  redemande l'étape une fois ; une évaluation encore refusée arrête le run. `--config` et `--resume` n'ont
+  pas de `gateReader` : tout refus les arrête.
 - **Rien n'est créé avant le point 1.**
 - **Hors offre** écarté avant le choix du capitaine.
 - **Budgets, sources, chiffres** : chapitres ramenés à leur longueur, passages sans source dits sans

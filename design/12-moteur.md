@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -124,7 +124,7 @@ sequenceDiagram
 *Exigences : FR-MOT-RECAP-PUBLISHED, FR-MOT-RECAP-LOCK-SYNC, FR-MOT-CANNIBALIZATION, FR-MOT-DISPLAY-FROM-STORE · Design : DESIGN-MOT-RECAP-PUBLISHED, DESIGN-MOT-RECAP-LOCK-SYNC, DESIGN-MOT-CANNIBALIZATION, DESIGN-MOT-DISPLAY-FROM-STORE*
 
 - **Code :** [`src/utils/recap-articles.ts`](../src/utils/recap-articles.ts) — `buildRecapArticles(proposed, capitaines)` : `ProposedArticle[]` de la stratégie → `Article[]`, `id = dbId`, `captainKeywordLocked = capitaines[dbId] || null`. `MoteurView.vue` — `suggestedArticlesForRecap`, `publishedArticles = cocoon.publishedArticles`.
-- **Code :** `MoteurContextRecap.vue` — `suggestedGroups` / `publishedGroups` (par `TYPE_ORDER`), `unifiedCapitainesMap`, `getDisplayedKeyword` (store pour l'article choisi), `getChecks` (lit `progressMap`), watcher de chargement de la progression, `hasCannibalization` ([`src/composables/moteur/useCannibalizationDetection.ts`](../src/composables/moteur/useCannibalizationDetection.ts), clé `articleId`, casse ignorée).
+- **Code :** `MoteurContextRecap.vue` — `suggestedGroups` / `publishedGroups` (par `TYPE_ORDER` = `ARTICLE_LEVELS`), badge de groupe `articleLevelToDisplayLabel(level)` et classe `tree-type--<niveau>` (une couleur par niveau, gardée par `tests/unit/shared/article-level-display.test.ts`, FR-CER-AIGUILLAGE), `unifiedCapitainesMap`, `getDisplayedKeyword` (store pour l'article choisi), `getChecks` (lit `progressMap`), watcher de chargement de la progression, `hasCannibalization` ([`src/composables/moteur/useCannibalizationDetection.ts`](../src/composables/moteur/useCannibalizationDetection.ts), clé `articleId`, casse ignorée).
 - **Code serveur :** `data.service.ts` — `loadArticlesDb` et `getSilos` dérivent `publishedArticles` (`phase IN ('redaction','published')`) ; [`shared/utils/article-phase.ts`](../shared/utils/article-phase.ts) — `nextArticlePhase` (ne recule jamais), appelée par `updateArticleStatus` (`publié`) et [`server/services/article/article-content.service.ts`](../server/services/article/article-content.service.ts) (contenu non vide).
 - **API :** `GET /api/cocoons` (cocons + `publishedArticles`) ; `GET /api/strategy/cocoon/:slug` (propositions) ; `GET /api/cocoons/:cocoonName/capitaines` → `Record<articleId, capitaine>` à partir de `article_keywords.capitaine` non vide ([`server/routes/cocoons.routes.ts`](../server/routes/cocoons.routes.ts), `getArticleKeywordsByCocoon`).
 - **Règles et décisions :**

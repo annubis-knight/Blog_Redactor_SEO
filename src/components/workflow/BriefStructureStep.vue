@@ -58,7 +58,7 @@ const targetWordCount = ref<number | undefined>(undefined)
 const isSavingMicroContext = ref(false)
 const savedFeedback = ref(false)
 
-const { isStreaming: isSuggesting, startStream: startSuggest } = useStreaming<{ angle: string; tone: string; directives: string }>()
+const { isStreaming: isSuggesting, error: suggestError, startStream: startSuggest } = useStreaming<{ angle: string; tone: string; directives: string }>()
 
 // --- IA Suggest preview ---
 const showSuggestPreview = ref(false)
@@ -111,7 +111,11 @@ function suggestMicroContext() {
     articleId: props.articleId,
     articleTitle: props.articleTitle,
     articleType: briefStore.briefData?.article.type ?? 'Spécialisé',
-    keyword: articleKeywordsStore.keywords?.capitaine ?? props.articleTitle,
+    // Sans capitaine verrouillé, le store garde une chaîne vide (pas `null`) :
+    // `??` la laissait passer et le serveur refusait la demande en silence
+    // (FR-CER-MICRO-CONTEXT, recette du 2026-09-30, INFRA-9). Le titre de
+    // l'article sert alors de sujet.
+    keyword: articleKeywordsStore.keywords?.capitaine?.trim() || props.articleTitle,
     cocoonName: props.cocoonName,
     siloName: props.siloName,
     themeConfig: themeConfigStore.config,
@@ -303,9 +307,14 @@ onMounted(async () => {
             </div>
           </div>
 
+          <p v-if="suggestError && !isSuggesting" class="suggest-error" role="alert" data-testid="suggest-error">
+            La suggestion n’a pas abouti. Réessayez dans un instant.
+          </p>
+
           <button
             v-if="!showSuggestPreview"
             class="btn btn-suggest"
+            data-testid="suggest-micro-context"
             :disabled="isSuggesting"
             @click="suggestMicroContext"
           >
@@ -487,6 +496,12 @@ onMounted(async () => {
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--color-success, #16a34a);
+}
+
+.suggest-error {
+  color: var(--color-error, #dc2626);
+  font-size: 0.8125rem;
+  margin: 0;
 }
 
 .fade-enter-active { transition: opacity 0.2s ease; }
