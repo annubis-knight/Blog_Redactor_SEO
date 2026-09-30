@@ -23,6 +23,7 @@
 import { ref, computed, watch, onUnmounted, toRef } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { tfidfResultContract } from '@shared/contracts/serp.contract.js'
+import { articleLevelToDisplayLabel } from '@shared/utils/article-level.js'
 import { log } from '@/utils/logger'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
@@ -453,7 +454,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
       <div v-if="selectedLieutenants.length > 0" class="lieutenant-badges">
         <span v-for="lt in selectedLieutenants" :key="lt" class="lt-badge">{{ lt }}</span>
       </div>
-      <span v-if="articleLevel" class="level-badge">{{ articleLevel }}</span>
+      <span v-if="articleLevel" class="level-badge">{{ articleLevelToDisplayLabel(articleLevel) }}</span>
     </div>
 
     <!-- Suggestions de keywords issues du Radar DB-first, à ajouter aux termes lexique sélectionnés. -->

@@ -170,9 +170,10 @@ describe('LexiquePanel', () => {
       expect(badges[1].text()).toBe('solutions')
     })
 
-    it('displays article level badge', () => {
+    // FR-CER-AIGUILLAGE — le niveau en toutes lettres, jamais sous son code.
+    it('displays article level badge in full words (FR-CER-AIGUILLAGE)', () => {
       const wrapper = mountComponent()
-      expect(wrapper.find('.level-badge').text()).toBe('intermediaire')
+      expect(wrapper.find('.level-badge').text()).toBe('Intermédiaire')
     })
 
     it('shows dash when captain keyword is null', () => {

@@ -6,7 +6,7 @@ status: done
 version: 1.0.0
 last_updated: 2026-09-30
 synced_with:
-  - spec/requirements.md (NFR-UX-SCREEN-TEXT, FR-UI-VOCABULAIRE-VERROUILLER, FR-INFRA-COST-LOG-STORE)
+  - spec/requirements.md (NFR-UX-SCREEN-TEXT, FR-UI-VOCABULAIRE-VERROUILLER, FR-INFRA-COST-LOG-STORE, FR-CER-AIGUILLAGE)
   - spec/recette/ (01 à 09 : libellés cités), spec/parcours/ (PU-01, PU-03, PU-04, PU-07, PU-08)
   - spec/04-cerveau.md, spec/06-discovery.md, spec/07-radar.md, spec/09-lieutenants.md, spec/11-lexique.md, spec/13-redaction.md, spec/15-interface.md, spec/16-infrastructure.md, spec/17-qualites.md, spec/18-recette-manuelle.md
   - design/07-tests-et-outillage.md, design/08-ecrans.md, design/13-discovery.md, design/14-radar-capitaine.md, design/20-infrastructure.md, design/21-qualites.md
@@ -43,13 +43,19 @@ Valideurs : tous dans `npm run verify` (`tests/unit/architecture/`, `tests/unit/
 - **Constat.** `apiPost` inscrit le champ `usage` de toute réponse ; `useResonanceScore.generate` (Radar), `editor.store.generateMeta` et `ContentGapPanel.vue` ajoutaient une seconde ligne (depuis `_apiUsage` ou `usage`).
 - **Décision.** Les trois ajouts manuels sont retirés ; le libellé tiré de l'adresse (`labelFromUrl`) est le même. Test : `tests/unit/composables/cost-log-once-radar-meta-gap.test.ts` (vrai `apiPost`, vrai store, `fetch` simulé), rouge avant le correctif.
 
-## 5. Exigences
+## 5. Niveau affiché sous son code (rejeu du 30/09 au soir)
+
+- **Constat.** En rejouant les lots sur `main`, le Lexique montrait le badge « INTERMEDIAIRE » : la valeur `intermediaire` mise en capitales. Le lot 4 avait corrigé ce défaut ailleurs (Lieutenants, Cerveau, Moteur) ; restaient `LexiquePanel.vue` (badge) et `CaptainPanel.vue` (« Niveau : … »). Le valideur d'accents ne le voit pas : c'est une valeur calculée, pas un texte fixe.
+- **Décision.** Les deux passent par `articleLevelToDisplayLabel`. Garde ajouté à `tests/unit/architecture/article-level-names.test.ts` : aucun template n'écrit `{{ … articleLevel }}` brut (`FR-CER-AIGUILLAGE`, rouge avant le correctif). Le test du Lexique qui attendait « intermediaire » attend « Intermédiaire ».
+
+## 6. Exigences
 
 - `NFR-UX-SCREEN-TEXT` : critères ajoutés (accents, compteurs, raison Discovery, vérification rapide) ; statut **active**.
 - `FR-UI-VOCABULAIRE-VERROUILLER` : critère ajouté (cadenas de la structure) ; statut **active** ; test `lieutenant-h2-structure.test.ts`.
+- `FR-CER-AIGUILLAGE` : critère « en toutes lettres, jamais sous son code » déjà écrit ; tenu désormais au Lexique et au Capitaine ; reste active.
 - `FR-INFRA-COST-LOG-STORE` : le critère « un appel n'est jamais compté deux fois » était écrit ; le statut reste non tenu pour ses autres raisons (opérations en base, coût des longues traînes et du jugement PAA).
 
-## 6. Hors périmètre
+## 7. Hors périmètre
 
 - Les prompts de `server/prompts/` (texte envoyé à l'IA, pas affiché) et les journaux historiques (`recette-2026-09-30/`, `recette-manuelle-journal.md`) gardent leurs citations d'origine.
 - Les titres de section « Intent Modifiers » et « Prepositions » de Discovery restent tels quels : termes cités par la spec et la recette, à trancher à part.

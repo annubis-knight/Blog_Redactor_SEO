@@ -113,7 +113,7 @@ Ils lisent le code source et refusent une forme interdite. Tous tournent dans `v
 | `prompt-variables` | Le texte de l'utilisateur est échappé avant d'entrer dans un prompt ; chaque appel fournit exactement les repères du prompt |
 | `regex-accents` | Jamais de `\b` collé à une lettre accentuée dans une expression régulière |
 | `screen-text-no-escape`, `screen-text-accents`, `screen-text-counters` | Un texte d'écran s'affiche tel qu'il est écrit : ni séquence d'échappement, ni mot courant privé de ses accents, ni compteur au pluriel figé (`NFR-UX-SCREEN-TEXT`, voir [Qualités](21-qualites.md) « Textes lisibles ») |
-| `article-level-names` | Le niveau d'article se lit avec `parseArticleLevel`, jamais « Cluster » ni « Support » |
+| `article-level-names` | Le niveau d'article se lit avec `parseArticleLevel`, jamais « Cluster » ni « Support » ; un template ne l'affiche jamais brut (`{{ … articleLevel }}`) mais par `articleLevelToDisplayLabel` (`FR-CER-AIGUILLAGE`) |
 | `moteur-tabs-helper` | La liste `MOTEUR_TABS` des tests navigateur suit les onglets réels du Moteur |
 | `decouplage-lieutenants-lexique`, `lexique-separation`, `lexique-tabbar`, `lexique-watcher-isolated` | Pas d'import croisé entre services Lieutenants, Lexique et lecture des pages ; séparation lecture / verrouillage du Lexique |
 
