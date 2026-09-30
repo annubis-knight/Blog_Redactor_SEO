@@ -998,7 +998,9 @@ development_status:
   recette-2026-09-30-lot5-libelles: done
   # Lot 6 (30/09 au soir) : les 7 défauts restés voisins des lots, corrigés par 4 agents
   # en parallèle, une seule PR (tech-spec-lot6-restes). Colonne keyword_metrics.from_sandbox.
-  recette-2026-09-30-lot6-restes: review
+  # Rejoué à l'écran sur main (MOCK) : tout vert ; données simulées d'avant la colonne effacées
+  # le 30/09 à 21 h 34 (accord d'Arnaud).
+  recette-2026-09-30-lot6-restes: done
 
 # ===== Backlog (non livré) =====
 #
