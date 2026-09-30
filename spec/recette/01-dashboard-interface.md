@@ -372,13 +372,13 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 - enfant, Lieutenants : « Verrouillez votre Capitaine dans l'onglet précédent pour analyser la SERP. », et aucun panneau « Suggestions IA Lieutenants » (défaut connu) ;
 - enfant, Lexique : « Verrouillez d'abord le Capitaine pour débloquer les actions Lexique. », et aucun panneau « Analyse IA Lexique » (défaut connu) ;
 - pilier, Lieutenants : « Suggestions IA Lieutenants », avec sa propre présentation (pas d'en-tête repliable), puis « N propositions générées par l'IA. » et « Régénérer les suggestions », ou « Aucune génération IA pour ce Capitaine. » et « Lancer une suggestion IA » ;
-- pilier, Lexique : « Analyse IA Lexique » présent ; rien ne se lance à l'ouverture de l'onglet (l'analyse attend « Analyser avec l'IA »). Juste après une analyse, il revient au repos : « Lance l'analyse IA pour obtenir des recommandations sur les termes TF-IDF. » et « Analyser avec l'IA », alors que les termes portent leurs badges ; après un rechargement, il affiche « N termes analysés — 0 recommandés · 0 écartés. », et les badges ont disparu (le panneau et les badges lisent deux listes différentes : défaut connu de FR-LEX-AI-PANEL). Ou il montre une erreur lisible, si l'extraction n'a trouvé aucun terme.
+- pilier, Lexique : « Analyse IA Lexique » présent ; rien ne se lance à l'ouverture de l'onglet (l'analyse attend « Analyser avec l'IA »). Juste après une analyse, comme après un rechargement : « N termes analysés — X recommandés · Y écartés. » et « Régénérer l'analyse », les mêmes nombres que les badges des termes. Ou il montre une erreur lisible, si l'extraction n'a trouvé aucun terme.
 
 **C'est un bug si :**
 - au pilier, l'un de ces deux panneaux manque ;
 - le panneau du Lexique se replie tout seul après l'analyse.
 
-> En MOCK, l'analyse préparée donne un avis par terme reçu (badges, raisons, termes manquants) : ce qui manque au panneau vient de l'écran, pas de la simulation. Le résultat complet « N termes analysés — X recommandés · Y écartés. » attend la correction de FR-LEX-AI-PANEL. Autre écart signalé : « Régénérer les suggestions » des Lieutenants part sans confirmation, contrairement aux autres panneaux.
+> En MOCK, l'analyse préparée donne un avis par terme reçu (badges, raisons, termes manquants), que le panneau décompte. Autre écart signalé : « Régénérer les suggestions » des Lieutenants part sans confirmation, contrairement aux autres panneaux.
 
 **⚠ Défaut connu :** le panneau du Lexique n'apparaît qu'après le calcul TF-IDF, celui des Lieutenants qu'après l'analyse des résultats Google, et le panneau « Analyse IA du Brief » de la rédaction n'a ni la structure commune ni d'état « erreur ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 

@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -40,6 +40,7 @@ Le TF-IDF est ici une mesure simple : sur combien de pages concurrentes un mot a
 - Chaque terme analysé porte « IA recommandé » ou « IA optionnel », la raison en info-bulle. Un terme sans décision lisible n'a pas de badge.
 - Le panneau « Analyse IA Lexique » compte « N termes analysés — n recommandés · m écartés ». Il propose « Analyser avec l'IA » ou « Régénérer l'analyse » ; la régénération demande confirmation (« Régénérer l'analyse IA Lexique ? Cela consommera un appel Claude. »).
 - L'avis de l'IA ne coche aucun terme. Il est enregistré avec l'exploration.
+- Badges, résumé, termes manquants et décompte du panneau montrent l'avis du mot-clé affiché : le même juste après l'analyse, après un rechargement et au retour sur son onglet. Un mot-clé jamais analysé n'en montre aucun ; l'avis donné sur un autre mot-clé n'y apparaît pas.
 
 ## Trier
 *Exigences : FR-LEX-SORT*

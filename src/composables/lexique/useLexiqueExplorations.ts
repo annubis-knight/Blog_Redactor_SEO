@@ -3,22 +3,39 @@
  *            propositions TF-IDF + IA upfront pour chaque sourceKeyword exploré).
  * READS FROM: GET /articles/:id/explorations (hydrateFromDb / mergeFromDb),
  *             sous contrat `explorations` (NFR-INT-DISPLAY-CONTRACTS).
- * WRITES TO: rien — famille LECTURE stricte (FR-LEX-LECTURE-VS-VERROUILLAGE).
+ * WRITES TO: rien en base — famille LECTURE stricte (FR-LEX-LECTURE-VS-VERROUILLAGE).
  *            Aucun appel apiPut/apiPost/apiDelete sur /articles/:id/keywords.
  *            Aucun import de useArticleKeywordsStore (sauf typage).
- * CONSUMERS: LexiquePanel.vue).
+ *            En mémoire seulement : applyIaAnalysis range l'analyse que le serveur
+ *            vient d'enregistrer (ai-lexique-upfront, saveLexiqueAi).
+ * CONSUMERS: LexiquePanel.vue (listes, onglets, résumé, termes manquants),
+ *            useLexiqueIa (badges et compteurs du panneau lisent iaRecommendations).
  * RELATED FR: FR-LEX-LECTURE-VS-VERROUILLAGE (AC.LEX-SEP.1, AC.LEX-SEP.3),
  *             FR-LEX-MULTI-KEYWORD-TABS (cache pastExplorations alimenté ici),
+ *             FR-LEX-AI-PANEL (une seule analyse affichée : celle du mot-clé affiché),
  *             FR-MOT-CACHE-PANEL-COUNT (les compteurs DB tirent depuis le cache hydrate).
  */
-import { ref, type Ref } from 'vue'
+import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import { apiGet } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import { shouldRegenerate } from '@/utils/ttl-freshness'
 import { articleExplorationsContract } from '@shared/contracts/article-explorations.contract.js'
-import type { TfidfResult, LexiqueExploration, LexiqueTermRecommendation } from '@shared/types/serp-analysis.types.js'
+import { isGenericTerm } from '@shared/utils/generic-terms.js'
+import type {
+  TfidfResult,
+  LexiqueAnalysisResult,
+  LexiqueExploration,
+  LexiqueTermRecommendation,
+} from '@shared/types/serp-analysis.types.js'
 
 export type LexiqueExplorationEntry = LexiqueExploration
+
+/** Analyse de l'IA d'un mot-clé exploré, telle qu'enregistrée dans `lexique_explorations`. */
+interface LexiqueIaAnalysis {
+  recommendations: Map<string, LexiqueTermRecommendation>
+  summary: string | null
+  missingTerms: string[]
+}
 
 export interface UseLexiqueExplorationsInput {
   articleId: Ref<number | undefined>
@@ -29,12 +46,58 @@ export interface UseLexiqueExplorationsApi {
   pastExplorations: Ref<LexiqueExplorationEntry[]>
   activeSourceKeyword: Ref<string>
   tfidfResult: Ref<TfidfResult | null>
-  iaRecommendations: Ref<Map<string, LexiqueTermRecommendation>>
+  /**
+   * Mot-clé de la liste affichée : l'onglet ouvert, sinon (onglet « Tester un
+   * mot-clé ») celui de la liste restée à l'écran, sinon le Capitaine. L'analyse
+   * de l'IA part pour lui et s'affiche pour lui (FR-LEX-AI-PANEL).
+   */
+  analysisKeyword: ComputedRef<string>
+  /** Recommandations de l'analyse affichée (clé : terme en minuscules). */
+  iaRecommendations: ComputedRef<Map<string, LexiqueTermRecommendation>>
+  /** Résumé de l'analyse affichée, `null` sans analyse. */
+  iaSummary: ComputedRef<string | null>
+  /** Termes manquants de l'analyse affichée. */
+  iaMissingTerms: ComputedRef<string[]>
   hydrateFromDb: () => Promise<void>
   mergeFromDb: () => Promise<void>
   selectExploration: (sourceKeyword: string) => void
   addExploration: (entry: LexiqueExplorationEntry) => void
+  /** Range l'analyse que le serveur vient d'enregistrer pour `sourceKeyword`. */
+  applyIaAnalysis: (sourceKeyword: string, result: LexiqueAnalysisResult) => void
   reset: () => void
+}
+
+const NO_RECOMMENDATIONS: ReadonlyMap<string, LexiqueTermRecommendation> = new Map()
+
+function keyOf(keyword: string): string {
+  return keyword.trim().toLowerCase()
+}
+
+/**
+ * Même filtre qu'à la relecture en base (`lexique-exploration.service`
+ * `rowToExploration`) : l'analyse reçue s'affiche comme elle reviendra au
+ * rechargement (FR-LEX-METIER-ONLY).
+ */
+function toAnalysis(
+  recommendations: LexiqueTermRecommendation[],
+  summary: string | null,
+  missingTerms: string[],
+): LexiqueIaAnalysis {
+  const map = new Map<string, LexiqueTermRecommendation>()
+  for (const rec of recommendations) {
+    if (!isGenericTerm(rec.term)) map.set(rec.term.toLowerCase(), rec)
+  }
+  return {
+    recommendations: map,
+    summary: summary?.trim() ? summary : null,
+    missingTerms: missingTerms.filter(t => !isGenericTerm(t)),
+  }
+}
+
+function analysisOfEntry(entry: LexiqueExplorationEntry): LexiqueIaAnalysis | null {
+  const analysis = toAnalysis(entry.aiRecommendations, entry.aiSummary, entry.aiMissingTerms)
+  const isEmpty = analysis.recommendations.size === 0 && !analysis.summary && analysis.missingTerms.length === 0
+  return isEmpty ? null : analysis
 }
 
 export function useLexiqueExplorations(
@@ -43,11 +106,35 @@ export function useLexiqueExplorations(
   const pastExplorations = ref<LexiqueExplorationEntry[]>([])
   const activeSourceKeyword = ref<string>('')
   const tfidfResult = ref<TfidfResult | null>(null)
-  const iaRecommendations = ref<Map<string, LexiqueTermRecommendation>>(new Map())
+  /** Analyses connues de l'article, par mot-clé exploré (clé `keyOf`). */
+  const analyses = ref<Map<string, LexiqueIaAnalysis>>(new Map())
+
+  const analysisKeyword = computed(() =>
+    activeSourceKeyword.value || tfidfResult.value?.keyword || input.captainKeyword.value || '',
+  )
+  const displayedAnalysis = computed(() => analyses.value.get(keyOf(analysisKeyword.value)) ?? null)
+  const iaRecommendations = computed(
+    () => (displayedAnalysis.value?.recommendations ?? NO_RECOMMENDATIONS) as Map<string, LexiqueTermRecommendation>,
+  )
+  const iaSummary = computed(() => displayedAnalysis.value?.summary ?? null)
+  const iaMissingTerms = computed(() => displayedAnalysis.value?.missingTerms ?? [])
+
+  /** Range les analyses relues en base. `onlyNew` : ne remplace pas une analyse déjà connue. */
+  function rememberAnalyses(entries: LexiqueExplorationEntry[], onlyNew: boolean): void {
+    const next = new Map(analyses.value)
+    for (const entry of entries) {
+      const key = keyOf(entry.sourceKeyword)
+      if (onlyNew && next.has(key)) continue
+      const analysis = analysisOfEntry(entry)
+      if (analysis) next.set(key, analysis)
+    }
+    analyses.value = next
+  }
 
   /**
-   * Hydrate depuis DB au mount : restore pastExplorations + tfidfResult/iaRecommendations
-   * pour le sourceKeyword qui matche le capitaine (le cas échéant).
+   * Hydrate depuis DB au mount : restore pastExplorations + tfidfResult pour le
+   * sourceKeyword qui matche le capitaine (le cas échéant), et les analyses de
+   * l'IA de chaque mot-clé exploré.
    * Aucun appel externe DataForSEO — pure lecture cache article-scoped.
    */
   async function hydrateFromDb(): Promise<void> {
@@ -56,6 +143,7 @@ export function useLexiqueExplorations(
     try {
       const payload = await apiGet(`/articles/${id}/explorations`, { contract: articleExplorationsContract })
       pastExplorations.value = payload.lexique
+      rememberAnalyses(payload.lexique, false)
       log.debug('[useLexiqueExplorations] DB hydration', { count: pastExplorations.value.length })
 
       const active = activeSourceKeyword.value || input.captainKeyword.value || ''
@@ -65,9 +153,6 @@ export function useLexiqueExplorations(
       if (match && match.tfidfTerms) {
         tfidfResult.value = match.tfidfTerms
         activeSourceKeyword.value = match.sourceKeyword
-        const map = new Map<string, LexiqueTermRecommendation>()
-        for (const rec of match.aiRecommendations) map.set(rec.term.toLowerCase(), rec)
-        iaRecommendations.value = map
         log.info(
           `[useLexiqueExplorations] Restored from DB for "${match.sourceKeyword}" (${shouldRegenerate(match.exploredAt) ? 'stale' : 'fresh'})`,
         )
@@ -102,6 +187,7 @@ export function useLexiqueExplorations(
       if (additions.length > 0) {
         pastExplorations.value = [...pastExplorations.value, ...additions]
       }
+      rememberAnalyses(incoming, true)
       log.info(
         `[useLexiqueExplorations] Merged ${additions.length} explorations (skipped ${incoming.length - additions.length} duplicates)`,
       )
@@ -113,16 +199,14 @@ export function useLexiqueExplorations(
   /**
    * Switch onglet pur (LECTURE) : lit le cache pastExplorations, n'effectue
    * aucun fetch. Cohérence affichage/calcul §2.0 : matching strict sur
-   * sourceKeyword brut (pas de transformation).
+   * sourceKeyword brut (pas de transformation). L'analyse affichée suit le
+   * mot-clé de l'onglet (`analysisKeyword`).
    */
   function selectExploration(sourceKeyword: string): void {
     const entry = pastExplorations.value.find(e => e.sourceKeyword === sourceKeyword)
     if (!entry) return
     activeSourceKeyword.value = entry.sourceKeyword
     tfidfResult.value = entry.tfidfTerms
-    const map = new Map<string, LexiqueTermRecommendation>()
-    for (const rec of entry.aiRecommendations) map.set(rec.term.toLowerCase(), rec)
-    iaRecommendations.value = map
   }
 
   /**
@@ -131,11 +215,15 @@ export function useLexiqueExplorations(
    */
   function addExploration(entry: LexiqueExplorationEntry): void {
     pastExplorations.value = [...pastExplorations.value, entry]
+    rememberAnalyses([entry], false)
     activeSourceKeyword.value = entry.sourceKeyword
     tfidfResult.value = entry.tfidfTerms
-    const map = new Map<string, LexiqueTermRecommendation>()
-    for (const rec of entry.aiRecommendations) map.set(rec.term.toLowerCase(), rec)
-    iaRecommendations.value = map
+  }
+
+  function applyIaAnalysis(sourceKeyword: string, result: LexiqueAnalysisResult): void {
+    const next = new Map(analyses.value)
+    next.set(keyOf(sourceKeyword), toAnalysis(result.recommendations, result.summary, result.missingTerms))
+    analyses.value = next
   }
 
   /**
@@ -146,18 +234,22 @@ export function useLexiqueExplorations(
     pastExplorations.value = []
     activeSourceKeyword.value = ''
     tfidfResult.value = null
-    iaRecommendations.value = new Map()
+    analyses.value = new Map()
   }
 
   return {
     pastExplorations,
     activeSourceKeyword,
     tfidfResult,
+    analysisKeyword,
     iaRecommendations,
+    iaSummary,
+    iaMissingTerms,
     hydrateFromDb,
     mergeFromDb,
     selectExploration,
     addExploration,
+    applyIaAnalysis,
     reset,
   }
 }

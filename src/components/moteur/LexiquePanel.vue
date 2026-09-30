@@ -4,7 +4,9 @@
  *            useLexiqueLocking) + `lexique_explorations` (LECTURE via
  *            useLexiqueExplorations) + `keyword_serp_scrapes` (pré-check via
  *            useSerpExistsCheck).
- * READS FROM: GET /articles/:id/explorations (composable LECTURE).
+ * READS FROM: GET /articles/:id/explorations (composable LECTURE : listes et
+ *             analyses de l'IA par mot-clé ; l'analyse affichée est celle du
+ *             mot-clé affiché, FR-LEX-AI-PANEL).
  *             GET /keywords/:keyword/serp/exists (composable pré-check).
  *             POST /serp/tfidf (fetchTfidf, optionnellement triggerScrapeIfMissing).
  *             useArticleProgressStore.getProgress(id).completedChecks
@@ -98,8 +100,12 @@ const showSerpScrapeModal = ref(false)
 const articleIdRef = computed(() => props.selectedArticle?.id ?? undefined)
 const captainKeywordRef = toRef(props, 'captainKeyword')
 
+// L'analyse de l'IA affichée (badges, compteurs du panneau, résumé, termes
+// manquants) est celle du mot-clé affiché, relue en base ou reçue de l'IA :
+// une seule liste, quel que soit le chemin (FR-LEX-AI-PANEL).
 const {
-  pastExplorations, activeSourceKeyword, tfidfResult, iaRecommendations,
+  pastExplorations, activeSourceKeyword, tfidfResult,
+  analysisKeyword, iaRecommendations, iaSummary, iaMissingTerms, applyIaAnalysis,
   hydrateFromDb, mergeFromDb, selectExploration, reset: resetExplorations,
 } = useLexiqueExplorations({ articleId: articleIdRef, captainKeyword: captainKeywordRef })
 
@@ -119,12 +125,12 @@ const { exists: serpExists, isChecking: serpExistsIsChecking, refetch: refetchSe
   = useSerpExistsCheck(captainKeywordRef)
 
 const {
-  iaIsStreaming, iaError, iaResult,
+  iaIsStreaming, iaError,
   iaRecommendedCount, iaNotRecommendedCount,
   iaAbort, getRecommendation, isIaRecommended, generateLexiqueUpfront,
 } = useLexiqueIa({
-  tfidfResult, activeSourceKeyword,
-  captainKeyword: captainKeywordRef,
+  tfidfResult, analysisKeyword, iaRecommendations,
+  onAnalysisDone: applyIaAnalysis,
   articleLevel: toRef(props, 'articleLevel'),
   cocoonSlug: toRef(props, 'cocoonSlug'),
   selectedArticleId: articleIdRef,
@@ -240,7 +246,6 @@ async function extractCustomKeyword() {
   const kw = customKeywordInput.value.trim()
   if (!kw || isLoading.value) return
   activeSourceKeyword.value = kw
-  iaRecommendations.value = new Map()
   await fetchTfidf(kw, true)
   if (tfidfResult.value) await mergeFromDb()
   customKeywordInput.value = ''
@@ -554,10 +559,10 @@ defineExpose({ hydrateFromDb, mergeFromDb })
           <p>{{ iaError }}</p>
           <button class="btn-retry" @click="generateLexiqueUpfront">Relancer l'analyse IA</button>
         </div>
-        <div v-else-if="iaResult" class="ia-summary" data-testid="ia-summary">
-          <p>{{ iaResult.summary }}</p>
-          <div v-if="iaResult.missingTerms.length > 0" class="ia-missing-terms">
-            <strong>Termes manquants :</strong> {{ iaResult.missingTerms.join(', ') }}
+        <div v-else-if="iaSummary || iaMissingTerms.length > 0" class="ia-summary" data-testid="ia-summary">
+          <p v-if="iaSummary">{{ iaSummary }}</p>
+          <div v-if="iaMissingTerms.length > 0" class="ia-missing-terms">
+            <strong>Termes manquants :</strong> {{ iaMissingTerms.join(', ') }}
           </div>
         </div>
       </div>

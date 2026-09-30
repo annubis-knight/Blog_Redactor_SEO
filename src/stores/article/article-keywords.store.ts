@@ -10,6 +10,8 @@
  *            saveStructure : la structure H1/H2/H3, onglet Structure).
  *            POST /articles/:id/captain-explorations (saveCaptainExplorationEntry).
  *            POST /articles/:id/lieutenant-explorations (saveLieutenantExplorationEntries).
+ *            POST /articles/:id/lieutenants/archive (archiveLockedLieutenants,
+ *            « Tout réinitialiser » : FR-INFRA-LIEUTENANT-EXPLORATIONS).
  * CONSUMERS: CaptainPanel, LieutenantsPanel, LexiquePanel, FinalisationPanel,
  *            StructureHnPanel + useStructureHn (hnStructure : copie de travail,
  *            « modifiée » tant qu'elle diffère de la structure enregistrée),
@@ -618,20 +620,57 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     keywords.value.lieutenants = keywords.value.lieutenants.filter(l => l !== keyword)
   }
 
-  function archiveLockedLieutenants() {
-    if (!keywords.value?.richLieutenants) return
-    let archived = 0
+  /**
+   * « Tout réinitialiser » (déverrouillage du Capitaine) : les lieutenants
+   * verrouillés passent à 'archived' en mémoire, aussitôt, puis en base
+   * (`POST /articles/:id/lieutenants/archive`, pour ces mots-clés seulement).
+   * L'archivage n'était fait qu'à l'écran : au rechargement, les lieutenants
+   * revenaient cochés contre une liste plate vide (FR-INFRA-LIEUTENANT-EXPLORATIONS).
+   * La liste plate, elle, part avec l'enregistrement des décisions de l'appelant.
+   * Renvoie `false` si l'archivage enregistré a échoué.
+   */
+  async function archiveLockedLieutenants(): Promise<boolean> {
+    if (!keywords.value?.richLieutenants) return true
+    const archived: string[] = []
     for (const lt of keywords.value.richLieutenants) {
       if (lt.status === 'locked') {
         lt.status = 'archived'
-        archived++
+        archived.push(lt.keyword)
       }
     }
-    if (archived > 0) {
-      // Sync flat lieutenants — vide la liste plate (il ne reste plus rien d'actif).
-      keywords.value.lieutenants = []
-      log.info(`[article-keywords] archived ${archived} locked lieutenants`)
+    if (archived.length === 0) return true
+    // Sync flat lieutenants — vide la liste plate (il ne reste plus rien d'actif).
+    keywords.value.lieutenants = []
+    log.info(`[article-keywords] archived ${archived.length} locked lieutenants`)
+    const articleId = keywords.value.articleId
+    if (!articleId) return true
+    try {
+      await apiPost(`/articles/${articleId}/lieutenants/archive`, { keywords: archived })
+      return true
+    } catch (err) {
+      log.error(`[article-keywords] archive lieutenants failed`, { articleId, error: err })
+      return false
     }
+  }
+
+  /**
+   * Ajoute une proposition de lieutenant (statut 'suggested', non cochée) : un
+   * mot-clé ajouté depuis le panneau d'aide. Une proposition écartée ou archivée
+   * du même mot-clé redevient proposée ; une proposition verrouillée ne change pas.
+   * Renvoie l'entrée telle qu'elle est en mémoire, à enregistrer.
+   */
+  function proposeLieutenant(entry: Omit<RichLieutenant, 'status'>): RichLieutenant | null {
+    if (!keywords.value) return null
+    const rich = keywords.value.richLieutenants ?? []
+    const key = entry.keyword.trim().toLowerCase()
+    const existing = rich.find(lt => lt.keyword.trim().toLowerCase() === key)
+    if (existing) {
+      if (existing.status !== 'locked') existing.status = 'suggested'
+      return existing
+    }
+    const created: RichLieutenant = { ...entry, status: 'suggested' }
+    keywords.value.richLieutenants = [...rich, created]
+    return created
   }
 
   // ---- Lexique ----
@@ -771,7 +810,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     addRootKeywordValidation,
     setRootKeywords, addLieutenant, removeLieutenant,
     saveRichLieutenantProposals, setRichLieutenants, unlockLieutenants,
-    lockLieutenant, unlockLieutenant,
+    lockLieutenant, unlockLieutenant, proposeLieutenant,
     archiveLockedLieutenants,
     addLexiqueTerm, removeLexiqueTerm,
     loadCaptainPaaJudgments, getPaaJudgment, isPaaJudgmentLoading,

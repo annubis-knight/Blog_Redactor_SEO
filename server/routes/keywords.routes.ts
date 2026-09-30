@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { z } from 'zod'
 import { log } from '../utils/logger.js'
 import { respondWithError } from '../utils/api-error.js'
 import { getCached, setCached, slugify } from '../db/cache-helpers.js'
@@ -438,16 +439,28 @@ router.post('/articles/:id/lieutenant-explorations', async (req, res) => {
 })
 
 /**
+ * Corps de l'archivage : les mots-clés à archiver, tels qu'enregistrés (comparés
+ * à l'identique, sans retouche) ; absent, tout l'article l'est.
+ */
+const lieutenantsArchiveBodySchema = z.object({
+  keywords: z.array(z.string().min(1)).optional(),
+})
+
+/**
  * POST /api/articles/:id/lieutenants/archive
- *  (D3) — Flag all non-archived lieutenant rows as 'archived' so they
- * disappear from the active UI while staying in DB for later audit.
+ *  (D3) — Passe au statut 'archived' les lieutenants de `keywords` (« Tout
+ * réinitialiser » : les lieutenants verrouillés, FR-INFRA-LIEUTENANT-EXPLORATIONS),
+ * ou, sans liste, toutes les lignes non archivées. Elles quittent l'écran et
+ * restent en base pour audit.
  */
 router.post('/articles/:id/lieutenants/archive', async (req, res) => {
   const id = parseInt(req.params.id, 10)
   if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } }); return }
+  const body = lieutenantsArchiveBodySchema.safeParse(req.body ?? {})
+  if (!body.success) { res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'keywords must be an array of non-empty strings' } }); return }
   try {
     const { archiveLieutenantExplorations } = await import('../services/infra/data.service.js')
-    const updated = await archiveLieutenantExplorations(id)
+    const updated = await archiveLieutenantExplorations(id, body.data.keywords)
     res.json({ data: { archived: updated } })
   } catch (err) {
     log.error(`POST /api/articles/${id}/lieutenants/archive — ${(err as Error).message}`)

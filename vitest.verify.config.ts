@@ -59,6 +59,11 @@ export default mergeConfig(
         'tests/unit/services/article-content.service.test.ts',
         'tests/unit/routes/articles.routes.test.ts',
         'tests/unit/composables/useResonanceScore.save.test.ts',
+        // Lexique et lieutenants (recette du 2026-09-30, lot 6) : une seule analyse
+        // de l'IA affichée, celle du mot-clé affiché ; archivage et ajout enregistrés.
+        'tests/unit/composables/lexique/lexique-ai-analysis.test.ts',
+        'tests/unit/composables/lieutenant-explorations-persist.test.ts',
+        'tests/unit/routes/lieutenants-archive.routes.test.ts',
       ],
       root: fileURLToPath(new URL('./', import.meta.url)),
     },

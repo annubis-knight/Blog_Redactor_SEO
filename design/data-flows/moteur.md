@@ -224,8 +224,7 @@ Les panneaux Discovery, Radar, Capitaine, Lieutenants et Structure acceptent une
 
 - **Actions payantes sans clic** : corrigées le 2026-09-30 (lot 1). Choisir un article ne fait plus étudier son mot-clé ; l'avis de l'IA du Capitaine est enregistré et relu ; le Lexique ne lance ni TF-IDF ni analyse IA à l'ouverture. Reste l'exception déclarée de `FR-MOT-NO-AUTO-ACTION` : le jugement des PAA.
 - **Radar** : un scan réécrit la liste d'attente et efface les longues traînes ; celles-ci ne sont jamais réaffichées ([radar-explorations.md](radar-explorations.md)).
-- **Lieutenants** : relancer la proposition de l'IA défait les verrous à l'écran ; « Tout réinitialiser » n'archive qu'en mémoire ([lieutenants.md](lieutenants.md)).
-- **Lexique** : deux Maps de recommandations de l'IA, le panneau et les badges ne lisent pas la même ([lexique.md](lexique.md)).
+- **Lieutenants** : relancer la proposition de l'IA défait les verrous à l'écran ([lieutenants.md](lieutenants.md)).
 - **Serveur** : il valide le format d'une étape, pas son appartenance au catalogue (`FR-MOT-CHECKS-CONSTANTS`).
 
 ## Tests qui la gardent

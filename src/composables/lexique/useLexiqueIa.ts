@@ -1,4 +1,4 @@
-import { ref, computed, type Ref, type ComputedRef } from 'vue'
+import { computed, type Ref, type ComputedRef } from 'vue'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { log } from '@/utils/logger'
 import { lexiqueAnalysisContract } from '@shared/contracts/lexique.contract.js'
@@ -6,21 +6,34 @@ import type { TfidfResult, LexiqueAnalysisResult, LexiqueTermRecommendation } fr
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 
 /**
- * Vague 5 — Composable extrait de LexiquePanel.
+ * AUTHORITY: PostgreSQL `lexique_explorations` (ai_recommendations, ai_missing_terms,
+ *            ai_summary : enregistrés par le serveur avant l'événement `done`).
+ * READS FROM: l'analyse affichée de useLexiqueExplorations (iaRecommendations),
+ *             pour les badges et les compteurs du panneau.
+ * WRITES TO: POST /keywords/:keyword/ai-lexique-upfront (SSE), sur un clic seulement ;
+ *            la réponse est rangée par useLexiqueExplorations.applyIaAnalysis.
+ * CONSUMERS: LexiquePanel (badges « IA recommandé / IA optionnel »,
+ *            « N termes analysés — X recommandés · Y écartés »).
+ * RELATED FR: FR-LEX-AI-PANEL (une seule analyse affichée : celle du mot-clé
+ *             affiché), FR-LEX-METIER-ONLY, FR-MOT-NO-AUTO-ACTION.
  *
- * Encapsule l'analyse IA upfront du Lexique :
- *  - streaming `/api/keywords/{kw}/ai-lexique-upfront`
- *  - parsing des recommandations dans une Map indexée par term lowercase
+ * Vague 5 — Composable extrait de LexiquePanel. Lance l'analyse IA upfront du
+ * Lexique et compte ses recommandations. Il ne garde aucune liste à lui : les
+ * badges, les compteurs, le résumé et les termes manquants lisent l'analyse du
+ * mot-clé affiché, relue en base ou reçue de l'IA. Deux listes se contredisaient
+ * (recette du 2026-09-30).
  *
  * Les recommandations s'affichent ; elles ne cochent rien. L'utilisateur
  * choisit ses termes (FR-LEX-METIER-ONLY, épopée qualité SEO M11).
- *
- * Dépendances injectées explicites → testable en isolation.
  */
 export interface LexiqueIaDeps {
   tfidfResult: Ref<TfidfResult | null>
-  activeSourceKeyword: Ref<string>
-  captainKeyword: Ref<string | null>
+  /** Mot-clé de la liste affichée : l'analyse part pour lui (useLexiqueExplorations). */
+  analysisKeyword: ComputedRef<string>
+  /** Recommandations de l'analyse affichée (useLexiqueExplorations). */
+  iaRecommendations: ComputedRef<Map<string, LexiqueTermRecommendation>>
+  /** Reçoit l'analyse terminée, que le serveur vient d'enregistrer sous `keyword`. */
+  onAnalysisDone: (keyword: string, result: LexiqueAnalysisResult) => void
   articleLevel: Ref<ArticleLevel | null>
   cocoonSlug: Ref<string>
   selectedArticleId: Ref<number | undefined>
@@ -31,10 +44,6 @@ export interface LexiqueIaApi {
   iaIsStreaming: Ref<boolean>
   /** Erreur de streaming ou null. */
   iaError: Ref<string | null>
-  /** Résultat brut du streaming (LexiqueAnalysisResult ou null). */
-  iaResult: ComputedRef<LexiqueAnalysisResult | null>
-  /** Map keyword (lowercase) → recommendation. */
-  iaRecommendations: Ref<Map<string, LexiqueTermRecommendation>>
   /** Nombre de termes recommandés par l'IA. */
   iaRecommendedCount: ComputedRef<number>
   /** Nombre de termes NON recommandés. */
@@ -47,23 +56,17 @@ export interface LexiqueIaApi {
   isIaRecommended: (term: string) => boolean | null
   /** Lance le streaming IA upfront. */
   generateLexiqueUpfront: () => void
-  /** Reset complet (utilisé au switch d'article). */
-  resetIaState: () => void
 }
 
 export function useLexiqueIa(deps: LexiqueIaDeps): LexiqueIaApi {
-  const { tfidfResult, activeSourceKeyword, captainKeyword, articleLevel, cocoonSlug, selectedArticleId } = deps
+  const { tfidfResult, analysisKeyword, iaRecommendations, onAnalysisDone, articleLevel, cocoonSlug, selectedArticleId } = deps
 
   const {
     isStreaming: iaIsStreaming,
     error: iaError,
-    result: iaRawResult,
     startStream: iaStartStream,
     abort: iaAbort,
   } = useStreaming<LexiqueAnalysisResult>()
-
-  const iaResult = computed(() => iaRawResult.value)
-  const iaRecommendations = ref<Map<string, LexiqueTermRecommendation>>(new Map())
 
   const iaRecommendedCount = computed(() => {
     let count = 0
@@ -87,11 +90,11 @@ export function useLexiqueIa(deps: LexiqueIaDeps): LexiqueIaApi {
   }
 
   function generateLexiqueUpfront(): void {
-    const keyword = activeSourceKeyword.value || captainKeyword.value
+    const keyword = analysisKeyword.value
     if (!keyword || !tfidfResult.value) return
     const data = tfidfResult.value
+    const articleId = selectedArticleId.value
     iaAbort()
-    iaRecommendations.value = new Map()
 
     iaStartStream(
       `/api/keywords/${encodeURIComponent(keyword)}/ai-lexique-upfront`,
@@ -103,40 +106,30 @@ export function useLexiqueIa(deps: LexiqueIaDeps): LexiqueIaApi {
           optionnel: data.optionnel.map(t => t.term),
         },
         cocoonSlug: cocoonSlug.value || undefined,
-        articleId: selectedArticleId.value ?? undefined,
+        articleId: articleId ?? undefined,
       },
       {
         onDone: (result) => {
-          log.info(`[useLexiqueIa] IA upfront: ${result.recommendations.length} recommendations`)
-          const map = new Map<string, LexiqueTermRecommendation>()
-          for (const rec of result.recommendations) {
-            map.set(rec.term.toLowerCase(), rec)
-          }
-          iaRecommendations.value = map
+          // Réponse d'un article quitté : elle ne s'affiche pas sur le suivant.
+          if (selectedArticleId.value !== articleId) return
+          log.info(`[useLexiqueIa] IA upfront: ${result.recommendations.length} recommendations`, { keyword })
           // L'IA recommande, elle ne coche pas : l'utilisateur choisit
           // (FR-LEX-METIER-ONLY, épopée qualité SEO M11).
+          onAnalysisDone(keyword, result)
         },
       },
       { contract: lexiqueAnalysisContract },
     )
   }
 
-  function resetIaState(): void {
-    iaAbort()
-    iaRecommendations.value = new Map()
-  }
-
   return {
     iaIsStreaming,
     iaError,
-    iaResult,
-    iaRecommendations,
     iaRecommendedCount,
     iaNotRecommendedCount,
     iaAbort,
     getRecommendation,
     isIaRecommended,
     generateLexiqueUpfront,
-    resetIaState,
   }
 }
