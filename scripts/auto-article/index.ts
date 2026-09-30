@@ -15,6 +15,7 @@ import { parseArgs } from './flags.js'
 import { createLogger, type CliLogger } from './logger.js'
 import { createHttpClient, ApiError, type HttpClient } from './http-client.js'
 import { createStdIo, type Io } from './io.js'
+import { isYes, type GateReader } from './checks.js'
 import { promptInitialInput } from './prompts.js'
 import { loadConfigInput } from './config-file.js'
 import { createContext } from './context.js'
@@ -69,15 +70,26 @@ async function readSeoSpend(client: HttpClient): Promise<number | null> {
 
 /**
  * Affiche l'arbre SEO courant avant toute saisie : on choisit un sujet en
- * voyant où il pourra atterrir, pas à l'aveugle.
+ * voyant où il pourra atterrir, pas à l'aveugle. Renvoie les noms des cocons
+ * (la réponse à « Cocon cible » doit en nommer un), `null` si l'arbre manque.
  */
-async function showTree(client: HttpClient, logger: CliLogger): Promise<void> {
+async function showTree(client: HttpClient, logger: CliLogger): Promise<string[] | null> {
   try {
     const silos = await client.apiGet<Parameters<typeof buildTree>[0]>('/silos')
     const tree = buildTree(silos)
     logger.info('\n' + renderTree(tree, { theme: COLOR_TREE_THEME }))
+    return tree.flatMap((silo) => silo.cocoons.map((cocoon) => cocoon.name))
   } catch (err) {
     logger.warn(`Arbre SEO indisponible — ${(err as Error).message}`)
+    return null
+  }
+}
+
+/** L'utilisateur au terminal, seul à pouvoir dire « J'ai lu » à une porte toute 🟠. */
+function terminalGateReader(io: Io, logger: CliLogger): GateReader {
+  return {
+    show: (text) => logger.warn(text),
+    confirm: async (question) => isYes(await io.question(question)),
   }
 }
 
@@ -180,9 +192,13 @@ async function main(): Promise<void> {
     logger.success(`Config chargée : ${config.configPath} (run non-interactif, gates auto-validés)`)
   } else {
     io = createStdIo()
-    await showTree(client, logger)
+    const cocoonNames = await showTree(client, logger)
     logger.phase('Génération automatique — saisie')
-    input = await promptInitialInput(io)
+    input = await promptInitialInput(io, {
+      cocoonNames,
+      forcedCocoon: config.forcedCocoon,
+      warn: (message) => logger.warn(message),
+    })
     gate = makeInteractiveGate(io, logger)
   }
 
@@ -200,7 +216,9 @@ async function main(): Promise<void> {
       process.exitCode = 1
       return
     }
-    const deps = { client, logger, report }
+    // Un humain au terminal : il peut dire « J'ai lu » à une porte toute 🟠 ;
+    // `--config` et `--resume` n'ont personne, toute porte refusée les arrête.
+    const deps = { client, logger, report, gateReader: io ? terminalGateReader(io, logger) : undefined }
 
     const outcome = await runPipeline(ctx, {
       runCerveau: makeCerveauPhase(deps),
