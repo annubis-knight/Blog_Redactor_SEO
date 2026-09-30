@@ -2,7 +2,7 @@
 name: lieutenants
 description: Lieutenants d'un article — les mots-clés secondaires (futurs H2/H3) proposés par l'IA à partir des pages concurrentes, cochés par l'utilisateur, enregistrés à la fois dans `article_keywords.lieutenants` (décision) et `lieutenant_explorations` (propositions et statuts), gardés par la porte `lieutenants-lock`.
 type: "string[] (article_keywords.lieutenants TEXT[]) + RichLieutenant[] ({ keyword, status: suggested|locked|eliminated|archived, reasoning, sources, suggestedHnLevel, score, kpis, exploredAt }) dans lieutenant_explorations"
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 related_fr: [FR-LIE-SERP-ANALYZE, FR-LIE-EXTRACT-HEADINGS, FR-LIE-PROPOSE-AI, FR-LIE-GEOFUNNEL-RULE, FR-LIE-AI-FRONTIER, FR-LIE-CHECKBOX-LOCK-IMMEDIATE, FR-LIE-CHECKBOX-COUNT, FR-LIE-CHECK, FR-LIE-LOCK-GATE, FR-LIE-SCRAPE-DEDIE, FR-INFRA-LIEUTENANT-EXPLORATIONS, FR-MOT-EXPLORATIONS-HYDRATATION, FR-MOT-CHECK-RECONCILIATION, FR-MOT-CROSS-TAB-PAYLOAD, FR-CAP-LOCK-RADIO, FR-HN-TAB, NFR-INT-SERP-ONCE]
 synced_with: [design/data-flows/keywords.md, design/data-flows/moteur.md]
 ---
@@ -83,9 +83,9 @@ Mémoire :
 
 | Cas | Lecture | Écriture | Risque |
 |---|---|---|---|
-| **Premier chargement** (choix de l'article) | `fetchKeywordsMerge` → `richLieutenants` (propositions et statuts) + liste plate | aucune | Faible : `restoreLockedLieutenants` réaffiche les cartes proposées et verrouillées ; les écartées à part ; les cases `locked` cochées. |
+| **Premier chargement** (choix de l'article) | `fetchKeywordsMerge` → `richLieutenants` (propositions et statuts) + liste plate ; le panneau est monté après | aucune | Faible : `restoreLockedLieutenants` et le watcher `richLieutenants` (immédiat) réaffichent les cartes proposées et verrouillées, même sans lieutenant retenu ; les écartées à part ; les cases `locked` cochées ; `totalGenerated` relu (`countStoredProposals` : retenues, proposées, écartées). |
 | **Rechargement de la page** | idem, après le choix de l'article | aucune | Faible en usage normal. Réconciliation au premier montage : lieutenant verrouillé sans étape → porte ; étape sans lieutenant verrouillé → retrait. |
-| **Changement d'article** | `$reset` du store puis relecture ; le panneau vide cartes, SERP et cases, puis restaure | aucune | Faible. Risque suspecté (conflit 6 du [cadre commun](../12-moteur.md)) : un enregistrement déclenché pendant la relecture, sur un store vide. |
+| **Changement d'article** | `$reset` du store puis relecture ; panneau remonté une fois l'article relu | aucune | Faible. Conflit 6 du [cadre commun](../12-moteur.md) réglé le 2026-09-30 (F4) : pendant la relecture, le panneau retirait l'étape (et « Structure validée » par cascade), puis la redemandait en réenregistrant les décisions. Il ne juge plus que des données chargées, et leur arrivée n'est pas un geste. |
 | **Retour sur l'onglet** | panneau gardé monté (`v-show`) | aucune | Faible : ni relecture ni appel payant. |
 | **Case cochée** | — | `POST …/lieutenant-explorations`, `PUT …/keywords`, puis vérification et `POST …/progress/check` | Faible : une case cochée pendant la vérification est reprise par la boucle de `verifyLockedLieutenants`. |
 | **Nouvelle proposition de l'IA** (« Analyser SERP » avec propositions de plus de 7 jours) | — | le serveur réécrit les statuts des mots-clés reproposés en `suggested` / `eliminated` | **Élevé** : les statuts `locked` disparaissent de l'écran et de `lieutenant_explorations`, l'étape est retirée, la liste plate les garde. Écart `FR-LIE-CHECKBOX-LOCK-IMMEDIATE`, déjà relevé. |

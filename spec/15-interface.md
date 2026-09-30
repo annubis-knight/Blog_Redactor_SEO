@@ -38,9 +38,9 @@ Structure commune (Discovery, Lexique, Capitaine) :
 | Discovery | « Analyse IA Discovery » | Toujours | Bouton « Analyser les N résultats pertinents », désactivé sans résultat ; invitation « Lance d'abord une découverte de mots-clés ci-dessus… » ; « Relancer l'analyse » |
 | Radar | « Suggestions IA Radar » | Toujours | Aucun appel d'IA : classement local des 5 meilleurs candidats (score marché « M » et pertinence « P »), bouton « Marquer comme candidats Capitaine (N) » ; invitation « Lance un scan ci-dessus… » |
 | Capitaine | « Avis expert IA » | Avec la fiche de la carte sélectionnée | Verdict en tête, puis avis rédigé qui s'écrit au fil de l'eau |
-| Lieutenants | « Suggestions IA Lieutenants » | Après l'analyse des résultats Google | Structure propre : texte brut en cours, « Content-gap détecté », bouton « Lancer une suggestion IA » ou « Régénérer les suggestions », sans confirmation |
+| Lieutenants | « Suggestions IA Lieutenants » | Après l'analyse des résultats Google | Structure propre : texte brut en cours, « Content-gap détecté », bouton « Lancer une suggestion IA » ou « Régénérer les suggestions », sans confirmation ; grisé avec sa raison sans Capitaine ou sans analyse SERP |
 | Lexique | « Analyse IA Lexique » | Après le calcul TF-IDF | « N termes analysés — X recommandés · Y écartés. » |
-| Rédaction guidée | « Analyse IA du Brief » | Via le bouton « IA Brief » | Hors structure commune : bouton « Relancer l'analyse », pas d'état « erreur » |
+| Rédaction guidée | « Analyse IA du Brief » | Via le bouton « IA Brief » | Hors structure commune : bouton « Relancer l'analyse » ; une analyse refusée s'affiche (« L’analyse n’a pas abouti : … ») |
 
 ## Rédaction guidée et éditeur libre
 *Exigences : FR-UI-ARTICLE-SHARED*

@@ -2,7 +2,7 @@
 name: radar-keywords
 description: Liste d'attente du Radar — les mots-clés « à scanner » d'un article, enregistrés dans `radar_explorations.generated_keywords`, affichés tels que la base les renvoie, puis envoyés au scan.
 type: "RadarKeyword[] ({ keyword: string, reasoning: string }) — colonne JSONB `radar_explorations.generated_keywords`"
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 related_fr: [FR-RAD-DB-FIRST, FR-RAD-MANUAL-ADD, FR-DIS-SEND-TO-RADAR, FR-MOT-BASKET-DEPRECATED, FR-MOT-CROSS-TAB-PAYLOAD, FR-MOT-CACHE-PANEL-COUNT, FR-RAD-PERSIST, FR-RAD-SCAN-2PASS]
 ---
 
@@ -23,7 +23,7 @@ Qui crée ou met à jour cette donnée :
 | Même envoi, second passage | [`RadarPanel.vue`](../../src/components/intent/RadarPanel.vue), watcher `injectedKeywords` (`immediate`) → `addKeywordsBatch` si `useDbFirst` | même route ; sans effet si déjà présents |
 | Saisie « Ajouter un mot-clé à scanner… » | `RadarPanel.handleManualAdd` → `radarStore.addKeyword` | `POST /api/articles/:id/radar-exploration/keyword` → `addKeywordToRadarExploration` |
 | Croix d'une puce | `RadarPanel.handleRemoveKeyword` → `radarStore.removeKeyword` | `DELETE /api/articles/:id/radar-exploration/keyword?keyword=` → `removeKeywordFromRadarExploration` |
-| Fin d'un scan réussi | [`useKeywordRadar`](../../src/composables/keyword/useResonanceScore.ts) `scan` → `_saveToExploration` | `POST /api/articles/:id/radar-exploration` → `saveRadarExploration` **réécrit** la liste avec la copie mémoire du composable (voir Limites connues) |
+| Fin d'un scan réussi | [`useKeywordRadar`](../../src/composables/keyword/useResonanceScore.ts) `scan` → `_saveToExploration` | `POST /api/articles/:id/radar-exploration` → `saveRadarExploration` **réécrit** la liste avec celle qui vient d'être scannée (le paramètre `keywords` de `scan`, en mode `workflow` la liste du store) |
 
 - Store : [`src/stores/article/radar-exploration.store.ts`](../../src/stores/article/radar-exploration.store.ts) (`useRadarExplorationStore`). Chaque mutation remplace `entry` par la réponse du serveur : l'écran montre ce que la base a enregistré, jamais une copie optimiste.
 - Serveur : [`server/routes/radar-exploration.routes.ts`](../../server/routes/radar-exploration.routes.ts), [`server/services/infra/radar-exploration.service.ts`](../../server/services/infra/radar-exploration.service.ts). Les ajouts et retraits passent par `persistGeneratedKeywords`, qui n'écrit que `generated_keywords` (et `scanned_at`) et crée la ligne si elle manque.
@@ -38,7 +38,7 @@ Qui crée ou met à jour cette donnée :
 | `radar_explorations.generated_keywords` (JSONB) | par article (`article_id` clé primaire, `ON DELETE CASCADE`) | **autorité** : la liste d'attente |
 | `radar_explorations.scanned_at` | par article | mis à `NOW()` par **toute** écriture de la ligne, ajout ou retrait compris |
 | `useRadarExplorationStore.entry` | mémoire Pinia, un article à la fois | copie de la dernière réponse du serveur ; vidée par `$reset` au montage de `MoteurView` |
-| `useKeywordRadar().generatedKeywords` | mémoire du composable, propre à chaque `RadarPanel` | copie remplie seulement par `mergeFromRadarSource` en mode `workflow` ; c'est elle que `_saveToExploration` renvoie au serveur |
+| `useKeywordRadar().generatedKeywords` | mémoire du composable, propre à chaque `RadarPanel` | copie remplie seulement par `mergeFromRadarSource` en mode `workflow` ; `_saveToExploration` ne l'envoie plus (il envoie la liste scannée) |
 | `useMoteurCrossTabState.discoveryRadarKeywords` | mémoire de `MoteurView` | dernier envoi de Discovery, transmis à `RadarPanel` par la prop `injectedKeywords` ; vidé au changement d'article |
 
 ## Consommateurs
@@ -63,7 +63,7 @@ Qui crée ou met à jour cette donnée :
 |---|---|---|---|
 | **Premier chargement** (choix d'un article) | watcher `selectedArticle.id` de [`MoteurView.vue`](../../src/views/MoteurView.vue) → `radarStore.setArticle(id)` → `GET /api/articles/:id/radar-exploration` ; `RadarPanel` rappelle `setArticle` à son montage (sans effet si l'id est le même) | aucune | Faible : la liste s'affiche quel que soit l'onglet ouvert en premier. |
 | **Envoi depuis Discovery** | — | deux `POST …/keywords` (composable parent puis watcher du panneau) | Faible : ajout idempotent. L'onglet et l'étape `moteur:discovery_done` partent avant la réponse ; un échec d'écriture n'est que journalisé. |
-| **Rechargement de la page** | aucun article choisi après F5 : `MoteurView` remet les stores à zéro ; le choix de l'article relit la base | aucune | Faible pour la liste elle-même. Elle peut toutefois avoir été vidée ou tronquée par le dernier scan (Limites connues). |
+| **Rechargement de la page** | aucun article choisi après F5 : `MoteurView` remet les stores à zéro ; le choix de l'article relit la base | aucune | Faible : la liste revient telle que la base la garde ; un scan ne la vide plus (recette du 2026-09-30, MOT-10). |
 | **Changement d'article** | `setArticle(nouvel id)` vide `entry` puis relit ; `resetCrossTabState` vide `discoveryRadarKeywords` | aucune | Faible : `setArticle` ignore un id identique et réinitialise sinon. |
 | **Retour sur l'onglet** | le panneau reste monté (`v-show`) ; la liste est celle du store | aucune | Faible : pas de relecture, pas d'appel payant. |
 | **Article de la stratégie sans ligne en base (id 0)** | `setArticle(0)` garde l'id sans relire ; `RadarPanel` passe en liste mémoire (`useDbFirst` faux) | `handleSendToRadar` tente quand même `POST /articles/0/…` | Faible : 400 `INVALID_ID`, journalisé ; la liste reste en mémoire et disparaît au changement d'article. |
@@ -89,7 +89,7 @@ flowchart LR
 
 ## Limites connues
 
-- **Le scan réécrit la liste d'attente.** `_saveToExploration` envoie `generatedKeywords` du composable, pas celle du store. En mode `workflow`, cette copie n'est remplie que par `mergeFromRadarSource` (sélection d'article avec l'onglet Radar déjà monté, ou bouton « Charger Radar »). Sans ce chargement, le scan enregistre une liste vide ; avec, il enregistre la liste lue à ce moment, sans les ajouts faits depuis. La liste du store n'est pas touchée (`setScanResultLocal`) : l'écran ne montre la perte qu'à la relecture suivante. Écart de `FR-RAD-PERSIST`, déjà relevé.
+- **Le scan réécrit la liste d'attente avec la liste scannée.** Réglé le 2026-09-30 (MOT-10) : `_saveToExploration` envoyait la copie mémoire du composable, vide en mode `workflow` sans « Charger Radar » ; chaque scan vidait `generated_keywords`. Il envoie désormais la liste passée à `scan`. Un mot-clé ajouté pendant le scan (même liste, ajout concurrent) serait réécrit sans lui.
 - **Le compteur peut compter deux fois un mot-clé.** Le commentaire de la requête de comptage suppose que les deux listes sont disjointes. Le code ne retire jamais un mot-clé scanné de la liste d'attente : quand la liste réécrite par le scan contient des mots-clés scannés, ils sont comptés deux fois.
 - **`scanned_at` n'est pas la date du scan.** Tout ajout, retrait ou enregistrement de longues traînes la remet à l'heure courante. La fraîcheur de 7 jours de `GET …/radar-exploration/status` (sans appelant dans l'interface) en dépend.
 
@@ -99,12 +99,13 @@ flowchart LR
 - [`tests/contract-api/radar-exploration-keyword.contract.test.ts`](../../tests/contract-api/radar-exploration-keyword.contract.test.ts) — ajout unitaire et par lot idempotents, dédoublonnage insensible à la casse et aux espaces, retrait (serveur requis).
 - [`tests/contract-api/article-explorations-counts.contract.test.ts`](../../tests/contract-api/article-explorations-counts.contract.test.ts) — deux mots-clés en attente donnent `radar = 2`.
 - [`tests/unit/composables/useResonanceScore.merge.test.ts`](../../tests/unit/composables/useResonanceScore.merge.test.ts) — fusion sans doublon ni changement d'ordre.
+- [`tests/unit/composables/useResonanceScore.save.test.ts`](../../tests/unit/composables/useResonanceScore.save.test.ts) — mode `workflow` : l'enregistrement du scan porte la liste scannée, pas la liste mémoire vide (FR-RAD-PERSIST).
+- [`tests/unit/components/radar-panel-reopen.test.ts`](../../tests/unit/components/radar-panel-reopen.test.ts) — liste et cartes reviennent d'office à l'ouverture ; un nouveau scan oublie les longues traînes cochées.
 - [`tests/unit/composables/moteur/useMoteurCrossTabState.test.ts`](../../tests/unit/composables/moteur/useMoteurCrossTabState.test.ts) — l'envoi depuis Discovery.
 - Dans `tests/unit/coherence/`, aucun test ne vise la liste d'attente.
 
 À écrire :
-1. Scan en mode `workflow` sans chargement préalable : la liste d'attente en base ne doit pas être vidée.
-2. Compteur Radar : un mot-clé présent dans la liste d'attente et dans les cartes ne compte qu'une fois.
+1. Compteur Radar : un mot-clé présent dans la liste d'attente et dans les cartes ne compte qu'une fois.
 
 ---
 

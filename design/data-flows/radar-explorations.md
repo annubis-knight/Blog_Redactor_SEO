@@ -2,7 +2,7 @@
 name: radar-explorations
 description: Exploration Radar d'un article — le résultat du dernier scan (cartes, chaleur globale), les longues traînes proposées par l'IA et celles cochées, enregistrés dans `radar_explorations.scan_result` ; relus par l'écran Radar, le Capitaine et la barre des compteurs.
 type: "KeywordRadarScanResult & { longTailSuggestions?: LongTailSuggestion[], longTailSelectedKeywords?: string[] } — colonne JSONB `radar_explorations.scan_result` (+ seed, contexte, scanned_at)"
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 related_fr: [FR-RAD-PERSIST, FR-RAD-SCAN-2PASS, FR-RAD-SCORING-BIMODAL, FR-RAD-MARKET-COMPUTED-LIVE, FR-RAD-MARKET-LEVEL-AWARE, FR-RAD-NO-RELEVANCE-IN-SCAN, FR-RAD-THERMOMETER, FR-RAD-LONGTAIL-GENERATE, FR-RAD-LONGTAIL-UI, FR-RAD-LONGTAIL-REGENERATE, FR-RAD-SEND-CAPTAIN, FR-RAD-CHECK, FR-MOT-EXPLORATION-COUNTS, FR-MOT-CACHE-PANEL-COUNT, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-SCORING-NULLSAFE]
 ---
 
@@ -21,7 +21,7 @@ Qui crée ou met à jour cette donnée :
 
 - **Écran** — [`RadarPanel.vue`](../../src/components/intent/RadarPanel.vue) `handleScan` → [`useKeywordRadar().scan`](../../src/composables/keyword/useResonanceScore.ts) : `POST /api/keywords/radar/scan` avec la liste d'attente, `depth = 2`, `articleLevel`, sans la douleur.
 - **Calcul** — [`server/services/keyword/keyword-radar.service.ts`](../../server/services/keyword/keyword-radar.service.ts) `scanRadarKeywords` : `kpis` (valeurs absentes laissées à `null`), `paaItems`, `marketScore = computeMarketScore(kpis, niveau)` ([`shared/scoring-kpi.ts`](../../shared/scoring-kpi.ts)), `relevanceScore: null`, `combinedScore` et `scoreBreakdown` hérités ; cartes triées par `compareScores(marketScore.total)` ; `globalScore` et `heatLevel` par `radarGlobalHeat` (moyenne de `combinedScore`).
-- **Enregistrement** — `useKeywordRadar._saveToExploration` (lancé sans attente après la réponse) → `POST /api/articles/:id/radar-exploration` → `saveRadarExploration` ([`server/services/infra/radar-exploration.service.ts`](../../server/services/infra/radar-exploration.service.ts)) : upsert de **toute** la ligne (`seed`, contexte, `generated_keywords`, `scan_result`, `scanned_at`). En parallèle, `radarStore.setScanResultLocal` recopie le résultat dans [`useRadarExplorationStore`](../../src/stores/article/radar-exploration.store.ts), sans relire la base.
+- **Enregistrement** — `useKeywordRadar._saveToExploration(articleId, seed, scannedKeywords)` (lancé sans attente après la réponse) → `POST /api/articles/:id/radar-exploration` → `saveRadarExploration` ([`server/services/infra/radar-exploration.service.ts`](../../server/services/infra/radar-exploration.service.ts)) : upsert de **toute** la ligne (`seed`, contexte, `generated_keywords` = la liste qui vient d'être scannée, `scan_result`, `scanned_at`). En parallèle, `radarStore.setScanResultLocal` recopie le résultat dans [`useRadarExplorationStore`](../../src/stores/article/radar-exploration.store.ts), sans relire la base.
 - **Signal au parent** — `RadarPanel` émet `scanned` si un résultat existe → `useMoteurCrossTabState.handleRadarScanned` : `radarScanResult` (chaleur pour la barre des compteurs) et `emitCheckCompleted(MOTEUR_RADAR_DONE)`.
 
 ### Les longues traînes
@@ -44,7 +44,7 @@ Qui crée ou met à jour cette donnée :
 | Mesures des mots-clés | `keyword_metrics` (suggestions et PAA, fraîcheur 1 jour) | partagé entre articles | cache du scan ; voir [keyword-metrics.md](keyword-metrics.md) |
 
 Mémoire :
-- `useKeywordRadar().scanResult` — **source des cartes affichées**. Vidé par `reset` (changement d'article) ; rempli par un scan ou par `mergeFromRadarSource`.
+- `useKeywordRadar().scanResult` — **source des cartes affichées**. Vidé par `reset` (changement d'article) ; rempli par un scan, par la reprise du dernier scan du store à l'ouverture de l'onglet (`RadarPanel`, `mergeRadarPayload`), ou par `mergeFromRadarSource` (« Charger Radar »).
 - `useRadarExplorationStore.scanCards` — copie du store, lue par le panneau d'aide des onglets Lieutenants et Lexique.
 - `useMoteurCrossTabState.radarScanResult` — chaleur (`globalScore`, `heatLevel`), remplie par `handleRadarScanned` ou par `useArticleResults.onRadarLoaded` (relecture de `GET /api/articles/:id/explorations`).
 - `useLongTailSuggestions` — suggestions et `Set` des cases, propres à chaque montage de la section.
@@ -75,10 +75,10 @@ Mémoire :
 
 | Cas | Lecture | Écriture | Risque |
 |---|---|---|---|
-| **Premier chargement** (choix d'un article) | `useArticleResults.loadCachedResults` → `GET /api/articles/:id/explorations` → chaleur dans `radarScanResult` ; `radarStore.setArticle` → cartes du store | aucune | **Modéré** : les cartes de l'écran Radar ne sont pas relues d'office. Elles reviennent si l'onglet était déjà monté (`handleSelectArticle` → `mergeFromRadarSource`), sinon par « Charger Radar » (`useTabLoadPrompt`). |
+| **Premier chargement** (choix d'un article) | `useArticleResults.loadCachedResults` → `GET /api/articles/:id/explorations` → chaleur dans `radarScanResult` ; `radarStore.setArticle` → liste et cartes du store ; `RadarPanel` reprend les cartes du store à son montage | aucune | Faible : liste d'attente et cartes du dernier scan reviennent d'office (MOT-10) ; « Charger Radar » n'ajoute rien. |
 | **Premier scan** | — | `POST …/radar/scan`, puis `POST …/radar-exploration` | Faible pour les cartes. L'étape `moteur:radar_done` part dès la réponse du scan, avant la fin de l'enregistrement. |
-| **Rechargement de la page** | après choix de l'article : chaleur et store relus, cartes par « Charger Radar » | aucune | **Modéré** : longues traînes et cases cochées ne reviennent jamais à l'écran (`initialSuggestions` n'est pas transmis) ; écart `FR-RAD-LONGTAIL-UI`, déjà relevé. |
-| **Nouveau scan** | — | `saveRadarExploration` réécrit tout `scan_result` | **Élevé** : les longues traînes enregistrées sont effacées, et la liste d'attente est réécrite (voir [radar-keywords.md](radar-keywords.md)). Écart `FR-RAD-PERSIST`, déjà relevé. |
+| **Rechargement de la page** | après choix de l'article : chaleur et store relus, cartes reprises du store à l'ouverture de l'onglet | aucune | **Modéré** : longues traînes et cases cochées ne reviennent jamais à l'écran (`initialSuggestions` n'est pas transmis) ; écart `FR-RAD-LONGTAIL-UI`, déjà relevé. |
+| **Nouveau scan** | — | `saveRadarExploration` réécrit tout `scan_result` | **Modéré** : les longues traînes enregistrées sont effacées (écart `FR-RAD-PERSIST`, déjà relevé) ; la liste d'attente est réécrite avec la liste scannée (voir [radar-keywords.md](radar-keywords.md)), plus jamais vidée. À l'écran, la sélection des longues traînes est vidée avec leur liste. |
 | **Changement d'article** | watcher de `RadarPanel` sur titre, mot-clé, douleur → `reset()` du composable ; `resetCrossTabState` vide `radarCardsForCaptain` et `radarScanResult` | aucune | Faible : rien de l'article précédent ne reste affiché. |
 | **Retour sur l'onglet** | panneau gardé monté (`v-show`) : cartes, cases et longues traînes restent en mémoire | aucune | Faible : ni relecture, ni appel payant. |
 | **Régénérer les longues traînes** | cache `long-tail-suggest` | `persistLongTailSuggestions` | Faible : mêmes entrées, même clé, pas d'IA. La sélection en base n'est pas filtrée sur la nouvelle liste (seule la mémoire l'est). |

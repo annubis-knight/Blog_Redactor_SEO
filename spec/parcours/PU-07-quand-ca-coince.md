@@ -85,10 +85,10 @@ Le serveur revient à sa configuration, qui peut être payante, alors que le bou
 
 Les réponses du bac à sable sont gardées comme de vraies réponses, pendant 7 jours : en RÉEL, un mot-clé mesuré en MOCK affiche ses chiffres factices, sans nouvel appel, et ses questions PAA, longues traînes et mots-clés de Discovery simulés sont resservis. Rien, à l'écran, ne les distingue des vraies mesures. En RÉEL, prends des mots-clés jamais testés, ou force la mesure par « Rafraîchir » dans « SERP Data ».
 
-### Une panne pendant la rédaction ne dit rien
-**Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-GEN-SAUVEGARDE-AU-FIL
+### Une panne pendant la rédaction se dit
+**Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-GEN-SAUVEGARDE-AU-FIL
 
-Avant le premier mot, l'outil réessaie puis passe au fournisseur d'IA suivant. Une coupure en cours d'écriture arrête le premier jet, et le texte disparaît de l'écran sans un mot, dans la rédaction guidée comme dans l'éditeur. Recharge la page : les chapitres enregistrés au fil avant la coupure sont là.
+Avant le premier mot, l'outil réessaie puis passe au fournisseur d'IA suivant. Une coupure en cours d'écriture arrête le premier jet : un message le dit, dans la rédaction guidée comme dans l'éditeur, et le texte en cours quitte l'écran. Recharge la page : les chapitres enregistrés au fil avant la coupure sont là.
 
 ## Défauts connus sur ce parcours
 
@@ -106,6 +106,5 @@ Avant le premier mot, l'outil réessaie puis passe au fournisseur d'IA suivant. 
 - NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine.
 - FR-INFRA-API-STREAM — quand l'utilisateur annule, l'écran s'arrête mais le serveur continue la génération jusqu'au bout et la facture.
 - NFR-PERF-SSE-FIRST-TOKEN — le premier jet n'a pas de bouton d'arrêt ; un arrêt côté écran ne coupe pas la génération côté serveur, qui continue et se facture.
-- FR-RED-SEO-SCORE-PERSIST — un premier jet interrompu enregistre le texte sans remettre les scores à « inconnu » : l'ancien score reste en base, à l'écran comme en mode automatique ; en passant d'un article à un autre dans la rédaction guidée, le score calculé sur le texte encore affiché de l'ancien, avec les mots-clés du nouveau, est enregistré dans l'ancien.
+- FR-RED-SEO-SCORE-PERSIST — un premier jet interrompu enregistre le texte sans remettre les scores à « inconnu » : l'ancien score reste en base, à l'écran comme en mode automatique.
 - FR-INFRA-KEYWORD-METRICS — tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie ; le scan Radar ne relit ni n'enregistre les mesures gardées, et chaque test au Capitaine relance ce scan pour sa carte ; un « Rafraîchir » raté date quand même la mesure du jour, et pour un mot-clé sans volume connu la fiche vide remplace la réponse gardée.
-- FR-RED-DRAFT-SINGLE-PASS — une panne de rédaction n'affiche aucun message, ni dans la rédaction guidée ni dans l'éditeur ; l'échec de la méta, d'une réduction ou d'une humanisation n'en affiche pas non plus.

@@ -69,10 +69,10 @@ Sans sommaire enregistré, le bloc affiche : « Aucun sommaire disponible. Retou
 Dans la rédaction guidée seulement, le bouton « IA Brief » ouvre une analyse stratégique du brief, utilisable avant que l'article existe.
 - À la première ouverture du panneau dans la page, l'analyse part d'elle-même. « Relancer l'analyse » en redemande une nouvelle ; pendant l'analyse, le bouton affiche « Analyse en cours... » et reste grisé.
 - Le texte s'affiche au fil de l'écriture, mis en forme, sous le titre « Analyse IA du Brief ». Il suit quatre parties : intention de recherche et positionnement, analyse de la structure, stratégie de contenu par section, points d'attention (extrait optimisé pour Google, cannibalisation, densité, appel à l'action).
-- L'analyse reçoit le titre, le mot-clé principal (le capitaine, à défaut le titre), le type, le cocon, les lieutenants, le lexique, la structure, l'angle éditorial, les questions « Autres questions posées » de Google, les cinq premiers résultats de Google et les titres des autres articles du cocon.
+- L'analyse reçoit le titre, le mot-clé principal (le capitaine, à défaut le mot-clé suggéré, à défaut le titre ; un capitaine enregistré vide ne compte pas), le type, le cocon, les lieutenants, le lexique, la structure, l'angle éditorial, les questions « Autres questions posées » de Google, les cinq premiers résultats de Google et les titres des autres articles du cocon.
 - Les données de Google portent sur le mot-clé de l'article (capitaine verrouillé, à défaut mot-clé suggéré). Sans mot-clé, il n'y en a aucune.
 - Sans analyse affichée, le panneau dit : « Cliquez sur "Relancer l'analyse" pour générer une analyse IA. »
-- L'analyse n'est pas enregistrée : un rechargement la perd. Une analyse en échec n'affiche pas d'erreur.
+- L'analyse n'est pas enregistrée : un rechargement la perd. Une analyse refusée ou interrompue le dit dans le panneau : « L’analyse n’a pas abouti : … ».
 
 ### Étape 2 — Le premier jet
 *Exigences : FR-RED-DRAFT-SINGLE-PASS, FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-RED-DRAFT-TO-SOURCE, FR-RED-META-CAPTAIN*
@@ -99,7 +99,7 @@ Le chapeau (le texte sous le H1, avant le premier H2) compte dans le premier cha
 
 **À la fin.** Le texte final, nettoyé (blocs coupés réparés, texte hors paragraphe retiré, paragraphes gardés), remplace les enregistrements au fil. Puis, dans l'ordre : texte enregistré → méta générée → texte et méta enregistrés → étape « premier jet accepté » demandée à la porte. La longueur réellement visée devient la longueur retenue de l'article. Le coût de chaque appel et les modèles utilisés (reprises comprises, dans l'ordre) apparaissent dans la pile d'activité (« Premier jet ») et dans les badges de coût.
 
-**Pannes.** Avant le premier morceau de texte, l'outil réessaie puis passe au fournisseur d'IA suivant. Une panne en cours d'écriture arrête le premier jet ; ce qui a été enregistré au fil reste. **Écart connu :** aucune des deux vues n'affiche le message d'erreur.
+**Pannes.** Avant le premier morceau de texte, l'outil réessaie puis passe au fournisseur d'IA suivant. Une panne en cours d'écriture arrête le premier jet ; ce qui a été enregistré au fil reste, et le message de la panne s'affiche, dans la rédaction guidée comme dans l'éditeur (de même pour l'échec de la méta, d'une réduction ou d'une humanisation). Le message n'a pas de bouton « Réessayer » : relancer la rédaction referait tout l'article, et le ferait payer, pour une simple réduction ratée ; chaque geste se relance par son propre bouton.
 
 **Le texte dans la rédaction guidée** s'affiche en lecture seule, avec le rappel du sommaire (ses titres seulement), la méta, les coûts et la barre de mots. « Éditer l'article » ouvre l'éditeur ; « Revoir le Brief » revient à l'étape 1.
 
@@ -208,6 +208,8 @@ Pour la passe Résumer, les sous-parties peuvent partir et un bloc perdu n'est q
 
 L'éditeur s'ouvre par « Éditer l'article » (rédaction guidée) ou par son adresse. Son en-tête porte « ← Retour » (vers la rédaction guidée), l'état d'enregistrement, la barre des panneaux, « Supprimer le contenu », « Sauvegarder » et « Visualiser l'article ».
 
+**Un article à la fois.** Ouvrir un article, dans l'éditeur comme dans la rédaction guidée, n'affiche que son texte, sa méta et son sommaire, même juste après un autre sans recharger la page : rien du précédent ne reste à l'écran, ne s'enregistre dans celui-ci, ni ne réécrit le score du précédent.
+
 **Trois états.** Sans texte : « Aucun contenu. Générez l'article ou retournez au workflow. », avec « Générer l'article » (si un sommaire existe) et « Retour au workflow ». Pendant la rédaction : le texte au fil, en lecture seule, avec « Section n/N ». Avec du texte : l'éditeur, précédé de la barre d'actions (régénérer, réduire, humaniser), du bandeau « premier jet » et de la barre d'outils. La méta et la table des matières sont repliées au-dessus.
 
 **Trois zones** repliables : « Introduction » (le chapeau et un chapitre d'introduction), « Corps de l'article », « Conclusion » (le dernier chapitre de conclusion). Une zone vide à l'ouverture n'est pas affichée. Modifier une zone ne touche pas les autres ; l'article enregistré est la réunion des trois.
@@ -220,7 +222,7 @@ L'éditeur s'ouvre par « Éditer l'article » (rédaction guidée) ou par son a
 
 **Enregistrer.** Toutes les 30 secondes, l'éditeur enregistre s'il y a des modifications (jamais pendant une rédaction, une réduction ou une humanisation). Ctrl+S et « Sauvegarder » enregistrent aussitôt. L'indicateur affiche « Sauvegarde en cours... », « ✓ Sauvegardé à l’instant / il y a Ns / il y a Nmin » (le délai n'avance qu'au prochain enregistrement), ou « ⚠ Modifications non sauvegardées », qui reste affiché après un échec. La rédaction guidée n'a pas d'enregistrement automatique : chaque opération enregistre son résultat, et Ctrl+S y fonctionne aussi.
 
-**« Supprimer le contenu »** demande confirmation (« Supprimer le contenu de l'article ? Le brief et le sommaire seront conservés. »), vide l'éditeur et efface la méta. **Écart connu :** le texte reste en base et revient au rechargement.
+**« Supprimer le contenu »** demande confirmation (« Supprimer le contenu de l'article ? Le brief et le sommaire seront conservés. »), puis efface en base le texte, la méta et les scores notés, et vide l'éditeur ; le texte ne revient pas au rechargement. Si la suppression échoue, le texte reste à l'écran et un message le dit.
 
 **« Visualiser l'article »** apparaît quand le texte, le meta title et la meta description existent ; il enregistre si besoin, puis ouvre l'aperçu dans un nouvel onglet.
 

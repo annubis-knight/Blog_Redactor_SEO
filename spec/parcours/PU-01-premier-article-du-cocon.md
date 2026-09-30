@@ -64,12 +64,12 @@ Onglet « Finalisation » : quatre sections en lecture seule, Capitaine, Lieuten
 La rédaction guidée s'ouvre sur « Brief & Structure ». Dans « Micro-contexte article », l'utilisateur écrit au moins « Angle differenciant » ; chaque champ s'enregistre quand il le quitte (« Sauvegarde »). « Recommandation de contenu » affiche la « Cible : » en mots, ajustable par pas de 100. Le sommaire vient de la structure validée au Moteur, avec « Introduction » et « Conclusion » ajoutées : l'utilisateur le retouche s'il veut, puis « Valider le sommaire » (ou « Continuer vers l'Article » s'il est déjà validé) mène à l'étape « Article ».
 
 ### 10. Faire écrire et accepter le premier jet
-**Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-RED-DRAFT-TO-SOURCE, FR-RED-META ⚠, FR-RED-META-CAPTAIN, FR-CER-PARENT-WRITTEN-GATE
+**Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-RED-DRAFT-TO-SOURCE, FR-RED-META ⚠, FR-RED-META-CAPTAIN, FR-CER-PARENT-WRITTEN-GATE
 
 « Générer l'article » écrit tout le texte d'un seul tenant : la barre affiche « Section n/N » et le titre du chapitre, et le texte apparaît au fil. Un chiffre que l'IA ne peut pas garantir devient un passage « [à sourcer : …] » surligné. Le titre et la description pour Google suivent sans second clic. Puis l'étape « premier jet accepté » est demandée à sa porte : le bandeau « ✓ Premier jet accepté : l'article peut donner naissance à ses articles enfants dans le cocon. » s'affiche, ou l'alarme « Avant d'accepter le premier jet » s'ouvre.
 
 ### 11. Enrichir et relire le texte dans l'éditeur
-**Exigences :** FR-RED-ENRICH-PASSES, FR-RED-EDITOR-TIPTAP ⚠, FR-RED-SEO-LIVE, FR-RED-GEO-LIVE
+**Exigences :** FR-RED-ENRICH-PASSES, FR-RED-EDITOR-TIPTAP, FR-RED-SEO-LIVE, FR-RED-GEO-LIVE
 
 « Éditer l'article » ouvre l'éditeur, avec les scores « SEO » et « GEO » qui suivent chaque modification. Le panneau « Enrichir » propose des passes (« Sources », « Exemples », « Tableaux », « Images », « FAQ »), chapitre par chapitre : « Rien ne change dans l'article tant que vous n'acceptez pas ». L'utilisateur ouvre « Comparer avant / après », puis « Accepter » ou « Refuser » chaque proposition. Il retouche le texte à la main ; « Sauvegarder » ou Ctrl+S enregistre (« ✓ Sauvegardé … »), et l'éditeur enregistre aussi de lui-même.
 
@@ -96,9 +96,9 @@ Un Capitaine sans volume ou que Google ne suggère pas, trop peu de lieutenants,
 Sans ce clic, la rédaction guidée garde l'étape « Article » grisée, avec l'indication « Complétez le Cerveau pour générer cet article ». Il suffit de revenir au Cerveau, étape « Articles », et de cliquer « Terminer le brainstorm ». Aujourd'hui, seul le bouton de la barre du haut est verrouillé : « Valider le sommaire » et « Continuer vers l'Article » ouvrent quand même l'étape « Article ».
 
 ### Une panne pendant l'écriture du premier jet
-**Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-GEN-SAUVEGARDE-AU-FIL
+**Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-GEN-SAUVEGARDE-AU-FIL
 
-Si l'IA tombe en panne en pleine écriture, la rédaction s'arrête ; les chapitres terminés restent enregistrés, et l'utilisateur relance par « Générer l'article ». L'outil doit le dire par un message. Aujourd'hui, aucune des deux vues de rédaction n'affiche de message : l'écriture s'arrête sans un mot.
+Si l'IA tombe en panne en pleine écriture, la rédaction s'arrête ; les chapitres terminés restent enregistrés, et l'utilisateur relance par « Générer l'article ». L'outil le dit par un message, dans les deux vues de rédaction.
 
 ### La publication est refusée
 **Exigences :** FR-RED-PUBLISH-GATE, FR-RED-ENRICH-PASSES, FR-RED-EXPORT-HTML ⚠
@@ -118,15 +118,13 @@ Une image encore « à fournir » (posée par la passe « Images »), une méta 
 - FR-MOT-NO-AUTO-ACTION — ouvrir l'onglet Lexique, Capitaine verrouillé, peut lancer seul l'analyse IA du lexique quand aucune recommandation n'est enregistrée ; ouvrir le Capitaine d'un article sans candidat étudie seul le premier mot-clé suggéré, avec de possibles appels DataForSEO et Google ; ouvrir le Capitaine, ou choisir un article dont l'onglet Capitaine a déjà été ouvert, redemande et fait payer l'avis expert IA de chaque candidat, même onglet caché.
 - FR-CAP-SCAN — dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention ; un mot-clé dont le volume, la difficulté ou le CPC est absent est remesuré, et repayé, à chaque étude ; un échec d'étude s'affiche en anglais technique, sans cause (« Erreur : Keyword validation failed »).
 - FR-LIE-SERP-ANALYZE — la pile d'activité annonce « Scraping ~N URLs via DataForSEO » même quand l'analyse est relue en base ; « Tout relancer (SERP + IA) » ne relance rien pendant 7 jours : il relit l'analyse et les propositions gardées, et doit s'appeler « Recharger l'analyse ».
-- FR-LIE-CHECKBOX-LOCK-IMMEDIATE — relancer la proposition de l'IA décoche à l'écran les lieutenants déjà retenus et retire l'étape, alors que la liste enregistrée les garde ; le bouton de relance du panneau de l'IA disparaît tant que ce panneau affiche les failles de contenu de la dernière génération ; après un rechargement, le panneau de l'IA dit « Aucune génération IA pour ce Capitaine. » alors que des propositions sont affichées, et son bouton de relance ne fait rien tant que la SERP n'est pas réanalysée.
+- FR-LIE-CHECKBOX-LOCK-IMMEDIATE — relancer la proposition de l'IA décoche à l'écran les lieutenants déjà retenus et retire l'étape, alors que la liste enregistrée les garde ; et le bouton de relance du panneau de l'IA disparaît tant que ce panneau affiche les failles de contenu de la dernière génération.
 - FR-HN-TAB — un refus d'enregistrement de la structure arrête la validation sans aucun message à l'écran ; seul le refus du sommaire est dit.
 - FR-CER-WORD-COUNT-RECOMMEND — sans avis de l'IA, la raison de la longueur conseillée s'affiche en jargon technique (« Heuristique : 60% SERP avg … »).
 - FR-LEX-PRECHECK-SERP — pendant l'analyse lancée, « Lancer l'analyse SERP » reste cliquable : un second clic confirmé relance une analyse payante.
 - FR-MOT-SOFT-GATING — à l'onglet Lexique, Capitaine non verrouillé, « Lancer l'analyse SERP » reste actif malgré le bandeau : l'analyse payante part, et ses termes peuvent ensuite être retenus.
 - FR-CER-MICRO-CONTEXT — le micro-contexte n'est transmis que si l'angle est rempli : un ton ou des consignes seuls sont ignorés ; l'angle provisoire écrit d'office à la validation de la structure part tel quel à l'IA ; un échec d'enregistrement n'est jamais signalé.
-- FR-RED-OUTLINE — les boutons Annuler / Rétablir du sommaire ne s'activent jamais ; un article sans sommaire affiche, déjà validé, celui de l'article ouvert juste avant, et « Générer l'article » rédige (et paie) sur ce sommaire ; un chapitre lâché sur la ligne du H1 passe au-dessus de lui ; Échap garde le titre tapé au lieu d'annuler.
-- FR-RED-DRAFT-SINGLE-PASS — une panne de rédaction n'affiche aucun message, ni dans la rédaction guidée ni dans l'éditeur ; l'échec de la méta, d'une réduction ou d'une humanisation n'en affiche pas non plus.
+- FR-RED-OUTLINE — les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique ; un chapitre lâché sur la ligne du H1 passe au-dessus de lui ; Échap garde le titre tapé au lieu d'annuler.
 - FR-RED-META — la méta ne se modifie pas à la main et ne se relance pas seule : réessayer relance tout l'article.
-- FR-RED-EDITOR-TIPTAP — un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement.
 - FR-RED-EXPORT-HTML — le fichier téléchargé perd tous les liens internes posés dans l'éditeur, et son H1 est le titre de l'article, pas le H1 jugé par la porte ; réexporter après une correction, sans recharger l'aperçu, télécharge la version chargée à l'ouverture de l'onglet, pas celle que la porte vient d'accepter.
 - FR-INFRA-GATE-WAIVER — le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis.

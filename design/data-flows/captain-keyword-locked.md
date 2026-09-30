@@ -2,7 +2,7 @@
 name: captain-keyword-locked
 description: Capitaine verrouillé d'un article — `article_keywords.capitaine` fait autorité, `articles.captain_keyword_locked` en est la copie ; l'article ouvert se lit dans le store, les autres dans la carte des capitaines du cocon.
 type: "TEXT — article_keywords.capitaine ('' = pas de Capitaine) + copie articles.captain_keyword_locked (NULL = pas de Capitaine)"
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 related_fr: [FR-CAP-LOCK-RADIO, FR-CAP-LOCK-GATE, FR-CAP-CHECK, FR-CAP-LOCK-INTEGRITY, FR-MOT-LOCK-DERIVED, FR-MOT-DISPLAY-FROM-STORE, FR-MOT-RECAP-LOCK-SYNC, FR-MOT-CHECK-RECONCILIATION, FR-MOT-CANNIBALIZATION]
 synced_with: [completed-checks.md]
 ---
@@ -47,7 +47,7 @@ Le chemin `lockCaptaine` / `unlockCaptaine` du mode `libre` existe encore dans `
 
 - `richCaptain.status` n'est jamais stocké : `getArticleKeywords` le dérive, `'locked'` si `capitaine` n'est pas vide (FR-MOT-LOCK-DERIVED). `captain_explorations.status` n'entre pas dans ce calcul.
 - `GET /api/cocoons/:name/capitaines` ([`cocoons.routes.ts`](../../server/routes/cocoons.routes.ts)) ne renvoie que les capitaines non vides, indexés par `articleId`.
-- Au changement d'article, `MoteurView.handleSelectArticle` vide le store (`$reset`) puis appelle `fetchKeywordsMerge`, qui n'adopte le `capitaine` de la base que si la mémoire est vide.
+- Au changement d'article, `useMoteurArticleSync` vide le store (`$reset`) puis appelle `fetchKeywordsMerge`, qui n'adopte le `capitaine` de la base que si la mémoire est vide ; les onglets attendent la fin de cette lecture. Le mot-clé de travail des onglets Lieutenants, Structure et Lexique est `moteurWorkingKeyword(capitaine, mot-clé de l'article)` : un capitaine vide (`''`) retombe sur le mot-clé de l'article.
 - Aucune expiration. Aucune synchronisation entre deux onglets du navigateur.
 
 ## Consommateurs

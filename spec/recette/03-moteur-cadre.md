@@ -380,6 +380,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 3. Recharge la page (F5), puis choisis l'enfant.
 4. Regarde les Lieutenants, puis le Capitaine.
 5. Aux Lieutenants, coche une deuxième proposition. Onglet **Structure** : clique **« Valider la structure »**. Si la structure ne reprend plus tes deux lieutenants, clique d'abord **« Régénérer la structure »**.
+6. Sans recharger, clique l'enfant dans la liste pour le désélectionner, puis rechoisis-le. Recommence en passant par un autre article.
 
 **Tu dois voir :**
 - tout décoché : les points « Lieutenants » et « Structure » vides ;
@@ -387,12 +388,14 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 - toutes les propositions reviennent, cochées ou non, avec « Autres candidats (1) » ; la case cochée l'est toujours ;
 - le bandeau « Étape non validée. 1 lieutenant pour un article Intermédiaire : le minimum conseillé est 2. » revient de lui-même : l'outil a redemandé l'étape à sa porte en rouvrant l'onglet ;
 - au Capitaine, tous les mots-clés testés reviennent, cadenas ouverts, sauf celui du Capitaine verrouillé ;
-- avec la deuxième case : le point « Lieutenants » plein ; après la validation, le point « Structure » plein.
+- avec la deuxième case : le point « Lieutenants » plein ; après la validation, le point « Structure » plein ;
+- au rechoix (geste 6) : « Lecture des données de l’article… » un instant, puis ouverture sur **Lexique** ; les points « Lieutenants » et « Structure » restent pleins, sans clignoter, et le compteur dit « 2 / N sélectionnés » (N = propositions), jamais « 2 / 0 ».
 
 **C'est un bug si :**
 - le point « Lieutenants » reste plein alors qu'aucun lieutenant n'est retenu ;
 - après le rechargement, des propositions ou des candidats du Capitaine ont disparu ;
-- le bandeau ne revient pas alors qu'un seul lieutenant est retenu.
+- le bandeau ne revient pas alors qu'un seul lieutenant est retenu ;
+- rechoisir l'enfant vide le point « Structure » (l'étape est retirée en base) ou fait clignoter un point : choisir un article ne fait que relire (recette du 2026-09-30, F4).
 
 ### MOT-16 — La barre « Résultats déjà calculés » et l'invite « Charger »
 **Exigences :** FR-MOT-EXPLORATION-COUNTS, FR-MOT-CACHE-PANEL-COUNT ⚠, FR-MOT-EXPLORATIONS-HYDRATATION

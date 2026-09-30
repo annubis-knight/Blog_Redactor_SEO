@@ -49,7 +49,7 @@ Onglet « Lieutenants » : « Analyser SERP », puis l'IA propose des lieutenant
 Onglet « Structure » : « Générer la structure » tient compte des lieutenants retenus et de l'état du cocon ; la porte attend le nombre de chapitres d'un intermédiaire (4 à 6), pas celui d'un pilier. « Valider la structure » en fait le sommaire de la rédaction, et la pile « Coûts API » annonce « 💡 Longueur conseillée : N mots », entre 1 200 et 2 500 pour un intermédiaire. Onglet « Lexique » : l'utilisateur extrait les termes et coche ceux qu'il retient. La Finalisation affiche alors « ✅ Prêt pour la Rédaction ».
 
 ### 7. Rédiger l'enfant en développant ce que la section annonce
-**Exigences :** FR-INFRA-COCOON-CONTEXT, FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-WORD-COUNT-TARGET, FR-CER-PARENT-WRITTEN-GATE
+**Exigences :** FR-INFRA-COCOON-CONTEXT, FR-RED-DRAFT-SINGLE-PASS, FR-RED-WORD-COUNT-TARGET, FR-CER-PARENT-WRITTEN-GATE
 
 Page Rédaction du cocon : l'enfant est dans la colonne « Intermédiaire », « À rédiger ». Sa rédaction guidée montre « Base : ~1 800 mots (type Intermédiaire) » tant qu'aucune page concurrente n'a été lue, sinon la longueur conseillée au Moteur. Après le micro-contexte et le sommaire, « Générer l'article » écrit le premier jet : il reçoit la section du parent et ce qu'elle en dit, avec la consigne de la développer sans la répéter. Le bandeau « ✓ Premier jet accepté… » dit que l'enfant peut, à son tour, donner naissance à des articles spécialisés.
 
@@ -109,7 +109,6 @@ Si un lieutenant de l'enfant est le Capitaine du pilier, la porte des lieutenant
 - FR-MOT-CANNIBALIZATION — l'alerte n'existe que sur les lignes de la barre des articles, sans nommer l'article concurrent ; les cartes du Radar et du Capitaine n'ont pas de badge.
 - FR-HN-TAB — un refus d'enregistrement de la structure arrête la validation sans aucun message à l'écran ; seul le refus du sommaire est dit.
 - FR-CER-WORD-COUNT-RECOMMEND — sans avis de l'IA, la raison de la longueur conseillée s'affiche en jargon technique (« Heuristique : 60% SERP avg … »).
-- FR-RED-DRAFT-SINGLE-PASS — une panne de rédaction n'affiche aucun message, ni dans la rédaction guidée ni dans l'éditeur ; l'échec de la méta, d'une réduction ou d'une humanisation n'en affiche pas non plus.
 - FR-RED-LINKING-MANUAL — dans la rédaction guidée, « Appliquer » une suggestion ne fait rien ; dans l'éditeur, l'ancre n'est cherchée que dans la zone active : ailleurs, « Appliquer » ne fait rien, sans message, et la suggestion reste affichée.
 - FR-RED-CONTEXTUAL-ACTIONS — l'éditeur n'envoie pas le mot-clé de l'article : « Optimiser mot-clé » et les autres actions travaillent sans lui ; les blocs « Sources chiffrées » et « Exemples réels » retirent les liens absents de la recherche sans dire combien ; l'échec d'une action s'affiche sous l'éditeur, caché par le voile ; « Convertir en liste » montre ses balises dans la fenêtre de résultat.
 - FR-RED-EXPORT-HTML — le fichier téléchargé perd tous les liens internes posés dans l'éditeur (celui de l'enfant vers son parent comme celui du parent vers l'enfant), et son H1 est le titre de l'article, pas le H1 jugé par la porte ; réexporter après une correction, sans recharger l'aperçu, télécharge la version chargée à l'ouverture de l'onglet, pas celle que la porte vient d'accepter.

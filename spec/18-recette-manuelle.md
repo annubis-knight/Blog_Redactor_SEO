@@ -205,7 +205,7 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
 > **En MOCK, les termes sont peu représentatifs, voire absents** : les pages analysées viennent du bac à sable. Cette vérification n'a de vrai sens qu'en RÉEL (voir plus bas).
 
 ### Étape 6 — La Rédaction : le premier jet
-**Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-DRAFT-TO-SOURCE, FR-RED-GEN-UNLOCK ⚠
+**Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-DRAFT-TO-SOURCE, FR-RED-GEN-UNLOCK ⚠
 
 **Ce que ça protège :** l'article s'écrit d'un trait, et il ne sert de parent qu'une fois son premier jet accepté.
 
@@ -225,7 +225,7 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
 - la génération s'arrête sans message ;
 - l'article reste bloqué sans alarme ni bouton pour le valider.
 
-**⚠ Défaut connu :** une panne pendant la rédaction n'affiche aucun message, ni ici ni dans l'éditeur. Et sans « Terminer le brainstorm » (étape 1), seule la barre du haut est verrouillée : « Valider le sommaire » et « Continuer vers l'Article » ouvrent quand même l'étape Article.
+**⚠ Défaut connu :** sans « Terminer le brainstorm » (étape 1), seule la barre du haut est verrouillée : « Valider le sommaire » et « Continuer vers l'Article » ouvrent quand même l'étape Article.
 
 > **En MOCK, le texte ne contient aucun chiffre** : tu ne verras pas de « [à sourcer : …] ». En RÉEL, un chiffre sans source apparaît surligné en orange, sous la forme « [à sourcer : …] ».
 

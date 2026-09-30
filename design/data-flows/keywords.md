@@ -2,7 +2,7 @@
 name: article_keywords
 description: "Décisions de mots-clés d'un article (Capitaine, Lieutenants, Lexique, racines, structure H1/H2/H3) rangées dans `article_keywords`, relues avec l'historique des candidats (`captain_explorations`, `lieutenant_explorations`) et tenues en mémoire par `useArticleKeywordsStore`."
 type: "ArticleKeywords { articleId, capitaine, lieutenants[], lexique[], rootKeywords?, hnStructure?, richCaptain?, richRootKeywords?, richLieutenants? }"
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 related_fr: [FR-CAP-PERSIST, FR-CAP-LOCK-RADIO, FR-LIE-CHECKBOX-LOCK-IMMEDIATE, FR-LIE-PERSIST, FR-LEX-SELECT, FR-LEX-PERSIST, FR-HN-TAB, FR-CAP-RELEVANCE-INPUTS, FR-MOT-EXPLORATIONS-HYDRATATION, FR-MOT-LOCK-DERIVED, FR-MOT-PHASES, FR-MOT-CACHE-PANEL-COUNT, FR-FIN-RECAP, FR-INFRA-API-WRAPPER]
 ---
 
@@ -51,7 +51,7 @@ Qui crée ou met à jour cette donnée :
 
 - Les explorations sont toujours chargées, même sans ligne `article_keywords` (FR-MOT-EXPLORATIONS-HYDRATATION). Ni ligne ni exploration → `data: null`.
 - **Mémoire navigateur** : `useArticleKeywordsStore().keywords`, un seul article à la fois (`keywords.articleId`).
-  - Moteur : `$reset()` puis `fetchKeywordsMerge` à chaque sélection d'article et au bouton « Charger ». La fusion n'adopte le `capitaine` de la base que si la mémoire est vide, ajoute les candidats absents (clé : mot-clé en minuscules, 30 au plus), fusionne les Lieutenants (un statut final `locked` / `archived` / `eliminated` l'emporte), unit les listes plates et reprend la structure de la base si la mémoire n'en a pas.
+  - Moteur : `$reset()` puis `fetchKeywordsMerge` à chaque sélection d'article (par `useMoteurArticleSync.loadArticleData`, les onglets attendent `loadedArticleId`) et au bouton « Charger ». La réponse d'un article quitté est ignorée (`requestedArticleId`) ; une réponse vide donne des mots-clés vides à son nom (`initEmpty`), jamais un store `null` qui passerait pour « pas encore chargé » (CAP-7) ; les données d'un autre article encore en mémoire sont remplacées, pas fusionnées. La fusion n'adopte le `capitaine` de la base que si la mémoire est vide, ajoute les candidats absents (clé : mot-clé en minuscules, 30 au plus), fusionne les Lieutenants (un statut final `locked` / `archived` / `eliminated` l'emporte), unit les listes plates et reprend la structure de la base si la mémoire n'en a pas.
   - Rédaction : `fetchKeywords` remplace la mémoire (`ArticleWorkflowView`, `ArticleEditorView`).
 - Aucun stockage navigateur, aucune expiration.
 
@@ -84,7 +84,7 @@ Qui crée ou met à jour cette donnée :
 |---|---|---|---|
 | Premier chargement, rechargement | `GET …/keywords` | aucune | Candidats, Lieutenants et décisions relus ; scores recalculés à la lecture. |
 | Changement d'onglet (même article) | store | aucune | Pas de relecture. |
-| Changement d'article | `$reset` + `fetchKeywordsMerge` | aucune | La garde `keywords.articleId` évite d'afficher l'article précédent. |
+| Changement d'article | `$reset` + `fetchKeywordsMerge` (`useMoteurArticleSync`) | aucune | La garde `keywords.articleId` évite d'afficher l'article précédent ; les onglets ne sont montés qu'une fois l'article chargé (`loadedArticleId`), et la réponse d'un article quitté est ignorée. |
 | « Charger » (bouton de l'onglet) | `fetchKeywordsMerge` | aucune | La mémoire n'est jamais écrasée : un Capitaine déjà en mémoire l'emporte sur la base. |
 | Enregistrement Lieutenants ou Lexique | — | `PUT` sans `hnStructure` | La structure en base est gardée. |
 | Déverrouillage avec Lieutenants verrouillés | store | `archiveLockedLieutenants` + `PUT` | Voir [captain-keyword-locked](captain-keyword-locked.md), limites. |
