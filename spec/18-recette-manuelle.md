@@ -158,7 +158,7 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
 **⚠ Défaut connu :** FR-CAP-INPUT — ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### Étape 4 — Lieutenants et Structure : l'alarme 🔴
-**Exigences :** FR-LIE-LOCK-GATE, FR-INFRA-GATE-WAIVER ⚠, FR-HN-LOCK-GATE, FR-CER-PARENT-WRITTEN-GATE
+**Exigences :** FR-LIE-LOCK-GATE, FR-INFRA-GATE-WAIVER, FR-HN-LOCK-GATE, FR-CER-PARENT-WRITTEN-GATE
 
 **Ce que ça protège :** un pilier a besoin d'au moins 3 lieutenants, et une dérogation doit être **justifiée**.
 
@@ -167,7 +167,7 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
    - Si une invite « Charger… » apparaît, clique le bouton « DB ».
    - Sinon, clique **« Analyser SERP »** et attends les propositions.
 2. Coche **une seule** proposition.
-3. Un bandeau apparaît : « Étape non validée. 1 lieutenant pour un article Pilier : le minimum conseillé est 3. » Clique **« Voir pourquoi / décider »**.
+3. Un bandeau apparaît : « Étape non validée. 1 lieutenant pour un article Pilier : le minimum conseillé est 3. » Clique **« Voir pourquoi / décider »**. Sous le point 🔴, « À la place : » propose les autres propositions, non cochées.
 4. Dans l'alarme 🔴, choisis une catégorie dans « Pourquoi passer outre ? », puis tape dans « Votre raison » une phrase de **19 caractères**, par exemple `Mot-clé très locale`.
 5. Ajoute un point final, pour passer à **20 caractères**.
 6. Clique **« Je prends la responsabilité et je continue »**. Tu assumes ce choix : la dérogation est enregistrée, et tu la reverras à l'étape 10.
@@ -183,8 +183,6 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
 **C'est un bug si :**
 - on peut valider avec moins de 20 caractères ou sans catégorie ;
 - avec 3 lieutenants cochés, le bandeau reste affiché (essaie-le sur un autre article, si tu veux).
-
-**⚠ Défaut connu :** FR-INFRA-GATE-WAIVER — le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### Étape 5 — Le Lexique
 **Exigences :** FR-LEX-METIER-ONLY, FR-LEX-PRECHECK-PERSISTE
@@ -263,7 +261,7 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
 - des statuts par chapitre : « à relire », « acceptée », « refusée » ;
 - le texte modifié seulement pour les chapitres acceptés.
 
-En MOCK, « Sources » répond « Aucun passage à sourcer… : rien à chercher ». « Résumer » répond « Aucun chapitre n'a encore donné naissance à un article » si tu n'as pas fait l'étape 7. C'est normal.
+En MOCK, « Sources » répond « Aucun passage à sourcer… : rien à chercher ». « Résumer » répond « Rien à résumer : aucun chapitre n’a encore donné naissance à un article, ou chacun est déjà résumé (250 mots au plus). » si tu n'as pas fait l'étape 7, ou si la section est déjà courte. C'est normal. Le résumé proposé finit sur une phrase entière, sans alerte ⛔.
 
 **C'est un bug si :**
 - un chapitre refusé est quand même modifié ;
@@ -282,14 +280,14 @@ En MOCK, « Sources » répond « Aucun passage à sourcer… : rien à chercher
 5. Reviens dans l'éditeur. **Efface les mots liés** : le bouton 🔗 de la barre ne retire pas ce type de lien. Puis clique **« Sauvegarder »**, ou Ctrl+S.
 6. Recharge la page « Maillage ».
 
-**Tu dois voir :** la case disparue après la sauvegarde.
+**Tu dois voir :** la case disparue après la sauvegarde. Avant d'effacer (geste 5), un clic sur le lien, dans l'éditeur, place seulement le curseur : aucun onglet ne s'ouvre.
 
-**C'est un bug si :** la case reste alors que le lien n'est plus dans le texte.
+**C'est un bug si :** la case reste alors que le lien n'est plus dans le texte ; un clic sur le lien ouvre un onglet.
 
 **⚠ Défaut connu :** il touche les **suggestions** de liens, pas ce geste. Dans la rédaction guidée, « Appliquer » une suggestion ne fait rien. Dans l'éditeur, l'ancre n'est cherchée que dans la zone active : ailleurs, « Appliquer » ne fait rien, sans message, et la suggestion reste affichée. Le module Rédaction le vérifie.
 
 ### Étape 10 — La publication et ses dérogations
-**Exigences :** FR-RED-PUBLISH-GATE, FR-RED-EXPORT-HTML ⚠, FR-INFRA-GATE-WAIVER ⚠
+**Exigences :** FR-RED-PUBLISH-GATE, FR-RED-EXPORT-HTML, FR-INFRA-GATE-WAIVER
 
 **Ce que ça protège :**
 - à la publication, tu revois toutes tes dérogations ;
@@ -302,27 +300,25 @@ En MOCK, « Sources » répond « Aucun passage à sourcer… : rien à chercher
 **Tu dois voir :**
 - l'alarme « Avant de publier » ;
 - en ⛔ : « 1 image encore à fournir (place réservée par la passe images) » (étape 8), et le bouton **« Correction nécessaire »** grisé ;
-- en 🟠, avec une case « J'ai lu » : ta dérogation de l'étape 4, sous la forme « Dérogation posée … : Mot-clé très locale. ». Si les données qu'elle couvrait avaient changé depuis, elle reviendrait à son niveau d'origine (🔴), et il faudrait la justifier à nouveau ;
+- en 🟠, avec une case « J'ai lu » : ta dérogation de l'étape 4, en clair : « Dérogation posée au verrouillage des lieutenants. 1 lieutenant pour un article Pilier : le minimum conseillé est 3. Votre raison : « Mot-clé très locale ». », sans nom interne de règle ni « .. ». Si les données qu'elle couvrait avaient changé depuis, elle reviendrait à son niveau d'origine (🔴), et il faudrait la justifier à nouveau ;
+- en 🟠 aussi, les dérogations du premier jet (étape 6) dont le point est encore dans le texte : « Dérogation posée au premier jet. Paragraphe répété : « … ». Votre raison : « … ». ». Elles ne reviennent pas en 🔴 ;
 - si tu n'as pas accepté « Résumer » à l'étape 8 : un 🔴 « La section « … » compte N mots alors que l'article « … » traite ce sujet… ». Réponds-y comme à l'étape 4, ou reviens résumer la section ;
 - après « Revenir corriger » : « Publication annulée : corrigez les points signalés, puis exportez à nouveau. » Rien n'est téléchargé.
 
 **Pour finir :**
 1. Dans l'éditeur, clique l'image, puis 📷 « Remplacer l'image ». Donne une adresse, par exemple `/images/test.jpg`, et un texte alternatif.
-2. **Ferme l'onglet d'aperçu, puis rouvre-le** par « Visualiser l'article » : l'aperçu ne se recharge pas tout seul.
-3. Exporte à nouveau.
-4. Coche les « J'ai lu ». Le fichier `article-<id>.html` se télécharge, et l'article passe « publié ».
-5. Ouvre le fichier téléchargé dans le navigateur.
+2. Reviens à l'onglet d'aperçu et exporte à nouveau, sans le recharger : le fichier est demandé au serveur après la porte, c'est donc le texte qu'elle vient de juger.
+3. Coche les « J'ai lu » (un par point 🟠). Le fichier `article-<id>.html` se télécharge, l'article passe « publié », et l'aperçu se recharge.
+4. Ouvre le fichier téléchargé dans le navigateur.
 
 **C'est un bug si :**
 - l'export se fait malgré un ⛔ ;
-- une dérogation passée n'est pas réaffichée ;
-- le fichier téléchargé contient encore l'emplacement d'image vide.
-
-**⚠ Défaut connu :** le fichier téléchargé perd tous les liens internes posés dans l'éditeur, et son H1 est le titre de l'article, pas le H1 jugé par la porte.
+- une dérogation passée n'est pas réaffichée, ou une dérogation du premier jet est redemandée en 🔴 ;
+- le fichier téléchargé contient encore l'emplacement d'image vide ;
+- le H1 du fichier n'est pas celui de l'article dans l'éditeur, ou un lien interne vers un article rédigé y a disparu ;
+- le fichier contient une image « outStr_Arrow » (« Image absolute »).
 
 ---
-
-**⚠ Défaut connu :** FR-INFRA-GATE-WAIVER — le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ## Les modules
 

@@ -72,7 +72,7 @@ Mémoire :
 ### Calcul / tri / filtre / agrégat
 
 - **Tri serveur des propositions** — `filterLieutenants` : `compareScores(score)`, `null` en bas, coupe à `maxLieutenants` ([`shared/constants/article-type-rules.ts`](../../shared/constants/article-type-rules.ts)). La relecture (`getLieutenantExplorations`) trie `score DESC NULLS LAST`. L'écran retrie avec `useSortableList` (`null` en bas).
-- **Porte `lieutenants-lock`** — `lieutenants-too-few` (🔴, `minLieutenants`), `lieutenant-cannibalization:<mot>` (🔴), `lieutenant-shared:<mot>` (🟠), `lieutenant-is-captain:<mot>` (🟠), sur `article_keywords.lieutenants`. Rejouée par `publishGate` à la publication.
+- **Porte `lieutenants-lock`** — `lieutenants-too-few` (🔴, `minLieutenants` ; « À la place : » = `unselectedLieutenants`, les propositions `lieutenant_explorations` encore `suggested`, les mieux notées d'abord), `lieutenant-cannibalization:<mot>` (🔴), `lieutenant-shared:<mot>` (🟠), `lieutenant-is-captain:<mot>` (🟠), sur `article_keywords.lieutenants`. Rejouée par `publishGate` à la publication.
 - **Porte `hn-lock`** — lit la liste plate pour `hn-lieutenant-missing:<lieutenant>` (🟠).
 - **Autres articles du cocon** — `getCocoonExistingLieutenants` (prompt de l'IA) et les revendications de `lieutenantsGate` lisent la liste plate de chaque article.
 - **Rédaction** — `buildKeywordContext` ([`server/routes/generate/_helpers.ts`](../../server/routes/generate/_helpers.ts)) écrit « Lieutenants (H2, H3) : … » à partir de `article_keywords`.

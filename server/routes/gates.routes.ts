@@ -22,6 +22,9 @@ const waiversBodySchema = z.object({
   keyword: z.string().trim().min(1).max(200).optional(),
   waivers: z.array(z.object({
     rule: z.string().min(1).max(300),
+    // Empreinte du point tel que l'utilisateur l'a lu (FR-INFRA-GATE-WAIVER) :
+    // une réponse à un point qui a changé depuis est refusée.
+    fingerprint: z.string().max(64),
     category: z.enum(WAIVER_CATEGORIES).nullable().optional(),
     reason: z.string().max(2000).nullable().optional(),
   })).min(1).max(50),

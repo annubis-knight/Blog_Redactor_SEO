@@ -29,6 +29,8 @@ import { proposeChapter, cleanProposal, pinNewImages, proposalMaxTokens, type Pr
 import { MOCK_WEB_SOURCES } from '../../../server/services/external/mock-fixtures/enrichment'
 import { IMAGE_TO_PROVIDE_SRC } from '../../../shared/constants/image-placeholder'
 import { listChapters } from '../../../shared/chapters'
+import { trimTruncatedBlocks } from '../../../shared/content-repair'
+import { detectRepeatedParagraphs } from '../../../shared/text-quality'
 
 const CHAPTER = '<h2>Le budget d’un site</h2><p>Beaucoup d’artisans <mark data-a-sourcer>[à sourcer : part des TPE sans site]</mark> n’ont pas encore de site.</p><h3>Les postes</h3><p>Le design, les textes et l’hébergement se prévoient ensemble.</p>'
 const ARTICLE = `<h1>Créer un site vitrine</h1><p>Un chapeau qui accroche.</p>${CHAPTER}<h2>Conclusion</h2><p>Passez à l’action.</p>`
@@ -90,6 +92,27 @@ describe('proposeChapter — passes simulées', () => {
     expect(headingsOf(p.html)).toEqual(['<h2>Le budget d’un site</h2>'])
     expect(p.html).toContain('Isoler ses combles')
     expect(p.issues.filter(i => i.level !== 'attention')).toEqual([])
+  })
+
+  // Recette du 2026-09-30 (express 10 a, CER-25, RED-23) : le résumé simulé
+  // finissait en plein mot (⛔ « Bloc coupé » à la publication), avalait le
+  // texte des cellules d'un tableau, et sa phrase de renvoi, identique d'un
+  // chapitre à l'autre, déclenchait 🔴 « Paragraphe répété ».
+  it('résumer (simulé) : des phrases entières, sans cellules de tableau, et aucun paragraphe répété d’un chapitre à l’autre', async () => {
+    const tableau = '<table><thead><tr><th><p>Étape pour le budget</p></th><th><p>Quand s’y mettre</p></th></tr></thead><tbody><tr><td><p>Faire le point sur le budget</p></td><td><p>Dès cette semaine</p></td></tr></tbody></table>'
+    const long = `<h2>Le budget d’un site</h2>${'<p>Un site se prévoit tôt, avec un budget clair et des étapes datées. Le design, les textes et l’hébergement se décident ensemble, pas l’un après l’autre.</p>'.repeat(8)}${tableau}`
+    const enfants = ['Budget à prévoir', 'Erreurs à éviter', 'Étapes pour bien démarrer', 'Questions à se poser', 'Mesurer les résultats']
+    const resumes = []
+    for (const titre of enfants) {
+      const chapitre = long.replace('Le budget d’un site', `Le chapitre ${titre.toLowerCase()}`)
+      resumes.push(await proposeChapter(input('resumes', { chapterHtml: chapitre, child: { title: `${titre} : le guide complet`, keyword: titre.toLowerCase() } })))
+    }
+    for (const p of resumes) {
+      expect(p.issues.filter(i => i.level !== 'attention'), 'aucun ⛔ ni 🔴 : ni coupé, ni hors de 150 à 250 mots').toEqual([])
+      expect(trimTruncatedBlocks(p.html).trimmed).toEqual([])
+      expect(p.html).not.toContain('Quand s’y mettre')
+    }
+    expect(detectRepeatedParagraphs(resumes.map(p => p.html).join(''))).toEqual([])
   })
 
   it('FAQ : un chapitre « Questions fréquentes », autant de questions que le type en demande', async () => {

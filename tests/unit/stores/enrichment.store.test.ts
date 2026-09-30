@@ -66,10 +66,23 @@ describe('chapitres visés par une passe', () => {
     expect(store.targetsFor('exemples', ARTICLE).map(c => c.title)).toEqual(['Le budget', 'Les étapes'])
   })
 
-  // C7 — passe Résumer : seulement les chapitres dont est né un article enfant.
-  it('résumer : les chapitres dont est né un article, et eux seuls', () => {
-    expect(store.targetsFor('resumes', ARTICLE)).toEqual([])
-    expect(store.targetsFor('resumes', ARTICLE, ['les étapes', 'Un chapitre disparu']).map(c => c.title)).toEqual(['Les étapes'])
+  // Recette du 2026-09-30 (RED-18) : le H2 « Introduction » est rangé par
+  // l'éditeur dans la zone Introduction ; il recevait une carte Tableaux.
+  it('exemples, tableaux, images : ni le chapitre « Introduction », ni la conclusion (le corps seulement)', () => {
+    const avecIntro = ARTICLE.replace('<h2>Le budget</h2>', '<h2>Introduction</h2><p>Pourquoi ce guide.</p><h2>Le budget</h2>')
+    for (const pass of ['exemples', 'tableaux', 'images'] as const) {
+      expect(store.targetsFor(pass, avecIntro).map(c => c.title), pass).toEqual(['Le budget', 'Les étapes'])
+    }
+  })
+
+  // C7 — passe Résumer : seulement les chapitres dont est né un article enfant,
+  // et pas encore résumés. Recette du 2026-09-30 (CER-25) : « Résumer »
+  // reproposait un chapitre déjà résumé et redoublait sa phrase de renvoi.
+  it('résumer : les chapitres dont est né un article, pas encore résumés (plus de 250 mots, la mesure de la publication)', () => {
+    const long = ARTICLE.replace('On commence par le message.', 'On commence par le message clair et simple. '.repeat(40))
+    expect(store.targetsFor('resumes', long)).toEqual([])
+    expect(store.targetsFor('resumes', long, ['les étapes', 'Un chapitre disparu']).map(c => c.title)).toEqual(['Les étapes'])
+    expect(store.targetsFor('resumes', ARTICLE, ['les étapes']), 'déjà court : déjà résumé').toEqual([])
   })
 
   it('les sections nées d’un enfant se chargent depuis le serveur', async () => {
@@ -156,6 +169,30 @@ describe('accepter — garde-fous', () => {
     editor.setContent(ARTICLE.replace('On commence par le message.', 'Texte retouché à la main.'))
     store.accept(store.items[1]!.key)
     expect(editor.content).toContain('Texte retouché à la main.')
+    expect(store.items[1]!.status).toBe('stale')
+  })
+
+  // Recette du 2026-09-30 (RED-18) : un chapitre non touché passait « chapitre
+  // modifié depuis » parce que l'éditeur réécrivait ses liens (target, rel) en
+  // l'affichant. Un réaffichage par l'éditeur n'est pas une modification.
+  it('un chapitre seulement réaffiché par l’éditeur (attributs de présentation) n’est pas « modifié depuis »', async () => {
+    const avecLien = ARTICLE.replace('On commence par le message.', 'On commence par <a class="internal-link" href="#article-9">le message</a>.')
+    editor.setContent(avecLien)
+    serverAdds('Prenons un menuisier.')
+    await store.runPass('exemples', ctx)
+    editor.setContent(avecLien.replace('<a class="internal-link" href="#article-9">', '<a target="_blank" rel="noopener noreferrer nofollow" class="internal-link" href="#article-9">'))
+    store.accept(store.items[1]!.key)
+    expect(store.items[1]!.status).toBe('accepted')
+    expect(editor.content).toContain('Prenons un menuisier.')
+  })
+
+  it('un lien retouché à la main, lui, compte comme une modification', async () => {
+    const avecLien = ARTICLE.replace('On commence par le message.', 'On commence par <a class="internal-link" href="#article-9">le message</a>.')
+    editor.setContent(avecLien)
+    serverAdds('Prenons un menuisier.')
+    await store.runPass('exemples', ctx)
+    editor.setContent(avecLien.replace('#article-9', '#article-12'))
+    store.accept(store.items[1]!.key)
     expect(store.items[1]!.status).toBe('stale')
   })
 

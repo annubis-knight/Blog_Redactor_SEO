@@ -92,7 +92,7 @@ describe('auto:checks — saveThenEmit : la porte lit la base, pas le script', (
 
 const ATTENTION = {
   gateId: 'captain-lock', passed: false, inputHash: 'h1', waived: [],
-  blocking: [{ rule: 'captain-intent-mismatch', level: 'attention', message: 'Google traite cette requête comme de navigation.' }],
+  blocking: [{ rule: 'captain-intent-mismatch', level: 'attention', message: 'Google traite cette requête comme de navigation.', fingerprint: 'a1b2c3d4' }],
   issues: [],
 }
 
@@ -138,8 +138,9 @@ describe('auto:checks — une porte toute 🟠 se lit au terminal (FR-INFRA-VERI
       '/articles/1353/gates/captain-lock/waivers',
       '/articles/1353/progress/check',
     ])
-    // Exactement ce que l'écran envoie pour une case « J'ai lu » : la règle, rien d'autre.
-    expect(calls[1]!.body).toEqual({ waivers: [{ rule: 'captain-intent-mismatch' }] })
+    // Exactement ce que l'écran envoie pour une case « J'ai lu » : la règle et
+    // l'empreinte du point lu (FR-INFRA-GATE-WAIVER), rien d'autre.
+    expect(calls[1]!.body).toEqual({ waivers: [{ rule: 'captain-intent-mismatch', fingerprint: 'a1b2c3d4' }] })
   })
 
   it('« N » (ou Entrée) : arrêt, comme avant, sans rien enregistrer', async () => {

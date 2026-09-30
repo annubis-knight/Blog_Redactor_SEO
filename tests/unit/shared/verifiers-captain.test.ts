@@ -10,7 +10,7 @@ const pilier1013: CaptainGateInput = {
   keyword: 'stratégie digitale entreprises Toulouse',
   level: 'pilier',
   volume: null,
-  autocompleteCount: 0,
+  autocompletePosition: 0,
   verdict: 'ORANGE',
   serpIntent: 'commercial',
   expectedIntent: null,
@@ -53,7 +53,7 @@ describe('verifyCaptain — le cas du pilier 1013', () => {
 
 describe('verifyCaptain — cas sains et limites', () => {
   const sain: CaptainGateInput = {
-    keyword: 'isolation combles perdus', level: 'intermediaire', volume: 2400, autocompleteCount: 8,
+    keyword: 'isolation combles perdus', level: 'intermediaire', volume: 2400, autocompletePosition: 3,
     verdict: 'GO', serpIntent: 'informational', expectedIntent: 'informational', alternatives: [],
   }
 

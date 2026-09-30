@@ -10,7 +10,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { verifyPublish, countToSourceMarkers, type PublishGateInput } from '../../../shared/verifiers/publish.js'
-import { evaluateGate, hashGateInput } from '../../../shared/verifiers/gate.js'
+import { verifyDraft } from '../../../shared/verifiers/draft.js'
+import { evaluateGate, hashGateInput, pointFingerprint, type GateWaiver } from '../../../shared/verifiers/gate.js'
 import { IMAGE_TO_PROVIDE_SRC } from '../../../shared/constants/image-placeholder.js'
 
 const HTML_1013 = readFileSync(join(__dirname, '..', '..', 'fixtures', 'articles', '1013-pilier.html'), 'utf8')
@@ -104,11 +105,32 @@ describe('verifyPublish — règles propres à la publication', () => {
   it('🟠 chaque dérogation déjà posée est réaffichée pour être reconfirmée', () => {
     const issues = verifyPublish({
       ...sain,
-      existingWaivers: [{ gateId: 'captain-lock', rule: 'captain-volume-unknown', level: 'risque', category: 'longue-traine', reason: 'Demandes réelles reçues par téléphone', inputHash: 'x' }],
+      existingWaivers: [{
+        issue: { rule: 'captain-volume-unknown', level: 'risque', message: 'Aucun volume de recherche mesuré pour « isolation combles perdus ».' },
+        waiver: { gateId: 'captain-lock', rule: 'captain-volume-unknown', level: 'risque', category: 'longue-traine', reason: 'Demandes réelles reçues par téléphone.', inputHash: 'x' },
+      }],
     })
     const reconfirm = issues.find(i => i.rule === 'waiver-reconfirm:captain-lock:captain-volume-unknown')
     expect(reconfirm?.level).toBe('attention')
     expect(reconfirm?.message).toContain('Demandes réelles reçues par téléphone')
+    // Recette 2026-09-30 (express 10 c) : une phrase, pas l'identifiant interne ; pas de « .. ».
+    expect(reconfirm?.message).toContain('Aucun volume de recherche mesuré pour « isolation combles perdus »')
+    expect(reconfirm?.message).not.toContain('captain-volume-unknown')
+    expect(reconfirm?.message).not.toMatch(/\.\./)
+    expect(reconfirm?.fingerprint, 'empreinte posée par le vérificateur').toBeTruthy()
+  })
+
+  it('🟠 une dérogation 🟠 (simple lecture) dit qu’elle a été lue, faute de raison écrite', () => {
+    const reconfirm = verifyPublish({
+      ...sain,
+      existingWaivers: [{
+        issue: { rule: 'captain-intent-mismatch', level: 'attention', message: 'Google traite cette requête comme de navigation, alors que l’article vise une intention informationnelle.' },
+        waiver: { gateId: 'captain-lock', rule: 'captain-intent-mismatch', level: 'attention', category: null, reason: null, inputHash: 'x' },
+      }],
+    }).find(i => i.rule.startsWith('waiver-reconfirm:captain-lock:'))
+    expect(reconfirm?.message).toContain('Google traite cette requête comme de navigation')
+    expect(reconfirm?.message).toMatch(/lu/)
+    expect(reconfirm?.message).not.toContain('captain-intent-mismatch')
   })
 
   it('un article dans sa fourchette de longueur passe cette règle', () => {
@@ -130,6 +152,55 @@ describe('verifyPublish — règles propres à la publication', () => {
 
   it('le H1 dans le corps est toléré à la publication (l’export le retire)', () => {
     expect(verifyPublish(sain).map(i => i.rule)).not.toContain('hn-h1-in-body')
+  })
+})
+
+// Recette du 2026-09-30 (express 10 b) : les 🔴 « Paragraphe répété » dérogés au
+// premier jet étaient redemandés à la publication sous une autre règle, et pas
+// réaffichés. FR-INFRA-GATE-WAIVER, FR-RED-PUBLISH-GATE : même point (même
+// extrait), même dérogation, réaffichée en 🟠 à relire.
+describe('verifyPublish — les dérogations du premier jet valent pour le même point', () => {
+  const repete = 'Un site clair rassure le client et lui donne envie de vous appeler sans attendre la semaine prochaine.'
+  const texte = '<h1>Isolation des combles perdus : le guide</h1><h2>Pourquoi isoler</h2>'
+    + `<p>${repete}</p><p>Le pare-vapeur se pose toujours côté chauffé de la maison.</p><h2>Comment faire</h2><p>${repete}</p>`
+  const base: PublishGateInput = {
+    title: 'Isolation des combles perdus : le guide', slug: 'isolation-combles-perdus', level: 'specifique', content: texte,
+    metaTitle: 'Isolation des combles perdus : méthode et prix',
+    metaDescription: 'Isolation des combles perdus : matériaux, pose du pare-vapeur et budget, expliqués simplement pour choisir la bonne solution chez vous.',
+    capitaine: 'isolation combles perdus', lieutenants: [], existingWaivers: [],
+  }
+  const RAISON = 'Texte simulé (MOCK) de la recette : répétition attendue.'
+  const auPremierJet = (content: string): GateWaiver[] => {
+    const issue = verifyDraft({ content, captain: 'isolation combles perdus', targetWords: 60, outlineH2Count: 2 })
+      .find(i => i.rule.startsWith('draft-repeated-paragraph'))!
+    return [{ gateId: 'draft', rule: issue.rule, level: 'risque', category: 'autre', reason: RAISON, inputHash: pointFingerprint('draft', issue, 'empreinte-du-jet') }]
+  }
+
+  it('sans dérogation du premier jet : 🔴 Paragraphe répété', () => {
+    expect(verifyPublish(base).find(i => i.rule.startsWith('repeated-paragraph'))?.level).toBe('risque')
+  })
+
+  it('dérogé au premier jet : plus de 🔴, un 🟠 « Dérogation posée au premier jet » avec la raison', () => {
+    const issues = verifyPublish({ ...base, draftWaivers: auPremierJet(texte) })
+    expect(issues.some(i => i.rule.startsWith('repeated-paragraph'))).toBe(false)
+    const reconfirm = issues.find(i => i.rule.startsWith('waiver-reconfirm:draft:repeated-paragraph'))
+    expect(reconfirm?.level).toBe('attention')
+    expect(reconfirm?.message).toMatch(/^Dérogation posée au premier jet/)
+    expect(reconfirm?.message).toContain('Paragraphe répété')
+    expect(reconfirm?.message).toContain('répétition attendue')
+    expect(reconfirm?.excerpt).toBe(repete.slice(0, 80))
+  })
+
+  it('une retouche ailleurs dans l’article ne fait pas tomber la dérogation du premier jet', () => {
+    const retouche = texte.replace('toujours côté chauffé', 'côté chauffé')
+    const issues = verifyPublish({ ...base, content: retouche, draftWaivers: auPremierJet(texte) })
+    expect(issues.some(i => i.rule.startsWith('repeated-paragraph'))).toBe(false)
+  })
+
+  it('un autre paragraphe répété n’est pas couvert', () => {
+    const autre = texte.replaceAll(repete, 'Un devis précis évite les mauvaises surprises et rassure le client dès le premier rendez-vous chez lui.')
+    const issues = verifyPublish({ ...base, content: autre, draftWaivers: auPremierJet(texte) })
+    expect(issues.find(i => i.rule.startsWith('repeated-paragraph'))?.level).toBe('risque')
   })
 })
 

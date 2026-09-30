@@ -104,9 +104,34 @@ describe('GateAlarm', () => {
     expect(accept.attributes('disabled')).toBeDefined()
   })
 
-  it('envoie les dérogations et se ferme quand le serveur laisse passer', async () => {
+  // Recette du 2026-09-30 (03-T4, express 3) : « une case cochée suffit » alors
+  // qu'il en faut une par point ; « 1 point à regarder. Lisez-les ».
+  it('🟠 l’introduction dit qu’il faut cocher « J’ai lu » pour chaque point, au singulier comme au pluriel', async () => {
+    openAlarm([attention])
+    const seul = mount(GateAlarm)
+    await flushPromises()
+    expect(seul.get('#gate-alarm-intro').text()).toBe('1 point à regarder. Lisez-le, puis cochez « J’ai lu » pour continuer.')
+    seul.unmount()
+
+    openAlarm([attention, { ...attention, rule: 'captain-intent-mismatch', message: 'Intention différente.' }])
+    const deux = mount(GateAlarm)
+    await flushPromises()
+    expect(deux.get('#gate-alarm-intro').text()).toBe('2 points à regarder. Lisez-les, puis cochez « J’ai lu » pour chacun avant de continuer.')
+  })
+
+  it('🔴 et 🟠 mêlés : l’introduction dit ce que demande chacun', async () => {
+    openAlarm([attention, risque])
+    const wrapper = mount(GateAlarm)
+    await flushPromises()
+    const intro = wrapper.get('#gate-alarm-intro').text()
+    expect(intro).toContain('2 points à regarder')
+    expect(intro).toContain('« J’ai lu » pour chaque 🟠')
+    expect(intro).toContain('chaque 🔴')
+  })
+
+  it('envoie les dérogations, avec l’empreinte du point lu, et se ferme quand le serveur laisse passer', async () => {
     mockApiPost.mockResolvedValueOnce({ evaluation: evaluation([], true), refused: [] })
-    const { decision } = openAlarm([attention, risque])
+    const { decision } = openAlarm([{ ...attention, fingerprint: 'fa' }, { ...risque, fingerprint: 'fr' }])
     const wrapper = mount(GateAlarm)
     await flushPromises()
     await wrapper.get('[data-testid="gate-ack"]').setValue(true)
@@ -118,8 +143,8 @@ describe('GateAlarm', () => {
     expect(mockApiPost).toHaveBeenCalledWith('/articles/7/gates/captain-lock/waivers', {
       keyword: 'plombier',
       waivers: [
-        { rule: attention.rule },
-        { rule: risque.rule, category: 'donnee-manquante', reason: 'Le client reçoit ces demandes chaque semaine' },
+        { rule: attention.rule, fingerprint: 'fa' },
+        { rule: risque.rule, fingerprint: 'fr', category: 'donnee-manquante', reason: 'Le client reçoit ces demandes chaque semaine' },
       ],
     })
     await expect(decision).resolves.toBe(true)

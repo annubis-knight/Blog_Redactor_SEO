@@ -35,16 +35,29 @@ const EN_FUNCTION = new Set([
 const FR_FUNCTION = new Set([
   'le', 'la', 'les', 'de', 'des', 'du', 'un', 'une', 'et', 'est', 'pour', 'que', 'qui', 'dans', 'sur',
   'avec', 'vous', 'votre', 'vos', 'nous', 'pas', 'ce', 'cette', 'au', 'aux', 'en', 'ils', 'sont', 'leur',
+  'par', 'à', 'ou', 'mais', 'ne', 'se', 'il', 'elle', 'son', 'sa', 'ses', 'nos', 'notre', 'd', 'l', 'qu', 'c', 'n', 's', 'j',
 ])
+/** Mots-outils anglais qui sont aussi des mots français (« un an ») : ils ne suffisent pas seuls. */
+const EN_AMBIGUOUS = new Set(['an'])
+/** Lettres accentuées du français : l'anglais n'en porte pas. */
+const FR_ACCENT = /[àâçéèêëîïôûùüÿœæ]/i
 
-/** Phrases (6 mots ou plus) où l'anglais domine. */
+/**
+ * Phrases où l'anglais domine :
+ *   - 6 mots ou plus, au moins 3 mots-outils anglais, plus que de français ;
+ *   - ou 5 mots ou plus, un mot-outil anglais, aucun mot-outil français ni
+ *     accent (« We help small businesses grow online. », recette du
+ *     2026-09-30 : une phrase courte n'a pas trois mots-outils).
+ */
 export function detectNonFrenchSentences(html: string): string[] {
   return sentences(plain(html)).filter((sentence) => {
     const w = words(sentence)
-    if (w.length < 6) return false
+    if (w.length < 5) return false
     const en = w.filter(x => EN_FUNCTION.has(x)).length
     const fr = w.filter(x => FR_FUNCTION.has(x)).length
-    return en >= 3 && en > fr
+    if (w.length >= 6 && en >= 3 && en > fr) return true
+    const unambiguousEn = w.filter(x => EN_FUNCTION.has(x) && !EN_AMBIGUOUS.has(x)).length
+    return unambiguousEn >= 1 && fr === 0 && !FR_ACCENT.test(sentence)
   })
 }
 

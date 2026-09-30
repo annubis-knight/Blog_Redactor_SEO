@@ -2,7 +2,7 @@
 name: keyword-metrics
 description: Mesures d'un mot-clé partagées entre tous les articles (volume, difficulté, CPC, concurrence, intention de la SERP, suggestions Google, questions PAA, analyses locale et content gap) — une ligne `keyword_metrics` par mot-clé, relue avant tout appel payant.
 type: "keyword_metrics { keyword, lang, country (PK), search_volume, keyword_difficulty, cpc, competition, intent_raw, intent_label, autocomplete_suggestions JSONB, autocomplete_source, paa_questions JSONB, local_analysis, content_gap_analysis, local_comparison, fetched_at }"
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 related_fr: [FR-INFRA-KEYWORD-METRICS, FR-INFRA-PAA-CACHE, FR-MOT-CACHE-CASCADE, NFR-COST-CACHE-FIRST, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION, FR-MOT-RAW-KPIS, FR-CER-KEYWORD-REAL-DATA, FR-EXT-DATAFORSEO, FR-EXT-AUTOCOMPLETE-GOOGLE, FR-EXP-CONTENT-GAP, FR-CAP-SCAN, FR-CAP-RELEVANCE-INTENT-SIGNAL, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-DISPLAY-DASH, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-SCORING-NULLSAFE]
 ---
 
@@ -65,7 +65,7 @@ La fraîcheur n'est pas imposée par la base : chaque lecteur l'applique avec `i
 
 - **Verdict et Score Marché de l'étude** — `computeVerdict` et `computeMarketScore` (l'intention de la SERP `intent_label` entre dans le Score Marché, cf. [score-capitaine](score-capitaine.md)).
 - **Score Pertinence** — `computeRelevanceForCaptainTab` lit `paa_questions`, `autocomplete_suggestions` et `intent_label` (cf. [relevance-score-live-computation](relevance-score-live-computation.md)).
-- **Porte `captain-lock`** — `captainGate` ([`gate.service.ts`](../../server/services/gates/gate.service.ts)) : verdict recalculé par `captainKpisFromMetricsRow`, volume, nombre de suggestions (seulement si `autocomplete_source` est renseigné), intention de la SERP ; `exploredCandidates` propose les autres candidats de l'article dont le volume est mesuré.
+- **Porte `captain-lock`** — `captainGate` ([`gate.service.ts`](../../server/services/gates/gate.service.ts)) : verdict recalculé par `captainKpisFromMetricsRow`, volume, place de la requête dans les suggestions (le KPI `autocomplete` de ces mêmes lignes, `captainAutocompletePosition` : la valeur « Autocomplete » du panneau ; 0 = « Google ne suggère pas », même si Google renvoie des suggestions approchées), intention de la SERP ; l'empreinte de la porte garde le nombre brut de suggestions ; `exploredCandidates` propose les autres candidats de l'article dont le volume est mesuré.
 - **Création d'un article du Cerveau** — `cocoon-article.service` refuse (422 `KEYWORD_NOT_MEASURED`) un mot-clé sans ligne dans `keyword_metrics` (FR-CER-KEYWORD-REAL-DATA).
 - **Longueur conseillée** — `POST /api/articles/:id/recommend-word-count` ([`articles.routes.ts`](../../server/routes/articles.routes.ts)) lit `content_gap_analysis.averageWordCount` du Capitaine s'il existe.
 - **Sans écran** — `GET /api/keywords/:keyword/metrics`, `GET /api/cocoons/:id/keyword-metrics` (`getCocoonKeywordMetrics`), `…/local-for-article`, `…/content-gap-for-article` ([`keyword-queries.routes.ts`](../../server/routes/keyword-queries.routes.ts)).

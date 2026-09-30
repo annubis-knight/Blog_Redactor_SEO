@@ -170,11 +170,11 @@ Dans les deux vues, « Enrichir » ouvre le panneau « Enrichir l’article » :
 | Passe | Chapitres visés | Ce qui est proposé | Rien à faire |
 |---|---|---|---|
 | « Sources » | Ceux (chapeau compris) qui portent un marqueur « à sourcer » ou un chiffre sans source | Chaque marqueur devient une phrase qui cite la source, son année et un lien vers la page trouvée ; sans source fiable, le marqueur reste | « Aucun passage à sourcer ni chiffre sans source : rien à chercher. » |
-| « Exemples » | Le corps : ni chapeau, ni FAQ, ni dernier chapitre | Un exemple en situation, fictif et présenté comme tel, de 40 à 90 mots, sans chiffre | « Aucun chapitre à enrichir. » |
+| « Exemples » | Le corps : ni chapeau, ni chapitre « Introduction », ni FAQ, ni dernier chapitre | Un exemple en situation, fictif et présenté comme tel, de 40 à 90 mots, sans chiffre | « Aucun chapitre à enrichir. » |
 | « Tableaux » | Le corps | Un tableau (ligne d'en-tête, 2 à 4 colonnes, aucun chiffre nouveau) seulement quand le chapitre compare ou énumère | « Aucun chapitre à enrichir. » |
 | « Images » | Le corps | L'emplacement d'une image et son texte alternatif ; l'image est une place neutre « à fournir » | « Aucun chapitre à enrichir. » |
 | « FAQ » | Un seul chapitre « Questions fréquentes », inséré avant le dernier chapitre (à la fin si l'article a moins de deux chapitres) | Autant de questions que le type le prévoit (4 à 6 pour un pilier, 3 à 5 pour un intermédiaire, 3 à 4 pour un spécialisé ; 3 à 6 pour un type inconnu), au moins une avec le capitaine, réponses de 40 à 80 mots sans chiffre | « L’article a déjà sa foire aux questions. » |
-| « Résumer » | Les chapitres dont est né un article enfant | Un résumé de 150 à 250 mots ; le titre reste, les sous-parties partent ; une dernière phrase invite à lire l'article enfant, sans poser le lien | « Aucun chapitre n’a encore donné naissance à un article : rien à résumer. » |
+| « Résumer » | Les chapitres dont est né un article enfant et qui dépassent encore 250 mots (hors titre) : un chapitre déjà résumé n'est pas reproposé | Un résumé de 150 à 250 mots ; le titre reste, les sous-parties partent ; une dernière phrase invite à lire l'article enfant, sans poser le lien | « Rien à résumer : aucun chapitre n’a encore donné naissance à un article, ou chacun est déjà résumé (250 mots au plus). » |
 
 Chaque passe voit l'article entier (jusqu'à 30 000 caractères de texte, environ 4 500 mots) et la stratégie de l'article, à défaut celle du cocon. Elle traite ses chapitres l'un après l'autre : « Chapitre n/N — titre », avec « Arrêter ». Lancer une passe (ou une réécriture, ou la relecture) remplace la liste des propositions précédentes.
 
@@ -184,14 +184,14 @@ Chaque passe voit l'article entier (jusqu'à 30 000 caractères de texte, enviro
 
 | Niveau | Alerte | Effet |
 |---|---|---|
-| ⛔ | Proposition vide ; coupée (l'IA s'est arrêtée avant une fin normale) ; titres du chapitre modifiés (H1 du chapeau compris) ; bloc ou lien posé à la main perdu ; tableau sans en-tête ; image sans texte alternatif ; FAQ sans H2 ou sans questions en H3 | « Accepter » grisé (« Un défaut ⛔ empêche d’accepter cette proposition. ») |
+| ⛔ | Proposition vide ; coupée (l'IA s'est arrêtée avant une fin normale) ; défaut que la publication refuserait, ajouté par la proposition (« Bloc coupé avant la fin d'une phrase. La publication le refuserait. », texte hors paragraphe…) ; titres du chapitre modifiés (H1 du chapeau compris) ; bloc ou lien posé à la main perdu ; tableau sans en-tête ; image sans texte alternatif ; FAQ sans H2 ou sans questions en H3 | « Accepter » grisé (« Un défaut ⛔ empêche d’accepter cette proposition. ») |
 | 🔴 | Lien absent des résultats de la recherche (retiré, texte gardé) ; chiffre sans source ajouté ; phrase non française ajoutée ; question de FAQ sans « ? » ; résumé hors de 150 à 250 mots | Signalé |
 | 🟠 | Passage « à sourcer » qui reste après Sources ; proposition identique au texte ; nombre de questions de FAQ hors de la fourchette du type | Signalé |
 
 Pour la passe Résumer, les sous-parties peuvent partir et un bloc perdu n'est qu'une attention 🟠 (« Vérifiez que ce contenu a sa place dans l’article enfant avant d’accepter le résumé. »).
 
 **Relire et décider.** Chaque carte montre le chapitre, son statut (« en attente », « proposition en cours… », « à relire », « échec », « acceptée », « refusée », « chapitre modifié depuis »), les alertes avec leur risque, les sources, et « Comparer avant / après ».
-- « Accepter » remplace ce seul chapitre (la FAQ s'insère) et enregistre l'article aussitôt ; « Refuser » ne touche à rien.
+- « Accepter » remplace ce seul chapitre (la FAQ s'insère) et enregistre l'article aussitôt ; « Refuser » ne touche à rien. Un chapitre que l'éditeur a seulement réaffiché (attributs d'un lien, largeur des colonnes d'un tableau) n'est pas « modifié depuis ».
 - « Accepter celles sans alerte » (dès que plus d'une proposition est prête) accepte d'un coup les propositions sans aucune alerte.
 - Un chapitre modifié depuis la proposition n'est pas écrasé : « Le chapitre a changé depuis cette proposition : relancez la passe pour ne rien écraser. » Pour la FAQ : « Une foire aux questions existe déjà dans l’article : celle-ci n’est pas ajoutée. » ou « Le chapitre avant lequel la FAQ s’insère a changé : relancez la passe pour ne rien écraser. »
 - Un chapitre en échec affiche son erreur ; la passe continue avec les suivants.
@@ -324,22 +324,24 @@ Publier, c'est cliquer « Exporter HTML » dans l'aperçu. La publication passe 
 
 | Niveau | Alerte |
 |---|---|
-| ⛔ | Défauts du texte : vide, bloc coupé, IA qui parle d'elle-même, texte hors paragraphe, reste de mise en forme, balise interdite, titre vide, saut de niveau, plusieurs H1 |
+| ⛔ | Défauts du texte : vide, bloc coupé, IA qui parle d'elle-même, texte hors paragraphe, reste de mise en forme, balise interdite, titre vide, saut de niveau, plusieurs H1. Le libellé d'une cellule de tableau sans point final (« Quand s’y mettre ») n'est pas un bloc coupé |
 | ⛔ | Méta : meta title ou meta description absents, trop longs ou coupés |
 | ⛔ | Image encore « à fournir » (« remplacez l’image (bouton Image de la barre d’outils) ou retirez-la ») |
 | 🔴 | Capitaine absent en entier du H1 (celui du texte, à défaut le titre de l'article) ou du meta title |
 | 🔴 | Capitaine absent, capitaine qui vise une offre non vendue, texte trop court, adresse de page mal formée, chiffre invérifiable |
 | 🔴 | Texte au-delà du plafond du type : 3 500 mots (pilier), 2 500 (intermédiaire), 1 500 (spécialisé) |
 | 🔴 | « n passage(s) « à sourcer » » restant(s), chaque marqueur compté une fois |
-| 🔴 | Chaque chiffre sans source hors marqueur, chaque phrase non française, chaque paragraphe répété |
+| 🔴 | Chaque chiffre sans source hors marqueur, chaque phrase non française (une phrase courte aussi : « We help small businesses grow online. »), chaque paragraphe répété |
 | 🔴 | Section dont est né un enfant et qui dépasse 250 mots (hors titre) : l'alerte invite à la passe « Résumer » ; une par enfant |
 | 🟠 | Autres avertissements (capitaine absent de l'introduction, lieutenants peu couverts…) |
 | 🟠 | Section dont est né un enfant disparue de l'article |
 | 🟠 | Lien vers un article pas encore publié, dans le texte ou dans le réseau de liens ; une alerte par article visé |
-| 🟠 | Chaque dérogation encore valable des portes capitaine, lieutenants, structure et lexique, à reconfirmer |
+| 🟠 | Chaque dérogation encore valable des portes capitaine, lieutenants, structure et lexique, à reconfirmer : « Dérogation posée au … » suivi du point en clair et de la raison donnée (« Vous l’aviez lu » pour un 🟠) |
+| 🟠 | Chaque point du texte déjà dérogé au premier jet (même paragraphe répété, même phrase), qui n'est pas redemandé en 🔴 : « Dérogation posée au premier jet. … Votre raison : « … ». » |
 | niveau d'origine | Toute alerte de ces quatre portes, rejouées sur les données du jour, qu'aucune dérogation valable ne couvre (par exemple : lexique vide ou terme générique 🔴, structure absente 🔴, structure sans chapitre ⛔) |
 
-- Un H1 laissé dans le corps est toléré. La porte du premier jet n'est pas rejouée.
+- Un H1 laissé dans le corps est toléré. La porte du premier jet n'est pas rejouée, mais ses dérogations valent pour les mêmes points.
+- Chaque réponse vaut pour son point : une retouche ailleurs dans le texte ne la redemande pas (voir [Infrastructure transversale](16-infrastructure.md)).
 - Refusée : l'alarme « Avant de publier » s'ouvre ; rien n'est marqué publié ni téléchargé, et l'aperçu affiche « Publication annulée : corrigez les points signalés, puis exportez à nouveau. » Une autre erreur affiche « Publication impossible : … ».
 - Après dérogation, la publication reprend d'elle-même.
 - Changer le statut d'un article vers autre chose que « publié » n'est pas contrôlé.
@@ -352,11 +354,12 @@ Publier, c'est cliquer « Exporter HTML » dans l'aperçu. La publication passe 
 
 L'aperçu s'ouvre dans un nouvel onglet, sans barre de navigation : « ← Retour à l'éditeur », le titre de l'article, « Exporter HTML ». Il montre la page telle qu'elle serait publiée : fil d'Ariane, un H1, un sommaire, le texte, la méta et les données structurées de l'article. Sans texte ou sans méta, l'aperçu refuse de s'afficher.
 
-« Exporter HTML » passe la porte de publication, puis télécharge la page de l'aperçu en HTML, nommée d'après le numéro de l'article.
+« Exporter HTML » passe la porte de publication, puis demande la page au serveur et la télécharge en HTML, nommée d'après le numéro de l'article : c'est donc le texte que la porte vient de juger, même si l'aperçu n'a pas été rechargé depuis une correction. L'aperçu se recharge ensuite. Si la page ne peut pas être produite après la publication : « Article publié, mais le fichier n’a pas pu être produit : … Exportez à nouveau. »
 
-**Écarts connus :**
-- le H1 de la page est le titre de l'article, pas le H1 du texte, que la porte a jugé : un titre sans capitaine est publié tel quel ;
-- les liens internes posés dans l'outil sont retirés du fichier (leur texte reste).
+La page (aperçu et fichier) :
+- son H1 est celui du texte, que la porte a jugé (à défaut, le titre de l'article) ;
+- chaque lien interne vers un article rédigé pointe vers son adresse de blog (« /blog/<adresse> »), sans « nofollow » ni nouvel onglet ; un lien vers un article pas encore rédigé est retiré, son texte gardé ;
+- sans texte : « L’article n’a pas encore de texte à publier. » ; sans méta : « Il faut un meta title et une meta description avant l’aperçu et l’export. »
 
 ## Explorateur — analyse d'écart de contenu
 

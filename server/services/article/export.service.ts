@@ -1,11 +1,26 @@
+/**
+ * AUTHORITY: aucune persistance — la page HTML d'un article, calculée à la
+ *            demande depuis `article_content` (texte, méta) et `articles`.
+ * READS FROM: articles (titre, slug, cocon), article_content (texte, méta),
+ *             articles rédigés (texte de plus de 200 caractères) : cibles des
+ *             liens internes.
+ * WRITES TO: rien
+ * CONSUMERS: GET /api/preview/:id (aperçu, CSS incluse), POST /api/export/:id
+ *            (fichier téléchargé après la porte de publication, mode automatique)
+ * RELATED FR: FR-RED-EXPORT-HTML, FR-RED-PUBLISH-GATE (H1 publié = H1 jugé)
+ */
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { log } from '../../utils/logger.js'
+import { pool } from '../../db/client.js'
+import { getArticleById } from '../infra/data.service.js'
+import { getArticleContent } from './article-content.service.js'
 import { splitByH2Regex } from '../../../shared/html-utils.js'
 import { stripContentH1 } from '../../../shared/ai-text.js'
 import { startsWithQuestionWord } from '../../../shared/french-text.js'
 import { SITE_ORIGIN, blogUrl } from '../../../shared/constants/site.constants.js'
 import { rewriteInternalLinks } from '../../../shared/internal-links.js'
+import { publishedTitle } from '../../../shared/verifiers/publish.js'
 
 const DOCS_DIR = join(process.cwd(), 'docs')
 
@@ -155,10 +170,6 @@ export async function generateExportHtml(options: ExportOptions): Promise<string
                         </div>`
     : ''
 
-  // In preview mode (embedCss), assets are served from Vite public/ at root (e.g. /svg/, /images/)
-  // In export mode, assets are at /assets/svg/, /assets/images/ on the Propulsite production site
-  const assetPrefix = embedCss ? '' : '/assets'
-
   const cssBlock = embedCss
     ? `    <style>\n${(await loadPropulsiteCss()).replace(/\/assets\//g, '/')}\n    </style>`
     : `    <link href="/css/tailwindOut.css" rel="stylesheet">
@@ -191,9 +202,6 @@ ${jsonLdBlock}
     <main class="mx-auto">
         <!-- Section Hero -->
         <section id="sectionHeroRealisation" class="pad-y-large">
-            <div class="absoluteIcon2">
-                <img src="${assetPrefix}/svg/NomIcone=outStr_Arrow.svg" alt="Image absolute" class="w-full">
-            </div>
             <div class="containerMax mx-auto x-5">
                 <div class="grid-tailwind py-20">
                     <div class="col-span-full flex flex-col">
@@ -363,4 +371,65 @@ export function generateJsonLd(options: {
 
   log.debug(`generateJsonLd: ${schemas.length} schemas, ${questions.length} FAQ questions`)
   return JSON.stringify(schemas, null, 2)
+}
+
+export type ArticlePageResult =
+  | { ok: true; html: string; title: string }
+  | { ok: false; status: 400 | 404; code: 'NOT_FOUND' | 'NO_CONTENT' | 'MISSING_META'; message: string }
+
+/**
+ * Les articles rédigés (texte de plus de 200 caractères), par id : les seules
+ * cibles d'un lien interne publié. Un lien vers un autre article est déballé.
+ */
+async function writtenArticleSlugs(): Promise<Record<number, string>> {
+  const res = await pool.query<{ id: number; slug: string }>(
+    `SELECT a.id, a.slug FROM articles a
+     JOIN article_content ac ON ac.article_id = a.id
+     WHERE length(coalesce(ac.content, '')) > 200`,
+  )
+  return Object.fromEntries(res.rows.map(r => [r.id, r.slug]))
+}
+
+/**
+ * La page d'un article telle qu'elle sera publiée (FR-RED-EXPORT-HTML), la même
+ * pour l'aperçu (CSS incluse) et pour le fichier : son H1 est celui que la
+ * porte de publication juge (`publishedTitle`), et ses liens internes — posés
+ * dans l'éditeur (`#article-<id>`) ou par le robot (`/<slug>`) — pointent vers
+ * l'adresse de blog des articles rédigés ; les autres sont déballés, texte
+ * gardé. Recette du 2026-09-30 : le fichier perdait tous les liens posés dans
+ * l'éditeur, et son H1 était le titre de l'article.
+ */
+export async function buildArticlePage(articleId: number, opts: { embedCss?: boolean } = {}): Promise<ArticlePageResult> {
+  const found = await getArticleById(articleId)
+  if (!found) return { ok: false, status: 404, code: 'NOT_FOUND', message: `Article ${articleId} introuvable.` }
+  const content = await getArticleContent(articleId)
+  if (!content.content) {
+    return { ok: false, status: 400, code: 'NO_CONTENT', message: 'L’article n’a pas encore de texte à publier.' }
+  }
+  if (!content.metaTitle || !content.metaDescription) {
+    return { ok: false, status: 400, code: 'MISSING_META', message: 'Il faut un meta title et une meta description avant l’aperçu et l’export.' }
+  }
+
+  const title = publishedTitle(content.content, found.article.title)
+  const linkSlugById = await writtenArticleSlugs()
+  const jsonLd = generateJsonLd({
+    title,
+    metaDescription: content.metaDescription,
+    cocoonName: found.cocoonName,
+    slug: found.article.slug,
+    content: content.content,
+  })
+  const html = await generateExportHtml({
+    title,
+    metaTitle: content.metaTitle,
+    metaDescription: content.metaDescription,
+    cocoonName: found.cocoonName,
+    content: content.content,
+    jsonLd,
+    embedCss: opts.embedCss,
+    slug: found.article.slug,
+    linkSlugById,
+    publishedSlugs: Object.values(linkSlugById),
+  })
+  return { ok: true, html, title }
 }
