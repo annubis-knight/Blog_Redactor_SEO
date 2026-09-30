@@ -1,3 +1,16 @@
+/**
+ * AUTHORITY: PostgreSQL `keyword_metrics` (mesures DataForSEO partagées entre
+ *            articles) — relue AVANT tout appel, écrite après chaque mesure.
+ * READS FROM: keyword_metrics (getKeywordMetrics), cache PAA (paa-cache),
+ *             DataForSEO (overview + intention en lot) pour les seuls mots-clés
+ *             sans mesure fraîche, Google Suggest (fetchAutocomplete, DB-first).
+ * WRITES TO: keyword_metrics (upsertKeywordKpis, upsertKeywordPaa) pour chaque
+ *            mot-clé mesuré par le scan ; le résultat du scan lui-même est
+ *            enregistré par la route (radar_explorations.scan_result).
+ * CONSUMERS: POST /intent/radar/scan (intent-scan.routes) → RadarPanel ; le
+ *            Capitaine relit les mêmes mesures (POST /keywords/:kw/scan, DB hit).
+ * RELATED FR: FR-RAD-SCAN-2PASS, NFR-COST-CACHE-FIRST, FR-INFRA-KEYWORD-METRICS.
+ */
 import { classifyWithTool } from '../external/ai-provider.service.js'
 import type { ApiUsage } from '../external/claude.service.js'
 import { log } from '../../utils/logger.js'
@@ -18,6 +31,14 @@ import {
 import { fetchAutocomplete, type AutocompleteSignal } from '../external/autocomplete.service.js'
 import { readPaaCache, writePaaCache } from '../infra/paa-cache.service.js'
 import { computeSemanticScores } from '../external/embedding.service.js'
+import {
+  getKeywordMetrics,
+  isKeywordMetricsFresh,
+  upsertKeywordKpis,
+  upsertKeywordPaa,
+  type KeywordMetrics,
+} from './keyword-metrics.service.js'
+import { PAIN_INTENT_EXPECTED_VALUES, type PainIntentExpected } from '../../../shared/types/scoring.types.js'
 import { computeCombinedScore } from '../../../shared/scoring.js'
 import { computeMarketScore } from '../../../shared/scoring-kpi.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
@@ -195,6 +216,108 @@ async function fetchPaaWithCache(
   return { paaItems: allPaa, fromCache: false }
 }
 
+/** Même fraîcheur que l'étude du Capitaine (`FRESHNESS_DAYS`, keyword-scan.routes). */
+const METRICS_FRESHNESS_DAYS = 7
+
+const INTENT_LABELS = new Set<string>(PAIN_INTENT_EXPECTED_VALUES)
+
+function coerceIntentLabel(value: unknown): PainIntentExpected | null {
+  if (typeof value !== 'string') return null
+  return INTENT_LABELS.has(value) ? (value as PainIntentExpected) : null
+}
+
+/**
+ * Une mesure gardée est réutilisable si elle a moins de 7 jours et porte
+ * volume, difficulté, CPC et intention : c'est tout ce que le scan
+ * redemanderait à DataForSEO.
+ */
+function isReusableMeasure(m: KeywordMetrics | null): m is KeywordMetrics {
+  return m !== null
+    && isKeywordMetricsFresh(m.fetchedAt, METRICS_FRESHNESS_DAYS)
+    && m.searchVolume !== null
+    && m.keywordDifficulty !== null
+    && m.cpc !== null
+    && m.intentRaw !== null
+    && m.intentLabel !== null
+}
+
+/**
+ * Cache avant appel externe (NFR-COST-CACHE-FIRST) : relit `keyword_metrics`
+ * pour chaque mot-clé. Renvoie les mesures réutilisables (clé en minuscules)
+ * et les mots-clés à mesurer.
+ */
+async function readReusableMeasures(keywords: string[]): Promise<{
+  overview: Map<string, KeywordOverview>
+  intent: Map<string, { intent: string; intentProbability: number }>
+  toMeasure: string[]
+}> {
+  const overview = new Map<string, KeywordOverview>()
+  const intent = new Map<string, { intent: string; intentProbability: number }>()
+  const toMeasure: string[] = []
+  await Promise.all(keywords.map(async (kw) => {
+    let stored: KeywordMetrics | null = null
+    try {
+      stored = await getKeywordMetrics(kw)
+    } catch (err) {
+      log.warn(`[Radar] keyword_metrics illisible pour "${kw}" : ${(err as Error).message}`)
+    }
+    if (isReusableMeasure(stored)) {
+      const key = kw.toLowerCase()
+      overview.set(key, {
+        searchVolume: stored.searchVolume,
+        difficulty: stored.keywordDifficulty,
+        cpc: stored.cpc,
+        competition: stored.competition,
+        monthlySearches: [],
+      })
+      intent.set(key, { intent: stored.intentLabel!, intentProbability: stored.intentRaw! })
+    } else {
+      toMeasure.push(kw)
+    }
+  }))
+  return { overview, intent, toMeasure }
+}
+
+/**
+ * Écrit dans `keyword_metrics` ce que le scan vient de mesurer, pour que le
+ * Capitaine (et le prochain scan) relisent la même mesure au lieu de la
+ * racheter (recette 2026-09-30, MOT-8). Seuls les mots-clés que DataForSEO a
+ * réellement mesurés sont écrits : écrire une ligne vide la rendrait « fraîche »
+ * sans données.
+ */
+async function saveMeasures(
+  keywords: string[],
+  overviewMap: Map<string, KeywordOverview>,
+  intentMap: Map<string, { intent: string; intentProbability: number }>,
+  paaByKeyword: Map<string, { paaItems: PaaCacheEntry['paaItems'] }>,
+): Promise<void> {
+  await Promise.all(keywords.map(async (kw) => {
+    const key = kw.toLowerCase()
+    const overview = overviewMap.get(key)
+    const intentData = intentMap.get(key)
+    const measured = overview !== undefined
+      && (overview.searchVolume !== null || overview.difficulty !== null || overview.cpc !== null)
+    if (!measured) return
+    try {
+      await upsertKeywordKpis(kw, {
+        searchVolume: overview.searchVolume,
+        keywordDifficulty: overview.difficulty,
+        cpc: overview.cpc,
+        competition: overview.competition,
+        intentRaw: intentData?.intentProbability ?? null,
+        intentLabel: coerceIntentLabel(intentData?.intent),
+      })
+      // Questions PAA de premier niveau : celles que le Capitaine relit.
+      const paa = (paaByKeyword.get(kw)?.paaItems ?? [])
+        .filter(p => p.depth <= 1 && p.question?.trim())
+        .map(p => ({ question: p.question, answer: p.answer ?? null }))
+      if (paa.length > 0) await upsertKeywordPaa(kw, paa)
+    } catch (err) {
+      log.warn(`[Radar] keyword_metrics non écrite pour "${kw}" : ${(err as Error).message}`)
+    }
+  }))
+}
+
 function mapIntentTypes(raw: string): RadarIntentType[] {
   const lower = raw.toLowerCase()
   const types: RadarIntentType[] = []
@@ -231,23 +354,38 @@ export async function scanRadarKeywords(
 
   log.info(`[Radar] Scanning ${keywords.length} keywords, depth=${effectiveDepth}`)
 
+  // Phase 0: cache avant appel externe (NFR-COST-CACHE-FIRST, recette
+  // 2026-09-30 MOT-8) — les mesures de moins de 7 jours gardées dans
+  // `keyword_metrics` (par le Capitaine ou un scan précédent) sont reprises ;
+  // seuls les autres mots-clés partent chez DataForSEO.
+  const reused = await readReusableMeasures(keywordStrings)
+  const toMeasure = reused.toMeasure
+  log.info(`[Radar] keyword_metrics: ${keywordStrings.length - toMeasure.length} reused, ${toMeasure.length} to measure`)
+
   // Phase 1: Parallel fetch.
   // - fetchAutocompleteMergedGrouped(specificTopic) : pool global pour l'affichage UI
   //   et le calcul de pain-alignment moyen (cf. FR-RAD-AUTOCOMPLETE-PER-KEYWORD :
   //   le pool global est conservé, mais autocompleteMatchCount par card vient
   //   désormais d'un fetch par keyword — cf. plus bas).
-  // - fetchKeywordOverviewBatch / fetchSearchIntentBatch : batch sur tous les keywords.
-  const [autocompleteResult, overviewMap, intentMap] = await Promise.all([
+  // - fetchKeywordOverviewBatch / fetchSearchIntentBatch : batch sur les seuls
+  //   keywords sans mesure réutilisable.
+  const [autocompleteResult, fetchedOverview, fetchedIntent] = await Promise.all([
     fetchAutocompleteMergedGrouped(specificTopic),
-    fetchKeywordOverviewBatch(keywordStrings).catch((err: Error) => {
-      log.warn(`[Radar] Keyword overview batch failed: ${err.message}`)
-      return new Map<string, KeywordOverview>()
-    }),
-    fetchSearchIntentBatch(keywordStrings).catch((err: Error) => {
-      log.warn(`[Radar] Search intent batch failed: ${err.message}`)
-      return new Map<string, { intent: string; intentProbability: number }>()
-    }),
+    toMeasure.length === 0
+      ? Promise.resolve(new Map<string, KeywordOverview>())
+      : fetchKeywordOverviewBatch(toMeasure).catch((err: Error) => {
+        log.warn(`[Radar] Keyword overview batch failed: ${err.message}`)
+        return new Map<string, KeywordOverview>()
+      }),
+    toMeasure.length === 0
+      ? Promise.resolve(new Map<string, { intent: string; intentProbability: number }>())
+      : fetchSearchIntentBatch(toMeasure).catch((err: Error) => {
+        log.warn(`[Radar] Search intent batch failed: ${err.message}`)
+        return new Map<string, { intent: string; intentProbability: number }>()
+      }),
   ])
+  const overviewMap = new Map<string, KeywordOverview>([...reused.overview, ...fetchedOverview])
+  const intentMap = new Map<string, { intent: string; intentProbability: number }>([...reused.intent, ...fetchedIntent])
 
   // FR-RAD-AUTOCOMPLETE-PER-KEYWORD : fetch autocomplete par keyword avec cache
   // cross-article via keyword_autocomplete (TTL 1j non-vide / 30min vide).
@@ -290,6 +428,9 @@ export async function scanRadarKeywords(
 
   const cachedCount = Array.from(paaResults.values()).filter(r => r.fromCache).length
   log.info(`[Radar] PAA fetch done: ${paaResults.size} keywords (${cachedCount} cached, ${paaResults.size - cachedCount} fresh)`)
+
+  // Ce qui vient d'être mesuré rejoint `keyword_metrics` (partagé avec le Capitaine).
+  await saveMeasures(toMeasure, fetchedOverview, fetchedIntent, paaResults)
 
   // Phase 2: Match resonance for autocomplete items
   const autoSuggestions = autocompleteResult.suggestions.map(s => ({
