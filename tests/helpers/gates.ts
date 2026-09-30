@@ -28,8 +28,11 @@ export async function assumeGate(articleId: number, gateId: GateId): Promise<voi
     if (evaluation.passed) return
     const technique = evaluation.blocking.filter(i => i.level === 'technique').map(i => i.rule)
     if (technique.length > 0) throw new Error(`Porte ${gateId} : défaut ⛔ sans dérogation possible (${technique.join(', ')})`)
+    // Chaque réponse porte l'empreinte du point lu (FR-INFRA-GATE-WAIVER).
     const waivers = evaluation.blocking.map(i => (
-      i.level === 'risque' ? { rule: i.rule, category: 'autre', reason: TEST_WAIVER_REASON } : { rule: i.rule }
+      i.level === 'risque'
+        ? { rule: i.rule, fingerprint: i.fingerprint, category: 'autre', reason: TEST_WAIVER_REASON }
+        : { rule: i.rule, fingerprint: i.fingerprint }
     ))
     const saved = await apiPost<{ evaluation: GateEvaluation; refused: Array<{ rule: string; problem: string }> }>(
       `/articles/${articleId}/gates/${gateId}/waivers`, { waivers },

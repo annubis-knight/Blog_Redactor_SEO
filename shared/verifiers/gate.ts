@@ -13,9 +13,11 @@
  * Le même code sert l'écran (bouton grisé + alarme), le serveur (refus 422)
  * et `npm run verify` (audit après coup). Fonctions pures : aucune I/O.
  *
- * Une dérogation n'est valable que pour les données qu'elle couvrait : elle
- * porte l'empreinte (`inputHash`) des données vérifiées, et tombe dès qu'elles
- * changent.
+ * Une dérogation vaut pour le POINT qu'elle couvre et les données de CE point
+ * (`fingerprint`, voir `pointFingerprint`) : elle tombe seulement si ce point
+ * change. Retoucher un mot ailleurs dans l'article ne redemande donc pas toutes
+ * les raisons (recette du 2026-09-30, INFRA-19), et un paragraphe répété dérogé
+ * au premier jet reste dérogé à la publication (même point, même extrait).
  */
 
 export type GateLevel = 'attention' | 'risque' | 'technique'
@@ -55,6 +57,12 @@ export interface GateIssue {
   excerpt?: string
   /** Pistes proposées à la place (ex. autres mots-clés mesurés). */
   alternatives?: string[]
+  /**
+   * Empreinte du point : ses propres données (`pointFingerprint`), posée par le
+   * serveur. L'alarme la renvoie avec chaque réponse : le serveur refuse une
+   * dérogation à un point qui a changé depuis que l'utilisateur l'a lu.
+   */
+  fingerprint?: string
 }
 
 export const WAIVER_CATEGORIES = ['longue-traine', 'donnee-manquante', 'marque', 'autre'] as const
@@ -76,9 +84,19 @@ export interface GateWaiver {
   level: 'attention' | 'risque'
   category?: WaiverCategory | null
   reason?: string | null
-  /** Empreinte des données vérifiées au moment de la dérogation. */
+  /**
+   * Empreinte du point dérogé (`GateIssue.fingerprint`). Une dérogation posée
+   * avant le 2026-09-30 porte à la place l'empreinte de toute la porte : elle
+   * vaut pour sa règle tant que les données de la porte n'ont pas changé.
+   */
   inputHash: string
   createdAt?: string
+}
+
+/** Une alerte couverte, avec la dérogation qui la couvre. */
+export interface WaivedIssue {
+  issue: GateIssue
+  waiver: GateWaiver
 }
 
 export interface GateResult {
@@ -86,7 +104,7 @@ export interface GateResult {
   /** Alertes non couvertes par une dérogation valable : elles bloquent. */
   blocking: GateIssue[]
   /** Alertes couvertes, avec leur dérogation (affichées avec un badge 🛡). */
-  waived: Array<{ issue: GateIssue; waiver: GateWaiver }>
+  waived: WaivedIssue[]
 }
 
 /** Verdict complet d'une porte, tel que le serveur le renvoie à l'écran. */
@@ -124,9 +142,14 @@ export function waiverProblem(issue: GateIssue, waiver: Pick<GateWaiver, 'catego
   return null
 }
 
-/** Dérogation proposée au serveur, qui la vérifie et y appose l'empreinte courante. */
+/**
+ * Dérogation proposée au serveur. `fingerprint` est l'empreinte du point tel
+ * que l'utilisateur l'a lu : le serveur refuse la dérogation si le point a
+ * changé depuis (FR-INFRA-GATE-WAIVER).
+ */
 export interface WaiverDraft {
   rule: string
+  fingerprint: string
   category?: WaiverCategory | null
   reason?: string | null
 }
@@ -150,13 +173,14 @@ export function waiverDraftsFrom(
   const missing: string[] = []
   for (const issue of blocking) {
     const answer = answers[issue.rule] ?? {}
+    const fingerprint = issue.fingerprint ?? ''
     if (issue.level === 'technique') {
       missing.push(issue.rule)
     } else if (issue.level === 'attention') {
-      if (answer.acknowledged) drafts.push({ rule: issue.rule })
+      if (answer.acknowledged) drafts.push({ rule: issue.rule, fingerprint })
       else missing.push(issue.rule)
     } else if (waiverProblem(issue, answer) === null) {
-      drafts.push({ rule: issue.rule, category: answer.category ?? null, reason: (answer.reason ?? '').trim() })
+      drafts.push({ rule: issue.rule, fingerprint, category: answer.category ?? null, reason: (answer.reason ?? '').trim() })
     } else {
       missing.push(issue.rule)
     }
@@ -165,37 +189,67 @@ export function waiverDraftsFrom(
 }
 
 /**
- * Dérogations encore debout, à réafficher au moment de publier. Une dérogation
- * posée sur des données qui ont changé depuis (empreinte différente de celle
- * d'aujourd'hui, quand on la connaît) est tombée : elle ne revient pas. Une
- * même règle n'apparaît qu'une fois, dans sa version la plus récente. Celles
- * de la publication elle-même sont écartées.
+ * Portes qui jugent le texte de l'article. Un de leurs points vise un endroit
+ * du texte (un paragraphe, une phrase, une section) : ses données sont son
+ * extrait et son message, pas le reste de l'article.
  */
-export function standingWaivers(
-  waivers: GateWaiver[],
-  currentHashes: Partial<Record<GateId, string>>,
-): GateWaiver[] {
-  const latest = new Map<string, GateWaiver>()
-  for (const waiver of waivers) {
-    if (waiver.gateId === 'publish') continue
-    const current = currentHashes[waiver.gateId]
-    if (current !== undefined && waiver.inputHash !== current) continue
-    const key = `${waiver.gateId}:${waiver.rule}`
-    const previous = latest.get(key)
-    if (!previous || (waiver.createdAt ?? '') >= (previous.createdAt ?? '')) latest.set(key, waiver)
-  }
-  return [...latest.values()]
+const TEXT_GATES: ReadonlySet<GateId> = new Set<GateId>(['draft', 'publish'])
+
+/**
+ * Règles du premier jet qui visent le même point qu'une règle de la
+ * publication : même détecteur, même message, même extrait.
+ */
+const DRAFT_TO_PUBLISH_RULES: Record<string, string> = {
+  'draft-repeated-paragraph': 'repeated-paragraph',
+  'draft-non-french': 'non-french-sentence',
+  'draft-unsourced-figure': 'unsourced-figure',
 }
 
-/** Une porte passe si chaque alerte est couverte par une dérogation valable pour ces données. */
+/**
+ * Nature d'un point du texte : sa règle sans l'élément visé (le suffixe
+ * `:<extrait>` qui distingue deux occurrences), sous son nom à la publication.
+ */
+export function textPointKind(rule: string): string {
+  const base = rule.split(':')[0] ?? rule
+  return DRAFT_TO_PUBLISH_RULES[base] ?? base
+}
+
+/**
+ * Empreinte d'un point : ce qu'une dérogation couvre.
+ *   - portes du texte (premier jet, publication) : la nature du point, son
+ *     message et son extrait — les données que l'utilisateur a lues ;
+ *   - portes du Moteur (capitaine, lieutenants, structure, lexique) : les
+ *     données de la porte (le choix jugé) et la règle.
+ */
+export function pointFingerprint(gateId: GateId, issue: GateIssue, inputHash: string): string {
+  return TEXT_GATES.has(gateId)
+    ? hashGateInput({ point: textPointKind(issue.rule), message: issue.message, excerpt: issue.excerpt })
+    : hashGateInput({ gate: inputHash, rule: issue.rule })
+}
+
+/** Pose l'empreinte de chaque point ; garde celle qu'un point porte déjà (point repris d'une autre porte). */
+export function withFingerprints(gateId: GateId, issues: GateIssue[], inputHash: string): GateIssue[] {
+  return issues.map(issue => (issue.fingerprint ? issue : { ...issue, fingerprint: pointFingerprint(gateId, issue, inputHash) }))
+}
+
+/**
+ * Une dérogation couvre un point : même empreinte de point ; ou, pour une
+ * dérogation d'avant le 2026-09-30 (empreinte de toute la porte), même règle
+ * et données de la porte inchangées.
+ */
+function covers(waiver: GateWaiver, issue: GateIssue, inputHash: string): boolean {
+  if (issue.fingerprint && waiver.inputHash === issue.fingerprint) return true
+  return waiver.rule === issue.rule && waiver.inputHash === inputHash
+}
+
+/** Une porte passe si chaque alerte est couverte par une dérogation valable pour ce point. */
 export function evaluateGate(gateId: GateId, issues: GateIssue[], waivers: GateWaiver[], inputHash: string): GateResult {
   const blocking: GateIssue[] = []
   const waived: GateResult['waived'] = []
   for (const issue of issues) {
     const waiver = waivers.find(w =>
       w.gateId === gateId
-      && w.rule === issue.rule
-      && w.inputHash === inputHash
+      && covers(w, issue, inputHash)
       && waiverProblem(issue, w) === null,
     )
     if (waiver && issue.level !== 'technique') waived.push({ issue, waiver })

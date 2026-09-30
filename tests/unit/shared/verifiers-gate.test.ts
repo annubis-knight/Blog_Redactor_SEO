@@ -14,7 +14,9 @@ import {
   hashGateInput,
   waiverProblem,
   waiverDraftsFrom,
-  standingWaivers,
+  pointFingerprint,
+  textPointKind,
+  withFingerprints,
   worstLevel,
   MIN_WAIVER_REASON_LENGTH,
   type GateIssue,
@@ -117,14 +119,16 @@ describe('waiverDraftsFrom — ce que l’alarme envoie au serveur', () => {
     expect(vide.missing).toEqual([attention.rule, risque.rule])
     expect(vide.drafts).toEqual([])
 
-    const pret = waiverDraftsFrom([attention, risque], {
+    const vus = [{ ...attention, fingerprint: 'fa' }, { ...risque, fingerprint: 'fr' }]
+    const pret = waiverDraftsFrom(vus, {
       [attention.rule]: { acknowledged: true },
       [risque.rule]: { category: 'longue-traine', reason: raison },
     })
     expect(pret.missing).toEqual([])
+    // FR-INFRA-GATE-WAIVER : chaque réponse porte l'empreinte du point lu à l'écran.
     expect(pret.drafts).toEqual([
-      { rule: attention.rule },
-      { rule: risque.rule, category: 'longue-traine', reason: raison },
+      { rule: attention.rule, fingerprint: 'fa' },
+      { rule: risque.rule, fingerprint: 'fr', category: 'longue-traine', reason: raison },
     ])
   })
 
@@ -140,34 +144,55 @@ describe('waiverDraftsFrom — ce que l’alarme envoie au serveur', () => {
   })
 })
 
-describe('standingWaivers — seules les dérogations encore valables sont réaffichées', () => {
-  const base = { level: 'risque' as const, category: 'autre' as const, reason: 'Une raison assez longue pour passer' }
-
-  it('une dérogation posée sur d’anciennes données (empreinte périmée) ne revient pas', () => {
-    const kept = standingWaivers(
-      [
-        { ...base, gateId: 'captain-lock', rule: 'captain-volume-zero', inputHash: 'ancien' },
-        { ...base, gateId: 'captain-lock', rule: 'captain-volume-zero', inputHash: 'actuel' },
-      ],
-      { 'captain-lock': 'actuel' },
-    )
-    expect(kept.map(w => w.inputHash)).toEqual(['actuel'])
+// Recette du 2026-09-30 (express 10, INFRA-19) : un mot changé redemandait toutes
+// les raisons 🔴 de la publication, et celles du premier jet étaient redemandées
+// sous un autre nom. Une dérogation vaut pour le point qu'elle couvre et les
+// données de CE point ; elle tombe seulement si ce point a changé.
+describe('FR-INFRA-GATE-WAIVER — l’empreinte d’un point', () => {
+  const RAISON = 'Texte simulé de la recette : répétition attendue'
+  const paragraphe = (rule: string): GateIssue => ({
+    rule, level: 'risque', message: 'Paragraphe répété : « Un site clair rassure le client… ».', excerpt: 'Un site clair rassure le client',
   })
 
-  it('une même règle n’apparaît qu’une fois, la plus récente', () => {
-    const kept = standingWaivers(
-      [
-        { ...base, gateId: 'lexique-lock', rule: 'r', inputHash: 'a', createdAt: '2026-09-20T10:00:00.000Z', reason: 'Première raison, assez longue' },
-        { ...base, gateId: 'lexique-lock', rule: 'r', inputHash: 'b', createdAt: '2026-09-25T10:00:00.000Z', reason: 'Seconde raison, assez longue' },
-      ],
-      {},
-    )
-    expect(kept).toHaveLength(1)
-    expect(kept[0]?.reason).toBe('Seconde raison, assez longue')
+  it('portes du texte : l’empreinte d’un point ne dépend que du point (extrait et message), pas du reste de l’article', () => {
+    const p = paragraphe('repeated-paragraph')
+    expect(pointFingerprint('publish', p, 'article-avant')).toBe(pointFingerprint('publish', p, 'article-apres'))
+    expect(pointFingerprint('publish', p, 'x')).not.toBe(pointFingerprint('publish', { ...p, excerpt: 'Autre paragraphe' }, 'x'))
   })
 
-  it('les dérogations de la publication elle-même sont écartées', () => {
-    expect(standingWaivers([{ ...base, gateId: 'publish', rule: 'article-too-long', inputHash: 'x' }], {})).toEqual([])
+  it('premier jet et publication : le même paragraphe répété est le même point', () => {
+    expect(textPointKind('draft-repeated-paragraph:un-site')).toBe('repeated-paragraph')
+    expect(textPointKind('draft-non-french')).toBe('non-french-sentence')
+    expect(textPointKind('draft-unsourced-figure:3')).toBe('unsourced-figure')
+    // Le suffixe qui distingue deux occurrences ne change pas le point.
+    expect(pointFingerprint('draft', paragraphe('draft-repeated-paragraph:un-site'), 'h-jet'))
+      .toBe(pointFingerprint('publish', paragraphe('repeated-paragraph'), 'h-publication'))
+  })
+
+  it('portes du Moteur : l’empreinte suit les données de la porte et nomme sa règle', () => {
+    expect(pointFingerprint('captain-lock', risque, HASH)).not.toBe(pointFingerprint('captain-lock', risque, 'autre'))
+    expect(pointFingerprint('captain-lock', risque, HASH)).not.toBe(pointFingerprint('captain-lock', attention, HASH))
+  })
+
+  it('withFingerprints pose l’empreinte de chaque point sans écraser celle déjà posée', () => {
+    const [a, b] = withFingerprints('publish', [paragraphe('repeated-paragraph'), { ...risque, fingerprint: 'amont' }], HASH)
+    expect(a?.fingerprint).toBe(pointFingerprint('publish', paragraphe('repeated-paragraph'), HASH))
+    expect(b?.fingerprint).toBe('amont')
+  })
+
+  it('une dérogation posée sur l’empreinte d’un point le couvre, même si le reste de la porte a changé', () => {
+    const [p] = withFingerprints('publish', [paragraphe('repeated-paragraph')], 'avant')
+    const w: GateWaiver = { gateId: 'publish', rule: p!.rule, level: 'risque', category: 'autre', reason: RAISON, inputHash: p!.fingerprint! }
+    expect(evaluateGate('publish', [p!], [w], 'apres-un-mot-change').passed).toBe(true)
+    const autre = withFingerprints('publish', [{ ...paragraphe('repeated-paragraph'), excerpt: 'Un autre paragraphe' }], 'x')
+    expect(evaluateGate('publish', autre, [w], 'x').passed, 'autre point : pas couvert').toBe(false)
+  })
+
+  it('une dérogation d’avant l’empreinte par point (règle + empreinte de la porte) vaut tant que la porte n’a pas changé', () => {
+    const [p] = withFingerprints('captain-lock', [risque], HASH)
+    const ancienne = waiver(risque, { category: 'longue-traine', reason: 'Demandes réelles reçues par téléphone chaque mois' })
+    expect(evaluateGate('captain-lock', [p!], [ancienne], HASH).passed).toBe(true)
+    expect(evaluateGate('captain-lock', [p!], [ancienne], 'donnees-changees').passed).toBe(false)
   })
 })
 
