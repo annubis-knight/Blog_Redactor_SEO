@@ -77,14 +77,16 @@ function handleToggle(keyword: string) {
   toggle(keyword)
 }
 
-// Remonte les changements de selection au parent
+// Remonte la sélection au parent, dès le montage : la section revient vide après
+// un nouveau scan, et le parent gardait sinon la sélection de l'ancienne liste
+// (FR-RAD-SEND-CAPTAIN, recette du 2026-09-30, RAD-14).
 watch(
   () => Array.from(selectedKeywords.value),
   (arr) => {
     emit('update:selected-keywords', arr)
     emit('update:selected-suggestions', getSelectedSuggestions())
   },
-  { deep: true },
+  { deep: true, immediate: true },
 )
 
 function badgeColorForScore(score: number): string {

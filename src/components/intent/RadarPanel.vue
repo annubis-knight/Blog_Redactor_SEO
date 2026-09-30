@@ -68,6 +68,7 @@ const {
   scanProgress,
   error,
   mergeFromRadarSource,
+  mergeRadarPayload,
   generate,
   scan,
   removeKeyword: composableRemoveKeyword,
@@ -283,6 +284,22 @@ watch(() => props.articleId, (newId) => {
   }
 })
 
+// FR-RAD-PERSIST : le dernier scan enregistré de l'article revient d'office à
+// l'ouverture de l'onglet, sans appel externe ni étape redemandée. Avant, seule
+// l'invite « Charger Radar » le reprenait : après un rechargement, l'onglet
+// montrait « Cartes radar (0) » alors que la base avait le scan (recette du
+// 2026-09-30, MOT-10). Un scan sans carte ne remplace pas l'invitation à scanner.
+watch(
+  () => [useDbFirst.value, radarStore.articleId, radarStore.entry] as const,
+  ([dbFirst, storeArticleId, saved]) => {
+    if (!dbFirst || storeArticleId !== props.articleId) return
+    if (!saved?.scanResult?.cards?.length || scanResult.value || isScanning.value) return
+    log.debug('[DouleurIntent] Dernier scan enregistré repris', { articleId: props.articleId, cards: saved.scanResult.cards.length })
+    mergeRadarPayload({ generatedKeywords: [], scanResult: saved.scanResult, context: saved.context })
+  },
+  { immediate: true },
+)
+
 // Reset when article changes (workflow mode only — in libre mode, reset is handled by LaboView)
 if (props.mode === 'workflow') {
   watch(() => [props.pilierKeyword, props.articleTopic, props.articleKeyword, props.articlePainPoint], () => {
@@ -345,6 +362,9 @@ async function handleScan() {
   const kws = generatedKeywords.value
   if (kws.length === 0) return
   log.info(`[DouleurIntent] Scan clicked: ${kws.length} keywords, depth=${depth.value}`)
+  // Un nouveau scan efface la liste des longues traînes : leur sélection part
+  // avec elle (FR-RAD-SEND-CAPTAIN, RAD-14).
+  longTailSelectedSuggestions.value = []
   await scan(
     broadKeyword.value.trim(),
     specificTopic.value.trim(),
@@ -410,6 +430,7 @@ function handleRemoveKeyword(index: number) {
 function handleReset() {
   log.debug('[DouleurIntent] Reset')
   reset()
+  longTailSelectedSuggestions.value = []
   emit('keywords-cleared')
 }
 

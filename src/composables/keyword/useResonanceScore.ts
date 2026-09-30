@@ -1,3 +1,15 @@
+/**
+ * AUTHORITY: PostgreSQL `radar_explorations` (liste d'attente scannée + résultat
+ *            du scan, écrits après chaque scan d'un article) ; mode libre :
+ *            api_cache « radar » (héritage).
+ * READS FROM: GET /articles/:id/radar-exploration (loadFromRadarCache,
+ *            mergeFromRadarSource), GET /articles/:id/radar-exploration/status.
+ * WRITES TO: POST /keywords/radar/scan puis POST /articles/:id/radar-exploration
+ *            (_saveToExploration : la liste réellement scannée, jamais la liste
+ *            mémoire, vide en mode guidé).
+ * CONSUMERS: RadarPanel.vue (useKeywordRadar), MoteurView (RadarCacheStatus).
+ * RELATED FR: FR-RAD-PERSIST, FR-RAD-DB-FIRST, FR-RAD-MARKET-LEVEL-AWARE
+ */
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { apiGet, apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
@@ -302,19 +314,25 @@ export function useKeywordRadar() {
     }
   }
 
-  async function _saveToExploration(articleId: number, seed: string) {
+  /**
+   * Enregistre le scan avec la liste qui vient d'être scannée (FR-RAD-PERSIST).
+   * En mode guidé, la liste d'attente vit dans le store (base) et la liste
+   * mémoire de ce composable reste vide : l'envoyer effaçait la liste
+   * enregistrée à chaque scan (recette du 2026-09-30, MOT-10).
+   */
+  async function _saveToExploration(articleId: number, seed: string, scannedKeywords: RadarKeyword[]) {
     if (!scanResult.value || !_lastScanContext) return
     try {
       await apiPost(`/articles/${articleId}/radar-exploration`, {
         seed,
         context: _lastScanContext,
-        generatedKeywords: generatedKeywords.value,
+        generatedKeywords: scannedKeywords,
         scanResult: scanResult.value,
       })
       radarCacheStatus.value = {
         exists: true,
         scannedAt: new Date().toISOString(),
-        keywordCount: generatedKeywords.value.length,
+        keywordCount: scannedKeywords.length,
         globalScore: scanResult.value.globalScore ?? undefined,
         heatLevel: scanResult.value.heatLevel ?? undefined,
         isFresh: true,
@@ -424,7 +442,7 @@ export function useKeywordRadar() {
       log.info(`[Radar] Scan complete: score=${scanResult.value.globalScore}, heat=${scanResult.value.heatLevel}`)
 
       if (opts?.articleId && opts.seed) {
-        _saveToExploration(opts.articleId, opts.seed)
+        void _saveToExploration(opts.articleId, opts.seed, keywords)
       } else if (opts?.seed) {
         // Legacy libre-mode fallback
         try {
