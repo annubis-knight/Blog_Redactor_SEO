@@ -52,7 +52,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 **Tu dois voir :**
 - à l'étape 1 : le bouton « Analyser » grisé, la petite touche « Entrée » dans le champ, et rien d'autre ;
 - à chaque nouveau mot-clé : une carte ajoutée en bas de la liste, qui passe par « Validation en cours... » puis montre ses indicateurs ; le champ garde ton texte ;
-- le double clic ne crée qu'une carte `zqxw vitrine kvj` ;
+- le double clic ne crée qu'une carte `zqxw vitrine kvj`, et une seule étude part (une seule « Validation en cours... ») ;
 - à l'étape 6 : aucune nouvelle carte, le mot-clé est ré-étudié à sa place ;
 - au total, 5 cartes : le mot-clé de l'article et les 4 tiens.
 
