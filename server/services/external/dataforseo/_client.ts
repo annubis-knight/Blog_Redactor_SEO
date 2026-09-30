@@ -1,3 +1,13 @@
+/**
+ * AUTHORITY: mode effectif du serveur (`getEffectiveMode`, runtime-mode.service)
+ *            pour le choix bac à sable / production ; budget en mémoire (costGuard).
+ * READS FROM: runtime-mode.service, variables DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD.
+ * WRITES TO: appels HTTP DataForSEO (sandbox.dataforseo.com ou api.dataforseo.com).
+ * CONSUMERS: dataforseo/keywords.ts, serp.ts, brief.ts ; GET /api/dataforseo/cost-status
+ *            (mention SANDBOX / PROD de la pile d'activité).
+ * RELATED FR: FR-EXT-DATAFORSEO-SANDBOX, FR-INFRA-RUNTIME-MODE, NFR-COST-AI-MOCK,
+ *             FR-EXT-DATAFORSEO-COSTGUARD.
+ */
 import { log } from '../../../utils/logger.js'
 import { costGuard, CostBudgetError } from '../dataforseo-cost-guard.js'
 import { getEffectiveMode } from '../../infra/runtime-mode.service.js'

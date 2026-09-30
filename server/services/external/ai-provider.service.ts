@@ -1,4 +1,9 @@
 /**
+ * AUTHORITY: mode effectif du serveur (`getRuntimeMode` / `getEffectiveMode`,
+ *            runtime-mode.service) puis `AI_PROVIDER` pour le choix du fournisseur.
+ * CONSUMERS: tous les appels IA du serveur (flux, sorties structurées).
+ * RELATED FR: FR-EXT-AI-MULTI-PROVIDER, FR-INFRA-RUNTIME-MODE, NFR-COST-AI-MOCK.
+ *
  * AI Provider Dispatcher (2026-04-22)
  *
  * Point d'entrée unique pour tous les appels IA (Claude, Gemini).

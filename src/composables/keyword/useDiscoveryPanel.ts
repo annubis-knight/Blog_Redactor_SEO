@@ -1,3 +1,15 @@
+/**
+ * AUTHORITY: état de la découverte en cours (module, partagé entre montages de
+ *            l'onglet) ; sauvegarde `keyword_discoveries` via useDiscoveryCache.
+ * READS FROM: POST /keywords/suggest-all, /keywords/radar/generate,
+ *             /keywords/discover, /keywords/word-groups, /keywords/analyze-discovery ;
+ *             jugements de pertinence via useRelevanceScoring.
+ * WRITES TO: sauvegarde de la découverte (saveToCache) ; coûts inscrits par apiPost
+ *            (une ligne par appel, jamais ajoutée ici).
+ * CONSUMERS: DiscoveryPanel.vue (sections, filtre, analyse IA, envoi au Radar).
+ * RELATED FR: FR-DIS-SOURCES, FR-DIS-LONGTAIL-GENERATION, FR-DIS-RELEVANCE-FILTER,
+ *             FR-DIS-AI-ANALYSIS, FR-DIS-CACHE, FR-INFRA-COST-LOG-STORE.
+ */
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { radarGenerateContract } from '@shared/contracts/radar.contract.js'
