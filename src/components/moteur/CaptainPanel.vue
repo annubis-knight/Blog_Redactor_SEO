@@ -26,6 +26,7 @@ import { marked } from 'marked'
 import { useCapitaineScan } from '@/composables/keyword/useCapitaineScan'
 import { useCompositionCheck } from '@/composables/seo/useCompositionCheck'
 import { useExploredKeywords, isVariantMeasured } from '@/composables/keyword/useExploredKeywords'
+import { candidatesFromHistory } from '@shared/captain-candidates.js'
 import type { ExploredKeywordEntry } from '@/composables/keyword/useExploredKeywords'
 import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
 import { useStreaming } from '@/composables/editor/useStreaming'
@@ -805,7 +806,9 @@ watch(
     // `props.selectedArticle.keyword` before fetchKeywords() returned. Result:
     // 1/34 entries displayed instead of 34/34. `restoreFromHistory` rebuilds
     // `entries` from scratch so it naturally supersedes any prior stub.
-    if (history.length > carousel.entries.value.length) {
+    // Les racines enregistrées ne comptent pas comme candidats (FR-CAP-LOCK-INTEGRITY) :
+    // sinon la liste se reconstruirait à chaque retour de l’historique.
+    if (candidatesFromHistory(history).length > carousel.entries.value.length) {
       log.info('[CaptainPanel] Restoring carousel from history', {
         entryCount: history.length,
         previousCarouselCount: carousel.entries.value.length,
@@ -861,6 +864,11 @@ watch(
 
     for (const entry of carousel.entries.value) {
       if (!entry.validation) continue
+      // Une carte qui affiche une de ses racines garde son candidat d'origine :
+      // la racine s'enregistre sous son parent (watcher 2), jamais comme un
+      // candidat de plus (FR-CAP-LOCK-INTEGRITY ; recette 2026-09-30 : la liste se
+      // reconstruisait alors avec la racine en carte, sortie de la colonne).
+      if (entry.card.keyword !== entry.originalCard.keyword) continue
       const kw = entry.card.keyword
 
       // Persist captain validation entry (once per keyword)

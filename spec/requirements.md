@@ -901,7 +901,7 @@ Pour chaque candidat étudié, l'outil doit afficher un avis d'expert rédigé p
 - L'avis obtenu est enregistré avec le candidat, et réaffiché à la réouverture de l'article, sans nouvel appel.
 
 ### FR-CAP-ROOTS — Racines d'un mot-clé long
-**Statut :** non tenue (à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte)
+**Statut :** non tenue (à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte)
 L'outil doit décomposer un mot-clé d'au moins 3 mots en racines, par troncature depuis la fin, et permettre de les comparer.
 - Jusqu'à 5 racines, de la plus longue à la plus courte ; une racine garde au moins 2 mots significatifs (hors mots-outils).
 - Quand le volume du mot-clé n'est pas au vert, ses racines sont étudiées d'office.
@@ -1028,11 +1028,12 @@ Un changement du point de douleur pendant la visite de l'onglet ne doit pas rela
 - Le prochain chargement de l'onglet ou de l'article reflète le nouveau point de douleur.
 
 ### FR-CAP-LOCK-INTEGRITY — Verrou sans doublon, tri stable
-**Statut :** non tenue (afficher une racine l'enregistre comme candidat et lance pour elle un avis IA payant ; la liste se reconstruit alors, et les notes des candidats étudiés pendant la session passent à « — » ; deux casses d'un même mot-clé comptent pour deux candidats)
+**Statut :** non tenue (deux casses d'un même mot-clé comptent pour deux candidats)
 Le verrouillage doit viser le mot-clé d'origine d'une carte, sans créer de doublon ni déplacer la carte.
 - Ajouter, recharger ou verrouiller plusieurs fois un même mot-clé ne crée qu'une carte.
 - Le verrou porte sur le mot-clé d'origine, même quand une racine est affichée.
 - Afficher une racine ne déplace pas la carte : le tri lit le mot-clé et le score d'origine.
+- Afficher une racine ne l'enregistre pas comme candidat : elle reste rangée sous son mot-clé long, à l'écran comme à la réouverture, avec les mesures de son étude enregistrée (recette du 2026-09-30).
 
 ### Retirées (FR-CAP)
 

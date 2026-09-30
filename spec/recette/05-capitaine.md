@@ -63,7 +63,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 
 **⚠ Défaut connu :** FR-CAP-INPUT — ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
-**⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — afficher une racine l'enregistre comme candidat et lance pour elle un avis IA payant ; la liste se reconstruit alors, et les notes des candidats étudiés pendant la session passent à « — » ; deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-3 — La carte montre le Score Pertinence, jamais le Score Marché
 **Exigences :** FR-CAP-SCORING-BIMODAL ⚠
@@ -231,7 +231,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - la « Moyenne » ne correspond pas aux anneaux des racines notées (une racine « — » ne compte pas) ;
 - afficher une combinaison ajoute une carte à la liste, ou remet des notes à « — ».
 
-**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-10 — Verrouiller passe d'abord par la porte
 **Exigences :** FR-CAP-LOCK-GATE
@@ -326,7 +326,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - la racine est verrouillée à la place du mot-clé ;
 - une deuxième carte `création site internet toulouse` apparaît.
 
-**⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — afficher une racine l'enregistre comme candidat et lance pour elle un avis IA payant ; la liste se reconstruit alors, et les notes des candidats étudiés pendant la session passent à « — » ; deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-14 — Rouvrir l'article : tout est retrouvé, sans doublon
 **Exigences :** FR-CAP-PERSIST ⚠, FR-CAP-AI-PANEL ⚠, FR-CAP-LIST-SIDEPANEL ⚠, FR-CAP-LOCK-INTEGRITY ⚠
@@ -354,7 +354,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 
 **⚠ Défaut connu :** FR-CAP-LIST-SIDEPANEL — après un envoi depuis le Radar, le Capitaine verrouillé n'est plus marqué ni en tête, et les candidats déjà étudiés quittent la liste ; sur un article qui avait déjà des candidats, les autres cartes envoyées n'apparaissent qu'à la réouverture. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
-**⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — afficher une racine l'enregistre comme candidat et lance pour elle un avis IA payant ; la liste se reconstruit alors, et les notes des candidats étudiés pendant la session passent à « — » ; deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-15 — Les racines après réouverture
 **Exigences :** FR-CAP-ROOTS ⚠
@@ -373,7 +373,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - les racines n'ont plus de note (« — » partout) et « Moyenne » a disparu ;
 - une racine mesurée à la CAP-9 s'affiche avec « — » partout et un verdict « GRAY ».
 
-**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-16 — Le Score Pertinence ne change pas entre l'étude et la réouverture
 **Exigences :** FR-CAP-RELEVANCE-LIVE ⚠, FR-CAP-RELEVANCE-INPUTS, FR-CAP-RELEVANCE-INTENT-SIGNAL
@@ -435,7 +435,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 
 **⚠ Défaut connu :** FR-CAP-INPUT — ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
-**⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — afficher une racine l'enregistre comme candidat et lance pour elle un avis IA payant ; la liste se reconstruit alors, et les notes des candidats étudiés pendant la session passent à « — » ; deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-19 — Des candidats envoyés par le Radar
 **Exigences :** FR-CAP-LIST-SIDEPANEL ⚠
@@ -483,7 +483,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 
 **⚠ Défaut connu :** dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
-**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-CAP-INPUT — ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -611,7 +611,7 @@ Passe le bouton en **RÉEL**, travaille sur l'article enfant (sauf mention), et 
 - aucune racine alors que le volume est sous le seuil ;
 - une racine n'est pas un début du mot-clé, ou plus de 5 racines.
 
-**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ## Hors recette
 
