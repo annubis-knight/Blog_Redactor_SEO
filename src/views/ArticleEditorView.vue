@@ -27,6 +27,7 @@ import { useGeoScoring } from '@/composables/seo/useGeoScoring'
 import { useInternalLinking } from '@/composables/seo/useInternalLinking'
 import { usePanelToggle } from '@/composables/ui/usePanelToggle'
 import ErrorBoundary from '@/components/shared/ErrorBoundary.vue'
+import ErrorMessage from '@/components/shared/ErrorMessage.vue'
 import ResizablePanel from '@/components/panels/ResizablePanel.vue'
 import ArticleMetaDisplay from '@/components/article/ArticleMetaDisplay.vue'
 import ArticleActions from '@/components/article/ArticleActions.vue'
@@ -58,6 +59,15 @@ const slugResolutionError = ref<string | null>(null)
   } else {
     slugResolutionError.value = `Article ID "${route.params.articleId}" invalide`
   }
+}
+
+// Entrée dans l'article : rien de l'article ouvert avant ne reste à l'écran ni
+// ne peut être enregistré ici (FR-RED-EDITOR-TIPTAP, FR-RED-OUTLINE,
+// FR-RED-SEO-SCORE-PERSIST ; recette du 2026-09-30, RED-3 et 01-T1). Fait dès
+// la création de la vue, avant que les calculs de score ne s'y abonnent.
+if (articleId.value) {
+  editorStore.openArticle(articleId.value)
+  outlineStore.resetOutline()
 }
 
 const cocoonId = computed(() => {
@@ -170,15 +180,16 @@ async function loadContent() {
   try {
     log.info('Loading article content', { articleId: id })
     const data = await apiGet<ArticleContent>(`/articles/${id}/content`)
+    // Seul ce que la base renvoie pour CET article s'affiche : les stores ont
+    // été vidés à l'entrée (openArticle), rien de l'article précédent ne reste.
     if (data.content) {
-      editorStore.setContent(data.content)
-      editorStore.markClean()
-    }
-    if (data.metaTitle || data.metaDescription) {
-      editorStore.$patch({
-        metaTitle: data.metaTitle ?? editorStore.metaTitle,
-        metaDescription: data.metaDescription ?? editorStore.metaDescription,
+      editorStore.loadExistingContent({
+        content: data.content,
+        metaTitle: data.metaTitle,
+        metaDescription: data.metaDescription,
       })
+    } else if (data.metaTitle || data.metaDescription) {
+      editorStore.$patch({ metaTitle: data.metaTitle ?? null, metaDescription: data.metaDescription ?? null })
     }
     if (data.outline) {
       const outline = typeof data.outline === 'string' ? JSON.parse(data.outline) : data.outline
@@ -271,14 +282,9 @@ async function handleDeleteContent() {
   if (!articleId.value) return
   if (!confirm('Supprimer le contenu de l\'article ? Le brief et le sommaire seront conservés.')) return
   log.info('[editor-view] Deleting article content', { articleId: articleId.value })
-  editorStore.$patch({
-    content: null,
-    streamedText: '',
-    metaTitle: null,
-    metaDescription: null,
-    isDirty: false,
-  })
-  await editorStore.saveArticle(articleId.value)
+  // Le texte est effacé en base par sa propre écriture (FR-RED-EDITOR-TIPTAP) :
+  // un enregistrement ordinaire d'un texte vide le laissait en base (RED-26).
+  await editorStore.deleteContent(articleId.value)
 }
 
 onBeforeUnmount(() => {
@@ -366,6 +372,16 @@ onMounted(async () => {
           </button>
         </div>
       </header>
+
+      <!-- Une panne (rédaction, méta, réduction, humanisation, suppression) se dit
+           à l'écran (FR-RED-DRAFT-SINGLE-PASS). Pas de « Réessayer » : relancer la
+           rédaction pour une réduction ratée la referait (et la ferait payer). -->
+      <ErrorMessage
+        v-if="editorStore.error && !editorStore.isGenerating"
+        :message="editorStore.error"
+        hide-retry
+        data-testid="editor-error"
+      />
 
       <CollapsableSection
         v-if="editorStore.metaTitle || editorStore.metaDescription"

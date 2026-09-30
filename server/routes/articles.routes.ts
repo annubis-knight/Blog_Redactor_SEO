@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
 import { getArticleById, getArticleBySlug, updateArticleStatus, removeArticleFromCocoon, updateArticleInCocoon, loadArticleMicroContext, saveArticleMicroContext, getArticleProgress, saveArticleProgress, addArticleCheck, removeArticleChecks, getArticleKeywords, getArticleChildren } from '../services/infra/data.service.js'
-import { saveArticleContent, getArticleContent } from '../services/article/article-content.service.js'
+import { saveArticleContent, getArticleContent, clearArticleContent } from '../services/article/article-content.service.js'
 import { updateArticleContentSchema, updateArticleStatusSchema, patchArticleSchema } from '../../shared/schemas/article.schema.js'
 import { updateMicroContextSchema } from '../../shared/schemas/article-micro-context.schema.js'
 import { articleProgressSchema, addCheckSchema } from '../../shared/schemas/article-progress.schema.js'
@@ -69,6 +69,26 @@ router.get('/articles/:id/content', async (req, res) => {
   } catch (err) {
     log.error(`GET /api/articles/${id}/content — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load article content' } })
+  }
+})
+
+/**
+ * DELETE /api/articles/:id/content — « Supprimer le contenu » : efface le texte,
+ * la méta et les scores ; le sommaire et le brief restent (FR-RED-EDITOR-TIPTAP).
+ */
+router.delete('/articles/:id/content', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) {
+    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } })
+    return
+  }
+
+  try {
+    const remaining = await clearArticleContent(id)
+    res.json({ data: remaining })
+  } catch (err) {
+    log.error(`DELETE /api/articles/${id}/content — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to delete article content' } })
   }
 })
 
