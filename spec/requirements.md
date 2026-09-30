@@ -615,6 +615,7 @@ L'outil doit faire juger par l'IA si chaque candidat a sa place dans un article 
 - Une case « Filtre de pertinence », cochée par défaut, masque ou réaffiche le hors-sujet sans nouveau calcul.
 - Pendant le calcul, une barre indique « Filtrage p/2 · n/total » ; ensuite, « X pertinents / N total » et « X hors-sujet masqués ».
 - Les candidats arrivés plus tard sont jugés à leur tour, sans rejuger les autres.
+- Tous les jugements de la découverte sont gardés, quel que soit le nombre de candidats : un candidat jugé n'est ni oublié, ni rejugé (donc jamais repayé), et son verdict survit à la sauvegarde de la découverte.
 - Une douleur d'au moins 10 caractères devient un critère éliminatoire.
 - Si plus de 90 % d'au moins 20 candidats passent, un avertissement signale un filtrage probablement en échec.
 
@@ -642,7 +643,7 @@ L'outil doit envoyer les candidats cochés (sections et analyse IA confondues, s
 - Une barre fixe apparaît dès qu'un candidat est coché ; elle indique le nombre de cochés et porte le bouton « Envoyer au Radar → ».
 - La liste est enregistrée sur l'article avant l'ouverture du Radar ; en cas d'échec, l'utilisateur reste sur Discovery avec un message.
 - Tous les candidats comptés sont envoyés.
-- Envoyer deux fois la même liste ne crée pas de doublon.
+- Envoyer deux fois la même liste ne crée pas de doublon ; un clic n'écrit la liste qu'une fois.
 
 ### FR-DIS-CHECK — Étape « Discovery faite » posée par l'envoi
 **Statut :** active
@@ -1981,9 +1982,9 @@ Au démarrage, le serveur doit tester la connexion à la base et dire clairement
 - Service arrêté, mot de passe refusé ou base absente : le journal donne une piste de correction adaptée.
 
 ### FR-INFRA-COST-LOG-STORE — Pile d'activité de la session
-**Statut :** non tenue (seules les lectures et écritures des mots-clés d'article et des explorations Capitaine / Lieutenants remontent dans la pile ; les autres opérations en base n'y apparaissent pas. Et le coût de la génération des longues traînes et du jugement des questions PAA ne remonte pas à l'écran ; l'analyse IA de Discovery s'inscrit deux fois dans la pile, ce qui double son coût affiché)
+**Statut :** non tenue (seules les lectures et écritures des mots-clés d'article et des explorations Capitaine / Lieutenants remontent dans la pile ; les autres opérations en base n'y apparaissent pas. Et le coût de la génération des longues traînes et du jugement des questions PAA ne remonte pas à l'écran)
 Une pile d'activité, visible dans l'interface, doit accumuler les appels IA (modèle, jetons, coût estimé), les opérations en base (type, table, lignes, durée) et les messages d'erreur connus ; l'utilisateur voit le coût total de sa session et peut vider la pile.
-- Chaque appel IA, diffusé ou non, ajoute sa ligne de coût.
+- Chaque appel IA, diffusé ou non, ajoute sa ligne de coût, une seule : un appel n'est jamais compté deux fois.
 - Chaque écriture significative en base ajoute sa ligne.
 - Le coût cumulé est affiché ; la pile se vide d'un clic et se vide au rechargement de la page.
 

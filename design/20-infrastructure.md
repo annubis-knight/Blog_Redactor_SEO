@@ -93,7 +93,7 @@ flowchart LR
 *Exigences : FR-INFRA-RUNTIME-MODE · Design : DESIGN-INFRA-RUNTIME-MODE*
 
 - Détail complet (code, API, règles) : [Intégrations externes](18-integrations.md) (« Interrupteur simulé / réel ») ; vue d'ensemble : [Mode simulé / réel](04-ia-et-prompts.md).
-- **Règles et décisions :** pas de table : c'est un état de session du serveur, perdu à son redémarrage ; l'écran le réimpose au seul chargement de la page (`hydrate`).
+- **Règles et décisions :** pas de table : c'est un état de session du serveur, perdu à son redémarrage ; l'écran le lui renvoie quand il l'a perdu, au chargement puis à chaque resynchronisation (`hydrate`, `startAutoResync` : focus, onglet visible, 15 s). `isSandbox()` et `getProvider()` lisent le même mode effectif (une seule autorité).
 
 ## Scores et indicateurs nullables
 *Exigences : FR-INFRA-SCORE-MODULE, FR-INFRA-NO-SCORE-FALLBACK, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-DISPLAY-DASH, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-SCORING-NULLSAFE · Design : DESIGN-INFRA-SCORE-MODULE, DESIGN-INFRA-NO-SCORE-FALLBACK, DESIGN-INFRA-KPI-NULLABLE, DESIGN-INFRA-KPI-DISPLAY-DASH, DESIGN-INFRA-KPI-CONSISTENCY, DESIGN-INFRA-KPI-SCORING-NULLSAFE*

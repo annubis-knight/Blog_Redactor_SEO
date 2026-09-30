@@ -180,7 +180,7 @@ Seuils (`THRESHOLDS`, `getThresholds`) :
   - `POST …/radar-exploration/keyword` → `{ entry, added }` · `DELETE …/radar-exploration/keyword?keyword=` → `{ entry }` · `POST …/radar-exploration/keywords` → `{ entry, added: n }`. Dédoublonnage serveur sur `trim().toLowerCase()`.
 - **Flux :**
   - [`MoteurView.vue`](../src/views/MoteurView.vue) : `watch(selectedArticle.id, radarExplorationStore.setArticle, { immediate })` hydrate la liste d'attente quel que soit le chemin. `RadarPanel` rappelle aussi `setArticle` au montage et au changement d'`articleId`.
-  - Discovery → Radar : `useMoteurCrossTabState.handleSendToRadar` appelle `addKeywordsBatch`, et le watcher `injectedKeywords` de `RadarPanel` aussi ; les deux sont idempotents.
+  - Discovery → Radar : `useMoteurCrossTabState.handleSendToRadar` appelle `addKeywordsBatch`, et le watcher `injectedKeywords` de `RadarPanel` aussi. Le store reprend un envoi identique encore en cours (`batchesInFlight`, clé article + liste normalisée) au lieu d'envoyer un second `POST` (recette 2026-09-30, 01-T7) ; un envoi après la réponse repart.
   - Les cartes affichées viennent de `useKeywordRadar().scanResult` (mémoire), pas du store. Elles sont réhydratées par `mergeFromRadarSource(articleId)` : appelé par `handleSelectArticle` si `radarRef` existe (onglet déjà monté), ou par le bouton « Charger Radar » (`useTabLoadPrompt.loadFromDb`, [Moteur — cadre commun](12-moteur.md)).
   - Après un scan : `_saveToExploration` poste l'exploration complète avec `generatedKeywords` **du composable** et le `scanResult` du serveur ; `setScanResultLocal` met à jour le store.
 - **Règles et décisions :**
