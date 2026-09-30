@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -61,6 +61,7 @@ En tête : le fil d'Ariane (Dashboard / silo / cocon), le nom du cocon, « N art
 **Règles.**
 - Aucune carte n'est désactivée : on entre par celle que l'on veut, dans l'ordre que l'on veut.
 - Dans la Rédaction, l'étape de génération d'un article reste verrouillée tant que le Cerveau du cocon n'est pas terminé (voir [Rédaction](13-redaction.md)).
+- Un cocon inconnu (adresse sans cocon) affiche « Cocon introuvable : il n’existe pas, ou il a été supprimé. » et « ← Retour au dashboard ».
 - La page ne liste pas les articles. On les trouve dans la Rédaction (trois colonnes Pilier / Intermédiaire / Spécialisé, un clic ouvre l'article), dans la liste du haut du Moteur et dans l'arbre du Cerveau.
 
 ## Les points de progression des articles

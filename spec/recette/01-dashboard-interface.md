@@ -1,7 +1,7 @@
 ---
 title: Recette — Dashboard et interface partagée
 module: 01
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/03-dashboard.md
@@ -118,7 +118,7 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 - un texte montre un code technique (une barre oblique inverse suivie de chiffres) à la place d'une lettre accentuée ;
 - une page reste bloquée sur une roue de chargement.
 
-**⚠ Défaut connu :** NFR-UX-SCREEN-TEXT — des textes fixes sont écrits sans accents (« Deverrouiller », « Rafraichir », « Reinitialiser », « Derniere analyse », « mots-cles », « Suggerer », « Regenerer », « Resultats SERP », « Angle differenciant », « Contexte strategique », « Differenciateur »…) et la vérification rapide ne les repère pas ; d'autres restent techniques ou en anglais : « Discovered via suggest-alphabet », niveaux affichés « INTERMEDIAIRE » ou « specifique », « (parentTitle manquant) », identifiant d'alerte « lieutenants-too-few » à la publication ; les compteurs ne s'accordent pas (« 1 articles »). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** NFR-UX-SCREEN-TEXT — des textes fixes sont écrits sans accents (« Deverrouiller », « Rafraichir », « Reinitialiser », « Derniere analyse », « mots-cles », « Suggerer », « Regenerer », « Resultats SERP », « Angle differenciant », « Contexte strategique », « Differenciateur »…) et la vérification rapide ne les repère pas ; d'autres restent techniques ou en anglais : « Discovered via suggest-alphabet », identifiant d'alerte « lieutenants-too-few » à la publication ; les compteurs ne s'accordent pas (« 1 articles »). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### DASH-5 — La page d'un silo : compteurs par niveau et par statut
 **Exigences :** FR-DASH-NAV ⚠
@@ -160,11 +160,12 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 - « Moteur » : « N mots-clés », au moins 2 (le mot-clé du pilier et celui de l'enfant) ;
 - « Rédaction » : « 2 articles, 50% », comme l'en-tête ;
 - chaque carte ouvre son atelier pour ce cocon, et aucune n'est grisée ;
-- pour un cocon inconnu : le titre « Cocon », et rien dessous. C'est le comportement actuel, sans message.
+- pour un cocon inconnu : le titre « Cocon », puis « Cocon introuvable : il n’existe pas, ou il a été supprimé. » et « ← Retour au dashboard », qui ramène à l'accueil.
 
 **C'est un bug si :**
 - les chiffres de la carte « Rédaction » diffèrent de ceux de l'en-tête ;
-- une carte ouvre l'atelier d'un autre cocon.
+- une carte ouvre l'atelier d'un autre cocon ;
+- un cocon inconnu affiche un message en anglais ou un « Réessayer » qui ne mène nulle part.
 
 **⚠ Défaut connu :** FR-DASH-NAV — à l'écran, rien ne met un article au statut « brouillon » : l'avancement ne compte que les articles publiés, seul le mode automatique pose « brouillon » ; sans silo ni thème nommé, le titre de l'accueil est vide au lieu de « Plan Éditorial » ; dans le fil d'Ariane, le silo n'est pas un lien. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
@@ -250,7 +251,7 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 
 **Tu dois voir :**
 - une case à cocher à gauche de chaque carte ;
-- sur une ligne : ▶, le mot-clé, des pictogrammes d'intention s'il y en a (infobulles « Informationnel », « Commercial », « Transactionnel » ou « Navigationnel »), les mesures vol · KD · CPC · PAA, puis un anneau avec son chiffre et « Score KPI » dessous ;
+- sur une ligne : ▶, le mot-clé, des pictogrammes d'intention s'il y en a, chacun dessiné (infobulles « Informationnel », « Commercial », « Transactionnel » ou « Navigationnel »), les mesures vol · KD · CPC · PAA, puis un anneau avec son chiffre et « Score KPI » dessous ;
 - au survol de l'anneau, une bulle « Score KPI » : une ligne par composante, avec son poids en % et sa note sur 100, puis « Total » en /100 ;
 - ▶ déplie un texte en italique, puis les questions PAA : chacune avec un badge (« Exact », « Match », « Partiel », « Hors sujet »…), les questions filles rangées sous leur mère ; un clic sur une question montre sa réponse. Sans question : « Aucune PAA trouvee » ;
 - cocher encadre la carte et fait apparaître **« Envoyer au Capitaine (2) »**.
@@ -258,7 +259,8 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 **C'est un bug si :**
 - un anneau affiche « 0 » alors que sa bulle dit que le score manque : un score absent s'affiche « — » ;
 - une carte n'a pas la même disposition que les autres ;
-- cliquer ▶ coche ou décoche la carte.
+- cliquer ▶ coche ou décoche la carte ;
+- un pictogramme d'intention est une place vide, que seule son infobulle révèle.
 
 > En MOCK, toutes les cartes ont les mêmes volumes : le bac à sable DataForSEO renvoie les mêmes chiffres pour tous les mots-clés. C'est normal.
 
@@ -272,7 +274,7 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 4. Clique ▶.
 
 **Tu dois voir :**
-- les deux cartes, avec le même en-tête qu'au Radar : ▶, mot-clé, pictogrammes, vol · KD · CPC · PAA, anneau ;
+- les deux cartes, avec le même en-tête qu'au Radar : ▶, mot-clé, pictogrammes d'intention dessinés, vol · KD · CPC · PAA, anneau ;
 - à gauche, au lieu de la case : un cadenas (« Verrouiller »), une étiquette (« Tagger manuellement les mots (local / persona) ») et une flèche (« Recalculer le score Pertinence pour ce mot-clé ») ;
 - sous l'anneau, « Score Pertinence » au lieu de « Score KPI » ; au survol, les composantes « Pain × Mot-clé », « PAA × Douleur », « Autocomplete × Douleur », « Racines », « Intent × Douleur », ou une phrase qui dit pourquoi le score manque (par exemple « Score Pertinence indisponible… ») ;
 - pour un mot-clé de trois mots ou plus, les mots après les deux premiers sont cliquables ;
