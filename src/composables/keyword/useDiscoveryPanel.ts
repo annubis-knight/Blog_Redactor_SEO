@@ -1,10 +1,20 @@
+/**
+ * AUTHORITY: état de la découverte en cours (module, partagé entre montages de
+ *            l'onglet) ; sauvegarde `keyword_discoveries` via useDiscoveryCache.
+ * READS FROM: POST /keywords/suggest-all, /keywords/radar/generate,
+ *             /keywords/discover, /keywords/word-groups, /keywords/analyze-discovery ;
+ *             jugements de pertinence via useRelevanceScoring.
+ * WRITES TO: sauvegarde de la découverte (saveToCache) ; coûts inscrits par apiPost
+ *            (une ligne par appel, jamais ajoutée ici).
+ * CONSUMERS: DiscoveryPanel.vue (sections, filtre, analyse IA, envoi au Radar).
+ * RELATED FR: FR-DIS-SOURCES, FR-DIS-LONGTAIL-GENERATION, FR-DIS-RELEVANCE-FILTER,
+ *             FR-DIS-AI-ANALYSIS, FR-DIS-CACHE, FR-INFRA-COST-LOG-STORE.
+ */
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { radarGenerateContract } from '@shared/contracts/radar.contract.js'
 import { discoveryAnalysisContract, keywordDiscoveryContract, suggestAllContract, wordGroupsContract } from '@shared/contracts/discovery.contract.js'
 import { log } from '@/utils/logger'
-import { useCostLogStore } from '@/stores/ui/cost-log.store'
-import type { ApiUsage } from '@shared/types/index.js'
 import type { DiscoveredKeyword, DiscoverySource, WordGroup, SuggestAllResult, AnalysisResult, AnalyzeDiscoveryResponse } from '@shared/types/discovery-tab.types'
 import { toRadarKeywords } from '@shared/types/discovery-tab.types'
 import type { KeywordRadarGenerateResult } from '@shared/types/intent.types'
@@ -256,15 +266,14 @@ export function useDiscoveryPanel() {
     // 2. AI generation via Claude Haiku
     if (articleTitle || articleKeyword) {
       aiLoading.value = true
-      apiPost<KeywordRadarGenerateResult & { _apiUsage?: ApiUsage }>('/keywords/radar/generate', {
+      // Le coût est inscrit par apiPost (champ `usage` de la réponse), une seule
+      // fois : l'ajouter ici le comptait deux fois (recette 2026-09-30, 04 point 1).
+      apiPost<KeywordRadarGenerateResult>('/keywords/radar/generate', {
         title: articleTitle || seed,
         keyword: articleKeyword || seed,
         painPoint: painPoint || seed,
       }, { contract: radarGenerateContract })
         .then(data => {
-          if (data._apiUsage) {
-            try { useCostLogStore().addEntry('Génération keywords radar', data._apiUsage) } catch { /* noop */ }
-          }
           aiKeywords.value = data.keywords.map(k => ({
             keyword: k.keyword,
             source: 'ai' as const,
@@ -415,11 +424,9 @@ export function useDiscoveryPanel() {
           wordGroups: wordGroups.value.map(g => ({ word: g.word, count: g.count })),
           articleContext: lastArticleContext.value,
         },
+        // Coût inscrit une fois, par apiPost (« Analyse discovery ») : l'ajouter ici le doublait.
         { contract: discoveryAnalysisContract },
       )
-      if (result.usage) {
-        try { useCostLogStore().addEntry('Analyse discovery', result.usage) } catch { /* noop */ }
-      }
       analysisResult.value = { keywords: result.keywords, summary: result.summary }
       log.info(`Discovery analysis: ${result.keywords.length} keywords curated`)
     } catch (err) {
@@ -436,18 +443,16 @@ export function useDiscoveryPanel() {
     if (longtailLoading.value) return 0
     longtailLoading.value = true
     try {
-      const data = await apiPost<KeywordRadarGenerateResult & { _apiUsage?: ApiUsage }>(
+      const data = await apiPost<KeywordRadarGenerateResult>(
         '/keywords/radar/generate',
         {
           title: articleTitle || seed,
           keyword: articleKeyword || seed,
           painPoint: painPoint || seed,
         },
-        { contract: radarGenerateContract },
+        // Une seule ligne « Courte-traîne IA » (l'adresse dirait « Génération keywords radar »).
+        { contract: radarGenerateContract, usageLabel: 'Courte-traîne IA' },
       )
-      if (data._apiUsage) {
-        try { useCostLogStore().addEntry('Courte-traîne IA', data._apiUsage) } catch { /* noop */ }
-      }
       longtailKeywords.value = data.keywords.map(k => ({
         keyword: k.keyword,
         source: 'longtail-ai' as const,

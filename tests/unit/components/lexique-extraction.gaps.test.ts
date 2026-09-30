@@ -383,19 +383,45 @@ describe('LexiquePanel — hydrateFromDb', () => {
     expect(wrapper.find('[data-testid="lexique-results"]').exists()).toBe(true)
   })
 
-  it('si pas d\'exploration en DB, déclenche fetchTfidf normalement', async () => {
+  it('FR-LEX-AI-PANEL — rouvrir un lexique enregistré sans recommandations ne lance pas l\'analyse IA', async () => {
+    // Recette 2026-09-30 (express étape 5, MOT-4) : ouvrir l'onglet lançait
+    // seul l'analyse IA « lexique upfront », payante en réel.
+    mockApiGet.mockResolvedValue({
+      lexique: [
+        { articleId: 1, sourceKeyword: 'seo', tfidfTerms: TFIDF_RESULT, aiRecommendations: [], aiMissingTerms: [], aiSummary: '', exploredAt: new Date().toISOString() },
+        { articleId: 1, sourceKeyword: 'isolation combles', tfidfTerms: TFIDF_RESULT, aiRecommendations: [], aiMissingTerms: [], aiSummary: '', exploredAt: new Date().toISOString() },
+      ],
+    })
+    iaStreaming.startStream.mockClear()
+    const wrapper = mountLexique()
+    await flushPromises()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="lexique-results"]').exists(), 'la liste enregistrée revient').toBe(true)
+    expect(iaStreaming.startStream).not.toHaveBeenCalled()
+
+    // Passer sur un autre onglet d'exploration ne lance rien non plus (LEX-7).
+    const tabs = wrapper.findAll('[role="tab"]')
+    await tabs[1]!.trigger('click')
+    await flushPromises()
+    expect(iaStreaming.startStream).not.toHaveBeenCalled()
+  })
+
+  it('FR-MOT-NO-AUTO-ACTION — sans exploration en base, rien ne part seul : l\'extraction attend le clic', async () => {
     mockApiGet.mockResolvedValue({ lexique: [] })
     mockApiPost.mockClear()
     mockApiPost.mockResolvedValue(TFIDF_RESULT)
 
     const wrapper = mountLexique()
-    await nextTick()
-    await nextTick()
-    await nextTick()
+    await flushPromises()
+    await flushPromises()
 
     const tfidfCalls = mockApiPost.mock.calls.filter(c => String(c[0]).includes('/serp/tfidf'))
-    expect(tfidfCalls.length).toBeGreaterThan(0)
-    void wrapper
+    expect(tfidfCalls, 'aucune extraction à l\'ouverture (recette 2026-09-30, express étape 5)').toHaveLength(0)
+    expect(wrapper.find('[data-testid="btn-extract"]').attributes('disabled')).toBeUndefined()
+
+    await wrapper.find('[data-testid="btn-extract"]').trigger('click')
+    await flushPromises()
+    expect(mockApiPost.mock.calls.filter(c => String(c[0]).includes('/serp/tfidf'))).toHaveLength(1)
   })
 
   it('hydrateFromDb gère gracieusement une erreur API', async () => {
@@ -414,10 +440,10 @@ describe('LexiquePanel — hydrateFromDb', () => {
     await nextTick()
     await nextTick()
 
-    // Pas de crash + fallback sur fetchTfidf
+    // Pas de crash, et rien ne part seul : « Extraire le Lexique » reste proposé.
     const tfidfCalls = mockApiPost.mock.calls.filter(c => String(c[0]).includes('/serp/tfidf'))
-    expect(tfidfCalls.length).toBeGreaterThan(0)
-    void wrapper
+    expect(tfidfCalls).toHaveLength(0)
+    expect(wrapper.find('[data-testid="btn-extract"]').exists()).toBe(true)
   })
 })
 

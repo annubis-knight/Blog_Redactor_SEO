@@ -19,7 +19,7 @@ synced_with:
 ## Les étapes
 
 ### 1. Lancer le robot, en mode simulé d'abord
-**Exigences :** NFR-COST-AI-MOCK ⚠, FR-EXT-TESTS-NO-COST, FR-INFRA-RUNTIME-MODE ⚠
+**Exigences :** NFR-COST-AI-MOCK, FR-EXT-TESTS-NO-COST, FR-INFRA-RUNTIME-MODE
 
 Tu lances `npm run dev` dans un terminal, puis `npm run auto:article` dans un second. Sans option, le robot travaille en simulé et le dit en toutes lettres : « MODE MOCK (défaut) — brief et données SEO SIMULÉS, sans rapport avec ton sujet. », puis « Pour un vrai résultat : npm run auto:article -- --mode=real ». Avec `npm run auto:article -- --mode=real`, il prévient : « Les appels DataForSEO / Claude sont facturés (~$0.35 par run). ». Le mode choisi s'applique à tout le serveur, donc aussi à l'application ouverte à côté ; si le serveur ne répond pas, le robot s'arrête sur « Serveur injoignable sur … » et « → Lance « npm run dev » dans un autre terminal, puis relance. ».
 
@@ -88,7 +88,7 @@ Le robot ne déroge jamais à ta place. Si tous les points sont 🟠 (par exempl
 ### Le plafond de dépense arrête le run
 **Exigences :** FR-EXT-DATAFORSEO-COSTGUARD ⚠, NFR-COST-DATAFORSEO-RESERVE, FR-EXT-DATAFORSEO ⚠, NFR-COST-CACHE-FIRST ⚠
 
-En réel, toute mesure DataForSEO qui ferait dépasser le plafond de la fenêtre glissante (0,50 $ sur 30 minutes si rien n'est réglé) est refusée avant de partir. Quand c'est l'étude d'un candidat capitaine qui est refusée, le run s'arrête sur « ✗ Échec du run : … » avec « Plafond de dépense DataForSEO atteint (…) ». Une mesure groupée refusée, elle, ne dit rien : les mots-clés restent sans mesure, et le robot poursuit sur ces données vides. Tu attends que la fenêtre glisse, puis tu reprends par `--resume` ; chaque relance du Moteur rachète les mesures du Radar.
+En réel, toute mesure DataForSEO qui ferait dépasser le plafond de la fenêtre glissante (0,50 $ sur 30 minutes si rien n'est réglé) est refusée avant de partir. Quand c'est l'étude d'un candidat capitaine qui est refusée, le run s'arrête sur « ✗ Échec du run : … » avec « Plafond de dépense DataForSEO atteint (…) ». Une mesure groupée refusée, elle, ne dit rien : les mots-clés restent sans mesure, et le robot poursuit sur ces données vides. Tu attends que la fenêtre glisse, puis tu reprends par `--resume` ; une relance du Moteur relit les mesures de moins de 7 jours au lieu de les racheter.
 
 ### Le texte sort pollué, ou les sources ne se trouvent pas
 **Exigences :** FR-RED-PUBLISH-GATE, FR-RED-ENRICH-SOURCES, FR-EXT-AI-FALLBACK ⚠
@@ -96,15 +96,13 @@ En réel, toute mesure DataForSEO qui ferait dépasser le plafond de la fenêtre
 Un texte vide ou pollué (l'IA qui parle d'elle-même, un bloc coupé) n'est pas exporté : « Export refusé — le texte contient des défauts de génération : », puis « → L'article est enregistré en base : corrige-le dans l'éditeur, » et « ou lance « npm run content:clean -- --id=<numéro> ». ». La recherche de sources n'a pas de relais si Claude manque de crédits : le robot écrit « Sources de « … » impossibles : … » et continue. Les passages restés « à sourcer » reviendront en 🔴 à la publication.
 
 ### Le mode du robot reste celui de tout le serveur
-**Exigences :** FR-INFRA-RUNTIME-MODE ⚠, NFR-COST-AI-MOCK ⚠
+**Exigences :** FR-INFRA-RUNTIME-MODE, NFR-COST-AI-MOCK
 
-En simulé, le brief, les mots-clés et le texte n'ont aucun rapport avec le sujet : ce run ne sert qu'à vérifier la mécanique, et un run réel s'impose avant de publier. Après le run, le serveur garde le mode du robot : l'application ouverte à côté travaille dans ce mode, et son bouton peut dire l'inverse jusqu'au prochain rechargement de la page. Recharge l'application après chaque run du robot.
+En simulé, le brief, les mots-clés et le texte n'ont aucun rapport avec le sujet : ce run ne sert qu'à vérifier la mécanique, et un run réel s'impose avant de publier. Après le run, le serveur garde le mode du robot : l'application ouverte à côté travaille dans ce mode, et son bouton l'adopte de lui-même en quelques secondes (au retour sur l'onglet, ou au plus 15 secondes plus tard), sans rechargement de la page.
 
 ## Défauts connus sur ce parcours
 
 - FR-RED-PROGRESS — rouvrir la rédaction guidée d'un article déjà rédigé ramène toujours à « Brief & Structure ».
-- NFR-COST-AI-MOCK — après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK ».
-- FR-INFRA-RUNTIME-MODE — la resynchronisation n'a lieu qu'au chargement de la page : après un redémarrage du serveur en cours de session, le badge garde « MOCK » alors que le serveur est revenu à sa configuration.
 - FR-CER-STEPS-ARTICLE — aucun écran ne propose la stratégie d'un article : le Cerveau travaille au niveau du cocon ; seul le mode automatique enregistre une stratégie d'article. Et le mode automatique, repris sur un article créé à l'écran, donc sans stratégie, relance le Cerveau sur le sujet « (reprise) », qui abîme le titre et la stratégie de l'article.
 - FR-MOT-CANNIBALIZATION — l'alerte n'existe que sur les lignes de la barre des articles, sans nommer l'article concurrent ; les cartes du Radar et du Capitaine n'ont pas de badge.
 - FR-RED-DRAFT-SINGLE-PASS — une panne de rédaction n'affiche aucun message, ni dans la rédaction guidée ni dans l'éditeur ; l'échec de la méta, d'une réduction ou d'une humanisation n'en affiche pas non plus.
@@ -117,5 +115,5 @@ En simulé, le brief, les mots-clés et le texte n'ont aucun rapport avec le suj
 - FR-RED-LINKING-MANUAL — dans la rédaction guidée, « Appliquer » une suggestion ne fait rien ; dans l'éditeur, l'ancre n'est cherchée que dans la zone active : ailleurs, « Appliquer » ne fait rien, sans message, et la suggestion reste affichée.
 - FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ».
 - FR-EXT-DATAFORSEO — les mesures demandées en groupe et la fiche SEO du brief taisent un échec du fournisseur, y compris un refus du plafond de dépense : les valeurs restent vides, sans message ; un « Rafraîchir » qui échoue tout à fait remplace toute la page de rédaction par le bloc d'erreur, au lieu du seul panneau « SERP Data ».
-- NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine.
+- NFR-COST-CACHE-FIRST — un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine.
 - FR-EXT-AI-FALLBACK — la bascule n'est écrite que dans le journal du serveur ; la pile d'activité montre seulement le modèle qui a répondu ; un fournisseur de secours sans clé configurée arrête la chaîne au lieu de passer au suivant, et l'utilisateur lit un message technique en anglais à la place de la vraie cause.

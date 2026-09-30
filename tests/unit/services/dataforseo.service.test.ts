@@ -34,6 +34,11 @@ vi.stubGlobal('fetch', mockFetch)
 // Set env vars before importing service
 vi.stubEnv('DATAFORSEO_LOGIN', 'test_login')
 vi.stubEnv('DATAFORSEO_PASSWORD', 'test_password')
+// Ce fichier teste la production : le mode effectif doit être « réel ». La CI
+// pose AI_PROVIDER=mock, qui active aussi le bac à sable (FR-INFRA-RUNTIME-MODE,
+// une seule autorité) : on fixe donc une IA réelle.
+vi.stubEnv('AI_PROVIDER', 'claude')
+vi.stubEnv('DATAFORSEO_SANDBOX', '')
 
 import {
   getAuthHeader,

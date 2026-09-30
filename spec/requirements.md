@@ -444,10 +444,12 @@ L'outil doit proposer, en bas de chaque onglet, de passer à l'onglet suivant, s
 - Un lien « ← Retour au cocon » est toujours présent.
 
 ### FR-MOT-NO-AUTO-ACTION — Pas d'action coûteuse au changement d'onglet
-**Statut :** non tenue (ouvrir l'onglet Lexique, Capitaine verrouillé, peut lancer seul l'analyse IA du lexique quand aucune recommandation n'est enregistrée ; ouvrir le Capitaine d'un article sans candidat étudie seul le premier mot-clé suggéré, avec de possibles appels DataForSEO et Google ; ouvrir le Capitaine, ou choisir un article dont l'onglet Capitaine a déjà été ouvert, redemande et fait payer l'avis expert IA de chaque candidat, même onglet caché)
+**Statut :** active
 L'outil ne doit déclencher aucune action payante (appel d'IA, requête DataForSEO, lecture de pages web) au seul fait d'ouvrir un onglet ou de choisir un article, à une exception près, déclarée.
 - Ouvrir un onglet ne fait que relire ce qui est déjà enregistré.
 - Chaque action payante est derrière un bouton ou un geste explicite.
+- Choisir un article propose son mot-clé dans le champ du Capitaine sans l'étudier : l'étude part sur « Analyser » (décision du 2026-09-29).
+- Un avis ou une analyse de l'IA déjà obtenu est réaffiché tel quel ; celui qui manque attend un clic. Ouvrir le Lexique n'extrait rien et ne lance pas son analyse IA.
 - Exception : ouvrir l'onglet Capitaine lance le jugement par l'IA des questions « Autres questions posées » (PAA, les questions que Google affiche sous les résultats), une fois par article et par session.
 
 ### FR-MOT-RAW-KPIS — Métriques marché brutes, jamais « 0 » par défaut
@@ -457,7 +459,7 @@ L'outil doit afficher les métriques de marché (volume, difficulté, coût par 
 - Une valeur présente s'affiche sans transformation cachée.
 
 ### FR-MOT-CACHE-CASCADE — Réutiliser avant de payer
-**Statut :** non tenue (les appels d'IA de Discovery — génération, filtre de pertinence, analyse — ne consultent aucun cache ; seul le rechargement d'une découverte sauvegardée évite de les refaire ; un mot-clé sans volume, difficulté ou coût par clic est remesuré, et repayé, à chaque étude ; le scan Radar rachète volume, difficulté, coût par clic et intention de chaque mot-clé à chaque scan)
+**Statut :** non tenue (les appels d'IA de Discovery — génération, filtre de pertinence, analyse — ne consultent aucun cache ; seul le rechargement d'une découverte sauvegardée évite de les refaire ; un mot-clé sans volume, difficulté ou coût par clic est remesuré, et repayé, à chaque étude)
 L'outil doit consulter ses propres données avant tout appel externe payant, et ne payer qu'en cas d'absence.
 - Une mesure de marché récente d'un mot-clé, faite pour un article, sert aussi aux autres articles.
 - Les réponses brutes des services externes sont gardées pour une durée limitée et resservies pendant cette durée.
@@ -617,8 +619,9 @@ L'outil doit faire juger par l'IA si chaque candidat a sa place dans un article 
 - Une case « Filtre de pertinence », cochée par défaut, masque ou réaffiche le hors-sujet sans nouveau calcul.
 - Pendant le calcul, une barre indique « Filtrage p/2 · n/total » ; ensuite, « X pertinents / N total » et « X hors-sujet masqués ».
 - Les candidats arrivés plus tard sont jugés à leur tour, sans rejuger les autres.
+- Tous les jugements de la découverte sont gardés, quel que soit le nombre de candidats : un candidat jugé n'est ni oublié, ni rejugé (donc jamais repayé), et son verdict survit à la sauvegarde de la découverte.
 - Une douleur d'au moins 10 caractères devient un critère éliminatoire.
-- Si plus de 90 % d'au moins 20 candidats passent, un avertissement signale un filtrage probablement en échec.
+- Si plus de 90 % d'au moins 20 candidats passent, un avertissement signale un filtrage probablement en échec ; pas en mode simulé, où le filtre simulé garde presque tout.
 
 ### FR-DIS-AI-ANALYSIS — Sélection stratégique proposée par l'IA
 **Statut :** active
@@ -644,7 +647,7 @@ L'outil doit envoyer les candidats cochés (sections et analyse IA confondues, s
 - Une barre fixe apparaît dès qu'un candidat est coché ; elle indique le nombre de cochés et porte le bouton « Envoyer au Radar → ».
 - La liste est enregistrée sur l'article avant l'ouverture du Radar ; en cas d'échec, l'utilisateur reste sur Discovery avec un message.
 - Tous les candidats comptés sont envoyés.
-- Envoyer deux fois la même liste ne crée pas de doublon.
+- Envoyer deux fois la même liste ne crée pas de doublon ; un clic n'écrit la liste qu'une fois.
 
 ### FR-DIS-CHECK — Étape « Discovery faite » posée par l'envoi
 **Statut :** active
@@ -853,6 +856,7 @@ L'utilisateur doit pouvoir taper un mot-clé pour l'étudier au Capitaine.
 - Une saisie vide est refusée.
 - Un mot-clé nouveau rejoint la liste et son étude (scan) démarre aussitôt.
 - Un mot-clé déjà présent (casse ignorée) est ré-étudié à sa place, sans doublon.
+- Une seule étude à la fois par mot-clé : un double clic sur « Analyser » n'en envoie qu'une.
 
 ### FR-CAP-SCAN — Étudier les indicateurs marché d'un mot-clé
 **Statut :** non tenue (dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention ; un mot-clé dont le volume, la difficulté ou le CPC est absent est remesuré, et repayé, à chaque étude ; un échec d'étude s'affiche en anglais technique, sans cause (« Erreur : Keyword validation failed »))
@@ -885,21 +889,23 @@ Au Capitaine, chaque carte doit afficher son Score Pertinence ; le Score Marché
 - L'intention de la SERP (la page de résultats Google) entre dans le Score Marché dès l'étude, mesurée ou relue en base.
 
 ### FR-CAP-AI-PANEL — Avis de l'IA sur un candidat
-**Statut :** non tenue (l'avis n'est jamais enregistré et il est redemandé pour chaque candidat à chaque réouverture ; la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur)
+**Statut :** non tenue (la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur)
 Pour chaque candidat étudié, l'outil doit afficher un avis d'expert rédigé par l'IA.
 - L'avis compte trois parties : potentiel éditorial, opportunités et risques, recommandation.
 - Le texte s'affiche au fil de la génération.
 - L'avis tient compte du mot-clé, du niveau, du point de douleur, des deux scores et de la stratégie du cocon.
 - Le bouton de régénération demande confirmation (« Cela consommera un appel Claude »).
-- Un avis déjà obtenu est réaffiché à la réouverture de l'article, sans nouvel appel.
+- L'avis est demandé d'office à la fin d'une étude que l'utilisateur a lancée (saisie, envoi depuis le Radar, recalcul), une seule fois ; jamais au choix d'un article ni à la réouverture. Un avis en échec n'est pas redemandé seul : « Régénérer » relance.
+- L'avis obtenu est enregistré avec le candidat, et réaffiché à la réouverture de l'article, sans nouvel appel.
 
 ### FR-CAP-ROOTS — Racines d'un mot-clé long
-**Statut :** non tenue (à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte)
+**Statut :** non tenue (à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte)
 L'outil doit décomposer un mot-clé d'au moins 3 mots en racines, par troncature depuis la fin, et permettre de les comparer.
 - Jusqu'à 5 racines, de la plus longue à la plus courte ; une racine garde au moins 2 mots significatifs (hors mots-outils).
 - Quand le volume du mot-clé n'est pas au vert, ses racines sont étudiées d'office.
 - Le panneau de détail liste les racines, avec leur Score Pertinence et leur moyenne ; un clic sur une racine l'affiche à la place du mot-clé.
 - Cliquer sur les mots d'une carte (au-delà des 2 premiers mots significatifs) étudie la combinaison choisie.
+- Une racine relue sans ses mesures est étudiée quand on la choisit (mot de la carte ou colonne de détail) ; une étude qui échoue l'annonce (« Impossible de valider "…" ») et la carte garde son mot-clé.
 
 ### FR-CAP-LOCK-RADIO — Un seul Capitaine par article
 **Statut :** active
@@ -934,7 +940,7 @@ Sans point de douleur d'au moins 10 caractères, l'outil doit continuer de fonct
 - Le Score Marché et le verdict restent calculés.
 
 ### FR-CAP-PERSIST — Les candidats étudiés sont enregistrés par article
-**Statut :** non tenue (la provenance radar / longue traîne / saisie n'est pas enregistrée ; un écran dont les mots-clés ne sont pas encore chargés peut envoyer un Capitaine vide et des listes vides, qui effacent les décisions enregistrées (défaut latent) ; déverrouiller en archivant les lieutenants envoie deux enregistrements concurrents)
+**Statut :** non tenue (la provenance radar / longue traîne / saisie n'est pas enregistrée ; un écran dont les mots-clés ne sont pas encore chargés peut envoyer un Capitaine vide et des listes vides, qui effacent les décisions enregistrées (défaut latent))
 Chaque candidat étudié pour un article doit être enregistré, avec ses questions PAA, et réaffiché à la réouverture.
 - Un candidat est enregistré dès son étude.
 - La réouverture réaffiche tous les candidats, leurs indicateurs et le Capitaine verrouillé.
@@ -1231,11 +1237,12 @@ L'utilisateur doit retenir les termes qu'il veut dans son article en cochant une
 - Recharger la page retrouve exactement les choix.
 
 ### FR-LEX-AI-PANEL — Analyse du lexique par l'IA
-**Statut :** non tenue (l'analyse part d'elle-même après chaque extraction, y compris l'extraction lancée seule à l'ouverture de l'onglet : un appel à l'IA part sans clic. Et le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles ; le résumé et les termes manquants enregistrés ne s'affichent plus après un rechargement, et un changement d'onglet montre ceux de la dernière analyse, faite sur un autre mot-clé)
+**Statut :** non tenue (le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles ; le résumé et les termes manquants enregistrés ne s'affichent plus après un rechargement, et un changement d'onglet montre ceux de la dernière analyse, faite sur un autre mot-clé)
 L'IA doit analyser les termes extraits au regard de la douleur de l'article et de la stratégie du cocon, et dire lesquels recommander, lesquels écarter et quels termes manquent. Elle ne part que sur un clic.
 - Chaque terme analysé porte un badge « IA recommandé » ou « IA optionnel », avec la raison en info-bulle ; un terme sans décision lisible n'a pas de badge.
 - Un résumé et au plus 5 « Termes manquants » s'affichent au-dessus des listes ; le panneau « Analyse IA Lexique » compte les termes analysés, recommandés et écartés.
 - L'utilisateur peut relancer l'analyse (« Analyser avec l'IA », « Régénérer l'analyse », « Relancer l'analyse IA » après une erreur).
+- Ni une extraction, ni l'ouverture de l'onglet, ni un changement d'onglet d'exploration ne lancent l'analyse ; un clic en lance une seule.
 - L'analyse ne coche aucun terme.
 
 ### FR-LEX-MULTI-KEYWORD — Tester le lexique d'un autre mot-clé
@@ -1645,7 +1652,7 @@ L'outil doit refuser, avant de l'émettre, tout appel DataForSEO payant qui fera
 ### FR-EXT-DATAFORSEO-SANDBOX — Bac à sable DataForSEO
 **Statut :** non tenue (les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis)
 L'outil doit pouvoir interroger le bac à sable gratuit de DataForSEO (données factices de même forme) au lieu de la production payante.
-- Le bac à sable n'est jamais déduit de l'environnement : il s'active explicitement, par la configuration ou par le mode simulé.
+- Le bac à sable n'est jamais deviné d'après le type d'environnement (développement ou production) : il s'active explicitement, par la configuration (bac à sable demandé, ou IA réglée en simulation) ou par le mode « MOCK ». Il suit toujours le mode affiché par le bouton.
 - La pile d'activité indique « SANDBOX » ou « PROD » à côté de la dépense DataForSEO.
 - Les mesures demandées en groupe sont rattachées, dans l'ordre, aux mots-clés demandés, pour que chacun reçoive une mesure.
 - Le bac à sable exige lui aussi de vrais identifiants DataForSEO.
@@ -1810,11 +1817,12 @@ Le cache court ne doit pas grossir sans limite : les réponses expirées sont su
 - La purge ne bloque aucune action de l'utilisateur ; son échec est journalisé sans effet visible.
 
 ### FR-INFRA-KEYWORD-METRICS — Mémoire permanente des mesures d'un mot-clé
-**Statut :** non tenue (tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie ; le scan Radar ne relit ni n'enregistre les mesures gardées, et chaque test au Capitaine relance ce scan pour sa carte ; un « Rafraîchir » raté date quand même la mesure du jour, et pour un mot-clé sans volume connu la fiche vide remplace la réponse gardée)
+**Statut :** non tenue (tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie ; un « Rafraîchir » raté date quand même la mesure du jour, et pour un mot-clé sans volume connu la fiche vide remplace la réponse gardée)
 Les mesures de marché d'un mot-clé (volume, difficulté, CPC, concurrence, intention, suggestions Google, questions PAA) doivent être gardées de façon permanente et partagées entre tous les articles et cocons. Au-delà de 7 jours, elles sont considérées comme anciennes et remesurées au prochain besoin.
 - Un mot-clé mesuré il y a moins de 7 jours n'est pas remesuré.
 - Une nouvelle mesure partielle n'efface jamais une valeur connue par « absent ».
 - Un mot-clé mesuré depuis le cocon A est immédiatement disponible dans le cocon B.
+- Le Radar et le Capitaine partagent les mêmes mesures : un mot-clé scanné au Radar n'est pas remesuré à l'étude du Capitaine, et inversement.
 
 ### FR-INFRA-PAA-CACHE — Mémoire des questions « People Also Ask »
 **Statut :** active
@@ -1944,12 +1952,15 @@ Des règles d'architecture doivent interdire les imports qui dégraderaient la s
 - Un cycle d'import est une erreur.
 
 ### FR-INFRA-RUNTIME-MODE — Bascule globale « simulé / réel »
-**Statut :** non tenue (la resynchronisation n'a lieu qu'au chargement de la page : après un redémarrage du serveur en cours de session, le badge garde « MOCK » alors que le serveur est revenu à sa configuration ; le mode automatique, et son option « --relink » qui repasse le serveur en simulé, désynchronisent aussi le bouton de l'application)
+**Statut :** active
 Un bouton de la barre de navigation doit basculer toutes les sources coûteuses en simulation (IA : réponses simulées ; DataForSEO : bac à sable gratuit), et revenir au réel en un clic. Le choix survit au rechargement de la page.
 - En « MOCK », aucun appel IA ni DataForSEO n'est facturé.
-- Le badge affiché et le mode appliqué par le serveur sont toujours les mêmes.
+- Le mode affiché par le bouton est la seule autorité : l'IA et DataForSEO suivent toujours ce mode. Sans choix de l'utilisateur, c'est celui de la configuration du serveur, « MOCK » dès que l'IA simulée ou le bac à sable y est demandé.
+- Le badge affiché et le mode appliqué par le serveur sont toujours les mêmes, hors les quelques secondes qui suivent un redémarrage du serveur, que la resynchronisation rattrape.
+- Le bouton se resynchronise sans rechargement de la page : au retour sur l'onglet, et au plus toutes les 15 secondes.
 - Après un rechargement de la page, le mode choisi est conservé.
 - Après un redémarrage du serveur, l'outil lui renvoie le dernier choix de l'utilisateur sans intervention.
+- Un mode posé ailleurs (le mode automatique, un autre onglet) est adopté par le bouton, jamais renversé.
 
 ### FR-INFRA-SCRAPE-CORPUS-NEUTRE — Un seul relevé des pages concurrentes
 **Statut :** active
@@ -1983,9 +1994,9 @@ Au démarrage, le serveur doit tester la connexion à la base et dire clairement
 - Service arrêté, mot de passe refusé ou base absente : le journal donne une piste de correction adaptée.
 
 ### FR-INFRA-COST-LOG-STORE — Pile d'activité de la session
-**Statut :** non tenue (seules les lectures et écritures des mots-clés d'article et des explorations Capitaine / Lieutenants remontent dans la pile ; les autres opérations en base n'y apparaissent pas. Et le coût de la génération des longues traînes et du jugement des questions PAA ne remonte pas à l'écran ; l'analyse IA de Discovery s'inscrit deux fois dans la pile, ce qui double son coût affiché)
+**Statut :** non tenue (seules les lectures et écritures des mots-clés d'article et des explorations Capitaine / Lieutenants remontent dans la pile ; les autres opérations en base n'y apparaissent pas. Et le coût de la génération des longues traînes et du jugement des questions PAA ne remonte pas à l'écran)
 Une pile d'activité, visible dans l'interface, doit accumuler les appels IA (modèle, jetons, coût estimé), les opérations en base (type, table, lignes, durée) et les messages d'erreur connus ; l'utilisateur voit le coût total de sa session et peut vider la pile.
-- Chaque appel IA, diffusé ou non, ajoute sa ligne de coût.
+- Chaque appel IA, diffusé ou non, ajoute sa ligne de coût, une seule : un appel n'est jamais compté deux fois.
 - Chaque écriture significative en base ajoute sa ligne.
 - Le coût cumulé est affiché ; la pile se vide d'un clic et se vide au rechargement de la page.
 
@@ -2009,7 +2020,7 @@ L'outil doit disposer d'un référentiel de lieux (régions et autres noms de la
 - Un lieu rattaché à une région n'est proposé que si la zone du client nomme cette région ; les lieux sans région forment le référentiel par défaut, proposé seulement si la zone nomme l'une de ses régions.
 
 ### FR-INFRA-LIEUTENANT-EXPLORATIONS — Les propositions de lieutenants sont gardées par article
-**Statut :** non tenue (« Tout réinitialiser » n'archive les lieutenants qu'à l'écran : l'archivage enregistré n'est jamais demandé. Après un rechargement, ils reviennent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide, et la porte refuse l'étape. Et un lieutenant ajouté depuis le panneau d'aide n'est enregistré qu'une fois coché ; le message annonce toujours « 0 lieutenant(s) archivé(s) »)
+**Statut :** non tenue (« Tout réinitialiser » n'archive les lieutenants qu'à l'écran : l'archivage enregistré n'est jamais demandé. Après un rechargement, ils reviennent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide, et la porte refuse l'étape. Et un lieutenant ajouté depuis le panneau d'aide n'est enregistré qu'une fois coché)
 Toutes les propositions de lieutenants d'un article (de l'IA ou ajoutées à la main) doivent être gardées avec leur contexte, leur niveau de titre suggéré, leur score, leurs indicateurs du moment et leur statut.
 - Une proposition est enregistrée dès qu'elle est générée ou ajoutée.
 - À la réouverture, la liste est triée par score décroissant, les scores absents en bas.
@@ -2135,7 +2146,7 @@ Le score SEO de l'article en cours de rédaction doit se recalculer tout seul, s
 Ce domaine couvre les garde-fous de dépense : cache avant tout appel payant, persistance durable, plafond de dépense DataForSEO, mode simulé gratuit.
 
 ### NFR-COST-CACHE-FIRST — Aucun appel payant si la réponse est déjà en cache
-**Statut :** non tenue (le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine)
+**Statut :** non tenue (un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine)
 Avant tout appel à un service payant, l'outil doit consulter ses données locales et ne pas appeler si une donnée fraîche existe.
 - Les mesures de mots-clés, les résultats Google et les questions « People Also Ask » (PAA : les questions associées affichées par Google) sont relus en base avant tout appel.
 - Il n'existe pas de « forcer l'appel » implicite : rafraîchir passe par un geste explicite (« Rafraîchir ») ou par l'expiration.
@@ -2172,14 +2183,15 @@ Avant chaque appel DataForSEO, l'outil doit estimer son coût et refuser l'appel
 - Les appels redeviennent possibles dès que la fenêtre glisse, sans intervention.
 
 ### NFR-COST-AI-MOCK — Mode simulé gratuit
-**Statut :** non tenue (après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK »)
+**Statut :** active
 L'outil doit offrir un mode simulé où ni l'IA ni DataForSEO ne coûtent rien, activable par configuration ou par un bouton toujours visible.
+- Une configuration qui simule l'IA, ou qui demande le bac à sable DataForSEO, met tout en simulé : le bouton affiche « MOCK » et rien n'est facturé.
 - En mode simulé, les réponses d'IA viennent de réponses préparées, identiques d'un appel à l'autre, sans réseau.
 - Chaque réponse préparée reconnaît l'appel qu'elle sert d'après sa consigne réelle, même quand le texte saisi parle d'autre chose : le conseil IA du Capitaine reçoit un avis rédigé sur son mot-clé, jamais la réponse par défaut.
 - Chaque réponse préparée a la forme que l'écran attend, et part de la demande (mot-clé, niveau, termes, texte saisi) : aucun panneau ne reste vide ni n'affiche un texte hors sujet à cause de la simulation.
 - En mode simulé, DataForSEO est interrogé en bac à sable.
 - Le bouton de la barre de navigation affiche le mode actif et bascule d'un clic.
-- Le choix fait par le bouton survit à un redémarrage du serveur.
+- Le choix fait par le bouton survit à un redémarrage du serveur : la page le lui renvoie, sans rechargement, dans les 15 secondes.
 
 ---
 
@@ -2475,6 +2487,7 @@ Ce domaine couvre ce que l'utilisateur règle sans toucher au code : fournisseur
 **Statut :** active
 Le fournisseur d'IA par défaut (Claude, Gemini, OpenRouter ou simulé) doit se choisir par configuration ; Claude s'applique si rien n'est réglé.
 - Le bouton de mode de la barre de navigation l'emporte : « simulé » force la simulation, « réel » force Claude.
+- Un bac à sable DataForSEO demandé par configuration met aussi l'IA en simulation : le mode simulé couvre toujours les deux (FR-INFRA-RUNTIME-MODE).
 
 ### NFR-CFG-AI-FALLBACK-OPT-OUT — Désactiver la bascule entre fournisseurs
 **Statut :** active
@@ -2495,6 +2508,7 @@ Le modèle Gemini doit se régler par configuration, avec un modèle Flash par d
 **Statut :** active
 DataForSEO ne doit passer en bac à sable que sur demande explicite ; sans réglage, les appels vont en production.
 - Le bouton de mode l'emporte sur la configuration : « simulé » force le bac à sable, « réel » force la production.
+- Une IA réglée en simulation vaut demande explicite : le mode simulé couvre toujours les deux (FR-INFRA-RUNTIME-MODE).
 - Au premier appel, le serveur journalise s'il est en bac à sable ou en production facturée.
 
 ### NFR-CFG-DATAFORSEO-BUDGET — Plafond et fenêtre réglables

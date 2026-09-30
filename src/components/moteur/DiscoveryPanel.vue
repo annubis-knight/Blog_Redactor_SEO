@@ -2,6 +2,7 @@
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { useDiscoveryPanel } from '@/composables/keyword/useDiscoveryPanel'
 import { useCaptainTriggerStore } from '@/stores/ui/captain-trigger.store'
+import { useRuntimeModeStore } from '@/stores/ui/runtime-mode.store'
 import AiPanel from '@/components/moteur/ai-panel/AiPanel.vue'
 import DiscoveryWordGroupsSidebar from '@/components/moteur/discovery/DiscoveryWordGroupsSidebar.vue'
 import DiscoveryAnalysisResults from '@/components/moteur/discovery/DiscoveryAnalysisResults.vue'
@@ -174,6 +175,14 @@ function handleToggleSource(source: DiscoverySource) {
 }
 
 const captainTrigger = useCaptainTriggerStore()
+
+// En MOCK, le filtre simulé garde presque tout : l'avertissement « filtrage
+// en échec, vérifiez votre clé API Claude » serait faux (recette 2026-09-30,
+// UI-5). Il ne s'affiche qu'en réel, où il signale une vraie panne.
+const runtimeMode = useRuntimeModeStore()
+const showFilteringSuspect = computed(() =>
+  filteringSuspect.value && !semanticLoading.value && runtimeMode.effective !== 'mock',
+)
 function handleKeywordClick(keyword: string) {
   const alreadySelected = isSelected(keyword)
   toggleSelect(keyword)
@@ -407,7 +416,7 @@ const aiCtaLabel = computed(() => {
       />
 
       <!-- Filtering suspect warning -->
-      <div v-if="filteringSuspect && !semanticLoading" class="filtering-suspect-warning">
+      <div v-if="showFilteringSuspect" class="filtering-suspect-warning">
         <strong>Attention :</strong> le filtrage de pertinence semble ne pas avoir fonctionné
         ({{ relevantCount }}/{{ uniqueKeywordCount }} mots-clés conservés).
         Les appels API de scoring ont probablement échoué. Vérifiez votre clé API Claude ou relancez la découverte.

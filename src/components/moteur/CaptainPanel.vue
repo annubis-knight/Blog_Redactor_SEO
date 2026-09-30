@@ -6,22 +6,26 @@
  *             useArticleProgressStore.getProgress(id).completedChecks (reconciliation au mount).
  * WRITES TO: articleKeywordsStore.lockCaptain / unlockCaptain / setRootKeywords
  *            + saveKeywords(id) (PUT /articles/:id/keywords).
- *            articleKeywordsStore.saveCaptainExplorationEntry / saveCaptainExplorationAiPanel
- *            (POST /articles/:id/captain-explorations).
+ *            articleKeywordsStore.saveCaptainExplorationAiPanel
+ *            (PATCH /articles/:id/captain-explorations/ai-panel) à la fin de chaque
+ *            avis expert IA : l'avis est relu à la réouverture, jamais redemandé.
+ *            Les études (POST /keywords/:kw/scan, via useExploredKeywords) ne partent
+ *            que sur un geste de l'utilisateur, jamais au choix d'un article.
  *            Emits 'check-completed' / 'check-removed' (MOTEUR_CAPITAINE_LOCKED).
  * CONSUMERS: MoteurView (parent), LieutenantsPanel (props isCaptaineLocked, captainKeyword),
  *            LexiquePanel (idem), TabCachePanel via tab-cache-entries.ts
  *            (isCaptaineLocked && captainKeyword → dbCount=1).
  * RELATED FR: FR-CAP-LOCK, FR-CAP-LOCK-RADIO, FR-CAP-LOCK-ORIGINAL-ONLY, FR-CAP-LOCK-NO-DUPLICATE,
  *             FR-CAP-PERSIST, FR-MOT-CHECK-RECONCILIATION (cleanup check legacy au mount),
- *             FR-MOT-CACHE-PANEL-COUNT (capitaine verrouille → dbCount=1).
+ *             FR-MOT-CACHE-PANEL-COUNT (capitaine verrouille → dbCount=1),
+ *             FR-CAP-AI-PANEL, FR-MOT-NO-AUTO-ACTION, FR-CAP-ROOTS.
  */
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { marked } from 'marked'
 import { useCapitaineScan } from '@/composables/keyword/useCapitaineScan'
 import { useCompositionCheck } from '@/composables/seo/useCompositionCheck'
-import { useExploredKeywords } from '@/composables/keyword/useExploredKeywords'
+import { useExploredKeywords, isVariantMeasured } from '@/composables/keyword/useExploredKeywords'
 import type { ExploredKeywordEntry } from '@/composables/keyword/useExploredKeywords'
 import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
 import { useStreaming } from '@/composables/editor/useStreaming'
@@ -185,6 +189,21 @@ const carousel = useExploredKeywords()
 const carouselEntries = computed(() => carousel.entries.value)
 const lockedKeyword = ref<string | null>(null)
 
+/**
+ * Mots-clés dont l'utilisateur vient de demander l'étude, dans ce panneau :
+ * saisie (« Analyser » / Entrée), recalcul, envoi depuis le Radar. Eux seuls
+ * reçoivent l'avis expert IA d'office, une fois l'étude finie (recette CAP-7).
+ * Choisir un article, rouvrir le panneau ou relire la base n'est pas un geste
+ * d'étude : l'avis enregistré est réaffiché, rien de payant ne part
+ * (FR-MOT-NO-AUTO-ACTION, FR-CAP-AI-PANEL ; recette 2026-09-30, MOT-4).
+ * Déclaré avant les watchers `immediate` qui l'alimentent au montage.
+ */
+const adviceRequested = new Set<string>()
+const adviceKey = (keyword: string) => keyword.trim().toLowerCase()
+function requestAdviceAfterStudy(keyword: string) {
+  adviceRequested.add(adviceKey(keyword))
+}
+
 // --- Debug log: state on mount ---
 watch(
   () => articleKeywordsStore.keywords,
@@ -253,6 +272,7 @@ function handleValidate() {
   const kw = keywordInput.value.trim()
   if (!kw) return
   log.info('CaptainPanel — validation', { keyword: kw, level: articleLevel.value })
+  requestAdviceAfterStudy(kw)
   carousel.addEntry(kw, articleLevel.value, props.selectedArticle?.title, props.selectedArticle?.id, props.selectedArticle?.painPoint ?? undefined)
 }
 
@@ -481,10 +501,14 @@ function handleUnlockKeep() {
 
 function handleUnlockArchive() {
   if (!pendingUnlock.value) return
-  log.info('[CaptainPanel] Unlock — archive lieutenants', { count: lockedLieutenantCount.value })
+  // Compté AVANT l'archivage, qui vide la liste : sinon le message disait
+  // « 0 lieutenant(s) archivé(s) » (recette 2026-09-30, INFRA-18).
+  const archivedCount = lockedLieutenantCount.value
+  log.info('[CaptainPanel] Unlock — archive lieutenants', { count: archivedCount })
   articleKeywordsStore.archiveLockedLieutenants()
-  if (props.selectedArticle?.id) articleKeywordsStore.saveKeywords(props.selectedArticle.id)
-  notify.info(`${lockedLieutenantCount.value} lieutenant(s) archivé(s)`)
+  // Une seule écriture : `performUnlock` enregistre le déverrouillage ET
+  // l'archivage (même jeu de décisions), au lieu de deux PUT concurrents.
+  notify.info(`${archivedCount} lieutenant(s) archivé(s)`)
   performUnlock(pendingUnlock.value)
 }
 
@@ -587,13 +611,13 @@ watch(
       carouselAiErrors.value = new Map()
       persistedValidations.clear()
       persistedRoots.clear()
-      persistedAiPanels.clear()
+      adviceRequested.clear()
     }
     if (!id || id === lastAutoValidatedId) return
     const article = props.selectedArticle
     if (!article) return
-    // Skip auto-validation if validation history exists (will be restored by history watcher)
-    // Guard: only trust history if the store data belongs to this article (prevents race condition)
+    // Un historique existe : le watcher d'historique le restaure (sans rien relancer).
+    // Garde : ne croire l'historique que s'il appartient bien à cet article (course au chargement).
     const storeMatchesArticle = articleKeywordsStore.keywords?.articleId === id
     const existingHistory = storeMatchesArticle
       ? articleKeywordsStore.keywords?.richCaptain?.exploredKeywords
@@ -610,8 +634,10 @@ watch(
     const kw = (suggestions && suggestions.length > 0) ? suggestions[0] : article.keyword
     if (!kw) return
     lastAutoValidatedId = id
+    // Décision du 2026-09-29 (FR-MOT-NO-AUTO-ACTION, recette CAP-1) : le mot-clé
+    // proposé attend le clic de l'utilisateur dans le champ. Choisir un article
+    // n'étudie rien : ni scan (DataForSEO, Google), ni avis IA.
     keywordInput.value = kw
-    carousel.addEntry(kw, articleLevel.value, article.title, article.id, article.painPoint ?? undefined)
     if (isLocked.value) lockedKeyword.value = kw
   },
   { immediate: true },
@@ -631,24 +657,26 @@ function touchAiStreaming() { carouselAiStreaming.value = new Set(carouselAiStre
 function touchAiErrors() { carouselAiErrors.value = new Map(carouselAiErrors.value) }
 
 function launchAiStream(keyword: string, validation: ScanResponse, force = false) {
-
-  // cache and re-stream from Claude. We also drop the persistedAiPanels guard
-  // so the new markdown is re-saved.
+  // `force` (« Régénérer », geste explicite) vide le cache et redemande l'avis ;
+  // le nouveau texte remplace l'ancien en base à la fin du flux.
   if (!force && (carouselAiCache.value.has(keyword) || carouselAiStreaming.value.has(keyword))) return
   if (force) {
     carouselAiCache.value.delete(keyword)
-    persistedAiPanels.delete(keyword)
   }
 
   const controller = new AbortController()
   carouselAiAbortMap.set(keyword, controller)
   carouselAiStreaming.value.add(keyword)
   touchAiStreaming()
+  // Une erreur précédente cède la place au nouvel essai.
+  if (carouselAiErrors.value.delete(keyword)) touchAiErrors()
 
+  // L'article pour lequel l'avis est demandé : c'est à lui qu'il sera enregistré.
+  const articleId = props.selectedArticle?.id
   const path = `/keywords/${encodeURIComponent(validation.keyword)}/ai-panel`
   const body = {
     level: validation.articleLevel,
-    articleId: props.selectedArticle?.id,
+    articleId,
     marketScore: validation.marketScore,
     relevanceScore: validation.relevanceScore,
     // Champs legacy conservés pour rétro-compat — cf. S1.
@@ -676,6 +704,17 @@ function launchAiStream(keyword: string, validation: ScanResponse, force = false
       if (out.errorMessage) {
         carouselAiErrors.value.set(keyword, out.errorMessage)
         touchAiErrors()
+        return
+      }
+      // L'avis obtenu est enregistré sur l'exploration du candidat : il sera
+      // réaffiché à la réouverture, sans nouvel appel (FR-CAP-AI-PANEL ;
+      // recette 2026-09-30, MOT-4 : `saveCaptainExplorationAiPanel` n'était
+      // jamais appelé, l'avis était repayé à chaque sélection de l'article).
+      if (articleId && accumulated.trim()) {
+        void articleKeywordsStore.saveCaptainExplorationAiPanel(articleId, validation.keyword, accumulated)
+        if (articleKeywordsStore.keywords?.articleId === articleId) {
+          articleKeywordsStore.updateCaptainValidationAiPanel(validation.keyword, accumulated)
+        }
       }
     })
     .finally(() => {
@@ -731,6 +770,9 @@ watch(
       abortAllAiStreams()
       carouselAiCache.value = new Map()
       carouselAiErrors.value = new Map()
+      // « Envoyer au Capitaine » est une demande d'étude : chaque carte reçue
+      // aura son avis à la fin de son étude (recette CAP-7).
+      for (const card of cards) requestAdviceAfterStudy(card.keyword)
       carousel.loadCards(cards, articleLevel.value, props.selectedArticle?.title, props.selectedArticle?.id, props.selectedArticle?.painPoint ?? undefined)
     }
   },
@@ -740,7 +782,6 @@ watch(
 // Track which entries have already been persisted to avoid duplicate saves
 const persistedValidations = new Set<string>()
 const persistedRoots = new Set<string>()
-const persistedAiPanels = new Set<string>()
 
 // Pre-fill sets from existing persisted history AND restore carousel
 // Note: deep: true indispensable — mergeCaptainExploredKeywords fait un push qui mute le tableau en place.
@@ -755,7 +796,6 @@ watch(
 
     for (const entry of history) {
       persistedValidations.add(entry.keyword)
-      if (entry.aiPanelMarkdown) persistedAiPanels.add(entry.keyword)
       if (entry.rootKeywords.length > 0) persistedRoots.add(`${entry.keyword}:${entry.rootKeywords.length}`)
     }
 
@@ -797,18 +837,31 @@ const toKpiSummary = (kpis: Pick<KpiResult, 'name' | 'rawValue'>[]) =>
 watch(
   () => carousel.entries.value.map(e => e.validation),
   () => {
-    // Guard: only persist if store data belongs to the currently selected article
     const articleId = props.selectedArticle?.id
-    if (!articleId || articleKeywordsStore.keywords?.articleId !== articleId) return
+    if (!articleId) return
+
+    // Avis expert IA d'office : seulement à la fin d'une étude que l'utilisateur
+    // vient de demander (recette CAP-7), une fois, et jamais après un échec
+    // (« Régénérer » reste le geste pour réessayer). Une entrée relue de la base
+    // n'est pas une étude demandée : son avis enregistré est réaffiché tel quel,
+    // sans appel (FR-CAP-AI-PANEL, FR-MOT-NO-AUTO-ACTION).
+    for (const entry of carousel.entries.value) {
+      if (!entry.validation) continue
+      const kw = entry.card.keyword
+      if (!adviceRequested.has(adviceKey(kw))) continue
+      // Étude encore en cours : l'avis attendra ses résultats frais.
+      if (carousel.isScanning(entry.originalCard.keyword)) continue
+      if (carouselAiCache.value.has(kw) || carouselAiStreaming.value.has(kw) || carouselAiErrors.value.has(kw)) continue
+      adviceRequested.delete(adviceKey(kw))
+      launchAiStream(kw, entry.validation)
+    }
+
+    // Guard: only persist if store data belongs to the currently selected article
+    if (articleKeywordsStore.keywords?.articleId !== articleId) return
 
     for (const entry of carousel.entries.value) {
       if (!entry.validation) continue
       const kw = entry.card.keyword
-
-      // Launch AI stream if not cached/streaming
-      if (!carouselAiCache.value.has(kw) && !carouselAiStreaming.value.has(kw)) {
-        launchAiStream(kw, entry.validation)
-      }
 
       // Persist captain validation entry (once per keyword)
       if (!persistedValidations.has(kw)) {
@@ -861,24 +914,10 @@ watch(
   },
 )
 
-// Watcher 3: fires when AI panel streaming completes for a keyword
-watch(
-  () => [...carouselAiCache.value.keys()].filter(k => !carouselAiStreaming.value.has(k)),
-  (finishedKeys) => {
-    const articleId = props.selectedArticle?.id
-    if (!articleId || articleKeywordsStore.keywords?.articleId !== articleId) return
-    let changed = false
-    for (const kw of finishedKeys) {
-      if (persistedAiPanels.has(kw)) continue
-      const markdown = carouselAiCache.value.get(kw)
-      if (!markdown) continue
-      persistedAiPanels.add(kw)
-      articleKeywordsStore.updateCaptainValidationAiPanel(kw, markdown)
-      changed = true
-    }
-    if (changed) requestSave()
-  },
-)
+// L'avis IA terminé est enregistré par `launchAiStream` lui-même (PATCH
+// `captain-explorations/ai-panel`, pour l'article qui l'a demandé). L'ancien
+// « watcher 3 » ne mettait à jour que la mémoire puis déclenchait un PUT des
+// décisions, qui n'enregistre pas l'avis : l'avis n'était jamais sauvé.
 
 function carouselEffectiveVerdict(entry: ExploredKeywordEntry): VerdictLevel | null {
   return carousel.effectiveVerdict(entry)
@@ -1036,7 +1075,9 @@ function handleWordToggleAt(idx: number, activeIndices: number[]) {
   }
 
   const variant = entry.rootVariants.get(activeKeywordStr)
-  if (variant) {
+  // Une racine relue de la base sans ses mesures est étudiée plus bas
+  // (FR-CAP-ROOTS ; recette 2026-09-30, CAP-20 geste 4).
+  if (variant && isVariantMeasured(variant)) {
     carousel.entries.value[idx] = {
       ...entry,
       card: variant.card,
@@ -1086,6 +1127,7 @@ async function handleRecomputeRelevance(card: { keyword: string }) {
     return
   }
   log.info('[CaptainPanel] Manual recompute relevance', { keyword: card.keyword })
+  requestAdviceAfterStudy(card.keyword)
   await carousel.addEntry(
     card.keyword,
     articleLevel.value,
@@ -1114,6 +1156,22 @@ function switchToVariant(variant: { keyword: string; card: RadarCard; validation
   const entry = carousel.entries.value[idx]
   if (!entry) return
   const variantWords = variant.keyword.trim().split(/\s+/)
+  if (!isVariantMeasured(variant)) {
+    // Racine relue de la base sans ses mesures : un clic l'étudie (geste
+    // explicite), un échec le dit (FR-CAP-ROOTS).
+    const indices = Array.from({ length: variantWords.length }, (_, i) => i)
+    const previousActiveIndices = entry.activeWordIndices
+    carousel.addRootVariantToEntry(
+      idx, variant.keyword, indices, articleLevel.value,
+      props.selectedArticle?.title, props.selectedArticle?.id, props.selectedArticle?.painPoint ?? undefined,
+    ).catch((err) => {
+      log.warn('[CaptainPanel] Root variant validation failed', { variant: variant.keyword, error: (err as Error).message })
+      notify.error(`Impossible de valider "${variant.keyword}"`)
+      const current = carousel.entries.value[idx]
+      if (current) carousel.entries.value[idx] = { ...current, activeWordIndices: previousActiveIndices }
+    })
+    return
+  }
   carousel.entries.value[idx] = {
     ...entry,
     card: variant.card,

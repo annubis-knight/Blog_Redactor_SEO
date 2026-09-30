@@ -183,3 +183,43 @@ describe('useRadarExplorationStore', () => {
     expect(store.articleId).toBeNull()
   })
 })
+
+// FR-DIS-SEND-TO-RADAR — recette 2026-09-30 (01-T7) : « Envoyer au Radar → »
+// envoyait deux fois le même POST (MoteurView puis le watcher du Radar).
+describe('FR-DIS-SEND-TO-RADAR — un envoi identique en cours n’est pas renvoyé', () => {
+  it('deux envois simultanés de la même liste : un seul POST, le même résultat', async () => {
+    mockApi.apiGet.mockResolvedValueOnce(makeEntry(65))
+    let release!: () => void
+    mockApi.apiPost.mockImplementationOnce(() => new Promise(resolve => {
+      release = () => resolve({ entry: makeEntry(65, ['kw1', 'kw2']), added: 2 })
+    }))
+    const store = useRadarExplorationStore()
+    await store.setArticle(65)
+
+    const first = store.addKeywordsBatch([{ keyword: 'kw1' }, { keyword: 'kw2' }])
+    const second = store.addKeywordsBatch([{ keyword: 'KW2 ' }, { keyword: 'kw1', reasoning: 'r' }])
+    release()
+    expect(await first).toBe(2)
+    expect(await second).toBe(2)
+    expect(mockApi.apiPost).toHaveBeenCalledTimes(1)
+  })
+
+  it('un nouvel envoi après la réponse repart (geste de l’utilisateur)', async () => {
+    mockApi.apiGet.mockResolvedValueOnce(makeEntry(66))
+    mockApi.apiPost.mockResolvedValue({ entry: makeEntry(66, ['kw1']), added: 1 })
+    const store = useRadarExplorationStore()
+    await store.setArticle(66)
+    await store.addKeywordsBatch([{ keyword: 'kw1' }])
+    await store.addKeywordsBatch([{ keyword: 'kw1' }])
+    expect(mockApi.apiPost).toHaveBeenCalledTimes(2)
+  })
+
+  it('une autre liste n’attend pas la première', async () => {
+    mockApi.apiGet.mockResolvedValueOnce(makeEntry(67))
+    mockApi.apiPost.mockResolvedValue({ entry: makeEntry(67, ['kw1', 'kw3']), added: 1 })
+    const store = useRadarExplorationStore()
+    await store.setArticle(67)
+    await Promise.all([store.addKeywordsBatch([{ keyword: 'kw1' }]), store.addKeywordsBatch([{ keyword: 'kw3' }])])
+    expect(mockApi.apiPost).toHaveBeenCalledTimes(2)
+  })
+})

@@ -12,6 +12,14 @@ export interface ApiOptions<T = unknown> {
    * comme une erreur réseau : le chemin d'erreur existant de l'écran s'applique.
    */
   contract?: DisplayContract<T>
+  /**
+   * Libellé de la ligne « Coûts API » pour le coût de cette réponse, quand
+   * celui déduit de l'adresse ne dit pas la bonne action (une même route sert
+   * la génération Discovery et la courte-traîne). Le coût est inscrit UNE
+   * fois, ici : l'appelant ne l'ajoute pas lui-même (recette 2026-09-30 :
+   * chaque génération IA de Discovery était comptée deux fois).
+   */
+  usageLabel?: string
 }
 
 /** Temps « mise en format » côté client : sans contrat, la réponse passe telle quelle. */
@@ -26,7 +34,7 @@ function conform<T>(data: unknown, options?: ApiOptions<T>): T {
  *
  * Les routes SSE passent par useStreaming qui fait la même chose via le sentinel.
  */
-function pushUsageIfPresent(path: string, data: unknown): void {
+function pushUsageIfPresent(path: string, data: unknown, label?: string): void {
   if (!data || typeof data !== 'object') return
   const maybeUsage = (data as { usage?: unknown }).usage
   if (!maybeUsage || typeof maybeUsage !== 'object') return
@@ -35,7 +43,7 @@ function pushUsageIfPresent(path: string, data: unknown): void {
   if (typeof usage.model !== 'string' || typeof usage.inputTokens !== 'number') return
   try {
     const store = useCostLogStore()
-    store.addEntry(labelFromUrl(path), usage)
+    store.addEntry(label ?? labelFromUrl(path), usage)
   } catch {
     // Store not available outside Pinia context — silently skip
   }
@@ -145,8 +153,8 @@ export async function apiPost<T>(path: string, body: unknown, options?: ApiOptio
   if (!res.ok) await handleApiError(res, 'POST', path)
   const json = await res.json()
   log.debug(`POST /api${path}`, json.data)
-  pushUsageIfPresent(path, json.data)
-  pushUsageIfPresent(path, json)
+  pushUsageIfPresent(path, json.data, options?.usageLabel)
+  pushUsageIfPresent(path, json, options?.usageLabel)
   pushDbOpsIfPresent(path, json.data)
   pushDbOpsIfPresent(path, json)
   return conform(json.data, options)

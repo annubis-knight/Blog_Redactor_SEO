@@ -1,3 +1,13 @@
+/**
+ * AUTHORITY: mémoire de la découverte en cours (`relevanceScores`, un jugement
+ *            par mot-clé en minuscules), sauvegardée avec la découverte
+ *            (`keyword_discoveries.sources_json`, via useDiscoveryCache).
+ * READS FROM: POST /keywords/relevance-score (jugement IA par lots).
+ * WRITES TO: rien directement (la sauvegarde passe par useDiscoveryPanel).
+ * CONSUMERS: useDiscoveryPanel (filtre des sections, compteurs, analyse IA,
+ *            sauvegarde), DiscoveryPanel.vue (ligne « Filtre de pertinence »).
+ * RELATED FR: FR-DIS-RELEVANCE-FILTER, FR-DIS-CACHE.
+ */
 import { ref, computed, type ComputedRef, type Ref } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
@@ -5,7 +15,6 @@ import { relevanceScoreContract } from '@shared/contracts/discovery.contract.js'
 import type { DiscoveredKeyword } from '@shared/types/discovery-tab.types'
 
 const RELEVANCE_THRESHOLD = 0.5
-const MAX_RELEVANCE_SCORES = 500
 
 // Why: Claude handles a numbered list of 120 items well; the prompt is short,
 // the bottleneck was call count not input tokens. Also raises concurrency to 4.
@@ -100,15 +109,18 @@ export function useRelevanceScoring(deps: RelevanceScoringDeps) {
     }
   }
 
+  /**
+   * Garde TOUS les jugements de la découverte en cours (remis à zéro à chaque
+   * nouvelle racine, `resetScores`). L'ancien plafond de 500 oubliait les
+   * premiers jugés dès qu'une découverte dépassait 500 mots-clés (cas courant :
+   * 644, 1004 en recette) : ils repassaient pour « pertinents » faute de note,
+   * et étaient rejugés, donc repayés en réel, à chaque ajout de mots-clés
+   * (recette 2026-09-30, DIS-5 / DIS-6, FR-DIS-RELEVANCE-FILTER).
+   */
   function mergeScores(scores: Record<string, number>) {
     const next = new Map(relevanceScores.value)
     for (const [kw, score] of Object.entries(scores)) {
       next.set(kw, score)
-    }
-    if (next.size > MAX_RELEVANCE_SCORES) {
-      const entries = [...next.entries()]
-      relevanceScores.value = new Map(entries.slice(entries.length - MAX_RELEVANCE_SCORES))
-      return
     }
     relevanceScores.value = next
   }
@@ -163,15 +175,17 @@ export function useRelevanceScoring(deps: RelevanceScoringDeps) {
       await scoreBatchesConcurrently(seed, unscored, false, 1)
       log.info(`Relevance pass-1: ${unscored.length} keywords scored`)
 
-      const relevant = [...relevanceScores.value.entries()]
-        .filter(([_, score]) => score >= RELEVANCE_THRESHOLD)
-        .map(([kw]) => kw)
+      // Passe stricte : seulement les mots-clés jugés pendant CETTE passe. Elle
+      // reprenait tous les pertinents déjà connus, et les rejugeait (et les
+      // repayait) à chaque arrivée de nouveaux mots-clés.
+      const scoredThisRun = unscored.filter(kw => relevanceScores.value.has(kw))
+      const relevant = scoredThisRun.filter(kw => (relevanceScores.value.get(kw) ?? 0) >= RELEVANCE_THRESHOLD)
 
       // least STRICT_PASS_TRIGGER_RATIO of keywords. Cohesive topics where
       // pass-1 rejects almost nothing don't benefit from the strict recheck
       // and the extra call is pure cost.
-      const pass1Rejected = unscored.length - relevant.length
-      const pass1RejectRatio = unscored.length > 0 ? pass1Rejected / unscored.length : 0
+      const pass1Rejected = scoredThisRun.length - relevant.length
+      const pass1RejectRatio = scoredThisRun.length > 0 ? pass1Rejected / scoredThisRun.length : 0
 
       if (relevant.length > 0 && pass1RejectRatio >= STRICT_PASS_TRIGGER_RATIO) {
         scoringProgress.value = { scored: 0, total: relevant.length, pass: 2 }

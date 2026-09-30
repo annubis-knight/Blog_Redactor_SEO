@@ -46,15 +46,15 @@ code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
   - Appels parallèles côté navigateur : chaque source s'affiche à son arrivée.
   - La génération IA n'est appelée qu'avec un titre ou un mot-clé d'article. Elle reçoit `painPoint || seed`.
   - Une source en échec vide sa liste et journalise, sans message à l'écran.
-  - Coût IA ajouté à la pile d'activité (`useCostLogStore.addEntry`).
+  - Coût IA inscrit dans la pile d'activité **une seule fois**, par `apiPost` (champ `usage` de la réponse ; libellé tiré de l'adresse, ou `usageLabel` : « Courte-traîne IA » pour `generateLongTail`). Le composable ne l'ajoute plus lui-même : chaque génération et chaque analyse IA étaient comptées deux fois (recette 2026-09-30, 04 point 1). Garde : [`tests/unit/composables/discovery-cost-log-once.test.ts`](../tests/unit/composables/discovery-cost-log-once.test.ts).
 
 ## Filtre de pertinence
 *Exigences : FR-DIS-RELEVANCE-FILTER · Design : DESIGN-DIS-RELEVANCE-FILTER*
 
-- **Code :** [`src/composables/keyword/useRelevanceScoring.ts`](../src/composables/keyword/useRelevanceScoring.ts) — `RELEVANCE_THRESHOLD = 0.5`, `MAX_RELEVANCE_SCORES = 500`, `SCORE_BATCH_SIZE = 120`, `SCORE_CONCURRENCY = 4`, `STRICT_PASS_TRIGGER_RATIO = 0.10` ; `fetchRelevanceScores` (verrou `_scoringInProgress` + file `_scoreQueuePending`, ne score que les non-scorés) ; `checkRelevance` (non scoré = pertinent ; racine sans mot de 3 lettres = pas de filtre) ; `relevantCount` (uniques) ; `irrelevantCount` (occurrences) ; contrôle « > 90 % sur ≥ 20 » → `filteringSuspect`.
+- **Code :** [`src/composables/keyword/useRelevanceScoring.ts`](../src/composables/keyword/useRelevanceScoring.ts) — `RELEVANCE_THRESHOLD = 0.5`, `SCORE_BATCH_SIZE = 120`, `SCORE_CONCURRENCY = 4`, `STRICT_PASS_TRIGGER_RATIO = 0.10` ; `fetchRelevanceScores` (verrou `_scoringInProgress` + file `_scoreQueuePending`, ne score que les non-scorés) ; `checkRelevance` (non scoré = pertinent ; racine sans mot de 3 lettres = pas de filtre) ; `relevantCount` (uniques) ; `irrelevantCount` (occurrences) ; contrôle « > 90 % sur ≥ 20 » → `filteringSuspect`.
 - **API :** `POST /api/keywords/relevance-score` `{ seed, keywords, strict?, articleContext? }` → `{ scores: Record<mot-clé, 0|1>, fallback: false, usage }` ; erreur → 500. Prompt construit dans la route : contexte métier (`getThemeConfig`), règle éliminatoire si douleur ≥ 10 caractères, outil `classify_relevance` (`classifyWithTool`, [`server/services/external/ai-provider.service.ts`](../server/services/external/ai-provider.service.ts)).
 - **Données :** aucune écriture ; les scores ne sont conservés que dans la sauvegarde de découverte.
-- **Règles et décisions :** la seconde passe (stricte) n'est lancée que si la première a rejeté au moins 10 %, pour ne pas doubler le coût. Un lot en échec reste non scoré, donc visible.
+- **Règles et décisions :** la seconde passe (stricte) n'est lancée que si la première a rejeté au moins 10 %, pour ne pas doubler le coût, et ne reprend que les mots-clés jugés pendant cette passe. Un lot en échec reste non scoré, donc visible. `relevanceScores` garde **tous** les jugements de la découverte (remis à zéro par `resetScores` à chaque nouvelle racine) : l'ancien plafond `MAX_RELEVANCE_SCORES = 500` oubliait les premiers jugés au-delà de 500 mots-clés, qui repassaient pour pertinents et étaient rejugés (et repayés) à chaque ajout, et la sauvegarde ne gardait que 500 jugements (recette 2026-09-30, DIS-5 / DIS-6 / DIS-8). Garde : [`tests/unit/composables/relevance-scoring-no-forget.test.ts`](../tests/unit/composables/relevance-scoring-no-forget.test.ts).
 
 ## Analyse IA
 *Exigences : FR-DIS-AI-ANALYSIS · Design : DESIGN-DIS-AI-ANALYSIS*

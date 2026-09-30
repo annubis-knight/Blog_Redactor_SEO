@@ -1,4 +1,9 @@
 /**
+ * AUTHORITY: mode effectif du serveur (`getRuntimeMode` / `getEffectiveMode`,
+ *            runtime-mode.service) puis `AI_PROVIDER` pour le choix du fournisseur.
+ * CONSUMERS: tous les appels IA du serveur (flux, sorties structurées).
+ * RELATED FR: FR-EXT-AI-MULTI-PROVIDER, FR-INFRA-RUNTIME-MODE, NFR-COST-AI-MOCK.
+ *
  * AI Provider Dispatcher (2026-04-22)
  *
  * Point d'entrée unique pour tous les appels IA (Claude, Gemini).
@@ -36,7 +41,7 @@ import {
   calculateMockCost,
   ensureFixturesLoaded,
 } from './mock.service.js'
-import { getRuntimeMode } from '../infra/runtime-mode.service.js'
+import { getRuntimeMode, getEffectiveMode } from '../infra/runtime-mode.service.js'
 
 export type AIProvider = 'claude' | 'gemini' | 'openrouter' | 'mock'
 
@@ -48,12 +53,16 @@ export type { ApiUsage }
  *
  * Override runtime : si l'utilisateur a basculé le toggle navbar, le mode
  * override prend le pas. `mock` force `mock`, `real` force `claude` (le
- * provider IA réel par défaut). Sinon, fallback sur `.env`.
+ * provider IA réel par défaut). Sinon, le mode effectif décide
+ * (FR-INFRA-RUNTIME-MODE, une seule autorité) : « mock » donne les réponses
+ * simulées, même si seul `DATAFORSEO_SANDBOX=true` l'a posé ; « réel » lit
+ * `AI_PROVIDER`.
  */
 export function getProvider(): AIProvider {
   const override = getRuntimeMode()
   if (override === 'mock') return 'mock'
   if (override === 'real') return 'claude'
+  if (getEffectiveMode() === 'mock') return 'mock'
   const val = (process.env.AI_PROVIDER ?? 'claude').toLowerCase()
   if (val === 'gemini') return 'gemini'
   if (val === 'openrouter') return 'openrouter'

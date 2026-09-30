@@ -207,7 +207,8 @@ n'est pas à jour). Le tableau ci-dessous en donne le rôle.
 [`../server/services/external/ai-provider.service.ts`](../server/services/external/ai-provider.service.ts)
 est le seul point d'entrée des appels IA.
 
-- `getProvider()` : l'override du mode (`mock` → `mock`, `real` → `claude`), sinon `AI_PROVIDER`
+- `getProvider()` : l'override du mode (`mock` → `mock`, `real` → `claude`), sinon `mock` si le mode
+  effectif l'est (`getEffectiveMode()`, une seule autorité avec `isSandbox()`), sinon `AI_PROVIDER`
   (`claude` par défaut, `gemini`, `openrouter`, `mock`), relu à chaque appel.
 - `getProviderChain()` : le fournisseur principal, puis les autres dans l'ordre `claude → gemini →
   openrouter`. `mock` n'a pas de repli ; `AI_PROVIDER_NO_FALLBACK=1` coupe le repli.
@@ -333,10 +334,12 @@ Liste complète des variables : [Qualités transverses](21-qualites.md).
 - API : `GET /api/runtime-mode` (`override`, `effective`, réglages `.env`), `POST /api/runtime-mode`
   (`{ mode: 'mock' | 'real' | null }`).
 - Consommateurs : `getProvider()` (IA) et `isSandbox()` ([`../server/services/external/dataforseo/_client.ts`](../server/services/external/dataforseo/_client.ts)),
-  qui choisit `sandbox.dataforseo.com` ou `api.dataforseo.com`. Le plafond de dépense ne s'applique
+  qui choisit `sandbox.dataforseo.com` ou `api.dataforseo.com`. Tous deux lisent le mode effectif :
+  le badge MOCK garantit l'IA simulée **et** le bac à sable. Le plafond de dépense ne s'applique
   pas au bac à sable (`budgetApplicable`).
 - Écran : [`../src/stores/ui/runtime-mode.store.ts`](../src/stores/ui/runtime-mode.store.ts) — mémorise le
-  choix en `localStorage` et le réimpose au serveur au chargement s'il diffère ; bouton de
+  choix en `localStorage`, le renvoie au serveur quand celui-ci l'a perdu (redémarrage) et adopte un
+  choix posé ailleurs ; se resynchronise au focus et toutes les 15 s (`startAutoResync`) ; bouton de
   `AppNavbar.vue`.
 - Robot : `--mode=mock|real` (défaut `mock`) → `POST /runtime-mode` au démarrage, jamais restauré
   ([Mode automatique](06-mode-automatique.md)).

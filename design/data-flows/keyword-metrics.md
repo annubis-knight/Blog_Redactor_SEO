@@ -59,7 +59,7 @@ La fraîcheur n'est pas imposée par la base : chaque lecteur l'applique avec `i
 - **Panneau « KPIs marché »** — [`CaptainSidePanel.vue`](../../src/components/moteur/CaptainSidePanel.vue) lit `entry.card.kpis` : « — » pour volume, KD, CPC absents.
 - **Cerveau** — les candidats d'un nouvel article affichent volume, KD, CPC et intention (`KeywordMeasure.metrics`).
 - **Explorations relues** — `GET /api/articles/:id/explorations` et ses compteurs exposent `local_analysis` et `content_gap_analysis` du Capitaine ([`article-explorations.routes.ts`](../../server/routes/article-explorations.routes.ts)).
-- Le Radar n'affiche **pas** volume, KD, CPC et intention depuis cette table : son scan les demande à DataForSEO et les range dans `radar_explorations` (cf. [radar-explorations](radar-explorations.md)). Il y lit et écrit seulement suggestions et PAA.
+- **Radar** — son scan relit volume, KD, CPC et intention dans cette table (moins de 7 jours, tous présents) avant d'appeler DataForSEO pour les autres mots-clés, puis y écrit ce qu'il a mesuré (`readReusableMeasures`, `saveMeasures`, [`keyword-radar.service.ts`](../../server/services/keyword/keyword-radar.service.ts)) ; la carte affichée est aussi rangée dans `radar_explorations` (cf. [radar-explorations](radar-explorations.md)). Radar et Capitaine partagent ainsi la même mesure (recette 2026-09-30, MOT-8).
 
 ### Calcul / tri / filtre / agrégat
 

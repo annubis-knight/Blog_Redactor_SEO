@@ -257,9 +257,13 @@ describe('Cross-Workflow — Provider configuration', () => {
 
   it('getProviderChain retourne primary + canonical order pour non-mock', async () => {
     const { getProviderChain } = await import('../../server/services/external/ai-provider.service.js')
-    // Sauvegarde l'env
+    // Sauvegarde l'env. Mode effectif « réel » : un bac à sable DataForSEO
+    // configuré (CI : DATAFORSEO_SANDBOX=true) met aussi l'IA en simulé
+    // (FR-INFRA-RUNTIME-MODE, une seule autorité).
     const prev = process.env.AI_PROVIDER
+    const prevSandbox = process.env.DATAFORSEO_SANDBOX
     process.env.AI_PROVIDER = 'claude'
+    delete process.env.DATAFORSEO_SANDBOX
     try {
       const chain = getProviderChain()
       expect(chain[0]).toBe('claude')
@@ -268,6 +272,7 @@ describe('Cross-Workflow — Provider configuration', () => {
     } finally {
       if (prev !== undefined) process.env.AI_PROVIDER = prev
       else delete process.env.AI_PROVIDER
+      if (prevSandbox !== undefined) process.env.DATAFORSEO_SANDBOX = prevSandbox
     }
   })
 
@@ -275,8 +280,10 @@ describe('Cross-Workflow — Provider configuration', () => {
     const { getProviderChain } = await import('../../server/services/external/ai-provider.service.js')
     const prevNF = process.env.AI_PROVIDER_NO_FALLBACK
     const prevP = process.env.AI_PROVIDER
+    const prevSandbox = process.env.DATAFORSEO_SANDBOX
     process.env.AI_PROVIDER = 'claude'
     process.env.AI_PROVIDER_NO_FALLBACK = '1'
+    delete process.env.DATAFORSEO_SANDBOX // mode effectif « réel » (cf. test précédent)
     try {
       const chain = getProviderChain()
       expect(chain).toEqual(['claude'])
@@ -285,6 +292,7 @@ describe('Cross-Workflow — Provider configuration', () => {
       else delete process.env.AI_PROVIDER_NO_FALLBACK
       if (prevP !== undefined) process.env.AI_PROVIDER = prevP
       else delete process.env.AI_PROVIDER
+      if (prevSandbox !== undefined) process.env.DATAFORSEO_SANDBOX = prevSandbox
     }
   })
 })

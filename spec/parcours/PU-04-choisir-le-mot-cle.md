@@ -19,7 +19,7 @@ synced_with:
 ## Les étapes
 
 ### 1. Ouvrir le Moteur sur l'article
-**Exigences :** FR-MOT-ARTICLE-SELECTION ⚠, FR-MOT-FREE-NAV, FR-MOT-NO-AUTO-ACTION ⚠
+**Exigences :** FR-MOT-ARTICLE-SELECTION ⚠, FR-MOT-FREE-NAV, FR-MOT-NO-AUTO-ACTION
 
 Depuis la page du cocon, l'utilisateur clique la carte « Moteur », ouvre « Articles suggérés (N) » et clique le titre de l'article. Les onglets s'activent et le Moteur s'ouvre sur « Capitaine », le premier onglet utile d'un article qui n'a franchi aucune étape ; la barre « Résultats déjà calculés » apparaît en bas. Pour explorer avant de décider, il clique « Discovery » dans le groupe « 1 Générer » : Discovery et Radar restent ouverts à tout moment, explorer ne fige rien. Aujourd'hui, cette ouverture du Capitaine étudie déjà seule le mot-clé suggéré, avec de possibles appels payants.
 
@@ -88,7 +88,7 @@ Rien de ce qui a été payé ne doit l'être à nouveau. À Discovery, l'écran 
 ### Il refait une mesure déjà payée
 **Exigences :** FR-CAP-SCAN ⚠, FR-INFRA-KEYWORD-METRICS ⚠, NFR-COST-CACHE-FIRST ⚠, FR-MOT-CACHE-CASCADE ⚠
 
-Un mot-clé mesuré depuis moins de sept jours, pour n'importe quel article, même d'un autre cocon, doit être resservi sans appel ; au Radar, les suggestions et les questions PAA de moins d'un jour sont relues (« PAA en cache »). Aujourd'hui, le scan Radar rachète le volume, la difficulté, le CPC et l'intention de chaque mot-clé à chaque scan ; un mot-clé sans difficulté ni CPC connus est remesuré, et repayé, à chaque étude au Capitaine ; les appels d'IA de Discovery ne sont jamais réutilisés, sauf par « Charger ». La dépense ne s'annonce pas avant l'action : elle se lit après coup dans la pile « Coûts API », en bas à gauche.
+Un mot-clé mesuré depuis moins de sept jours, pour n'importe quel article, même d'un autre cocon, doit être resservi sans appel ; au Radar, les suggestions et les questions PAA de moins d'un jour sont relues (« PAA en cache »). Le Radar et le Capitaine partagent leurs mesures : un mot-clé scanné au Radar n'est pas remesuré à son étude au Capitaine, ni au scan suivant. Aujourd'hui, un mot-clé sans difficulté ni CPC connus est remesuré, et repayé, à chaque étude au Capitaine ; les appels d'IA de Discovery ne sont jamais réutilisés, sauf par « Charger ». La dépense ne s'annonce pas avant l'action : elle se lit après coup dans la pile « Coûts API », en bas à gauche.
 
 ### L'étude d'un mot-clé échoue
 **Exigences :** FR-CAP-SCAN ⚠, FR-CAP-INPUT ⚠, FR-EXT-DATAFORSEO ⚠
@@ -108,7 +108,6 @@ Choisir un autre article doit repartir de ses propres données : le Radar, les c
 ## Défauts connus sur ce parcours
 
 - FR-MOT-ARTICLE-SELECTION — les résultats et les cases cochées de Discovery survivent au changement d'article : seul le mot-clé racine change ; sans article choisi, le bouton du bas « Continuer vers Lieutenants → » reste affiché et cliquable.
-- FR-MOT-NO-AUTO-ACTION — ouvrir l'onglet Lexique, Capitaine verrouillé, peut lancer seul l'analyse IA du lexique quand aucune recommandation n'est enregistrée ; ouvrir le Capitaine d'un article sans candidat étudie seul le premier mot-clé suggéré, avec de possibles appels DataForSEO et Google ; ouvrir le Capitaine, ou choisir un article dont l'onglet Capitaine a déjà été ouvert, redemande et fait payer l'avis expert IA de chaque candidat, même onglet caché.
 - FR-DIS-LONGTAIL-GENERATION — la courte-traîne générée avant « Découvrir » n'est pas filtrée et la ligne du filtre n'apparaît pas ; « Découvrir » l'efface ensuite.
 - FR-DIS-SEND-TO-RADAR — l'outil ouvre le Radar et demande l'étape avant d'avoir enregistré la liste, sans vérifier que l'enregistrement réussit ; les mots-clés cochés seulement en courte-traîne ne sont pas envoyés.
 - FR-RAD-MANUAL-ADD — un mot-clé déjà présent vide le champ sans aucun message.
@@ -125,15 +124,15 @@ Choisir un autre article doit repartir de ses propres données : le Radar, les c
 - FR-CAP-RELEVANCE-LIVE — juste après une étude, la note affichée vient d'un autre calcul que celle de la réouverture : sans racines, avec les anciens signaux du Radar.
 - FR-CAP-INPUT — ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête.
 - FR-CAP-SCAN — dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention ; un mot-clé dont le volume, la difficulté ou le CPC est absent est remesuré, et repayé, à chaque étude ; un échec d'étude s'affiche en anglais technique, sans cause (« Erreur : Keyword validation failed »).
-- FR-CAP-AI-PANEL — l'avis n'est jamais enregistré et il est redemandé pour chaque candidat à chaque réouverture ; la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur.
-- FR-CAP-ROOTS — à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte.
+- FR-CAP-AI-PANEL — la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur.
+- FR-CAP-ROOTS — à la réouverture, les racines de la colonne de détail reviennent sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne les a étudiées ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte.
 - FR-CAP-LOCK-INTEGRITY — afficher une racine l'enregistre comme candidat et lance pour elle un avis IA payant ; la liste se reconstruit alors, et les notes des candidats étudiés pendant la session passent à « — » ; deux casses d'un même mot-clé comptent pour deux candidats.
 - FR-CAP-CHECK — déverrouiller le Capitaine retire l'étape même quand l'enregistrement du déverrouillage a échoué.
 - FR-DIS-CACHE — une sauvegarde n'expire jamais, et la section Courte-traîne n'est ni sauvegardée ni restaurée ; pendant le chargement d'une sauvegarde, « Charger » n'affiche pas « Chargement... » et reste cliquable.
 - FR-RAD-PERSIST — les longues traînes ne sont pas réaffichées ; l'enregistrement qui suit un scan peut vider la liste d'attente et effacer les longues traînes en base ; sur un article jamais scanné, « Charger Radar » remplace l'invitation à scanner par un résultat vide.
 - FR-CAP-PERSIST — la provenance radar / longue traîne / saisie n'est pas enregistrée ; un écran dont les mots-clés ne sont pas encore chargés peut envoyer un Capitaine vide et des listes vides, qui effacent les décisions enregistrées (défaut latent) ; déverrouiller en archivant les lieutenants envoie deux enregistrements concurrents.
-- FR-INFRA-KEYWORD-METRICS — tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie ; le scan Radar ne relit ni n'enregistre les mesures gardées, et chaque test au Capitaine relance ce scan pour sa carte ; un « Rafraîchir » raté date quand même la mesure du jour, et pour un mot-clé sans volume connu la fiche vide remplace la réponse gardée.
-- NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine.
-- FR-MOT-CACHE-CASCADE — les appels d'IA de Discovery — génération, filtre de pertinence, analyse — ne consultent aucun cache ; seul le rechargement d'une découverte sauvegardée évite de les refaire ; un mot-clé sans volume, difficulté ou coût par clic est remesuré, et repayé, à chaque étude ; le scan Radar rachète volume, difficulté, coût par clic et intention de chaque mot-clé à chaque scan.
+- FR-INFRA-KEYWORD-METRICS — tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie ; un « Rafraîchir » raté date quand même la mesure du jour, et pour un mot-clé sans volume connu la fiche vide remplace la réponse gardée.
+- NFR-COST-CACHE-FIRST — un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine.
+- FR-MOT-CACHE-CASCADE — les appels d'IA de Discovery — génération, filtre de pertinence, analyse — ne consultent aucun cache ; seul le rechargement d'une découverte sauvegardée évite de les refaire ; un mot-clé sans volume, difficulté ou coût par clic est remesuré, et repayé, à chaque étude.
 - FR-EXT-DATAFORSEO — les mesures demandées en groupe et la fiche SEO du brief taisent un échec du fournisseur, y compris un refus du plafond de dépense : les valeurs restent vides, sans message ; un « Rafraîchir » qui échoue tout à fait remplace toute la page de rédaction par le bloc d'erreur, au lieu du seul panneau « SERP Data ».
 - FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ».
