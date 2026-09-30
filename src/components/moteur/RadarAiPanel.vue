@@ -25,6 +25,14 @@ const { ranked } = useRadarRanking({
   topN: 5,
 })
 
+/**
+ * Le Radar ne calcule pas la pertinence (FR-RAD-NO-RELEVANCE-IN-SCAN) : la
+ * pastille « P » y vaut « — ». L'infobulle en donnait une fausse raison
+ * (« PainPoint absent »), même quand l'article a une douleur
+ * (FR-RAD-AI-SUGGESTIONS, recette du 2026-09-30, RAD-4).
+ */
+const RELEVANCE_NOT_YET = 'Score Pertinence indisponible au Radar : il se calcule au Capitaine, quand le mot-clé y est étudié'
+
 const selected = ref<Set<string>>(new Set())
 
 function toggle(keyword: string, checked: boolean) {
@@ -66,7 +74,7 @@ function markCandidates() {
             <span class="radar-ai-score-pill" :title="item.marketTotalAvailable ? 'Score Marché' : 'Score Marché indisponible'">
               M {{ formatScore(item.marketTotal) }}
             </span>
-            <span class="radar-ai-score-pill radar-ai-score-pill--rel" :title="item.relevanceTotalAvailable ? 'Score Pertinence' : 'Score Pertinence indisponible (PainPoint absent ou signaux nuls)'">
+            <span class="radar-ai-score-pill radar-ai-score-pill--rel" data-testid="radar-ai-relevance-pill" :title="item.relevanceTotalAvailable ? 'Score Pertinence' : RELEVANCE_NOT_YET">
               P {{ formatScore(item.relevanceTotal) }}
             </span>
           </span>

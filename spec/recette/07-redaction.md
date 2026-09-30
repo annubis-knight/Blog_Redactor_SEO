@@ -1,7 +1,7 @@
 ---
 title: Recette — Rédaction
 module: 07
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/13-redaction.md
@@ -368,7 +368,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 6. Retire les trois blocs d'essai (sélectionne-les, puis Suppr) et Ctrl+S : ils fausseraient la publication.
 
 **Tu dois voir :**
-- « Blocs » (« Glissez un bloc dans l'éditeur ») : Paragraphe, Titre H2, Titre H3, Liste à puces, Liste numérotée, Citation ; « Blocs dynamiques » (« Générés par l'IA au drop ») : Sources chiffrées, Exemples réels, Ce qu'il faut retenir ;
+- « Blocs » (« Glissez un bloc dans l'éditeur ») : Paragraphe, Titre H2, Titre H3, Liste à puces, Liste numérotée, Citation, chacun avec son icône (« H2 » pour « Titre H2 », « H3 » pour « Titre H3 ») ; « Blocs dynamiques » (« Générés par l'IA au drop ») : Sources chiffrées, Exemples réels, Ce qu'il faut retenir ;
 - la citation « Votre citation… » posée là où tu l'as lâchée ;
 - pour un bloc dynamique : d'abord « Génération en cours — Ce qu'il faut retenir… », puis le résultat à sa place ; en cas d'erreur, « ⚠️ Échec de la génération : … » dans le bloc ;
 - après F5, les trois blocs toujours là ;
@@ -376,7 +376,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 
 **C'est un bug si :**
 - un bloc dynamique reste bloqué sur « Génération en cours » ;
-- un bloc disparaît après F5.
+- un bloc disparaît après F5 ;
+- l'icône d'un bloc ne lui correspond pas (« H1 » sur « Titre H2 »).
 
 **⚠ Défaut connu :** l'éditeur n'envoie pas le mot-clé de l'article : « Optimiser mot-clé » et les autres actions du menu « ✦ » travaillent sans lui (ces blocs, eux, le reçoivent). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 

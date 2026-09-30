@@ -225,8 +225,9 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
     })
     // 4 bis. Premier jet accepté par sa porte (C7, FR-CER-PARENT-WRITTEN-GATE) :
     // c'est cette étape qui fait de l'article un parent rédigé. Un refus arrête
-    // le run — le script ne déroge jamais à la place d'un humain.
-    await emitCheck(client, ctx.articleId, REDACTION_DRAFT_ACCEPTED)
+    // le run — le script ne déroge jamais à la place d'un humain (une porte toute
+    // 🟠 se reconnaît au terminal, cf. `emitCheck`).
+    await emitCheck(client, ctx.articleId, REDACTION_DRAFT_ACCEPTED, deps.gateReader)
     report.addStep('Rédaction · premier jet accepté par sa porte')
     // 4 ter. Passe « sources », puis ce qui n'a pas de source se dit sans chiffre.
     await finishPassages(deps, ctx, passes)

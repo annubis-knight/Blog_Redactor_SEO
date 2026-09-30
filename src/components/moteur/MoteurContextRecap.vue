@@ -2,6 +2,7 @@
 import { computed, watch } from 'vue'
 import type { Article, SelectedArticle } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
+import { ARTICLE_LEVELS, articleLevelToDisplayLabel } from '@shared/utils/article-level.js'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { hasCannibalization as hasCannibalizationPure } from '@/composables/moteur/useCannibalizationDetection'
@@ -31,7 +32,9 @@ const emit = defineEmits<{
   (e: 'select', article: SelectedArticle | null): void
 }>()
 
-const TYPE_ORDER: ArticleLevel[] = ['pilier', 'intermediaire', 'specifique']
+// Groupes dans l'ordre du cocon ; titre et couleur du badge par niveau
+// (FR-CER-AIGUILLAGE : « Intermédiaire », jamais le code « intermediaire »).
+const TYPE_ORDER: readonly ArticleLevel[] = ARTICLE_LEVELS
 
 interface GroupedArticle {
   id: number; slug: string; title: string; keyword: string
@@ -184,9 +187,8 @@ function toggleArticle(article: GroupedArticle) {
     <RecapToggle v-if="suggestedArticles.length > 0" panel-id="suggested-articles" :label="`Articles suggérés (${suggestedArticles.length})`">
       <div v-for="group in suggestedGroups" :key="group.type" class="tree-group">
         <div class="tree-type">
-          <span class="tree-type-badge"
-            :class="'tree-type--' + group.type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')">
-            {{ group.type }}
+          <span class="tree-type-badge" :class="'tree-type--' + group.type">
+            {{ articleLevelToDisplayLabel(group.type) }}
           </span>
           <span class="tree-type-count">({{ group.articles.length }})</span>
         </div>
@@ -223,9 +225,8 @@ function toggleArticle(article: GroupedArticle) {
 
       <div v-for="group in publishedGroups" :key="group.type" class="tree-group">
         <div class="tree-type">
-          <span class="tree-type-badge"
-            :class="'tree-type--' + group.type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')">
-            {{ group.type }}
+          <span class="tree-type-badge" :class="'tree-type--' + group.type">
+            {{ articleLevelToDisplayLabel(group.type) }}
           </span>
           <span class="tree-type-count">({{ group.articles.length }})</span>
         </div>
@@ -310,7 +311,7 @@ function toggleArticle(article: GroupedArticle) {
   color: white;
 }
 
-.tree-type--specialise {
+.tree-type--specifique {
   background: var(--color-success, #4caf50);
   color: white;
 }

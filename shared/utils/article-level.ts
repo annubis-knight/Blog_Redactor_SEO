@@ -49,6 +49,28 @@ export function articleLevelToDisplayLabel(level: ArticleLevel): 'Pilier' | 'Int
   return articleLevelToDbType(level)
 }
 
+/** Les niveaux tels qu'ils s'écrivent, en code comme en base (casse ignorée). */
+const LEVEL_WORDS: ReadonlySet<string> = new Set([
+  'pilier', 'intermediaire', 'intermédiaire', 'specifique', 'spécifique', 'specialise', 'spécialisé',
+])
+
+/**
+ * Sépare un article écrit « Titre (niveau) » — la forme des listes « Articles
+ * du cocon » envoyées à Claude — en titre et niveau. Le niveau se lit dans
+ * tous les formats (`pilier`, `Intermédiaire`…) ; une parenthèse finale qui
+ * n'est pas un niveau (« Guide (2026) ») reste dans le titre, niveau `null`.
+ *
+ * Recette du 2026-09-30 (FR-CER-AIGUILLAGE) : l'écran comparait « pilier » à
+ * « Pilier » et rangeait tout le cocon sous « Autre ».
+ */
+export function splitArticleLevelSuffix(entry: string): { title: string; level: ArticleLevel | null } {
+  const match = /^(.+?)\s*\(([^()]+)\)\s*$/.exec(entry)
+  // Le mot entier, pas un préfixe : « Guide (spécial Noël) » n'est pas un niveau.
+  const word = match?.[2]!.trim().toLowerCase().normalize('NFC')
+  const level = word && LEVEL_WORDS.has(word) ? parseArticleLevel(word) : null
+  return level ? { title: match![1]!.trim(), level } : { title: entry.trim(), level: null }
+}
+
 /**
  * Lit un niveau d'article tel qu'une IA le rend, sans exiger un format exact.
  *

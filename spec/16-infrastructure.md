@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -244,7 +244,7 @@ Règles :
 - Chaque dérogation est enregistrée : moment, porte, point, niveau, catégorie, raison. L'auteur n'est pas enregistré (outil à un seul utilisateur). Une dérogation tombée reste enregistrée comme historique.
 - Une étape refusée n'est pas enregistrée (« Étape non validée : n point(s) à traiter. ») ; une publication refusée ne change pas le statut (« Publication refusée : n point(s) à traiter avant de publier. »). Le refus vaut aussi pour une demande qui ne passe pas par l'écran.
 - À la publication, les dérogations encore valables des portes Capitaine, Lieutenants, Structure et Lexique reviennent en 🟠 pour être reconfirmées ; celles du premier jet ne reviennent pas (la publication rejuge le texte). Le détail de la porte du premier jet et de la porte de publication est décrit dans [Rédaction](13-redaction.md).
-- Le mode automatique demande les mêmes étapes. Sur un refus, il s'arrête : « Étape « … » refusée par la porte … : », un point par ligne avec son icône, puis « Décidez dans le Moteur (corriger, ou déroger en expliquant pourquoi), puis relancez le run. » (« la Rédaction » pour le premier jet). Il ne déroge jamais.
+- Le mode automatique demande les mêmes étapes. Sur un refus, il affiche « Étape « … » refusée par la porte … : », un point par ligne avec son icône. Si tous les points sont 🟠 et que l'utilisateur est au terminal, il demande « J’ai lu, continuer ? [o/N] » : « o » envoie la même reconnaissance que la case « J'ai lu » de l'alarme, et l'étape est redemandée. Sinon (autre réponse, un point 🔴 ou ⛔, run sans humain), il s'arrête sur « Décidez dans le Moteur (corriger, ou déroger en expliquant pourquoi), puis relancez le run. » (« la Rédaction » pour le premier jet). Il ne déroge jamais seul.
 - L'audit du projet rejoue la porte de publication sur chaque article rédigé. Un refus donne un avertissement, pas une erreur : « La porte de publication refuserait cet article : n point(s) (⛔ a 🔴 b 🟠 c). ». Chaque dérogation est listée : « 🛡 [porte · point] verrouiller le capitaine : Longue traîne assumée — « raison » » (« lu » pour un accusé 🟠).
 
 > **En situation.** Arnaud verrouille « rénovation grange pierre Gers », jamais mesuré. L'alarme dit en 🔴 « Aucun volume de recherche mesuré ». Il tape « peu » : le compteur affiche 3 / 20 et le bouton reste grisé. Il choisit « Longue traîne assumée » et écrit « demandes réelles reçues par téléphone chaque mois » : le capitaine est verrouillé. À la publication, cette dérogation revient pour être reconfirmée. S'il avait changé de capitaine entre-temps, elle serait tombée.

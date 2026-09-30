@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -239,7 +239,7 @@ Seuils (`THRESHOLDS`, `getThresholds`) :
 - **Code :**
   - `RadarPanel.sendToCaptain` / `totalSelectedCount` — fusion cartes cochées ∪ longues traînes (`toRadarCardFromLongTail` : `kpis: null`, `source: 'longtail'`), dédoublonnage `trim().toLowerCase()`, cartes d'abord ; `emit('cards-selected')`. `longTailSelectedSuggestions` suit ce que la section affiche : `RadarLongTailSuggestions` émet sa sélection dès son montage (`watch(…, { immediate: true })`), et `handleScan` / `handleReset` la vident. Avant, la sélection d'une liste effacée par un nouveau scan restait comptée (RAD-14 : « Envoyer au Capitaine (5) » sans case cochée).
   - [`src/composables/moteur/useMoteurCrossTabState.ts`](../src/composables/moteur/useMoteurCrossTabState.ts) — `handleCardsSelected` (second dédoublonnage : une carte à `kpis` prime), `radarCardsForCaptain`, `setActiveTab('capitaine')` ; `handleRadarScanned` → `emitCheckCompleted(MOTEUR_RADAR_DONE)`.
-  - [`src/components/moteur/RadarAiPanel.vue`](../src/components/moteur/RadarAiPanel.vue) + [`src/composables/moteur/useRadarRanking.ts`](../src/composables/moteur/useRadarRanking.ts) — top 5 par `averageScores([marketScore.total, relevanceScore.total])` (au Radar, le seul Score Marché), tri `compareScores`, filtre `isNogoBoth` (écarte une carte dont les verdicts présents sont tous NOGO ; sans aucun verdict, elle est gardée) ; pastilles « M » et « P » par `formatScore` ; émet `mark-captain-candidates`, relayé par `RadarPanel` en `captain-candidates-marked`, que `MoteurView` n'écoute pas.
+  - [`src/components/moteur/RadarAiPanel.vue`](../src/components/moteur/RadarAiPanel.vue) + [`src/composables/moteur/useRadarRanking.ts`](../src/composables/moteur/useRadarRanking.ts) — top 5 par `averageScores([marketScore.total, relevanceScore.total])` (au Radar, le seul Score Marché), tri `compareScores`, filtre `isNogoBoth` (écarte une carte dont les verdicts présents sont tous NOGO ; sans aucun verdict, elle est gardée) ; pastilles « M » et « P » par `formatScore` (infobulle de « P — » : `RELEVANCE_NOT_YET`, la pertinence se calcule au Capitaine ; jamais une douleur absente) ; émet `mark-captain-candidates`, relayé par `RadarPanel` en `captain-candidates-marked`, que `MoteurView` n'écoute pas.
   - `POST /api/keywords/radar/generate` ([`intent-scan.routes.ts`](../server/routes/intent-scan.routes.ts)) → `generateRadarKeywords` ([`keyword-radar.service.ts`](../server/services/keyword/keyword-radar.service.ts)) : prompt `intent-keywords`, outil `generate_radar_keywords`, Haiku (`HAIKU_MODEL`), dédoublonnage `normalize`, 25 au plus, `usage` renvoyé pour la pile de coûts. Appelants : [`useDiscoveryPanel.ts`](../src/composables/keyword/useDiscoveryPanel.ts) et `useKeywordRadar.generate` (mode libre).
 - **Données :** étape `moteur:radar_done` (`MOTEUR_RADAR_DONE`, [`shared/constants/workflow-checks.constants.ts`](../shared/constants/workflow-checks.constants.ts)) ajoutée à `articles.completed_checks` par `addArticleCheck` (`CASE WHEN … = ANY` : pas de doublon). Aucune colonne de provenance dans `captain_explorations`.
 - **Règles et décisions :** `RadarPanel` n'émet `scanned` que si `scanResult` existe après le scan ; un échec ne pose rien.

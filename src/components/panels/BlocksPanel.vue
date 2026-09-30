@@ -48,7 +48,9 @@ const staticBlocks: StaticBlockItem[] = [
     label: 'Titre H2',
     description: 'Titre de section',
     html: '<h2>Titre de section</h2>',
-    icon: 'M4 6v12M4 12h10M14 6v12M20 8l2-2v12',
+    // « H » puis un « 2 » (l'ancien tracé dessinait un « 1 » : recette du
+    // 2026-09-30, panneau « Blocs »).
+    icon: 'M4 6v12M4 12h10M14 6v12M17 10a2.5 2.5 0 115 0c0 2.5-5 4-5 8h5',
   },
   {
     kind: 'static',

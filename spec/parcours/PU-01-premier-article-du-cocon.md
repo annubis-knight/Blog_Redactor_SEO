@@ -1,7 +1,7 @@
 ---
 title: Parcours — Premier article du cocon
 id: PU-01
-last_updated: 2026-09-29
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/18-recette-manuelle.md
@@ -124,7 +124,7 @@ Une image encore « à fournir » (posée par la passe « Images »), une méta 
 - FR-LEX-PRECHECK-SERP — pendant l'analyse lancée, « Lancer l'analyse SERP » reste cliquable : un second clic confirmé relance une analyse payante.
 - FR-MOT-SOFT-GATING — à l'onglet Lexique, Capitaine non verrouillé, « Lancer l'analyse SERP » reste actif malgré le bandeau : l'analyse payante part, et ses termes peuvent ensuite être retenus.
 - FR-CER-MICRO-CONTEXT — le micro-contexte n'est transmis que si l'angle est rempli : un ton ou des consignes seuls sont ignorés ; l'angle provisoire écrit d'office à la validation de la structure part tel quel à l'IA ; un échec d'enregistrement n'est jamais signalé.
-- FR-RED-OUTLINE — les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique ; un chapitre lâché sur la ligne du H1 passe au-dessus de lui ; Échap garde le titre tapé au lieu d'annuler.
+- FR-RED-OUTLINE — les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique.
 - FR-RED-META — la méta ne se modifie pas à la main et ne se relance pas seule : réessayer relance tout l'article.
 - FR-RED-EXPORT-HTML — le fichier téléchargé perd tous les liens internes posés dans l'éditeur, et son H1 est le titre de l'article, pas le H1 jugé par la porte ; réexporter après une correction, sans recharger l'aperçu, télécharge la version chargée à l'ouverture de l'onglet, pas celle que la porte vient d'accepter.
 - FR-INFRA-GATE-WAIVER — le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis.

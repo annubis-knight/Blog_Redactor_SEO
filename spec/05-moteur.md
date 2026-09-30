@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -15,7 +15,7 @@ De haut en bas :
 
 1. Un fil d'Ariane : « Dashboard / {silo} / {cocon} / Moteur » ; « Dashboard » et le cocon sont des liens.
 2. « Contexte stratégique » (repliable), si le Cerveau en a posé un : Cible, Douleur, Angle, Promesse, CTA.
-3. « Articles suggérés (N) » (repliable) : les articles proposés par la stratégie du cocon, groupés par niveau (pilier, intermédiaire, spécialisé ; le badge affiche « PILIER », « INTERMEDIAIRE », « SPECIFIQUE »).
+3. « Articles suggérés (N) » (repliable) : les articles proposés par la stratégie du cocon, groupés par niveau (pilier, intermédiaire, spécialisé ; le badge coloré affiche « PILIER », « INTERMÉDIAIRE », « SPÉCIALISÉ »).
 4. « Articles publiés (N) » (repliable, avec un cadenas) : les articles du cocon entrés en rédaction ou publiés.
 5. Sans article choisi : « Sélectionnez un article ci-dessus pour accéder au Moteur. »
 

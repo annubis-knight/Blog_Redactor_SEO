@@ -22,7 +22,7 @@ import type { PhaseFn } from '../orchestrator.js'
 import type { PhaseDeps } from '../deps.js'
 import type { ApiUsageLike, AutoIntake, AutoRunContext, PlacementDecision } from '../types.js'
 import { fromCanonicalType } from '../canonical.js'
-import { findCocoonByName, type CocoonSummary } from '../cocoon.js'
+import { findCocoonByName, sameCocoonName, type CocoonSummary } from '../cocoon.js'
 import { slugify } from '../slug.js'
 import { buildTree, renderTree } from '../tree.js'
 import { COLOR_TREE_THEME } from '../tree-theme.js'
@@ -54,6 +54,18 @@ import type { CocoonTreeNode } from '../../../shared/types/cocoon-tree.types.js'
  */
 function placementTopic(ctx: AutoRunContext): string {
   return ctx.input.topic
+}
+
+/**
+ * Cocon imposé : `--cocoon`, sinon le cocon nommé en réponse à « Cocon cible »
+ * (validé à la saisie contre les cocons existants). Recette du 2026-09-30
+ * (PU-06) : la réponse n'était qu'un indice pour l'IA, et le robot a créé un
+ * pilier dans un autre cocon que celui demandé.
+ */
+export function imposedCocoon(ctx: Pick<AutoRunContext, 'config' | 'input'>): { name: string; byFlag: boolean } | null {
+  if (ctx.config.forcedCocoon?.trim()) return { name: ctx.config.forcedCocoon.trim(), byFlag: true }
+  const answered = ctx.input.cocoonName.trim()
+  return answered ? { name: answered, byFlag: false } : null
 }
 
 export function makeCerveauPhase(deps: PhaseDeps): PhaseFn {
@@ -88,24 +100,27 @@ export function makeCerveauPhase(deps: PhaseDeps): PhaseFn {
     const tree = buildTree(silos)
     if (tree.length === 0) throw new Error('Arbre SEO vide : aucun silo en base')
 
-    // 3-4. Emplacement : imposé (--cocoon/--level) ou proposé puis arbitré par l'IA.
+    // 3-4. Emplacement : imposé (--cocoon/--level, ou cocon nommé à la question
+    // « Cocon cible ») ou proposé puis arbitré par l'IA.
     let placement: PlacementDecision
     let candidates = preselectPlacements(tree, placementTopic(ctx), 3)
+    const imposed = imposedCocoon(ctx)
 
-    if (ctx.config.forcedCocoon) {
-      const target = tree
-        .flatMap((s) => s.cocoons.map((c) => ({ silo: s.name, cocoon: c })))
-        .find((e) => e.cocoon.name.trim().toLowerCase() === ctx.config.forcedCocoon!.trim().toLowerCase())
+    if (imposed) {
+      const entries = tree.flatMap((s) => s.cocoons.map((c) => ({ silo: s.name, cocoon: c })))
+      // Le nom exact d'abord : deux cocons peuvent ne différer que par la casse.
+      const target = entries.find((e) => e.cocoon.name.trim() === imposed.name)
+        ?? entries.find((e) => sameCocoonName(e.cocoon.name, imposed.name))
       if (!target) {
         const available = tree.flatMap((s) => s.cocoons.map((c) => c.name)).join(', ')
-        throw new Error(`Cocon imposé « ${ctx.config.forcedCocoon} » introuvable. Disponibles : ${available}`)
+        throw new Error(`Cocon imposé « ${imposed.name} » introuvable. Disponibles : ${available}`)
       }
       const level = ctx.config.forcedLevel ?? suggestLevel(target.cocoon)
       placement = {
         siloName: target.silo,
         cocoonName: target.cocoon.name,
         level,
-        rationale: 'emplacement imposé en ligne de commande',
+        rationale: imposed.byFlag ? 'emplacement imposé en ligne de commande' : 'cocon choisi à la question « Cocon cible »',
         createCocoon: false,
       }
       // Le cocon imposé doit figurer parmi les options affichées au Gate.

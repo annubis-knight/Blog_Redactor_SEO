@@ -1,7 +1,7 @@
 ---
 title: Parcours — Faire écrire un article par le mode automatique
 id: PU-06
-last_updated: 2026-09-29
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/18-recette-manuelle.md
@@ -14,7 +14,7 @@ synced_with:
 **Départ :** l'outil tourne sur sa machine ; au moins un silo et un cocon existent ; si l'article doit être un enfant, son futur parent a son premier jet accepté.
 **Arrivée :** un article au statut « Brouillon » dans l'outil, avec sa stratégie, ses mots-clés, sa structure, son texte et sa méta, et un fichier HTML dans le dossier de sortie du robot ; après relecture à l'écran, l'article est « Publié » et son fichier HTML téléchargé.
 **Recette :** parcours express, étapes 9 et 10, et module 07 (RED-9, RED-11, RED-12, RED-22, RED-23) pour la relecture et la publication à l'écran ; aucune vérification ne lance le robot lui-même (manque).
-**Test automatique :** l'enchaînement du robot (Cerveau, pause 1, création de l'article, Moteur, pause 2, Rédaction), ses relances bornées et ses abandons sont rejoués sur des phases simulées, sans serveur ; d'autres tests vérifient ses deux pauses, son plan de reprise, son arrêt sur un refus de porte et son contrôle du texte avant export. Aucun ne lance le robot contre un serveur, ni ne suit l'article jusqu'à sa relecture et sa publication à l'écran.
+**Test automatique :** l'enchaînement du robot (Cerveau, pause 1, création de l'article, Moteur, pause 2, Rédaction), ses relances bornées et ses abandons sont rejoués sur des phases simulées, sans serveur ; d'autres tests vérifient ses deux pauses, son plan de reprise, la question « Cocon cible » (le cocon nommé impose l'emplacement), son arrêt sur un refus de porte, la lecture au terminal d'une porte toute 🟠 et son contrôle du texte avant export. Aucun ne lance le robot contre un serveur, ni ne suit l'article jusqu'à sa relecture et sa publication à l'écran.
 
 ## Les étapes
 
@@ -24,9 +24,9 @@ synced_with:
 Tu lances `npm run dev` dans un terminal, puis `npm run auto:article` dans un second. Sans option, le robot travaille en simulé et le dit en toutes lettres : « MODE MOCK (défaut) — brief et données SEO SIMULÉS, sans rapport avec ton sujet. », puis « Pour un vrai résultat : npm run auto:article -- --mode=real ». Avec `npm run auto:article -- --mode=real`, il prévient : « Les appels DataForSEO / Claude sont facturés (~$0.35 par run). ». Le mode choisi s'applique à tout le serveur, donc aussi à l'application ouverte à côté ; si le serveur ne répond pas, le robot s'arrête sur « Serveur injoignable sur … » et « → Lance « npm run dev » dans un autre terminal, puis relance. ».
 
 ### 2. Donner le sujet
-**Exigences :** FR-CER-AIGUILLAGE ⚠, FR-CAP-LOCK-GATE
+**Exigences :** FR-CER-AIGUILLAGE, FR-CAP-LOCK-GATE
 
-Le robot affiche l'arbre des silos, cocons et articles, puis pose trois questions : « Sujet de l'article (une phrase, même vague) › », « Cocon cible (optionnel — [Entrée] laisse le script proposer) › » et « Contexte business (optionnel) › ». Le niveau n'est pas demandé : il découlera de la place trouvée dans le cocon, et le cocon tapé ici n'est qu'un indice pour l'IA. Pour décider toi-même, tu ajoutes `--cocoon=<nom>` (cocon imposé), `--level=pilier`, `intermediaire` ou `specifique` (avec `--cocoon` seulement), ou `--capitaine=<mot-clé>` (mot-clé principal imposé, que la porte du capitaine juge quand même). `--config=<fichier>` lance le run sans questions, d'après un petit fichier qui donne le sujet ; les deux pauses sont alors validées d'office.
+Le robot affiche l'arbre des silos, cocons et articles, puis pose trois questions : « Sujet de l'article (une phrase, même vague) › », « Cocon cible (optionnel — nom d'un cocon existant ; [Entrée] laisse le script proposer) › » et « Contexte business (optionnel) › ». Un cocon nommé ici (majuscules et espaces comptent pour rien) impose l'emplacement, comme `--cocoon` : l'IA ne propose plus d'autre cocon. Un nom qui ne désigne aucun cocon est dit (« Aucun cocon ne s'appelle « … ». Cocons existants : … »), et la question revient ; Entrée laisse le robot proposer. Le niveau n'est pas demandé : il découlera de la place trouvée dans le cocon. Pour décider toi-même, tu ajoutes `--cocoon=<nom>` (cocon imposé, la question n'est alors pas posée), `--level=pilier`, `intermediaire` ou `specifique` (avec un cocon imposé seulement), ou `--capitaine=<mot-clé>` (mot-clé principal imposé, que la porte du capitaine juge quand même). `--config=<fichier>` lance le run sans questions, d'après un petit fichier qui donne le sujet (et, s'il le nomme, le cocon imposé) ; les deux pauses sont alors validées d'office.
 
 ### 3. Valider l'emplacement et le brief (pause 1)
 **Exigences :** FR-CER-CHILD-FROM-PILLAR-H2, FR-INFRA-ARTICLE-STRATEGIES, FR-CER-STEPS-ARTICLE ⚠
@@ -66,7 +66,7 @@ Dans cette liste, la carte de l'article ouvre sa rédaction guidée : l'étape �
 ### 10. Publier
 **Exigences :** FR-RED-PUBLISH-GATE, FR-RED-EXPORT-HTML ⚠, FR-INFRA-GATE-WAIVER ⚠
 
-Dans l'éditeur, « Visualiser l'article » ouvre l'aperçu, et « Exporter HTML » passe la porte de publication. Elle rejoue les contrôles du texte, de la méta et des étapes du Moteur : un passage encore « à sourcer » y est 🔴, un lien vers un article non publié 🟠 ; le robot n'ayant jamais dérogé, seules les dérogations que tu as posées toi-même reviennent à reconfirmer. Acceptée, elle met l'article « Publié » et télécharge son fichier HTML. Refusée, elle ne change rien : « Publication annulée : corrigez les points signalés, puis exportez à nouveau. ».
+Dans l'éditeur, « Visualiser l'article » ouvre l'aperçu, et « Exporter HTML » passe la porte de publication. Elle rejoue les contrôles du texte, de la méta et des étapes du Moteur : un passage encore « à sourcer » y est 🔴, un lien vers un article non publié 🟠 ; le robot ne dérogeant jamais seul, seules les dérogations que tu as posées toi-même (à l'écran, ou par « J'ai lu » au terminal) reviennent à reconfirmer. Acceptée, elle met l'article « Publié » et télécharge son fichier HTML. Refusée, elle ne change rien : « Publication annulée : corrigez les points signalés, puis exportez à nouveau. ».
 
 ### 11. Refaire le maillage quand un voisin est publié
 **Exigences :** FR-RED-LINKING-MANUAL ⚠, FR-RED-EXPORT-HTML ⚠
@@ -83,7 +83,7 @@ Juste après la pause 1, le robot s'arrête avant de créer l'article : « « �
 ### Une porte refuse une étape
 **Exigences :** FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER ⚠, FR-CER-STEPS-ARTICLE ⚠
 
-Le robot ne déroge jamais à ta place : sur un refus, le run s'arrête (« ✗ Échec du run : … ») en listant chaque point avec son icône (⛔, 🔴, 🟠), puis « Décidez dans le Moteur (corriger, ou déroger en expliquant pourquoi), puis relancez le run. » (« la Rédaction » pour le premier jet). Tu ouvres l'article à l'écran, tu corriges ou tu déroges par écrit, puis `npm run auto:article -- --resume=<numéro>` reprend ; le numéro n'est pas rappelé dans le message d'arrêt, il est dans la ligne « Article #N créé ». La reprise refait tout le Moteur tant que la structure et le lexique ne sont pas validés, et rechoisit alors son propre capitaine, sauf si tu l'imposes par `--capitaine=<mot-clé>`. Elle n'est sûre que pour un article né du robot : sur un article créé à l'écran, elle réécrit son titre et sa stratégie d'après un brief sans rapport.
+Le robot ne déroge jamais à ta place. Si tous les points sont 🟠 (par exemple « Google traite cette requête comme de navigation… », que le bac à sable du mode simulé lève à chaque capitaine), il les affiche et te demande « J’ai lu, continuer ? [o/N] » : « o » les reconnaît comme la case « J'ai lu » de l'écran, puis l'étape est redemandée et le run continue. Sinon — tu réponds autre chose, un point est 🔴 ou ⛔, ou le run tourne sans toi (`--config`, `--resume`) —, le run s'arrête (« ✗ Échec du run : … ») en listant chaque point avec son icône (⛔, 🔴, 🟠), puis « Décidez dans le Moteur (corriger, ou déroger en expliquant pourquoi), puis relancez le run. » (« la Rédaction » pour le premier jet). Tu ouvres l'article à l'écran, tu corriges ou tu déroges par écrit, puis `npm run auto:article -- --resume=<numéro>` reprend ; le numéro n'est pas rappelé dans le message d'arrêt, il est dans la ligne « Article #N créé ». La reprise refait tout le Moteur tant que la structure et le lexique ne sont pas validés, et rechoisit alors son propre capitaine, sauf si tu l'imposes par `--capitaine=<mot-clé>`. Elle n'est sûre que pour un article né du robot : sur un article créé à l'écran, elle réécrit son titre et sa stratégie d'après un brief sans rapport.
 
 ### Le plafond de dépense arrête le run
 **Exigences :** FR-EXT-DATAFORSEO-COSTGUARD ⚠, NFR-COST-DATAFORSEO-RESERVE, FR-EXT-DATAFORSEO ⚠, NFR-COST-CACHE-FIRST ⚠
@@ -105,7 +105,6 @@ En simulé, le brief, les mots-clés et le texte n'ont aucun rapport avec le suj
 - FR-RED-PROGRESS — rouvrir la rédaction guidée d'un article déjà rédigé ramène toujours à « Brief & Structure ».
 - NFR-COST-AI-MOCK — après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK ».
 - FR-INFRA-RUNTIME-MODE — la resynchronisation n'a lieu qu'au chargement de la page : après un redémarrage du serveur en cours de session, le badge garde « MOCK » alors que le serveur est revenu à sa configuration.
-- FR-CER-AIGUILLAGE — « Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur.
 - FR-CER-STEPS-ARTICLE — aucun écran ne propose la stratégie d'un article : le Cerveau travaille au niveau du cocon ; seul le mode automatique enregistre une stratégie d'article. Et le mode automatique, repris sur un article créé à l'écran, donc sans stratégie, relance le Cerveau sur le sujet « (reprise) », qui abîme le titre et la stratégie de l'article.
 - FR-MOT-CANNIBALIZATION — l'alerte n'existe que sur les lignes de la barre des articles, sans nommer l'article concurrent ; les cartes du Radar et du Capitaine n'ont pas de badge.
 - FR-RED-EXPORT-HTML — le fichier téléchargé perd tous les liens internes posés dans l'éditeur, et son H1 est le titre de l'article, pas le H1 jugé par la porte ; réexporter après une correction, sans recharger l'aperçu, télécharge la version chargée à l'ouverture de l'onglet, pas celle que la porte vient d'accepter.

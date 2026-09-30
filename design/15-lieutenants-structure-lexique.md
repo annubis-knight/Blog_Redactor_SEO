@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -155,4 +155,4 @@ flowchart LR
 *Exigences : FR-LEX-METIER-ONLY · Design : DESIGN-LEX-METIER-ONLY*
 
 - **Code :** `moteur-valider.ts` — `POST /serp/tfidf` (`triggerScrapeIfMissing: true`) → [`scripts/auto-article/heuristics/pick-lexique.ts`](../scripts/auto-article/heuristics/pick-lexique.ts) `pickLexique` (obligatoires + différenciateurs de densité au moins médiane ; écarte `isGenericTerm`, `FR_STOPWORDS`, `DOMAIN_NOISE`, mots du capitaine et des lieutenants ; `MAX_TERMS` 30) → `saveThenEmit(…, MOTEUR_LEXIQUE_VALIDATED)`.
-- **Règles et décisions :** les lieutenants du mode automatique viennent de l'heuristique `pickLieutenants` ([`scripts/auto-article/heuristics/pick-lieutenants.ts`](../scripts/auto-article/heuristics/pick-lieutenants.ts)), pas de la proposition de l'IA. Chaque décision est enregistrée avant sa demande d'étape ; le run ne déroge jamais.
+- **Règles et décisions :** les lieutenants du mode automatique viennent de l'heuristique `pickLieutenants` ([`scripts/auto-article/heuristics/pick-lieutenants.ts`](../scripts/auto-article/heuristics/pick-lieutenants.ts)), pas de la proposition de l'IA. Chaque décision est enregistrée avant sa demande d'étape ; le run ne déroge jamais seul (une porte toute 🟠 se reconnaît au terminal).

@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -306,7 +306,8 @@ L'interrupteur est un état global du serveur (`GET|POST /api/runtime-mode`, dé
   service), `mock-propose-lieutenants`, `mock-redaction` (micro-contexte accepté par
   `updateMicroContextSchema`, réduction qui garde titres, listes et liens) et `mock-cerveau` (configuration
   du thème sous `themeConfigSchema`, suggestions, fusions, sous-questions, enrichissement, consolidation,
-  sujets suggérés lus par `parseTopicsFromSuggestion`, régénération d'une ligne de la carte).
+  sujets suggérés lus par `parseTopicsFromSuggestion`, régénération d'une ligne de la carte, candidats d'un
+  article né d'une section dont les mots accentués restent entiers — « démarrer » garde son « d »).
 - Le mode simulé valide l'orchestration (routes, lecture des réponses, persistance), pas la qualité du texte
   de l'IA. Pour cela : la recette réelle (`npm run auto:article -- --mode=real`, puis
   `npm run verify:content`) et la [recette manuelle](../spec/18-recette-manuelle.md).
@@ -378,7 +379,7 @@ serveur ni navigateur, mais PostgreSQL.
 |---|---|
 | `verify:lint` | `oxlint .` |
 | `verify:types` | `vue-tsc --build` et `tsc -p tsconfig.auto-scripts.json` (le robot) |
-| `verify:unit` | Vitest avec [`../vitest.verify.config.ts`](../vitest.verify.config.ts) : environnement `node`, `tests/unit/shared`, `tests/unit/scripts`, `tests/unit/architecture`, dix tests de services purs (dont cinq sur les réponses simulées, `mock-*.test.ts`, voir « Le mode simulé des tests »), `test-fixtures-cleanup`, et les gardiens des pertes et mélanges de données (recette du 2026-09-30, lot 2 : lecture d'un article au Moteur `useMoteurArticleSync` et `article-keywords.loading`, scores et suppression du contenu `editor-score-persist` et `editor-delete-content`, `article-content.service`, `articles.routes`, enregistrement du scan Radar `useResonanceScore.save`), tous sans navigateur simulé ; une quinzaine de secondes |
+| `verify:unit` | Vitest avec [`../vitest.verify.config.ts`](../vitest.verify.config.ts) : environnement `node`, `tests/unit/shared`, `tests/unit/scripts`, `tests/unit/architecture`, dix tests de services purs (dont cinq sur les réponses simulées, `mock-*.test.ts`, voir « Le mode simulé des tests »), `test-fixtures-cleanup`, `composables/article-proposals-warnings` (alertes de la carte sans nom du code), et les gardiens des pertes et mélanges de données (recette du 2026-09-30, lot 2 : lecture d'un article au Moteur `useMoteurArticleSync` et `article-keywords.loading`, scores et suppression du contenu `editor-score-persist` et `editor-delete-content`, `article-content.service`, `articles.routes`, enregistrement du scan Radar `useResonanceScore.save`), tous sans navigateur simulé ; une vingtaine de secondes |
 | `verify:content` | [`../scripts/verify-content.ts`](../scripts/verify-content.ts) : chaque article rédigé (propreté, méta, liens, SEO, porte de publication rejouée), les articles entre eux (cannibalisation, ordre du cocon), les pages exportées, l'hygiène du dépôt (articles de test restés, sauvegarde de plus de 14 jours, référence des tests de plus de 30 jours, fichiers `.bak`, clés du `.env`). Les avertissements n'échouent pas |
 | `db:check` | L'empreinte de la base vivante est celle de `schema.sql` ; échec aussi si la base est injoignable |
 

@@ -1,7 +1,7 @@
 ---
 title: Parcours — Article enfant
 id: PU-02
-last_updated: 2026-09-29
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/18-recette-manuelle.md
@@ -29,7 +29,7 @@ Page du cocon › « Cerveau » : l'étape « Articles » s'ouvre et l'arbre se 
 L'utilisateur clique « Créer l'article de cette section » (infobulle « Propose des mots-clés et mesure leurs données réelles (appel payant) »). Le panneau s'intitule « Créer l'article intermédiaire né de la section « … » de « … » » et annonce « Recherche de mots-clés candidats, puis mesure de leurs données réelles (quelques secondes)… ». Les 3 à 5 candidats parlent du sujet de la section, jamais du mot-clé du pilier ni d'un autre article du cocon. Chacun est mesuré (« Volume », « Difficulté », « Intention », « En tête de Google ») ; aucun n'est coché d'office.
 
 ### 3. Choisir le mot-clé et créer l'article
-**Exigences :** FR-CER-CREATION-HONNETE, FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-AIGUILLAGE ⚠, FR-PIE-AI-GENERATION
+**Exigences :** FR-CER-CREATION-HONNETE, FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-AIGUILLAGE, FR-PIE-AI-GENERATION
 
 Cocher un candidat préremplit « Titre de l'article », que l'utilisateur peut modifier (3 caractères au moins). « Créer l'article » affiche « Création… », puis « « … » est créé. ». Dans l'arbre, la section montre désormais le lien vers l'enfant et « À rédiger » ; l'enfant apparaît sous le pilier, badge « Intermédiaire ». Sur la carte indicative, il s'inscrit avec la marque « Créé ». Son niveau vient de sa place : il ne se choisit pas et ne se change pas.
 
@@ -104,7 +104,6 @@ Si un lieutenant de l'enfant est le Capitaine du pilier, la porte des lieutenant
 
 - FR-RED-PROGRESS — rouvrir la rédaction guidée d'un article déjà rédigé ramène toujours à « Brief & Structure ».
 - FR-CER-COCOON-PROGRESSIVE — « La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur ; « Régénérer › Titre » sur une ligne « Créé » ne change le titre que sur la carte, sans l'enregistrer : le Moteur montre alors un autre titre que l'arbre et la Rédaction.
-- FR-CER-AIGUILLAGE — « Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur.
 - FR-MOT-NO-AUTO-ACTION — ouvrir l'onglet Lexique, Capitaine verrouillé, peut lancer seul l'analyse IA du lexique quand aucune recommandation n'est enregistrée ; ouvrir le Capitaine d'un article sans candidat étudie seul le premier mot-clé suggéré, avec de possibles appels DataForSEO et Google ; ouvrir le Capitaine, ou choisir un article dont l'onglet Capitaine a déjà été ouvert, redemande et fait payer l'avis expert IA de chaque candidat, même onglet caché.
 - FR-MOT-CANNIBALIZATION — l'alerte n'existe que sur les lignes de la barre des articles, sans nommer l'article concurrent ; les cartes du Radar et du Capitaine n'ont pas de badge.
 - FR-HN-TAB — un refus d'enregistrement de la structure arrête la validation sans aucun message à l'écran ; seul le refus du sommaire est dit.

@@ -1,7 +1,7 @@
 ---
 title: Parcours — Reprendre un article
 id: PU-03
-last_updated: 2026-09-29
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/18-recette-manuelle.md
@@ -113,7 +113,7 @@ Rouvrir un article ne doit que relire la base ; une seule exception est admise, 
 - FR-INFRA-LIEUTENANT-EXPLORATIONS — « Tout réinitialiser » n'archive les lieutenants qu'à l'écran : l'archivage enregistré n'est jamais demandé. Après un rechargement, ils reviennent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide, et la porte refuse l'étape. Un lieutenant ajouté depuis le panneau d'aide n'est enregistré qu'une fois coché ; le message annonce toujours « 0 lieutenant(s) archivé(s) ».
 - FR-LIE-SERP-ANALYZE — la pile d'activité annonce « Scraping ~N URLs via DataForSEO » même quand l'analyse est relue en base ; « Tout relancer (SERP + IA) » ne relance rien pendant 7 jours : il relit l'analyse et les propositions gardées, et doit s'appeler « Recharger l'analyse ».
 - FR-INFRA-KEYWORD-METRICS — tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie ; le scan Radar ne relit ni n'enregistre les mesures gardées, et chaque test au Capitaine relance ce scan pour sa carte ; un « Rafraîchir » raté date quand même la mesure du jour, et pour un mot-clé sans volume connu la fiche vide remplace la réponse gardée.
-- FR-RED-OUTLINE — les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique ; un chapitre lâché sur la ligne du H1 passe au-dessus de lui ; Échap garde le titre tapé au lieu d'annuler.
+- FR-RED-OUTLINE — les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique.
 - FR-CAP-ROOTS — à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte.
 - FR-LIE-CHECKBOX-COUNT — le compteur affiche les cases cochées sur le nombre de propositions générées ; aucune fourchette conseillée par type d'article n'est affichée ni signalée.
 - FR-RAD-LONGTAIL-UI — au rechargement, suggestions et cases cochées ne reviennent pas à l'écran.

@@ -35,6 +35,8 @@ export default mergeConfig(
         'tests/unit/services/mock-redaction.test.ts',
         'tests/unit/services/mock-cerveau.test.ts',
         'tests/unit/infra/test-fixtures-cleanup.test.ts',
+        // Textes à l'écran sans nom du code (NFR-UX-SCREEN-TEXT, recette du 2026-09-30).
+        'tests/unit/composables/article-proposals-warnings.test.ts',
         // Pertes et mélanges de données (recette du 2026-09-30, lot 2) :
         // choisir un article ne fait que relire, rien d'un article ne passe à un autre.
         'tests/unit/stores/article-keywords.loading.test.ts',
