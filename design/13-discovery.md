@@ -1,6 +1,6 @@
 ---
 status: référence
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 ---
 
@@ -70,7 +70,7 @@ code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 - **Code :** [`src/composables/keyword/useDiscoveryCache.ts`](../src/composables/keyword/useDiscoveryCache.ts) — `checkCacheForSeed`, `loadFromCache`, `saveToCache`, `clearCacheForSeed`. `useDiscoveryPanel.loadFromCacheAndHydrate` / `saveToCacheFromState` (six sources, `relevanceScores` en `Record`, `wordGroups`, `analysisResult` ; **pas** la courte-traîne). `DiscoveryPanel.vue` — `watch(seedInput)` à 400 ms (sans `immediate`), sauvegarde automatique quand `suggestLoading`, `aiLoading`, `dataforseoLoading` et `semanticLoading` repassent tous à faux avec des résultats.
 - **API :** `GET /api/discovery-cache/check?seed=` → `{ cached, cachedAt?, keywordCount?, hasAnalysis? }` ; `GET /api/discovery-cache/load?seed=` → entrée ou `null` ; `POST /api/discovery-cache/save` (validé par `saveDiscoveryCacheSchema`, [`shared/schemas/discovery-cache.schema.ts`](../shared/schemas/discovery-cache.schema.ts)) ; `DELETE /api/discovery-cache?seed=`. Routes : [`server/routes/discovery-cache.routes.ts`](../server/routes/discovery-cache.routes.ts).
 - **Code serveur :** [`server/services/infra/discovery-cache.service.ts`](../server/services/infra/discovery-cache.service.ts) — `checkCache`, `loadCache`, `saveCache` (écrit `cachedAt`, `expiresAt` = +30 j), `clearCache`, `countKeywords` (six sources). [`server/services/keyword/keyword-discovery-db.service.ts`](../server/services/keyword/keyword-discovery-db.service.ts) — `getKeywordDiscovery`, `saveKeywordDiscoverySources` (upsert sur `(seed, lang)`), `deleteKeywordDiscovery`, `isKeywordDiscoveryFresh` (non appelée).
-- **Données :** `keyword_discoveries (seed, lang, sources_json JSONB, ai_analysis_json JSONB, fetched_at)`, clé `(seed, lang='fr')`, correspondance exacte du texte. Tout l'état, analyse comprise, va dans `sources_json` ; `ai_analysis_json` n'est pas écrit.
+- **Données :** `keyword_discoveries (seed, lang, sources_json JSONB, ai_analysis_json JSONB, fetched_at)`, clé `(seed, lang='fr')`, correspondance exacte du texte. En mode simulé, la racine est rangée sous `mock:<seed>` (`modeScopedKey`, FR-EXT-DATAFORSEO-SANDBOX) : une découverte simulée n'est jamais proposée en réel, ni l'inverse. Tout l'état, analyse comprise, va dans `sources_json` ; `ai_analysis_json` n'est pas écrit.
 - **Règles et décisions :**
   - Clé par mot-clé racine, pas par article : une découverte sert à tout le cocon. La dernière analyse sauvegardée remplace la précédente.
   - Pas d'expiration appliquée (conflit 21).

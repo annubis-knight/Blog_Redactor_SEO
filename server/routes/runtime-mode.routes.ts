@@ -23,7 +23,7 @@ router.get('/runtime-mode', (_req, res) => {
   })
 })
 
-router.post('/runtime-mode', (req, res) => {
+router.post('/runtime-mode', async (req, res) => {
   const parsed = setRuntimeModeSchema.safeParse(req.body)
   if (!parsed.success) {
     res.status(400).json({
@@ -31,7 +31,26 @@ router.post('/runtime-mode', (req, res) => {
     })
     return
   }
+  const previous = getRuntimeMode()
   setRuntimeMode(parsed.data.mode as RuntimeMode | null)
+  // Passage en réel : les mesures obtenues en simulé quittent la base partagée,
+  // pour ne jamais être servies comme vraies (FR-EXT-DATAFORSEO-SANDBOX). Si
+  // l'effacement échoue, la bascule est refusée : le bouton revient à son état.
+  if (getEffectiveMode() === 'real') {
+    const { purgeSandboxMeasures } = await import('../services/keyword/keyword-metrics.service.js')
+    try {
+      await purgeSandboxMeasures()
+    } catch {
+      setRuntimeMode(previous)
+      res.status(500).json({
+        error: {
+          code: 'SANDBOX_PURGE_FAILED',
+          message: 'Passage en réel refusé : les mesures simulées n\'ont pas pu être effacées de la base. Réessayez.',
+        },
+      })
+      return
+    }
+  }
   res.json({
     data: {
       override: getRuntimeMode(),

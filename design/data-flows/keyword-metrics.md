@@ -1,9 +1,9 @@
 ---
 name: keyword-metrics
 description: Mesures d'un mot-clé partagées entre tous les articles (volume, difficulté, CPC, concurrence, intention de la SERP, suggestions Google, questions PAA, analyses locale et content gap) — une ligne `keyword_metrics` par mot-clé, relue avant tout appel payant.
-type: "keyword_metrics { keyword, lang, country (PK), search_volume, keyword_difficulty, cpc, competition, intent_raw, intent_label, autocomplete_suggestions JSONB, autocomplete_source, paa_questions JSONB, local_analysis, content_gap_analysis, local_comparison, fetched_at }"
+type: "keyword_metrics { keyword, lang, country (PK), search_volume, keyword_difficulty, cpc, competition, intent_raw, intent_label, autocomplete_suggestions JSONB, autocomplete_source, paa_questions JSONB, local_analysis, content_gap_analysis, local_comparison, from_sandbox, fetched_at }"
 last_updated: 2026-09-30
-related_fr: [FR-INFRA-KEYWORD-METRICS, FR-INFRA-PAA-CACHE, FR-MOT-CACHE-CASCADE, NFR-COST-CACHE-FIRST, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION, FR-MOT-RAW-KPIS, FR-CER-KEYWORD-REAL-DATA, FR-EXT-DATAFORSEO, FR-EXT-AUTOCOMPLETE-GOOGLE, FR-EXP-CONTENT-GAP, FR-CAP-SCAN, FR-CAP-RELEVANCE-INTENT-SIGNAL, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-DISPLAY-DASH, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-SCORING-NULLSAFE]
+related_fr: [FR-EXT-DATAFORSEO-SANDBOX, FR-INFRA-KEYWORD-METRICS, FR-INFRA-PAA-CACHE, FR-MOT-CACHE-CASCADE, NFR-COST-CACHE-FIRST, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION, FR-MOT-RAW-KPIS, FR-CER-KEYWORD-REAL-DATA, FR-EXT-DATAFORSEO, FR-EXT-AUTOCOMPLETE-GOOGLE, FR-EXP-CONTENT-GAP, FR-CAP-SCAN, FR-CAP-RELEVANCE-INTENT-SIGNAL, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-DISPLAY-DASH, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-SCORING-NULLSAFE]
 ---
 
 # Data Flow — keyword-metrics
@@ -29,12 +29,13 @@ Qui crée ou met à jour cette donnée. Toutes les écritures passent par [`keyw
 - **Règle d'écriture des KPI** : `upsertKeywordKpis` fait `COALESCE(nouvelle, ancienne)` sur chaque colonne ; une mesure absente n'efface jamais une valeur connue (FR-INFRA-KEYWORD-METRICS).
 - **Autres colonnes** : suggestions, PAA, content gap sont **remplacées** entières à chaque écriture.
 - **Toute écriture** remet `fetched_at` à maintenant.
+- **Marque du simulé** (FR-EXT-DATAFORSEO-SANDBOX) : chaque écrivain ci-dessus sauf les suggestions Google pose `from_sandbox = ancienne OR (mode effectif « mock »)` ; le relevé SERP lit le mode avant son appel. Une écriture réelle ne retire jamais la marque.
 - **Frontière de la source** : l'étude Capitaine passe chaque valeur DataForSEO par `toKpiValue` (texte illisible → `null`) et ramène l'intention à l'une des 4 valeurs (`coerceIntentLabel`), sinon `null`.
 - **Sans appelant** : `upsertKeywordLocalAnalysis`, `upsertKeywordLocalComparison` et `deleteKeywordMetrics`. `local_analysis` et `local_comparison` ne sont donc plus alimentées.
 
 ## Persistance
 
-**Autorité** : `keyword_metrics` (PostgreSQL), permanente, partagée entre articles et cocons. Index `idx_keyword_metrics_fetched` sur `fetched_at`. Aucune purge automatique.
+**Autorité** : `keyword_metrics` (PostgreSQL), permanente, partagée entre articles et cocons. Index `idx_keyword_metrics_fetched` sur `fetched_at`. Une seule purge : les lignes `from_sandbox` au passage en réel (`purgeSandboxMeasures`, appelée par `POST /api/runtime-mode` et au démarrage du serveur en réel ; index partiel `idx_keyword_metrics_from_sandbox`), tables filles comprises par cascade.
 
 La fraîcheur n'est pas imposée par la base : chaque lecteur l'applique avec `isKeywordMetricsFresh(fetchedAt, ttlDays)` (faux si `fetched_at` absent).
 
@@ -84,6 +85,8 @@ La fraîcheur n'est pas imposée par la base : chaque lecteur l'applique avec `i
 | SERP en panne pendant l'étude | — | pas d'écriture PAA | KPI PAA `null` (inconnu), pas « 0 question ». |
 | Réouverture de l'article | jointure `keyword_metrics` | aucune | Mêmes KPI qu'à l'étude, sauf si la ligne a été remesurée entre-temps. |
 | Radar puis étude Capitaine sur le même mot-clé | PAA en arbre (profondeur 2) | l'étude remplace `paa_questions` par une liste plate | Le scan Radar suivant voit une profondeur 1 et repaie ses PAA. |
+| Préparé en simulé, repris en réel | ligne effacée au passage en réel | la première étude réelle recrée la ligne, non marquée | Capitaine sans mesure (verdict gris) jusqu'à l'étude ; jamais de chiffre du bac à sable en réel. Les cartes Radar et les KPI des lieutenants de l'article gardent leurs chiffres simulés (limite assumée). |
+| Réel puis simulé | ligne réelle relue telle quelle | une remesure en simulé (ligne périmée, « Rafraîchir ») la marque | La ligne marquée est effacée au passage en réel suivant, valeurs réelles comprises. |
 
 ## Limites connues
 
@@ -91,11 +94,13 @@ La fraîcheur n'est pas imposée par la base : chaque lecteur l'applique avec `i
 - **Formes mêlées dans `paa_questions`** : le Radar écrit un arbre (`depth`, `parentQuestion`), l'étude et le brief une liste plate ; chaque écriture remplace la précédente.
 - **Colonnes orphelines** : `local_analysis` et `local_comparison` n'ont plus d'écrivain ; `content_gap_analysis` n'est écrite que par une route qu'aucun écran n'appelle.
 - **Mot-clé à la casse près** : la clé est le mot-clé exact ; seule la porte (`exploredCandidates`) compare en minuscules.
+- **Bascule pendant une mesure** : une mesure simulée qui s'écrit après une bascule en réel survenue pendant son appel n'est pas marquée (le relevé SERP, lui, lit le mode avant son appel). Les lignes écrites avant la colonne `from_sandbox` valent `false`.
 
 ## Tests de cohérence qui la gardent
 
 - [`tests/unit/coherence/keyword-metrics.test.ts`](../../tests/unit/coherence/keyword-metrics.test.ts) — fraîcheur de 7 jours (`isKeywordMetricsFresh`), lecture en base avant tout appel, `upsertKeywordKpis` garde une valeur connue face à `null` et remet `fetched_at` à jour, `null` en bas du tri et exclu des moyennes.
 - [`tests/unit/coherence/kpi-nullable.test.ts`](../../tests/unit/coherence/kpi-nullable.test.ts) — KPI absents « — », tri et moyennes sans faux zéro, adaptateur DataForSEO qui propage `null`.
+- [`tests/unit/services/sandbox-measures-purge.test.ts`](../../tests/unit/services/sandbox-measures-purge.test.ts) (dans `verify`) — marque `from_sandbox` à l'écriture, purge au passage en réel (bouton, démarrage), rien en simulé, bascule refusée si l'effacement échoue.
 - [`tests/unit/services/keyword-metrics.service.test.ts`](../../tests/unit/services/keyword-metrics.service.test.ts), [`tests/unit/services/captain-kpis.test.ts`](../../tests/unit/services/captain-kpis.test.ts) (même expression à l'étude et à la relecture), [`tests/unit/routes/keyword-scan.routes.test.ts`](../../tests/unit/routes/keyword-scan.routes.test.ts).
 - À écrire (encore `it.todo` dans `keyword-metrics.test.ts`) : deux articles qui étudient le même mot-clé ne déclenchent qu'un appel DataForSEO ; une valeur `null` affichée « — » et placée en bas, testée sur un composant.
 

@@ -1662,9 +1662,13 @@ L'outil doit refuser, avant de l'émettre, tout appel DataForSEO payant qui fera
 - La fenêtre écoulée, les appels repassent sans intervention.
 
 ### FR-EXT-DATAFORSEO-SANDBOX — Bac à sable DataForSEO
-**Statut :** non tenue (les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis)
+**Statut :** active
 L'outil doit pouvoir interroger le bac à sable gratuit de DataForSEO (données factices de même forme) au lieu de la production payante.
 - Le bac à sable n'est jamais deviné d'après le type d'environnement (développement ou production) : il s'active explicitement, par la configuration (bac à sable demandé, ou IA réglée en simulation) ou par le mode « MOCK ». Il suit toujours le mode affiché par le bouton.
+- Une réponse obtenue en simulé (bac à sable DataForSEO ou IA simulée) n'est jamais resservie en réel, ni l'inverse : longues traînes, découvertes enregistrées et réponses gardées de 1 à 7 jours ne servent qu'au mode qui les a obtenues. Les suggestions Google et Search Console, identiques dans les deux modes, restent partagées.
+- Les mesures de mots-clés partagées entre articles (volume, CPC, difficulté, intention, questions PAA, pages concurrentes lues pour le Lexique) obtenues en simulé sont effacées au passage en réel, par le bouton ou au démarrage du serveur en réel ; en simulé, rien n'est effacé. Un candidat du Capitaine ainsi effacé s'affiche sans mesure jusqu'à une nouvelle étude. Si l'effacement échoue, la bascule en réel est refusée et le bouton revient à « MOCK ».
+- Limite assumée : ce que chaque article a gardé de son propre travail en simulé (cartes du Radar, questions PAA jugées et avis IA du Capitaine, indicateurs des lieutenants, lexique extrait) garde ses chiffres simulés après le passage en réel ; seule une nouvelle étude les remplace.
+- Limite : une mesure simulée encore en cours au moment de la bascule en réel s'enregistre comme réelle (sauf le relevé des pages concurrentes, marqué dès son départ) ; ne bascule pas pendant une étude.
 - La pile d'activité indique « SANDBOX » ou « PROD » à côté de la dépense DataForSEO.
 - Les mesures demandées en groupe sont rattachées, dans l'ordre, aux mots-clés demandés, pour que chacun reçoive une mesure.
 - Le bac à sable exige lui aussi de vrais identifiants DataForSEO.

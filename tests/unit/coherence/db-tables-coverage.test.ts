@@ -33,7 +33,7 @@
  *   - CLAUDE.md §3.2 (header AUTHORITY:)
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
@@ -315,6 +315,17 @@ describe('FR-INFRA-LIEUTENANT-EXPLORATIONS — lieutenant_explorations', () => {
 // ============================================================================
 
 describe('FR-INFRA-KEYWORD-DISCOVERIES — keyword_discoveries', () => {
+  // La racine est rangée par mode (FR-EXT-DATAFORSEO-SANDBOX) : le poste ou la
+  // CI peuvent être réglés en simulé, le mode réel est donc posé ici.
+  beforeEach(async () => {
+    const { setRuntimeMode } = await import('../../../server/services/infra/runtime-mode.service.js')
+    setRuntimeMode('real')
+  })
+  afterEach(async () => {
+    const { setRuntimeMode } = await import('../../../server/services/infra/runtime-mode.service.js')
+    setRuntimeMode(null)
+  })
+
   it('getKeywordDiscovery() lit avec PK (seed, lang)', async () => {
     const { getKeywordDiscovery } = await import('../../../server/services/keyword/keyword-discovery-db.service.js')
     await getKeywordDiscovery('seed-kw', 'fr')

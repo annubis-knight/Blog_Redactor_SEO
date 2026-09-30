@@ -1,7 +1,7 @@
 ---
 title: Parcours — Comprendre et repartir quand ça coince
 id: PU-07
-last_updated: 2026-09-29
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/18-recette-manuelle.md
@@ -54,9 +54,9 @@ L'outil tourne sur ta machine : il reste ouvert sans internet. En MOCK, l'IA sim
 Dans le terminal de `npm run dev`, « PostgreSQL connected » confirme que la base répond ; sinon, « PostgreSQL connection failed » donne une piste (service arrêté, identifiants refusés, base absente), et le serveur démarre quand même. La page se recharge d'elle-même. Articles, étapes cochées, mots-clés et mesures gardées sont retrouvés à l'identique. Le compteur de dépense DataForSEO, lui, repart de zéro.
 
 ### 8. Essayer en RÉEL, puis revenir en MOCK
-**Exigences :** FR-EXT-DATAFORSEO-SANDBOX ⚠, FR-EXT-AI-MULTI-PROVIDER, NFR-COST-DATAFORSEO-BUDGET
+**Exigences :** FR-EXT-DATAFORSEO-SANDBOX, FR-EXT-AI-MULTI-PROVIDER, NFR-COST-DATAFORSEO-BUDGET
 
-Un clic sur « MOCK » passe le bouton à « RÉEL », en vert, et la pile affiche « PROD » en 15 secondes au plus. En RÉEL, l'IA est Claude, quel que soit le réglage du serveur, et chaque mesure DataForSEO se paie, sous le plafond. Teste des mots-clés jamais mesurés, même en MOCK (voir plus bas). À la fin, un nouveau clic ramène « MOCK » : « SANDBOX » revient, et la dépense ne bouge plus.
+Un clic sur « MOCK » passe le bouton à « RÉEL », en vert, et la pile affiche « PROD » en 15 secondes au plus. Ce clic efface les mesures de mots-clés faites en MOCK (voir plus bas). En RÉEL, l'IA est Claude, quel que soit le réglage du serveur, et chaque mesure DataForSEO se paie, sous le plafond. À la fin, un nouveau clic ramène « MOCK » : « SANDBOX » revient, et la dépense ne bouge plus.
 
 ### 9. Reprendre sans repayer
 **Exigences :** FR-INFRA-API-CACHE, FR-INFRA-GET-OR-FETCH, FR-INFRA-KEYWORD-DISCOVERIES, FR-MOT-EXPLORATIONS-HYDRATATION, NFR-INT-SERP-ONCE, NFR-COST-CACHE-FIRST ⚠
@@ -78,12 +78,12 @@ Au Radar et dans « SERP Data », une mesure refusée par le plafond ou perdue d
 ### Le serveur redémarre pendant que la page reste ouverte
 **Exigences :** NFR-COST-AI-MOCK, FR-INFRA-RUNTIME-MODE
 
-Le serveur revient d'abord à sa configuration. La page, restée ouverte, le remarque au plus tard 15 secondes après (ou dès que tu reviens sur l'onglet) et lui renvoie le mode dont elle se souvient, sans rechargement. Si ta configuration est payante, attends ces quelques secondes, ou que la pile réaffiche « SANDBOX », avant de relancer une action.
+Le serveur revient d'abord à sa configuration. La page, restée ouverte, le remarque au plus tard 15 secondes après (ou dès que tu reviens sur l'onglet) et lui renvoie le mode dont elle se souvient, sans rechargement. Si ta configuration est payante, attends ces quelques secondes, ou que la pile réaffiche « SANDBOX », avant de relancer une action. Un serveur qui redémarre en réel efface aussi les mesures faites en MOCK.
 
-### Une mesure faite en MOCK revient en RÉEL
-**Exigences :** FR-EXT-DATAFORSEO-SANDBOX ⚠, NFR-COST-CACHE-FIRST ⚠
+### Un article préparé en MOCK, repris en RÉEL
+**Exigences :** FR-EXT-DATAFORSEO-SANDBOX, NFR-COST-CACHE-FIRST ⚠
 
-Les réponses du bac à sable sont gardées comme de vraies réponses, pendant 7 jours : en RÉEL, un mot-clé mesuré en MOCK affiche ses chiffres factices, sans nouvel appel, et ses questions PAA, longues traînes et mots-clés de Discovery simulés sont resservis. Rien, à l'écran, ne les distingue des vraies mesures. En RÉEL, prends des mots-clés jamais testés, ou force la mesure par « Rafraîchir » dans « SERP Data ».
+Rien de simulé n'est servi comme vrai. Les longues traînes, les découvertes enregistrées et les réponses gardées quelques jours ne servent qu'au mode qui les a obtenues : en RÉEL, Discovery ne propose plus la récolte simulée, et la même demande repart vers la vraie source. Les mesures de mots-clés faites en MOCK (volume, CPC, difficulté, intention, questions PAA, pages lues pour le Lexique) sont effacées au passage en RÉEL : au Capitaine, les candidats étudiés en MOCK s'affichent sans mesure, et leur première étude en RÉEL se paie. Seul ce que l'article a gardé de son propre travail (cartes du Radar, questions PAA jugées et avis IA du Capitaine, indicateurs des lieutenants, lexique extrait) garde ses chiffres simulés : refais ces étapes en RÉEL avant de t'y fier. Ne bascule pas pendant une étude : la mesure simulée en cours s'enregistrerait comme réelle.
 
 ### Une panne pendant la rédaction se dit
 **Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-GEN-SAUVEGARDE-AU-FIL
@@ -99,7 +99,6 @@ Avant le premier mot, l'outil réessaie puis passe au fournisseur d'IA suivant. 
 - FR-EXT-GEMINI — le modèle par défaut, Gemini 2.0 Flash, n'est plus servi par Google : sans réglage, Gemini échoue et la chaîne passe à OpenRouter.
 - FR-EXT-DATAFORSEO — les mesures demandées en groupe et la fiche SEO du brief taisent un échec du fournisseur, y compris un refus du plafond de dépense : les valeurs restent vides, sans message ; un « Rafraîchir » qui échoue tout à fait remplace toute la page de rédaction par le bloc d'erreur, au lieu du seul panneau « SERP Data ».
 - FR-LIE-SERP-ECHEC-EXPLIQUE — le serveur remplace toute cause (aucun résultat, source muette) par « SERP analysis failed », affiché entre parenthèses ; une coupure réseau n'est pas reconnue ; le plafond de dépense invite à changer de mot-clé, et un quota épuisé à attendre au lieu de recharger les crédits.
-- FR-EXT-DATAFORSEO-SANDBOX — les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis.
 - NFR-COST-CACHE-FIRST — un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine.
 - FR-INFRA-API-STREAM — quand l'utilisateur annule, l'écran s'arrête mais le serveur continue la génération jusqu'au bout et la facture.
 - NFR-PERF-SSE-FIRST-TOKEN — le premier jet n'a pas de bouton d'arrêt ; un arrêt côté écran ne coupe pas la génération côté serveur, qui continue et se facture.

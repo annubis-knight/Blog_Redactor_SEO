@@ -64,6 +64,10 @@ export default mergeConfig(
         'tests/unit/composables/lexique/lexique-ai-analysis.test.ts',
         'tests/unit/composables/lieutenant-explorations-persist.test.ts',
         'tests/unit/routes/lieutenants-archive.routes.test.ts',
+        // Réponses simulées jamais resservies en réel, ni l'inverse
+        // (FR-EXT-DATAFORSEO-SANDBOX, recette du 2026-09-30, lot 6).
+        'tests/unit/services/sandbox-cache-isolation.test.ts',
+        'tests/unit/services/sandbox-measures-purge.test.ts',
       ],
       root: fileURLToPath(new URL('./', import.meta.url)),
     },

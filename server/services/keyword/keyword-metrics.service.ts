@@ -9,14 +9,21 @@
  * WRITES TO: INSERT/UPSERT via upsertKeywordKpis, upsertKeywordAutocomplete,
  *            upsertKeywordPaa (autres helpers ci-dessous).
  *            COALESCE systématique : on n'écrase jamais une valeur existante par null.
+ *            `from_sandbox` : vrai dès qu'une donnée venue d'une source simulée
+ *            est écrite (jamais remis à faux) ; purgeSandboxMeasures efface ces
+ *            lignes au passage en réel (tables filles par cascade).
  * CONSUMERS: keyword-scan.routes (validation card individuelle),
  *            captain-relevance.service (Score Pertinence live),
- *            radar-* services (scan SERP cross-article).
+ *            radar-* services (scan SERP cross-article) ;
+ *            purge : runtime-mode.routes (POST, passage en réel), démarrage
+ *            du serveur (server/index.ts).
  * RELATED FR: FR-CAP-RELEVANCE-COMPUTED-LIVE, FR-CAP-RELEVANCE-INTENT-SIGNAL,
- *             FR-INFRA-KPI-NULLABLE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION.
+ *             FR-INFRA-KPI-NULLABLE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION,
+ *             FR-EXT-DATAFORSEO-SANDBOX.
  */
 import { query } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
+import { getEffectiveMode } from '../infra/runtime-mode.service.js'
 import {
   PAIN_INTENT_EXPECTED_VALUES,
   type PainIntentExpected,
@@ -31,6 +38,16 @@ const ALLOWED_INTENT_LABELS = new Set<string>(PAIN_INTENT_EXPECTED_VALUES)
 function coerceIntentLabel(value: unknown): PainIntentExpected | null {
   if (typeof value !== 'string') return null
   return ALLOWED_INTENT_LABELS.has(value) ? (value as PainIntentExpected) : null
+}
+
+/**
+ * Vrai quand la donnée écrite maintenant vient d'une source simulée : en mode
+ * effectif « mock », DataForSEO répond depuis son bac à sable et l'IA depuis
+ * ses jeux d'exemples (FR-EXT-DATAFORSEO-SANDBOX). La ligne est alors marquée
+ * `from_sandbox`, et effacée au passage en réel.
+ */
+function writtenInSandbox(): boolean {
+  return getEffectiveMode() === 'mock'
 }
 
 // ---------------------------------------------------------------------------
@@ -159,8 +176,8 @@ export async function upsertKeywordKpis(
 ): Promise<void> {
   await query(
     `INSERT INTO keyword_metrics
-       (keyword, lang, country, search_volume, keyword_difficulty, cpc, competition, intent_raw, intent_label, fetched_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+       (keyword, lang, country, search_volume, keyword_difficulty, cpc, competition, intent_raw, intent_label, from_sandbox, fetched_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
      ON CONFLICT (keyword, lang, country) DO UPDATE
        SET search_volume = COALESCE(EXCLUDED.search_volume, keyword_metrics.search_volume),
            keyword_difficulty = COALESCE(EXCLUDED.keyword_difficulty, keyword_metrics.keyword_difficulty),
@@ -168,6 +185,7 @@ export async function upsertKeywordKpis(
            competition = COALESCE(EXCLUDED.competition, keyword_metrics.competition),
            intent_raw = COALESCE(EXCLUDED.intent_raw, keyword_metrics.intent_raw),
            intent_label = COALESCE(EXCLUDED.intent_label, keyword_metrics.intent_label),
+           from_sandbox = keyword_metrics.from_sandbox OR EXCLUDED.from_sandbox,
            fetched_at = NOW()`,
     [
       keyword, lang, country,
@@ -177,10 +195,17 @@ export async function upsertKeywordKpis(
       kpis.competition ?? null,
       kpis.intentRaw ?? null,
       kpis.intentLabel ?? null,
+      writtenInSandbox(),
     ],
   )
 }
 
+/**
+ * Suggestions Google : réelles dans les deux modes, elles ne marquent pas la
+ * ligne `from_sandbox` (et ne retirent pas une marque posée par une mesure
+ * simulée). Marquer une mesure réelle pour une simple mise à jour des
+ * suggestions la ferait effacer, donc repayer, au passage en réel.
+ */
 export async function upsertKeywordAutocomplete(
   keyword: string,
   suggestions: AutocompleteSuggestion[],
@@ -208,12 +233,13 @@ export async function upsertKeywordPaa(
 ): Promise<void> {
   await query(
     `INSERT INTO keyword_metrics
-       (keyword, lang, country, paa_questions, fetched_at)
-     VALUES ($1, $2, $3, $4::jsonb, NOW())
+       (keyword, lang, country, paa_questions, from_sandbox, fetched_at)
+     VALUES ($1, $2, $3, $4::jsonb, $5, NOW())
      ON CONFLICT (keyword, lang, country) DO UPDATE
        SET paa_questions = EXCLUDED.paa_questions,
+           from_sandbox = keyword_metrics.from_sandbox OR EXCLUDED.from_sandbox,
            fetched_at = NOW()`,
-    [keyword, lang, country, JSON.stringify(questions)],
+    [keyword, lang, country, JSON.stringify(questions), writtenInSandbox()],
   )
 }
 
@@ -225,12 +251,13 @@ export async function upsertKeywordLocalAnalysis(
   country: string = 'fr',
 ): Promise<void> {
   await query(
-    `INSERT INTO keyword_metrics (keyword, lang, country, local_analysis, fetched_at)
-     VALUES ($1, $2, $3, $4::jsonb, NOW())
+    `INSERT INTO keyword_metrics (keyword, lang, country, local_analysis, from_sandbox, fetched_at)
+     VALUES ($1, $2, $3, $4::jsonb, $5, NOW())
      ON CONFLICT (keyword, lang, country) DO UPDATE
        SET local_analysis = EXCLUDED.local_analysis,
+           from_sandbox = keyword_metrics.from_sandbox OR EXCLUDED.from_sandbox,
            fetched_at = NOW()`,
-    [keyword, lang, country, JSON.stringify(analysis)],
+    [keyword, lang, country, JSON.stringify(analysis), writtenInSandbox()],
   )
 }
 
@@ -242,12 +269,13 @@ export async function upsertKeywordContentGap(
   country: string = 'fr',
 ): Promise<void> {
   await query(
-    `INSERT INTO keyword_metrics (keyword, lang, country, content_gap_analysis, fetched_at)
-     VALUES ($1, $2, $3, $4::jsonb, NOW())
+    `INSERT INTO keyword_metrics (keyword, lang, country, content_gap_analysis, from_sandbox, fetched_at)
+     VALUES ($1, $2, $3, $4::jsonb, $5, NOW())
      ON CONFLICT (keyword, lang, country) DO UPDATE
        SET content_gap_analysis = EXCLUDED.content_gap_analysis,
+           from_sandbox = keyword_metrics.from_sandbox OR EXCLUDED.from_sandbox,
            fetched_at = NOW()`,
-    [keyword, lang, country, JSON.stringify(analysis)],
+    [keyword, lang, country, JSON.stringify(analysis), writtenInSandbox()],
   )
 }
 
@@ -259,12 +287,13 @@ export async function upsertKeywordLocalComparison(
   country: string = 'fr',
 ): Promise<void> {
   await query(
-    `INSERT INTO keyword_metrics (keyword, lang, country, local_comparison, fetched_at)
-     VALUES ($1, $2, $3, $4::jsonb, NOW())
+    `INSERT INTO keyword_metrics (keyword, lang, country, local_comparison, from_sandbox, fetched_at)
+     VALUES ($1, $2, $3, $4::jsonb, $5, NOW())
      ON CONFLICT (keyword, lang, country) DO UPDATE
        SET local_comparison = EXCLUDED.local_comparison,
+           from_sandbox = keyword_metrics.from_sandbox OR EXCLUDED.from_sandbox,
            fetched_at = NOW()`,
-    [keyword, lang, country, JSON.stringify(comparison)],
+    [keyword, lang, country, JSON.stringify(comparison), writtenInSandbox()],
   )
 }
 
@@ -275,6 +304,36 @@ export function isKeywordMetricsFresh(fetchedAt: string | Date | null | undefine
   if (!fetchedAt) return false
   const ts = typeof fetchedAt === 'string' ? new Date(fetchedAt).getTime() : fetchedAt.getTime()
   return Date.now() - ts < ttlDays * 24 * 60 * 60 * 1000
+}
+
+/**
+ * Efface les mesures obtenues en simulé (lignes `from_sandbox`), pour qu'elles
+ * ne soient jamais servies en réel (FR-EXT-DATAFORSEO-SANDBOX, décision du
+ * lot 6 de la recette 2026-09-30). Les tables filles (`keyword_serp_results`,
+ * `keyword_serp_scrapes`, `keyword_paa_questions`, `keyword_autocomplete`)
+ * suivent par ON DELETE CASCADE. Un candidat du Capitaine s'affiche alors sans
+ * mesure jusqu'à une vraie étude. Rend le nombre de mots-clés effacés.
+ */
+export async function purgeSandboxMeasures(): Promise<number> {
+  try {
+    const res = await query(`DELETE FROM keyword_metrics WHERE from_sandbox`)
+    const purged = res.rowCount ?? 0
+    if (purged > 0) log.info(`keyword-metrics: ${purged} mot(s)-clé(s) mesuré(s) en simulé effacé(s) au passage en réel`)
+    return purged
+  } catch (err) {
+    log.error(`keyword-metrics: effacement des mesures simulées impossible — ${(err as Error).message}`)
+    throw err
+  }
+}
+
+/**
+ * Purge au démarrage du serveur : seulement si le mode effectif est réel
+ * (configuration réelle, aucun choix posé). Ne lève jamais : une base
+ * injoignable ne doit pas faire tomber le démarrage (l'échec est journalisé).
+ */
+export async function purgeSandboxMeasuresIfReal(): Promise<number> {
+  if (getEffectiveMode() !== 'real') return 0
+  return purgeSandboxMeasures().catch(() => 0)
 }
 
 export async function deleteKeywordMetrics(keyword: string, lang: string = 'fr', country: string = 'fr'): Promise<void> {

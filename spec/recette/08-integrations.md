@@ -1,7 +1,7 @@
 ---
 title: Recette — Intégrations externes
 module: 08
-last_updated: 2026-09-28
+last_updated: 2026-09-30
 synced_with:
   - spec/requirements.md
   - spec/14-integrations.md
@@ -16,7 +16,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 ## Vérifications
 
 ### EXT-1 — Le bouton MOCK / RÉEL et la pile d'activité disent la même chose
-**Exigences :** FR-EXT-AI-MULTI-PROVIDER, FR-EXT-DATAFORSEO-SANDBOX ⚠, FR-EXT-DATAFORSEO-COSTGUARD ⚠, NFR-COST-AI-MOCK, NFR-OBS-COST-LOG
+**Exigences :** FR-EXT-AI-MULTI-PROVIDER, FR-EXT-DATAFORSEO-SANDBOX, FR-EXT-DATAFORSEO-COSTGUARD ⚠, NFR-COST-AI-MOCK, NFR-OBS-COST-LOG
 
 **Gestes :**
 1. Va sur l'accueil : rien n'y part tout seul, tu peux basculer sans rien payer.
@@ -25,6 +25,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 4. Clique sur le bouton **« MOCK »**. Il passe à « RÉEL ». Attends 15 secondes sans rien lancer.
 5. Recharge la page (F5).
 6. Clique sur **« RÉEL »** pour revenir à « MOCK ». Attends encore 15 secondes.
+7. Moteur, sélectionne le **pilier**, onglet **Capitaine**. Regarde la carte du capitaine verrouillé, sans rien lancer.
 
 **Tu dois voir :**
 - en MOCK, un bouton orangé et l'info-bulle « Sources : MOCK (cliquer pour passer en réel) » ; en RÉEL, un bouton vert et « Sources : RÉEL (cliquer pour passer en mock) » ;
@@ -33,19 +34,19 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 - une fine barre sous ces chiffres. Elle se remplit avec la dépense, et la bande passe sur fond jaune au-delà de 80 % du plafond ;
 - après le passage en RÉEL et 15 secondes d'attente : « PROD » à la place de « SANDBOX » ;
 - après le rechargement : toujours « RÉEL » et « PROD » ;
-- après le retour en MOCK : « SANDBOX » de nouveau, et la dépense n'a pas bougé.
+- après le retour en MOCK : « SANDBOX » de nouveau, et la dépense n'a pas bougé ;
+- au geste 7 : la carte du capitaine n'a plus de volume ni de difficulté. Le passage en RÉEL a effacé les mesures faites en MOCK, pour qu'elles ne passent jamais pour vraies. Les vérifications suivantes les refont en MOCK, gratuitement.
 
 **C'est un bug si :**
 - après 15 secondes, le bouton dit « MOCK » et la bande « PROD », ou l'inverse ;
 - le rechargement de la page change le mode ;
-- la dépense DataForSEO augmente alors que tu n'as fait que basculer.
-
-**⚠ Défaut connu :** FR-EXT-DATAFORSEO-SANDBOX — les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+- la dépense DataForSEO augmente alors que tu n'as fait que basculer ;
+- au geste 7, la carte du capitaine affiche encore les chiffres factices du parcours express.
 
 **⚠ Défaut connu :** FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### EXT-2 — Au Radar, en MOCK, chaque mot-clé reçoit une mesure factice et gratuite
-**Exigences :** FR-EXT-DATAFORSEO-SANDBOX ⚠, FR-EXT-AUTOCOMPLETE-GOOGLE
+**Exigences :** FR-EXT-DATAFORSEO-SANDBOX, FR-EXT-AUTOCOMPLETE-GOOGLE
 
 **Gestes :**
 1. Page du cocon, carte **« Moteur »**. Ouvre « Articles suggérés » et clique sur le titre de l'**article enfant**, puis sur l'onglet **Radar**.
@@ -68,8 +69,6 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 - la dépense DataForSEO augmente en MOCK ;
 - « Autocomplete (0) » alors que Google propose des suggestions pour ce sujet et que tu as internet.
 
-**⚠ Défaut connu :** FR-EXT-DATAFORSEO-SANDBOX — les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
-
 ### EXT-3 — Au Radar, la proximité de sens de chaque question
 **Exigences :** FR-EXT-EMBEDDINGS
 
@@ -88,7 +87,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 - un pourcentage dépasse 100 %.
 
 ### EXT-4 — Au Capitaine, l'IA simulée signe ses réponses
-**Exigences :** FR-EXT-AI-MULTI-PROVIDER, FR-EXT-DATAFORSEO-SANDBOX ⚠, FR-EXT-AUTOCOMPLETE-GOOGLE
+**Exigences :** FR-EXT-AI-MULTI-PROVIDER, FR-EXT-DATAFORSEO-SANDBOX, FR-EXT-AUTOCOMPLETE-GOOGLE
 
 **Gestes :**
 1. Moteur, sélectionne le **pilier**, onglet **Capitaine**. Clique sur la carte du capitaine verrouillé : le panneau « Capitaine » s'ouvre à droite.
@@ -102,27 +101,26 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 - la question « Régénérer l'avis expert IA ? Mode simulé : la réponse sera simulée, sans appel payant. » : en MOCK, rien de payant ne part, et la question le dit (en RÉEL, elle nomme le fournisseur : « … Cela consommera un appel Claude. ») ;
 - un avis qui arrive presque aussitôt : un texte préparé à partir de la demande (trois parties, « 1. Potentiel éditorial »…, qui citent le capitaine), le même aux gestes 3 et 4 ;
 - dans la pile, une ligne « Analyse IA capitaine » par avis, avec le modèle « mock-provider-v1 » et le coût « < $0.001 » ;
-- dans « KPIs marché » : « Volume » en « rech/m », « Difficulté », « CPC » en €. Ce sont des valeurs factices du bac à sable, souvent les mêmes d'un mot-clé à l'autre, même pour le mot-clé absurde ;
+- au geste 2, « KPIs marché » du capitaine sans volume, difficulté ni CPC (« — ») : ses mesures faites en MOCK ont été effacées au passage en RÉEL d'EXT-1 ;
+- au geste 6, dans « KPIs marché » du mot-clé absurde : « Volume » en « rech/m », « Difficulté », « CPC » en €. Ce sont des valeurs factices du bac à sable, souvent les mêmes d'un mot-clé à l'autre, même pour un mot-clé absurde ;
 - pour le mot-clé absurde, « Autocomplete » à « 0 matches » : Google ne le suggère pas. Aucun message d'erreur. Ce chiffre est le rang du mot-clé dans les suggestions Google, 0 s'il n'y figure pas.
 
 **C'est un bug si :**
 - en MOCK, la ligne de la pile nomme un modèle Claude, Gemini ou OpenRouter, ou affiche un coût supérieur à « < $0.001 » ;
 - l'absence de suggestion Google fait apparaître un message d'erreur.
 
-**⚠ Défaut connu :** FR-EXT-DATAFORSEO-SANDBOX — les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
-
 ### EXT-5 — Une mesure déjà faite est resservie, « Rafraîchir » la refait
 **Exigences :** FR-EXT-DATAFORSEO ⚠, NFR-COST-CACHE-FIRST ⚠
 
 **Gestes :**
-1. Moteur, pilier, onglet **Lieutenants**. Clique sur **« Analyser SERP »**.
+1. Moteur, pilier, onglet **Lieutenants**. Clique sur **« Analyser SERP »**, attends la fin, puis clique une seconde fois. (Le passage en RÉEL d'EXT-1 a effacé les pages lues en MOCK : la première analyse les relit, gratuitement.)
 2. Ouvre la Rédaction du pilier : page du cocon, carte **« Rédaction »**, puis la carte du pilier.
 3. Ouvre le panneau **« SEO »** (barre en haut à droite, s'il n'est pas déjà ouvert), puis l'onglet **« SERP Data »**.
 4. Note les valeurs et la date en bas du bloc.
 5. Clique sur **« Rafraîchir »**. Si le bloc dit « Aucune donnée SERP disponible. », clique sur **« Lancer l'analyse SERP »**.
 
 **Tu dois voir :**
-- aux Lieutenants : les résultats reviennent presque aussitôt, avec « (cache) » à côté du nombre de concurrents affichés et dans chaque onglet de mot-clé. Les propositions de lieutenants restent les mêmes ;
+- aux Lieutenants, au second clic : les résultats reviennent presque aussitôt, avec « (cache) » à côté du nombre de concurrents affichés et dans chaque onglet de mot-clé. Les propositions de lieutenants restent les mêmes ;
 - la pile affiche quand même « Analyse SERP lancée (N mots-clés) » : ce message ne dit pas si la base a servi ;
 - dans « SERP Data » : quatre cases « Volume », « Difficulté », « CPC », « Concurrence », puis « SERP Top N » et, s'il y en a, « People Also Ask (N) » ; en bas, **« Rafraîchir »** et la date de la mesure ;
 - pendant le rafraîchissement, le bouton affiche « ... ». Ensuite, la date du jour, et parfois un bloc « Mots-clés associés (N) » en plus : la copie gardée en base ne les conserve pas ;
