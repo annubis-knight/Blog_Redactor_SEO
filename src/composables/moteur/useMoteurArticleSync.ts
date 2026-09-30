@@ -1,9 +1,10 @@
-import { ref, watch, type Ref, type ComputedRef } from 'vue'
+import { ref, computed, watch, type Ref, type ComputedRef } from 'vue'
 import { apiGet, apiDelete } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import { useNotify } from '@/composables/ui/useNotify'
 import { isGateBlocked } from '@/stores/ui/gate-alarm.store'
 import type { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import type { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import type { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import type { SelectedArticle } from '@shared/types/index.js'
 import { MOTEUR_CAPITAINE_LOCKED } from '@shared/constants/workflow-checks.constants.js'
@@ -11,16 +12,24 @@ import { MOTEUR_CAPITAINE_LOCKED } from '@shared/constants/workflow-checks.const
 /**
  * AUTHORITY: PostgreSQL `articles.completed_checks` (via article-progress.store) ;
  *            les checks gardés passent par les portes du serveur (422 GATE_BLOCKED).
- * READS FROM: GET /cocoons/:name/capitaines, GET /articles/:id/explorations/counts.
+ * READS FROM: GET /articles/:id/keywords et GET /articles/:id/progress (au choix
+ *            d'un article : lecture seule, `articleReady` quand les deux sont là),
+ *            GET /cocoons/:name/capitaines, GET /articles/:id/explorations/counts.
  * WRITES TO: POST /articles/:id/progress/check et /uncheck (addCheck / removeCheck),
- *            DELETE /articles/:id/external-cache.
- * CONSUMERS: MoteurView (capitainesMap, explorationCounts, emitCheckCompleted, handleCheckRemoved).
+ *            jamais pendant la lecture d'un article ; DELETE /articles/:id/external-cache.
+ * CONSUMERS: MoteurView (articleReady, articleLoadError, capitainesMap,
+ *            explorationCounts, emitCheckCompleted, handleCheckRemoved).
  * RELATED FR: FR-MOT-CHECKS, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-MOT-RECAP-LOCK-SYNC,
- *             FR-CAP-CHECK (un refus d'une demande d'étape dépassée n'ouvre pas d'alarme)
+ *             FR-CAP-CHECK (un refus d'une demande d'étape dépassée n'ouvre pas d'alarme),
+ *             FR-MOT-CHECK-RECONCILIATION, FR-MOT-NO-AUTO-ACTION (choisir un article
+ *             ne fait que relire), NFR-INT-COMPLETED-CHECKS-SSOT
  *
  * Vague 5 — Composable extrait de MoteurView.
  *
  * Encapsule la synchronisation article-side du Moteur :
+ *  - lecture des données de l'article choisi (mots-clés + progression) ; les
+ *    panneaux ne sont montés qu'une fois `articleReady`, et aucune étape n'est
+ *    écrite avant (recette du 2026-09-30, F4)
  *  - `capitainesMap` : map keyword → article slug (cannibalization detection)
  *  - `explorationCounts` : counts DB par onglet (radar/captain/lieutenants/lexique)
  *  - `emitCheckCompleted` / `handleCheckRemoved` : delegate au progress store
@@ -33,7 +42,9 @@ import { MOTEUR_CAPITAINE_LOCKED } from '@shared/constants/workflow-checks.const
 export interface MoteurArticleSyncDeps {
   selectedArticle: Ref<SelectedArticle | null>
   cocoonName: ComputedRef<string>
-  articleProgressStore: ReturnType<typeof useArticleProgressStore>
+  articleProgressStore: Pick<ReturnType<typeof useArticleProgressStore>, 'addCheck' | 'removeCheck' | 'getProgress' | 'fetchProgress'>
+  /** Mots-clés de l'article : vidés puis relus à chaque choix d'article. */
+  articleKeywordsStore: Pick<ReturnType<typeof useArticleKeywordsStore>, '$reset' | 'fetchKeywordsMerge' | 'loadedArticleId'>
   /**
    * Alarme graduée : un check gardé par une porte et refusé par le serveur
    * (422 `GATE_BLOCKED`) l'ouvre, puis est rejoué après dérogation.
@@ -43,6 +54,15 @@ export interface MoteurArticleSyncDeps {
 }
 
 export interface MoteurArticleSyncApi {
+  /**
+   * Les données enregistrées de l'article choisi (mots-clés et étapes) sont
+   * relues : les panneaux peuvent être montés et juger leurs étapes.
+   */
+  articleReady: ComputedRef<boolean>
+  /** Échec de la lecture des données de l'article choisi (message à l'écran). */
+  articleLoadError: Ref<string | null>
+  /** Relit les données de l'article choisi (bouton « Réessayer »). */
+  reloadSelectedArticle: () => Promise<void>
   /**
    * Map articleId (number) → captain-keyword. Cohérent contrat backend
    * `/cocoons/:name/capitaines` : Record<number, string>.
@@ -63,7 +83,71 @@ export interface MoteurArticleSyncApi {
 }
 
 export function useMoteurArticleSync(deps: MoteurArticleSyncDeps): MoteurArticleSyncApi {
-  const { selectedArticle, cocoonName, articleProgressStore, gateAlarm } = deps
+  const { selectedArticle, cocoonName, articleProgressStore, articleKeywordsStore, gateAlarm } = deps
+
+  // --- Lecture des données de l'article choisi (FR-MOT-CHECK-RECONCILIATION) ---
+  // Choisir un article ne fait que relire. Tant que ses mots-clés et ses étapes
+  // ne sont pas arrivés, un store vide ne veut pas dire « rien de fait » : les
+  // panneaux ne sont pas montés et aucune étape n'est écrite. Avant cela, le
+  // store vidé au choix faisait retirer « Lieutenants » puis, par cascade du
+  // serveur, « Structure validée », jamais rendue (recette du 2026-09-30, F4).
+  const readyArticleId = ref<number | null>(null)
+  const articleLoadError = ref<string | null>(null)
+
+  const articleReady = computed(() => {
+    const article = selectedArticle.value
+    if (!article) return false
+    // Article proposé par la stratégie mais pas encore créé en base : rien à relire.
+    if (!article.id) return true
+    return readyArticleId.value === article.id && articleKeywordsStore.loadedArticleId === article.id
+  })
+
+  async function loadArticleData(id: number): Promise<void> {
+    readyArticleId.value = null
+    articleLoadError.value = null
+    articleKeywordsStore.$reset()
+    const [, progress] = await Promise.all([
+      articleKeywordsStore.fetchKeywordsMerge(id),
+      articleProgressStore.getProgress(id) ?? articleProgressStore.fetchProgress(id),
+    ])
+    // Un autre article a été choisi pendant la lecture : sa propre lecture décide.
+    if (selectedArticle.value?.id !== id) return
+    if (articleKeywordsStore.loadedArticleId !== id || !progress) {
+      articleLoadError.value = 'Les données de cet article n’ont pas pu être relues. Réessayez.'
+      log.warn('[useMoteurArticleSync] lecture de l’article impossible', { articleId: id, keywords: articleKeywordsStore.loadedArticleId === id, progress: !!progress })
+      return
+    }
+    readyArticleId.value = id
+    log.debug('[useMoteurArticleSync] données de l’article relues', { articleId: id })
+  }
+
+  async function reloadSelectedArticle(): Promise<void> {
+    const id = selectedArticle.value?.id
+    if (id) await loadArticleData(id)
+  }
+
+  watch(
+    () => selectedArticle.value?.id ?? null,
+    (id) => {
+      if (id) {
+        void loadArticleData(id)
+      } else {
+        readyArticleId.value = null
+        articleLoadError.value = null
+        articleKeywordsStore.$reset()
+      }
+    },
+    { immediate: true },
+  )
+
+  /** Une étape n'est écrite que sur un article relu, jamais pendant sa lecture. */
+  function canWriteCheck(check: string, action: 'check' | 'uncheck'): boolean {
+    if (articleReady.value) return true
+    log.info('[useMoteurArticleSync] étape ignorée : données de l’article en cours de lecture', {
+      articleId: selectedArticle.value?.id, check, action,
+    })
+    return false
+  }
 
   const capitainesMap = ref<Record<number, string>>({})
 
@@ -132,7 +216,7 @@ export function useMoteurArticleSync(deps: MoteurArticleSyncDeps): MoteurArticle
 
   function emitCheckCompleted(check: string): void {
     const id = selectedArticle.value?.id
-    if (!id) return
+    if (!id || !canWriteCheck(check, 'check')) return
     const stillWanted = recordIntent(id, check)
     const addCheck = () => articleProgressStore.addCheck(id, check)
     const attempt = gateAlarm
@@ -161,7 +245,7 @@ export function useMoteurArticleSync(deps: MoteurArticleSyncDeps): MoteurArticle
 
   function handleCheckRemoved(check: string): void {
     const id = selectedArticle.value?.id
-    if (!id) return
+    if (!id || !canWriteCheck(check, 'uncheck')) return
     recordIntent(id, check)
     articleProgressStore.removeCheck(id, check).catch(err =>
       log.warn('[useMoteurArticleSync] removeCheck failed', { articleId: id, check, error: err }),
@@ -171,6 +255,9 @@ export function useMoteurArticleSync(deps: MoteurArticleSyncDeps): MoteurArticle
   }
 
   return {
+    articleReady,
+    articleLoadError,
+    reloadSelectedArticle,
     capitainesMap,
     explorationCounts,
     refreshCapitainesMap,

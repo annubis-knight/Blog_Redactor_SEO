@@ -7,13 +7,20 @@ import AiPanelHeader from '@/components/moteur/ai-panel/AiPanelHeader.vue'
  * Test: tests/unit/components/lieutenants-selection-architecture.test.ts
  */
 
-defineProps<{
+withDefaults(defineProps<{
   iaIsStreaming: boolean
   iaChunks: string
   iaError: string | null
   contentGapInsights: string
   totalGenerated: number
-}>()
+  /**
+   * Préalable manquant (pas de Capitaine, pas d'analyse SERP) : la relance est
+   * grisée et la raison affichée, jamais un clic sans effet (FR-UI-AI-PANELS-PATTERN).
+   */
+  proposeDisabledReason?: string | null
+}>(), {
+  proposeDisabledReason: null,
+})
 
 const emit = defineEmits<{
   retry: []
@@ -30,7 +37,14 @@ const emit = defineEmits<{
     <!-- Erreur IA -->
     <div v-if="iaError" class="lap__error" role="alert">
       <p>{{ iaError }}</p>
-      <button type="button" class="lap__retry-btn" data-testid="ai-retry-btn" @click="emit('retry')">
+      <button
+        type="button"
+        class="lap__retry-btn"
+        data-testid="ai-retry-btn"
+        :disabled="!!proposeDisabledReason"
+        :title="proposeDisabledReason ?? undefined"
+        @click="emit('retry')"
+      >
         Régénérer
       </button>
     </div>
@@ -57,10 +71,15 @@ const emit = defineEmits<{
           Aucune génération IA pour ce Capitaine.
         </template>
       </p>
+      <p v-if="proposeDisabledReason" class="lap__idle-hint" data-testid="ai-propose-prerequisite">
+        {{ proposeDisabledReason }}
+      </p>
       <button
         type="button"
         class="lap__retry-btn"
         data-testid="ai-regen-btn"
+        :disabled="!!proposeDisabledReason"
+        :title="proposeDisabledReason ?? undefined"
         @click="emit('retry')"
       >
         {{ totalGenerated > 0 ? 'Régénérer les suggestions' : 'Lancer une suggestion IA' }}
@@ -178,5 +197,6 @@ const emit = defineEmits<{
   cursor: pointer;
   transition: filter 0.15s;
 }
-.lap__retry-btn:hover { filter: brightness(0.92); }
+.lap__retry-btn:hover:not(:disabled) { filter: brightness(0.92); }
+.lap__retry-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

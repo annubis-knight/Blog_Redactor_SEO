@@ -10,7 +10,7 @@ import type {
   ProposedLieutenant,
   HnRecurrenceItem,
 } from '@shared/types/serp-analysis.types.js'
-import type { SelectedArticle, SerpAnalysisResult, SerpCompetitor } from '@shared/types/index.js'
+import type { SelectedArticle, SerpAnalysisResult, SerpCompetitor, RichLieutenant } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
 
@@ -19,8 +19,9 @@ import type { WordGroup } from '@shared/types/discovery-tab.types.js'
  *            (lieutenants retenus, via useArticleKeywordsStore).
  * READS FROM: GET /articles/:id/keywords (hydratation via useArticleKeywordsStore)
  * WRITES TO: POST /keywords/:keyword/propose-lieutenants (candidats et tri)
- * CONSUMERS: LieutenantsPanel (cartes proposées / éliminées, cases à cocher)
- * RELATED FR: FR-LIE-AI-FRONTIER, FR-LIE-CHECKBOX-LOCK-IMMEDIATE,
+ * CONSUMERS: LieutenantsPanel (cartes proposées / éliminées, cases à cocher,
+ *            `totalGenerated` : relu avec les propositions, cf. countStoredProposals)
+ * RELATED FR: FR-LIE-AI-FRONTIER, FR-LIE-CHECKBOX-LOCK-IMMEDIATE, FR-LIE-CHECKBOX-COUNT,
  *             NFR-INT-DISPLAY-CONTRACTS (contrat `propose-lieutenants`)
  *
  * Vague 3 — Composable extrait de LieutenantsPanel. Encapsule la Phase 2 IA :
@@ -29,6 +30,15 @@ import type { WordGroup } from '@shared/types/discovery-tab.types.js'
  * naît à l'onglet Structure, des lieutenants retenus (FR-HN-TAB, M7).
  */
 export type AnalysisStep = 'idle' | 'serp' | 'ia-proposal' | 'filtering' | 'done'
+
+/**
+ * Nombre de propositions de l'IA relues en base pour le Capitaine courant :
+ * retenues, proposées et écartées. Les archivées appartiennent à un ancien
+ * Capitaine. C'est le « M » de « N / M sélectionnés » (FR-LIE-CHECKBOX-COUNT).
+ */
+export function countStoredProposals(richLts: readonly Pick<RichLieutenant, 'status'>[]): number {
+  return richLts.filter(lt => lt.status !== 'archived').length
+}
 
 export interface LieutenantsIaDeps {
   captainKeyword: Ref<string | null>
@@ -190,6 +200,9 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
         })
       }
       selectedCards.value = selected
+      // Le compte des propositions revient avec elles : « 1 / 0 sélectionnés »
+      // et « Aucune génération IA » après un rechargement (FR-LIE-CHECKBOX-COUNT).
+      totalGenerated.value = countStoredProposals(richLts)
       onLieutenantsUpdated(Array.from(selected.keys()))
       log.info('[useLieutenantsIa] Lieutenants restored from rich data', {
         locked: locked.length, suggested: suggested.length, eliminated: eliminated.length,
@@ -210,6 +223,7 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
       score: null,
     }))
     lieutenantCards.value = cards
+    totalGenerated.value = cards.length
     const selected = new Map<string, ProposedLieutenant>()
     for (const card of cards) {
       selected.set(card.keyword, card)

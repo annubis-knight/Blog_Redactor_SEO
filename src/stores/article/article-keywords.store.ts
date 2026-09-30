@@ -3,7 +3,9 @@
  *            lexique TEXT[], rootKeywords TEXT[], hnStructure JSONB,
  *            richCaptain JSONB, richLieutenants JSONB, richRootKeywords JSONB).
  *            Source de verite des mots-cles verrouilles utilisateur par article.
- * READS FROM: GET /articles/:id/keywords (fetchKeywords, fetchKeywordsMerge).
+ * READS FROM: GET /articles/:id/keywords (fetchKeywords, fetchKeywordsMerge). La réponse
+ *            d'un article quitté est ignorée ; un article jamais étudié reçoit des
+ *            mots-clés vides à son nom ; `loadedArticleId` dit quel article est chargé.
  * WRITES TO: PUT /articles/:id/keywords (saveDecisions / saveKeywords : sans la structure ;
  *            saveStructure : la structure H1/H2/H3, onglet Structure).
  *            POST /articles/:id/captain-explorations (saveCaptainExplorationEntry).
@@ -16,6 +18,7 @@
  *            richLieutenants.filter(status='locked').length, isCaptaineLocked =
  *            richCaptain?.status === 'locked').
  * RELATED FR: FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-PERSIST, FR-LEX-SELECT, FR-HN-TAB,
+ *             FR-MOT-EXPLORATIONS-HYDRATATION, FR-MOT-CHECK-RECONCILIATION,
  *             FR-MOT-CACHE-PANEL-COUNT (lexique.length / lieutenants.length pilotent
  *             le compteur DB du TabCachePanel pour Capitaine/Lieutenants/Lexique).
  */
@@ -49,6 +52,16 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
   /** Drapeau de chargement par articleId (true pendant l'appel Haiku). Pilote les skeletons UI. */
   const paaJudgmentsLoadingByArticle = ref<Map<number, boolean>>(new Map())
 
+  /**
+   * Article dont les mots-clés enregistrés sont arrivés dans le store (lecture
+   * réussie) ; `null` tant qu'ils ne le sont pas et après chaque remise à zéro.
+   * Un store vide pendant un chargement ne dit rien des données : l'écran attend
+   * ce signal avant de juger une étape (FR-MOT-CHECK-RECONCILIATION).
+   */
+  const loadedArticleId = ref<number | null>(null)
+  /** Dernier article demandé : la réponse d'un article quitté est ignorée (FR-CAP-PERSIST). */
+  let requestedArticleId: number | null = null
+
   const hasKeywords = computed(() => !!keywords.value?.capitaine)
 
   // ---- Rich computed getters ----
@@ -67,11 +80,22 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   // ---- Fetch ----
 
+  /** La réponse reçue pour `id` arrive-t-elle trop tard (article quitté ou store remis à zéro) ? */
+  function isStale(id: number): boolean {
+    if (requestedArticleId === id) return false
+    log.debug(`[article-keywords] réponse ignorée pour l'article ${id} (article quitté)`, { requested: requestedArticleId })
+    return true
+  }
+
   async function fetchKeywords(id: number) {
+    requestedArticleId = id
     isLoading.value = true
     error.value = null
     try {
-      keywords.value = await apiGet<ArticleKeywords | null>(`/articles/${id}/keywords`, { contract: articleKeywordsContract })
+      const remote = await apiGet<ArticleKeywords | null>(`/articles/${id}/keywords`, { contract: articleKeywordsContract })
+      if (isStale(id)) return
+      keywords.value = remote
+      loadedArticleId.value = id
       log.debug(`[article-keywords] fetched for article ${id}`, { capitaine: keywords.value?.capitaine })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur inconnue'
@@ -83,15 +107,24 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   // Merge-only variant of fetchKeywords (preserves in-memory state)
   async function fetchKeywordsMerge(id: number) {
+    requestedArticleId = id
     isLoading.value = true
     error.value = null
     try {
       const remote = await apiGet<ArticleKeywords | null>(`/articles/${id}/keywords`, { contract: articleKeywordsContract })
-      if (!remote) return
-      if (!keywords.value) {
-        keywords.value = remote
+      if (isStale(id)) return
+      if (!keywords.value || keywords.value.articleId !== id) {
+        // Rien en mémoire pour cet article, ou les données d'un autre : la base
+        // fait foi, sans fusion. Un article jamais étudié (réponse vide) reçoit
+        // des mots-clés vides à son nom : un store resté `null` passait pour
+        // « pas encore chargé » toute la session (CAP-7).
+        if (remote) keywords.value = remote
+        else initEmpty(id)
+        loadedArticleId.value = id
         return
       }
+      loadedArticleId.value = id
+      if (!remote) return
       const local = keywords.value
       // Capitaine : adopte la valeur DB seulement si la mémoire est vide
       if (!local.capitaine && remote.capitaine) {
@@ -717,6 +750,8 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   function $reset() {
     keywords.value = null
+    loadedArticleId.value = null
+    requestedArticleId = null
     isLoading.value = false
     isSaving.value = false
     isSuggestingLexique.value = false
@@ -726,7 +761,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
   }
 
   return {
-    keywords, isLoading, isSaving, isSuggestingLexique, error, hasKeywords,
+    keywords, loadedArticleId, isLoading, isSaving, isSuggestingLexique, error, hasKeywords,
     captainExploredKeywords, lockedLieutenants, eliminatedLieutenants,
     paaJudgmentsByArticle, paaJudgmentsLoadingByArticle,
     fetchKeywords, fetchKeywordsMerge, saveKeywords, saveDecisions, saveStructure, suggestLexique,
