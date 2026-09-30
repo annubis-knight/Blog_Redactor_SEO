@@ -39,6 +39,7 @@ import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import { MOTEUR_CAPITAINE_LOCKED } from '@shared/constants/workflow-checks.constants.js'
 import { adviceMarkdown, aiAdviceDoneContract } from '@shared/contracts/ai-advice.contract.js'
 import { useNotify } from '@/composables/ui/useNotify'
+import { useAiCallNotice } from '@/composables/ui/useAiCallNotice'
 import { log } from '@/utils/logger'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import RadarKeywordCard from '@/components/intent/RadarKeywordCard.vue'
@@ -415,6 +416,11 @@ watch(
 )
 
 onUnmounted(() => aiAbort())
+
+// Même confirmation que le panneau de détail : le vrai fournisseur, ou « sans
+// appel payant » en mode simulé (FR-CAP-AI-PANEL).
+const aiCallNotice = useAiCallNotice()
+const manualRegenConfirmMessage = computed(() => `Régénérer l'avis expert IA ? ${aiCallNotice.value}`)
 
 const manualAiState = computed<AiPanelState>(() => {
   if (aiError.value) return 'error'
@@ -1357,7 +1363,7 @@ onUnmounted(() => abortAllAiStreams())
           subtitle="Analyse Capitaine basée sur les KPIs marché et la pertinence."
           :state="manualAiState"
           :error="aiError"
-          regen-confirm-message="Régénérer l'avis expert IA ? Cela consommera un appel Claude."
+          :regen-confirm-message="manualRegenConfirmMessage"
           @trigger="handleManualAiRegenerate"
         >
           <div

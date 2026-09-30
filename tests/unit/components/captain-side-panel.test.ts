@@ -11,11 +11,16 @@
  *
  * Ces tests bloquent toute régression future de ces 5 comportements.
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
+import { setActivePinia, createPinia } from 'pinia'
 import CaptainSidePanel from '../../../src/components/moteur/CaptainSidePanel.vue'
 import type { ExploredKeywordEntry } from '../../../src/composables/keyword/useExploredKeywords'
+
+// La confirmation de « Régénérer » lit le mode du serveur (store runtime-mode,
+// FR-CAP-AI-PANEL) : chaque test a son Pinia.
+beforeEach(() => setActivePinia(createPinia()))
 
 // Stub minimal d'une ExploredKeywordEntry validée — strict minimum pour rendre le panel.
 function makeEntry(keyword: string): ExploredKeywordEntry {

@@ -838,13 +838,13 @@ Au-dessus des cartes, l'outil doit résumer la chaleur du sujet par une note sur
 - La note globale agrège les notes que les cartes affichent.
 
 ### FR-RAD-AI-SUGGESTIONS — Panneau « Suggestions IA Radar »
-**Statut :** non tenue (le bouton « Marquer comme candidats Capitaine » n'a aucun effet ; la pastille « P » est toujours vide au Radar)
+**Statut :** active
 Sous les cartes, l'outil doit proposer les 5 meilleurs candidats Capitaine, et permettre de les marquer.
 - Le panneau classe localement les cartes par la moyenne de leurs scores disponibles, sans appel d'IA.
 - Une carte dont les scores disponibles sont tous au verdict NOGO est écartée.
 - Les scores absents s'affichent « — ».
-- L'infobulle d'une pastille « P » vide en donne la vraie raison : la pertinence se calcule au Capitaine ; elle n'accuse pas une douleur absente.
-- « Marquer comme candidats Capitaine (N) » transmet la sélection au Capitaine.
+- La pastille « P » vaut toujours « — » au Radar, qui ne mesure pas la pertinence (cf. FR-RAD-NO-RELEVANCE-IN-SCAN) : ce n'est pas un défaut. Son infobulle en donne la vraie raison : la pertinence se calcule au Capitaine ; elle n'accuse pas une douleur absente.
+- « Marquer comme candidats Capitaine (N) » transmet les cartes cochées au Capitaine, comme « Envoyer au Capitaine » : l'onglet Capitaine s'ouvre et étudie chaque mot-clé reçu ; les cases se décochent.
 
 ---
 
@@ -892,23 +892,24 @@ Au Capitaine, chaque carte doit afficher son Score Pertinence ; le Score Marché
 - L'intention de la SERP (la page de résultats Google) entre dans le Score Marché dès l'étude, mesurée ou relue en base.
 
 ### FR-CAP-AI-PANEL — Avis de l'IA sur un candidat
-**Statut :** non tenue (la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur)
+**Statut :** active
 Pour chaque candidat étudié, l'outil doit afficher un avis d'expert rédigé par l'IA.
 - L'avis compte trois parties : potentiel éditorial, opportunités et risques, recommandation.
 - Le texte s'affiche au fil de la génération.
-- L'avis tient compte du mot-clé, du niveau, du point de douleur, des deux scores et de la stratégie du cocon.
-- Le bouton de régénération demande confirmation (« Cela consommera un appel Claude »).
+- L'avis tient compte du mot-clé, du niveau, du point de douleur, des deux scores et de la stratégie du cocon de l'article (cible, douleur, angle, promesse, CTA), retrouvée d'après l'article.
+- Le bouton de régénération demande confirmation, et le message dit ce qui va se passer : le fournisseur d'IA du moment en réel (« Cela consommera un appel Claude. », « … un appel Gemini. »), « Mode simulé : la réponse sera simulée, sans appel payant. » quand le badge est sur MOCK.
 - L'avis est demandé d'office à la fin d'une étude que l'utilisateur a lancée (saisie, envoi depuis le Radar, recalcul), une seule fois ; jamais au choix d'un article ni à la réouverture. Un avis en échec n'est pas redemandé seul : « Régénérer » relance.
 - L'avis obtenu est enregistré avec le candidat, et réaffiché à la réouverture de l'article, sans nouvel appel.
 
 ### FR-CAP-ROOTS — Racines d'un mot-clé long
-**Statut :** non tenue (à la réouverture, une racine dont aucune étude n'est enregistrée revient sans indicateurs ni Score Pertinence (« — », plus de « Moyenne », verdict GRAY) tant qu'aucun clic ne l'a étudiée ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte)
+**Statut :** active
 L'outil doit décomposer un mot-clé d'au moins 3 mots en racines, par troncature depuis la fin, et permettre de les comparer.
-- Jusqu'à 5 racines, de la plus longue à la plus courte ; une racine garde au moins 2 mots significatifs (hors mots-outils).
+- Jusqu'à 5 racines, de la plus longue à la plus courte, juste après l'étude comme à la réouverture, quel que soit l'ordre où leurs études aboutissent ; une racine garde au moins 2 mots significatifs (hors mots-outils).
 - Quand le volume du mot-clé n'est pas au vert, ses racines sont étudiées d'office.
 - Le panneau de détail liste les racines, avec leur Score Pertinence et leur moyenne ; un clic sur une racine l'affiche à la place du mot-clé.
 - Cliquer sur les mots d'une carte (au-delà des 2 premiers mots significatifs) étudie la combinaison choisie.
-- Une racine relue sans ses mesures est étudiée quand on la choisit (mot de la carte ou colonne de détail) ; une étude qui échoue l'annonce (« Impossible de valider "…" ») et la carte garde son mot-clé.
+- À la réouverture, une racine revient avec les mesures de sa propre étude ; sans étude enregistrée pour l'article, avec celles que l'outil connaît déjà (mesures partagées entre articles), relues sans aucun appel payant, et son Score Pertinence.
+- Une racine que l'outil n'a jamais mesurée reste « — » ; son infobulle le dit (« Racine pas encore étudiée : aucune mesure en base. Un clic l’étudie. »). Elle est étudiée quand on la choisit (mot de la carte ou colonne de détail), jamais d'office ; une étude qui échoue l'annonce (« Impossible de valider "…" ») et la carte garde son mot-clé.
 
 ### FR-CAP-LOCK-RADIO — Un seul Capitaine par article
 **Statut :** active

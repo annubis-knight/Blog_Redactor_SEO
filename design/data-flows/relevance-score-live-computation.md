@@ -2,8 +2,8 @@
 name: relevance-score-live-computation
 description: Score Pertinence d'un candidat Capitaine — recalculé à chaque relecture par `computeRelevanceForCaptainTab`, jamais enregistré ; ses entrées (douleur, intention attendue, racines, PAA, suggestions, intention de la SERP) sont en base. Fiche complète du calcul, des racines et des raisons d'absence.
 type: "RelevanceScoreLiveResult { total: number | null, verdict: 'GO'|'ORANGE'|'NOGO' | null, breakdown | null, rootsContext | null, unavailableReason: 'no-pain'|'long-tail'|'missing-paa'|'missing-autocomplete' | null }"
-last_updated: 2026-09-28
-related_fr: [FR-CAP-RELEVANCE-LIVE, FR-CAP-RELEVANCE-INPUTS, FR-CAP-RELEVANCE-MEMOIZATION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON, FR-CAP-RELEVANCE-INTENT-SIGNAL, FR-CAP-PAINPOINT-FALLBACK, FR-CAP-NO-PAINPOINT-WATCHER, FR-CAP-PAA-JUDGE-HAIKU, FR-CAP-SCORING-BIMODAL, FR-RAD-NO-RELEVANCE-IN-SCAN, FR-PAIN-IMMUTABLE-AFTER-CEREVEAU]
+last_updated: 2026-09-30
+related_fr: [FR-CAP-ROOTS, FR-CAP-RELEVANCE-LIVE, FR-CAP-RELEVANCE-INPUTS, FR-CAP-RELEVANCE-MEMOIZATION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON, FR-CAP-RELEVANCE-INTENT-SIGNAL, FR-CAP-PAINPOINT-FALLBACK, FR-CAP-NO-PAINPOINT-WATCHER, FR-CAP-PAA-JUDGE-HAIKU, FR-CAP-SCORING-BIMODAL, FR-RAD-NO-RELEVANCE-IN-SCAN, FR-PAIN-IMMUTABLE-AFTER-CEREVEAU]
 synced_with:
   - design/14-radar-capitaine.md
   - design/data-flows/score-capitaine.md
@@ -35,7 +35,7 @@ Tout se passe dans une seule requête HTTP, en lecture seule.
 1. **Lecture** — en parallèle `getArticlePainPoint` ([`article-pain-point.service.ts`](../../server/services/queries/article-pain-point.service.ts) : `'(non défini)'` si absente) et `getArticlePainIntent` ([`article-pain-intent.service.ts`](../../server/services/queries/article-pain-intent.service.ts) : `null` si absente ou inconnue). Puis les racines uniques de tous les candidats (un `Set`), puis `loadMetricsBatch(candidats + racines)` : un `getKeywordMetrics` par mot-clé, en parallèle ; un mot-clé sans ligne n'entre pas dans la `Map`.
 2. **Racines (étage A)** — chaque racine unique est notée une fois, sans signal « racines » (pas de récursion), et rangée dans une `Map` locale (FR-CAP-RELEVANCE-MEMOIZATION).
 3. **Candidats (étage B)** — pour chaque candidat : moyenne arrondie des notes non nulles de ses racines, lue dans la `Map` (`null` s'il n'y en a aucune), puis note du candidat.
-4. **Réponse** — `{ cards, roots, painPointSnapshot, computedAt }`. La `Map` disparaît avec la fonction. `getCaptainExplorations` ne garde que `cards` ; les notes des racines ne partent pas vers l'écran.
+4. **Réponse** — `{ cards, roots, metrics, painPointSnapshot, computedAt }`. La `Map` disparaît avec la fonction. `getCaptainExplorations` garde `cards` pour les candidats et, pour une racine **sans** étude à elle pour l'article, sa note (`roots`) et ses mesures (`metrics`, déjà lues : ni requête ni appel de plus) dans `rootStudies`, que `getArticleKeywords` range dans `richRootKeywords` (FR-CAP-ROOTS).
 
 **Note d'un mot-clé** — `computeRelevanceForSingleKeyword` refuse d'abord, dans cet ordre (§ 8) : douleur absente, `'(non défini)'` ou de moins de 10 caractères → `no-pain` ; longue traîne → `long-tail` ; aucune ligne `keyword_metrics` ou aucune PAA → `missing-paa` ; aucune suggestion → `missing-autocomplete`. Sinon, cinq signaux, tous lexicaux sauf le cinquième :
 
@@ -75,7 +75,7 @@ flowchart LR
 ### Affichage (UI)
 
 - **Anneau de la carte** — [`RadarKeywordCard.vue`](../../src/components/intent/RadarKeywordCard.vue), mode `relevance` : `card.relevanceScore.total`, ou « — » avec la raison (§ 8). L'info-bulle détaille les cinq composantes (`breakdownRows`).
-- **Racines** — [`CaptainRootsSidebar.vue`](../../src/components/moteur/CaptainRootsSidebar.vue) affiche les notes des racines **étudiées** (calcul « à l'étude » de chaque racine), pas celles de l'étage A.
+- **Racines** — [`CaptainRootsSidebar.vue`](../../src/components/moteur/CaptainRootsSidebar.vue) affiche la note de l'étude de chaque racine étudiée ; à la relecture, une racine sans étude à elle montre la note de l'étage A (`rootStudies`), et une racine jamais mesurée « — » (« Racine pas encore étudiée… »).
 
 ### Calcul / tri / filtre / agrégat
 
@@ -144,7 +144,7 @@ Juste après l'étude d'un mot-clé, la note affichée ne vient pas de `computeR
 
 - Deux calculs pour une même note (§ 7) ; une longue traîne n'est jamais signalée comme telle (§ 8).
 - `loadMetricsBatch` fait une requête par mot-clé (N requêtes parallèles), acceptable tant que les candidats restent peu nombreux.
-- Les notes des racines de l'étage A sont calculées puis jetées : l'écran montre celles de l'étude des racines.
+- Les notes des racines de l'étage A n'atteignent l'écran que pour les racines sans étude à elles ; une racine étudiée montre la note de son étude.
 
 ## 11. Tests de cohérence qui la gardent
 

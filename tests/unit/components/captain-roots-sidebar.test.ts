@@ -233,6 +233,24 @@ describe('CaptainRootsSidebar — racine sans score de pertinence', () => {
     expect(wrapper.find('.stub-ring').attributes('data-value')).toBeUndefined()
   })
 
+  // FR-CAP-ROOTS — une racine que la base n'a jamais mesurée reste « — » : son
+  // infobulle le dit, et dit qu'un clic l'étudie (recette du 2026-09-30, CAP-15 :
+  // « Score Pertinence indisponible · verdict GRAY », sans explication).
+  it('FR-CAP-ROOTS : racine jamais mesurée → l’infobulle explique « — » et le clic', () => {
+    const neverMeasured = withoutRelevance('création site')
+    const measured = makeVariant('création site internet', 0)
+    measured.card.relevanceScore = null
+    measured.validation = { ...measured.validation, kpis: [{ name: 'volume', rawValue: 900, color: 'green', label: '900', thresholds: { green: 200 } }] }
+    const wrapper = mount(CaptainRootsSidebar, {
+      props: { variants: [measured, neverMeasured] },
+      global: { stubs: STUBS },
+    })
+    const [first, second] = wrapper.findAll('[data-testid="root-sidebar-item"]')
+    expect(second!.attributes('title')).toBe('Racine pas encore étudiée : aucune mesure en base. Un clic l’étudie.')
+    // Une racine mesurée sans Score Pertinence garde l'infobulle du score absent.
+    expect(first!.attributes('title')).toContain('Score Pertinence indisponible')
+  })
+
   it('aucune racine notée → pas de moyenne affichée', () => {
     const wrapper = mount(CaptainRootsSidebar, {
       props: { variants: [withoutRelevance('b'), withoutRelevance('c')] },

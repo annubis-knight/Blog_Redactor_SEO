@@ -46,7 +46,7 @@ Qui crée ou met à jour cette donnée :
 |---|---|
 | `capitaine`, `lieutenants`, `lexique`, `rootKeywords`, `hnStructure` | la ligne `article_keywords` (`''` et `[]` si absente) |
 | `richCaptain` | `{ keyword: capitaine, status: capitaine non vide ? 'locked' : 'suggested', exploredKeywords, aiPanelMarkdown }` ; `exploredKeywords` = `getCaptainExplorations` (KPI relus dans `keyword_metrics`, Score Marché relu dans `radar_explorations`, Score Pertinence recalculé, `paaJudgment: null`) |
-| `richRootKeywords` | racines de chaque candidat (`captain_explorations.root_keywords`), sans KPI |
+| `richRootKeywords` | racines de chaque candidat (`captain_explorations.root_keywords`) ; sans KPI, sauf une racine sans étude à elle que `keyword_metrics` connaît : ses KPI, ses questions PAA et son Score Pertinence de relecture (`rootStudies` de `getCaptainExplorations`, FR-CAP-ROOTS) |
 | `richLieutenants` | `getLieutenantExplorations` (`ORDER BY score DESC NULLS LAST`), absent si vide |
 
 - Les explorations sont toujours chargées, même sans ligne `article_keywords` (FR-MOT-EXPLORATIONS-HYDRATATION). Ni ligne ni exploration → `data: null`.

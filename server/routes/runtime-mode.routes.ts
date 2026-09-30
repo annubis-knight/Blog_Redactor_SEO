@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { getRuntimeMode, setRuntimeMode, getEffectiveMode, type RuntimeMode } from '../services/infra/runtime-mode.service.js'
+import { getProvider } from '../services/external/ai-provider.service.js'
 
 const router = Router()
 
@@ -15,6 +16,9 @@ router.get('/runtime-mode', (_req, res) => {
       effective: getEffectiveMode(),
       envAiProvider: process.env.AI_PROVIDER ?? null,
       envDataforseoSandbox: process.env.DATAFORSEO_SANDBOX === 'true',
+      // Fournisseur d'IA qui répondrait maintenant : la confirmation d'une
+      // régénération le nomme, ou dit « sans appel payant » (FR-CAP-AI-PANEL).
+      aiProvider: getProvider(),
     },
   })
 })
@@ -32,6 +36,7 @@ router.post('/runtime-mode', (req, res) => {
     data: {
       override: getRuntimeMode(),
       effective: getEffectiveMode(),
+      aiProvider: getProvider(),
     },
   })
 })

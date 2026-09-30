@@ -298,7 +298,7 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 - la fiche « Capitaine » : le mot-clé, son verdict, « KPIs marché », puis « Avis expert IA », sous-titré « Analyse Capitaine basée sur les KPIs marché et la pertinence. » ;
 - replié, le bloc dit « Cliquez pour voir les suggestions IA. » (avis déjà écrit) ou « Cliquez pour lancer l'analyse IA. » ;
 - déplié : le verdict en tête, puis l'avis ; en MOCK, un avis préparé en trois parties (« 1. Potentiel éditorial », « 2. Opportunités et risques », « 3. Recommandation ») qui cite le mot-clé de la carte ;
-- « Régénérer » demande « Régénérer l'avis expert IA ? Cela consommera un appel Claude. » ; « Annuler » ne change rien ; « OK » réécrit l'avis, et le bloc reste ouvert ;
+- « Régénérer » demande « Régénérer l'avis expert IA ? Mode simulé : la réponse sera simulée, sans appel payant. » (badge sur MOCK ; en RÉEL : « … Cela consommera un appel Claude. ») ; « Annuler » ne change rien ; « OK » réécrit l'avis, et le bloc reste ouvert ;
 - fiche fermée, l'avis disparaît avec elle ; l'autre carte a son propre avis ;
 - pour la nouvelle carte, le bloc se déplie tout seul quand l'avis commence à s'écrire. En MOCK c'est très rapide : si l'avis est déjà fini quand la fiche s'ouvre, le bloc reste replié, c'est normal.
 

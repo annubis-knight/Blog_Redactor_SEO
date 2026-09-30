@@ -329,8 +329,10 @@ Liste complète des variables : [Qualités transverses](21-qualites.md).
 - [`../server/services/infra/runtime-mode.service.ts`](../server/services/infra/runtime-mode.service.ts) —
   `overrideMode` en mémoire vive (`'mock' | 'real' | null`), perdu au redémarrage. `getEffectiveMode()` :
   l'override, sinon `mock` si `AI_PROVIDER=mock` ou `DATAFORSEO_SANDBOX=true`, sinon `real`.
-- API : `GET /api/runtime-mode` (`override`, `effective`, réglages `.env`), `POST /api/runtime-mode`
-  (`{ mode: 'mock' | 'real' | null }`).
+- API : `GET /api/runtime-mode` (`override`, `effective`, réglages `.env`, `aiProvider` = `getProvider()`),
+  `POST /api/runtime-mode` (`{ mode: 'mock' | 'real' | null }`, répond `override`, `effective`, `aiProvider`).
+  `aiProvider` nomme le fournisseur dans la confirmation de « Régénérer » l'avis du Capitaine
+  (`useAiCallNotice`, FR-CAP-AI-PANEL).
 - Consommateurs : `getProvider()` (IA) et `isSandbox()` ([`../server/services/external/dataforseo/_client.ts`](../server/services/external/dataforseo/_client.ts)),
   qui choisit `sandbox.dataforseo.com` ou `api.dataforseo.com`. Tous deux lisent le mode effectif :
   le badge MOCK garantit l'IA simulée **et** le bac à sable. Le plafond de dépense ne s'applique
