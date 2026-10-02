@@ -35,7 +35,7 @@ contrats relève du domaine de chaque route.
 | Fichier | Chemins | Rôle | Domaine |
 |---|---|---|---|
 | `silos.routes.ts` | `/silos`, `/silos/:name`, `/silos/:name/cocoons`, `/theme`, `/theme/config`, `/theme/config/parse` | Silos, création de cocon, configuration du thème (et son analyse par l'IA) | Dashboard, Cerveau |
-| `cocoons.routes.ts` | `/cocoons`, `/cocoons/:id/articles`, `/cocoons/:cocoonId/tree`, `POST /cocoons/:cocoonId/articles`, `/child-candidates`, `PUT …/articles/:articleId/parent`, `/cocoons/:cocoonName/capitaines`, `/cocoons/:id/strategy/context` | Cocons, arbre réel, naissance d'un article, candidats mesurés, rattachement | Cerveau |
+| `cocoons.routes.ts` | `/cocoons`, `/cocoons/:id/articles`, `/cocoons/:cocoonId/tree`, `POST /cocoons/:cocoonId/articles`, `/child-candidates`, `/candidate-measure`, `PUT …/articles/:articleId/parent`, `/cocoons/:cocoonName/capitaines`, `/cocoons/:id/strategy/context` | Cocons, arbre réel, naissance d'un article, candidats mesurés, rattachement | Cerveau |
 | `strategy.routes.ts` | `/strategy/:id[/suggest|deepen|consolidate|enrich]`, `/strategy/cocoon/:cocoonSlug[/…]`, `/strategy/batch-status` | Stratégie d'article et de cocon, assistées par l'IA | Cerveau |
 | `articles.routes.ts` | `/articles/:id` (GET, PUT, PATCH, DELETE), `/by-slug/:slug`, `/children`, `/content` (GET, DELETE : « Supprimer le contenu »), `/micro-context`, `/progress[/check|/uncheck]`, `/status`, `/recommend-word-count` | Article, contenu, micro-contexte, étapes (gardées), statut (publication gardée) | Rédaction, Moteur |
 | `gates.routes.ts` | `/articles/:id/gates/:gateId`, `…/gates/:gateId/waivers`, `/articles/:id/waivers` | Évaluer une porte, poser et lire les dérogations | Infrastructure |

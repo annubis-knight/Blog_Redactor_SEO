@@ -94,6 +94,11 @@ export const childCandidatesSchema = z.object({
   parentSection: z.string().trim().min(1).max(300).nullable().optional(),
 })
 
+/** Le mot-clé proposé par l'utilisateur, à mesurer (FR-CER-KEYWORD-REAL-DATA). */
+export const measureOwnCandidateSchema = z.object({
+  keyword: z.string().trim().min(2).max(120),
+})
+
 export const patchArticleSchema = z.object({
   title: z.string().min(1).optional(),
   slug: z.string().min(1).optional(),

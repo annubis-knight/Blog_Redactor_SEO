@@ -223,6 +223,58 @@ describe('useCocoonBuilder — les candidats d’un nouvel article', () => {
   })
 })
 
+// Recette réelle du 2026-10-02 : les candidats de l'IA étaient tous sans données ;
+// l'utilisateur doit pouvoir proposer son propre mot-clé, mesuré à la demande.
+describe('useCocoonBuilder — FR-CER-KEYWORD-REAL-DATA : votre mot-clé', () => {
+  it('mesure le mot-clé tapé et l’ajoute aux candidats', async () => {
+    routeApi([], { candidates: [candidate({ keyword: 'phrase longue', metrics: null })] })
+    apiPost.mockImplementation(async (url: string) => {
+      if (url === `/cocoons/${COCOON_ID}/child-candidates`) return { candidates: [candidate({ keyword: 'phrase longue', metrics: null })] }
+      if (url === `/cocoons/${COCOON_ID}/candidate-measure`) return candidate({ keyword: 'site internet sur mesure', title: 'Site internet sur mesure' })
+      throw new Error(`POST inattendu : ${url}`)
+    })
+    const { builder } = setup()
+    await builder.proposeCandidates({ parentId: null, parentSection: null, level: 'pilier' })
+
+    await builder.measureOwnCandidate('  site internet sur mesure ')
+
+    expect(apiPost).toHaveBeenCalledWith(`/cocoons/${COCOON_ID}/candidate-measure`, { keyword: 'site internet sur mesure' })
+    expect(builder.candidates.value.map(c => c.keyword)).toEqual(['phrase longue', 'site internet sur mesure'])
+    expect(builder.measureOwnError.value).toBeNull()
+    expect(builder.isMeasuringOwn.value).toBe(false)
+  })
+
+  it('un mot-clé déjà dans la liste n’est pas remesuré', async () => {
+    routeApi([], { candidates: [candidate({ keyword: 'site internet sur mesure' })] })
+    const { builder } = setup()
+    await builder.proposeCandidates({ parentId: null, parentSection: null, level: 'pilier' })
+
+    await builder.measureOwnCandidate('Site Internet sur mesure')
+
+    expect(postsTo(`/cocoons/${COCOON_ID}/candidate-measure`)).toHaveLength(0)
+    expect(builder.measureOwnError.value).toMatch(/déjà dans la liste/)
+  })
+
+  it('sans données : ajouté mais signalé ; refus du serveur : la raison est dite', async () => {
+    routeApi([])
+    apiPost.mockImplementation(async (url: string) => {
+      if (url === `/cocoons/${COCOON_ID}/child-candidates`) return { candidates: [] }
+      if (url === `/cocoons/${COCOON_ID}/candidate-measure`) return candidate({ keyword: 'requete introuvable', metrics: null, serp: [] })
+      throw new Error(`POST inattendu : ${url}`)
+    })
+    const { builder } = setup()
+    await builder.proposeCandidates({ parentId: null, parentSection: null, level: 'pilier' })
+
+    await builder.measureOwnCandidate('requete introuvable')
+    expect(builder.candidates.value.map(c => c.keyword)).toContain('requete introuvable')
+    expect(builder.measureOwnError.value).toMatch(/aucune donnée/)
+
+    apiPost.mockRejectedValue(new ApiRequestError('« isolation combles » est déjà le mot-clé d’un article de ce cocon : choisissez-en un autre.', 409, 'KEYWORD_TAKEN'))
+    await builder.measureOwnCandidate('isolation combles')
+    expect(builder.measureOwnError.value).toContain('déjà le mot-clé d’un article')
+  })
+})
+
 describe('useCocoonBuilder — créer l’article choisi', () => {
   it('crée le pilier directement, sans porte, puis l’inscrit sur la carte et recharge l’arbre', async () => {
     routeApi([], { created: { id: 42, slug: 'creation-de-site-internet-a-toulouse' } })

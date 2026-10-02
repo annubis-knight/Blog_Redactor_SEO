@@ -155,7 +155,9 @@ sequenceDiagram
     - prompts `system-propulsite` et `cocoon-child-keywords` (`cocoon_context`, `articleLevel`, `parentSection`, `type_rules`, et `{{strategy_context}}` par `cocoonSlug` = le nom du cocon) ;
     - `collectStreamWithUsage(…, 1500)`, `parseAiJson` puis `aiResponseSchema` (`painIntentExpected … .catch(null)`) ;
     - dédoublonnage par `normalizeKeyword` contre les mots-clés de l'arbre et entre candidats ; `MAX_CANDIDATES = 5` ;
-    - `measureKeywords`.
+    - `measureKeywords` ;
+    - `pillarRule` (`'oui'` pour un pilier, vide sinon) ouvre dans le prompt la section des requêtes courtes et larges.
+  - `measureOwnCandidate(cocoonId, keyword)` — mot-clé proposé par l'utilisateur : normalisé (espaces, minuscules), refusé `KEYWORD_TAKEN` (409) s'il est déjà celui d'un nœud de l'arbre (`normalizeKeyword`), puis mesuré par `measureKeywords` comme les candidats de l'IA ; rend un `ChildCandidate` (`rationale` « Mot-clé proposé par vous. », douleur et intention éditoriale `null`).
   - [`server/services/keyword/keyword-measure.service.ts`](../server/services/keyword/keyword-measure.service.ts) :
     - `measureKeywords` : `keyword_metrics` relu ; absents ou de plus de 7 jours (`isKeywordMetricsFresh`) → `fetchMissingKpis`, un `fetchKeywordOverviewBatch` et un `fetchSearchIntentBatch` groupés, puis `upsertKeywordKpis` ; panne des volumes → `metrics: null` ;
     - `serpTop` : `getSerpResultsFresh` (analyse du Moteur de moins de 7 jours), sinon `getOrFetch('serp-top', slugify(keyword), 7 jours, fetchSerp)` ; `SERP_TOP = 3`.
@@ -164,12 +166,13 @@ sequenceDiagram
   - [`server/services/external/mock-fixtures/cocoon-child.ts`](../server/services/external/mock-fixtures/cocoon-child.ts) — mode simulé : 4 candidats tirés de la section du parent ou du nom du cocon ; `baseTopic` retire les mots vides avec des bornes Unicode (`STOP_WORDS`), jamais `\b`, qui coupait « démarrer » après son « d ».
   - Les mesures groupées du bac à sable DataForSEO sont rattachées aux mots-clés demandés par `pairWithRequested` ([`server/services/external/dataforseo/keywords.ts`](../server/services/external/dataforseo/keywords.ts)).
 - **Code — écran :**
-  - [`CocoonCandidatesPanel.vue`](../src/components/production/brain/CocoonCandidatesPanel.vue) — `INTENT_LABELS`, `canCreate`, choix vidé à chaque nouvelle liste, titre prérempli.
-  - `useCocoonBuilder` — `proposeCandidates` : une réponse arrivée après un changement de cible est ignorée (`proposalSeq`).
+  - [`CocoonCandidatesPanel.vue`](../src/components/production/brain/CocoonCandidatesPanel.vue) — `INTENT_LABELS`, `canCreate`, choix vidé à chaque nouvelle liste, titre prérempli ; `noneMeasured` (alerte quand aucun candidat n'a de mesures) ; formulaire « Votre mot-clé » (absent pendant la proposition), qui émet `measure`.
+  - `useCocoonBuilder` — `proposeCandidates` : une réponse arrivée après un changement de cible est ignorée (`proposalSeq`) ; `measureOwnCandidate` : doublon de la liste refusé sans appel, mot-clé mesuré ajouté en fin de liste, `measureOwnError` / `isMeasuringOwn`, même garde `proposalSeq`.
 - **Données :**
   - En lecture : `keyword_metrics`, `keyword_serp_results` (seulement), `external_api_cache` (`cache_type = 'serp-top'`), `cocoon_strategies`, l'arbre.
   - En écriture : `keyword_metrics`, `external_api_cache`. **Jamais** `keyword_serp_results`, ni `articles`.
 - **API :** `POST /api/cocoons/:cocoonId/child-candidates { parentId?, parentSection? }` → `{ data: ChildCandidatesResult }` (`level`, `parentId`, `parentSection`, `candidates[]` avec `metrics | null` et `serp[]`, `usage`). Refus : 400 ; 404 `COCOON_NOT_FOUND` ; 409 `HIERARCHY_VIOLATION`, `PARENT_NOT_WRITTEN` ; 502 `AI_UNREADABLE`. La route coupe le délai du socket (`setTimeout(0)`).
+  - `POST /api/cocoons/:cocoonId/candidate-measure { keyword }` (`measureOwnCandidateSchema`, 2 à 120 caractères) → `{ data: ChildCandidate }`. Refus : 400 `INVALID_ID`, `VALIDATION_ERROR` ; 404 `COCOON_NOT_FOUND` ; 409 `KEYWORD_TAKEN`. Délai du socket coupé aussi.
 - **Règles et décisions :**
   - Base d'abord, un seul appel groupé pour les volumes.
   - **Un relevé n'est pas une analyse.** Les trois premiers résultats vont dans le cache TTL, jamais dans `keyword_serp_results`, que le Moteur prend pour une analyse faite, pages lues.

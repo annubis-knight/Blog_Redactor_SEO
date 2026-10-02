@@ -18,10 +18,10 @@ vi.mock('../../../server/services/infra/data.service', () => ({
   getCocoons: vi.fn(), getArticlesByCocoon: vi.fn(), getArticleKeywordsByCocoon: vi.fn(),
 }))
 vi.mock('../../../server/services/strategy/cocoon-strategy.service', () => ({ getCocoonStrategy: vi.fn() }))
-const { mockPropose } = vi.hoisted(() => ({ mockPropose: vi.fn() }))
+const { mockPropose, mockMeasureOwn } = vi.hoisted(() => ({ mockPropose: vi.fn(), mockMeasureOwn: vi.fn() }))
 vi.mock('../../../server/services/strategy/child-candidates.service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../server/services/strategy/child-candidates.service')>()
-  return { ...actual, proposeChildCandidates: mockPropose }
+  return { ...actual, proposeChildCandidates: mockPropose, measureOwnCandidate: mockMeasureOwn }
 })
 
 const { default: router } = await import('../../../server/routes/cocoons.routes')
@@ -164,6 +164,32 @@ describe('POST /cocoons/:cocoonId/child-candidates', () => {
     const r = await callPropose({ cocoonId: '3' }, { parentId: 10, parentSection: 'x' })
     expect(r.status).toHaveBeenCalledWith(409)
     expect(r.json).toHaveBeenCalledWith({ error: { code: 'PARENT_NOT_WRITTEN', message: 'pas rédigé', details: undefined } })
+  })
+})
+
+// FR-CER-KEYWORD-REAL-DATA — le mot-clé proposé par l'utilisateur est mesuré aussitôt.
+describe('POST /cocoons/:cocoonId/candidate-measure', () => {
+  const measure = (router as any).stack.find((l: any) => l.route?.path === '/cocoons/:cocoonId/candidate-measure' && l.route?.methods.post)?.route?.stack[0]?.handle
+  const callMeasure = async (params: Record<string, string>, body: unknown) => {
+    const r = res()
+    await measure({ params, body, socket: { setTimeout: vi.fn() } } as unknown as Request, r)
+    return r
+  }
+
+  it('mesure le mot-clé et le rend comme un candidat', async () => {
+    mockMeasureOwn.mockResolvedValue({ keyword: 'site internet sur mesure', metrics: { searchVolume: 320 } })
+    const r = await callMeasure({ cocoonId: '3' }, { keyword: 'site internet sur mesure' })
+    expect(mockMeasureOwn).toHaveBeenCalledWith(3, 'site internet sur mesure')
+    expect(r.json).toHaveBeenCalledWith({ data: expect.objectContaining({ keyword: 'site internet sur mesure' }) })
+  })
+
+  it('400 sur un mot-clé vide ; refus du service avec son code', async () => {
+    expect((await callMeasure({ cocoonId: '3' }, { keyword: ' ' })).status).toHaveBeenCalledWith(400)
+    expect((await callMeasure({ cocoonId: 'x' }, { keyword: 'site' })).status).toHaveBeenCalledWith(400)
+    mockMeasureOwn.mockRejectedValue(new ChildCandidatesError(409, 'KEYWORD_TAKEN', 'déjà pris'))
+    const r = await callMeasure({ cocoonId: '3' }, { keyword: 'isolation combles' })
+    expect(r.status).toHaveBeenCalledWith(409)
+    expect(r.json).toHaveBeenCalledWith({ error: { code: 'KEYWORD_TAKEN', message: 'déjà pris', details: undefined } })
   })
 })
 

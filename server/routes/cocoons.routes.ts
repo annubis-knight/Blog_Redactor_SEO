@@ -3,8 +3,8 @@ import { log } from '../utils/logger.js'
 import { getCocoons, getArticlesByCocoon, getArticleKeywordsByCocoon } from '../services/infra/data.service.js'
 import { getCocoonStrategy } from '../services/strategy/cocoon-strategy.service.js'
 import { createCocoonArticle, attachCocoonArticle, CocoonArticleError, getCocoonTree } from '../services/article/cocoon-article.service.js'
-import { createCocoonArticleSchema, attachCocoonArticleSchema, childCandidatesSchema } from '../../shared/schemas/article.schema.js'
-import { proposeChildCandidates, ChildCandidatesError } from '../services/strategy/child-candidates.service.js'
+import { createCocoonArticleSchema, attachCocoonArticleSchema, childCandidatesSchema, measureOwnCandidateSchema } from '../../shared/schemas/article.schema.js'
+import { proposeChildCandidates, measureOwnCandidate, ChildCandidatesError } from '../services/strategy/child-candidates.service.js'
 
 const router = Router()
 
@@ -153,6 +153,35 @@ router.post('/cocoons/:cocoonId/child-candidates', async (req, res) => {
     }
     log.error(`POST /api/cocoons/${cocoonId}/child-candidates — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to propose candidates' } })
+  }
+})
+
+/**
+ * POST /api/cocoons/:cocoonId/candidate-measure — mesure le mot-clé proposé par
+ * l'utilisateur et le rend comme un candidat (FR-CER-KEYWORD-REAL-DATA). Action
+ * payante (DataForSEO, base d'abord) : l'écran la déclenche sur un clic.
+ */
+router.post('/cocoons/:cocoonId/candidate-measure', async (req, res) => {
+  const cocoonId = parseInt(req.params.cocoonId, 10)
+  if (isNaN(cocoonId)) {
+    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Cocoon ID must be a number' } })
+    return
+  }
+  const parsed = measureOwnCandidateSchema.safeParse(req.body ?? {})
+  if (!parsed.success) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: parsed.error.message } })
+    return
+  }
+  req.socket?.setTimeout(0)
+  try {
+    res.json({ data: await measureOwnCandidate(cocoonId, parsed.data.keyword) })
+  } catch (err) {
+    if (err instanceof ChildCandidatesError) {
+      res.status(err.status).json({ error: { code: err.code, message: err.message, details: err.details } })
+      return
+    }
+    log.error(`POST /api/cocoons/${cocoonId}/candidate-measure — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to measure keyword' } })
   }
 })
 

@@ -32,9 +32,12 @@ const {
   proposeError,
   isCreating,
   createError,
+  isMeasuringOwn,
+  measureOwnError,
   isTarget,
   proposeCandidates,
   closeCandidates,
+  measureOwnCandidate,
   createFromCandidate,
   isAttaching,
   attachError,
@@ -159,6 +162,9 @@ function sectionTargetLabel(node: CocoonTreeNode, section: CocoonTreeSection): s
         :propose-error="proposeError"
         :is-creating="isCreating"
         :create-error="createError"
+        :is-measuring-own="isMeasuringOwn"
+        :measure-own-error="measureOwnError"
+        @measure="measureOwnCandidate"
         @create="create"
         @retry="retry"
         @close="closeCandidates"
@@ -230,6 +236,9 @@ function sectionTargetLabel(node: CocoonTreeNode, section: CocoonTreeSection): s
               :propose-error="proposeError"
               :is-creating="isCreating"
               :create-error="createError"
+              :is-measuring-own="isMeasuringOwn"
+              :measure-own-error="measureOwnError"
+              @measure="measureOwnCandidate"
               @create="create"
               @retry="retry"
               @close="closeCandidates"

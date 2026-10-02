@@ -140,6 +140,8 @@ export function useCocoonBuilder(params: {
   const proposeError = ref<string | null>(null)
   const isCreating = ref(false)
   const createError = ref<string | null>(null)
+  const isMeasuringOwn = ref(false)
+  const measureOwnError = ref<string | null>(null)
   // Une réponse arrivée après un changement de cible est ignorée.
   let proposalSeq = 0
 
@@ -155,6 +157,8 @@ export function useCocoonBuilder(params: {
     candidates.value = []
     proposeError.value = null
     createError.value = null
+    measureOwnError.value = null
+    isMeasuringOwn.value = false
     isProposing.value = true
     try {
       const result = await apiPost<ChildCandidatesResult>(`/cocoons/${cocoonId}/child-candidates`, {
@@ -180,7 +184,40 @@ export function useCocoonBuilder(params: {
     candidates.value = []
     proposeError.value = null
     createError.value = null
+    measureOwnError.value = null
+    isMeasuringOwn.value = false
     isProposing.value = false
+  }
+
+  /**
+   * Action PAYANTE (DataForSEO) : le mot-clé tapé par l'utilisateur, mesuré puis
+   * ajouté aux candidats (FR-CER-KEYWORD-REAL-DATA). Sans données, il est ajouté
+   * mais ne se choisit pas, et l'écran dit pourquoi.
+   */
+  async function measureOwnCandidate(keyword: string): Promise<void> {
+    const clean = keyword.trim()
+    if (!target.value || clean.length < 2 || isMeasuringOwn.value) return
+    const key = clean.replace(/\s+/g, ' ').toLowerCase()
+    measureOwnError.value = null
+    if (candidates.value.some(c => c.keyword.trim().replace(/\s+/g, ' ').toLowerCase() === key)) {
+      measureOwnError.value = `« ${key} » est déjà dans la liste.`
+      return
+    }
+    const seq = proposalSeq
+    isMeasuringOwn.value = true
+    try {
+      const measured = await apiPost<ChildCandidate>(`/cocoons/${toValue(params.cocoonId)}/candidate-measure`, { keyword: clean })
+      if (seq !== proposalSeq) return
+      candidates.value = [...candidates.value, measured]
+      if (!measured.metrics) measureOwnError.value = `« ${measured.keyword} » n’a aucune donnée de recherche : essayez une formulation plus courte.`
+      log.info('[cocoon-builder] mot-clé proposé mesuré', { keyword: measured.keyword, measured: !!measured.metrics })
+    } catch (err) {
+      if (seq !== proposalSeq) return
+      measureOwnError.value = `Mot-clé non mesuré : ${refusalOf(err)}`
+      log.warn('[cocoon-builder] mesure du mot-clé proposé refusée', { keyword: clean, error: (err as Error).message })
+    } finally {
+      if (seq === proposalSeq) isMeasuringOwn.value = false
+    }
   }
 
   /** Ajoute le mot-clé au pool du cocon ; un refus n'annule pas l'article, il se dit. */
@@ -388,9 +425,12 @@ export function useCocoonBuilder(params: {
     proposeError,
     isCreating,
     createError,
+    isMeasuringOwn,
+    measureOwnError,
     isTarget,
     proposeCandidates,
     closeCandidates,
+    measureOwnCandidate,
     createFromCandidate,
     isAttaching,
     attachError,

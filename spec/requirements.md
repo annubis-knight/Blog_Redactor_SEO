@@ -288,6 +288,9 @@ L'outil doit proposer plusieurs mots-clés candidats pour un nouvel article, les
 - Chaque candidat est mesuré avant d'être montré : volume, difficulté, intention de recherche, trois premiers résultats de Google. L'outil relit ses mesures de moins de 7 jours et ne paie que ce qui manque, les volumes en une seule demande groupée.
 - Une mesure qui échoue reste absente (« — ») ; un candidat non mesuré est marqué « Non mesuré » et ne peut pas être choisi ; rien n'est choisi d'office.
 - La création refuse un mot-clé jamais mesuré. Le relevé des premiers résultats ne tient pas lieu d'analyse des concurrents au Moteur.
+- Pour le pilier, au moins deux candidats sont des requêtes courtes et larges (2 à 4 mots), le sujet du cocon tel que les internautes le tapent le plus ; aucune n'est une question ni une phrase. Une requête trop longue n'a souvent aucune donnée : en réel, le 2026-10-02, cinq candidats sur cinq du pilier étaient « Non mesuré », et le pilier ne pouvait pas être créé.
+- L'utilisateur peut proposer son propre mot-clé (appel payant) : il est mesuré aussitôt, avec la même relecture des mesures de moins de 7 jours, puis ajouté à la liste, où il se choisit s'il a des mesures. Un mot-clé déjà pris dans le cocon, ou déjà dans la liste, est refusé avec sa raison.
+- Quand aucun candidat n'a de mesures, l'écran le dit et invite à proposer son propre mot-clé.
 
 ### FR-CER-CREATION-HONNETE — Un article annoncé créé existe vraiment, et un refus s'explique
 **Statut :** active
