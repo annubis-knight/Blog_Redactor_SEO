@@ -4,7 +4,7 @@
 > Un test (`tests/unit/architecture/prompts-reference.test.ts`) vérifie qu’il est à jour.
 > Architecture (couches, chargeur strict, variables globales) : [IA et prompts](./04-ia-et-prompts.md).
 
-50 prompts. Variables globales, fournies par le chargeur quand un prompt les cite : `strategy_context`, `today`, `year`, `zone`, `zone_landmarks`.
+51 prompts. Variables globales, fournies par le chargeur quand un prompt les cite : `strategy_context`, `today`, `year`, `zone`, `zone_landmarks`.
 
 Colonnes : **Variables** = à fournir par l’appelant, exactement (le chargeur refuse une variable manquante ou en trop) ; **Sections** = blocs `{{#clé}}…{{/clé}}` gardés si la valeur n’est pas vide.
 
@@ -24,6 +24,7 @@ Colonnes : **Variables** = à fournir par l’appelant, exactement (le chargeur 
 | `cocoon-articles-topics.md` | Sujets et sous-thèmes à couvrir dans le cocon | `cocoonName`, `existingArticles`, `previousAnswers`, `siloName`, `themeContext` | `existingArticles`, `previousAnswers`, `themeContext` | — | `server/services/strategy/strategy-prompts.service.ts` |
 | `cocoon-brainstorm.md` | Suggestion pour une étape de la stratégie du cocon | `cocoonName`, `currentInput`, `existingArticles`, `previousAnswers`, `siloName`, `step`, `stepDescription`, `themeContext` | `existingArticles`, `previousAnswers`, `themeContext` | — | `server/services/strategy/strategy-prompts.service.ts` |
 | `cocoon-child-keywords.md` | 3 à 5 mots-clés candidats pour un nouvel article (pilier, ou enfant d’une section de son parent), mesurés ensuite | `articleLevel`, `cocoon_context`, `parentSection`, `pillarRule`, `type_rules` | `parentSection`, `pillarRule` | `strategy_context` | `server/services/strategy/child-candidates.service.ts` |
+| `cocoon-own-keyword.md` | Douleur et intention éditoriale du mot-clé proposé par l’utilisateur, écrites pendant sa mesure | `articleLevel`, `cocoon_context`, `keyword`, `parentSection` | `parentSection` | `strategy_context` | `server/services/strategy/child-candidates.service.ts` |
 | `cocoon-paa-queries.md` | Requêtes Google pour récupérer les PAA de chaque Intermédiaire | `articles`, `cocoonName`, `previousAnswers`, `siloName`, `themeContext` | `previousAnswers`, `themeContext` | — | `server/services/strategy/strategy-prompts.service.ts` |
 | `strategy-consolidate.md` | Consolide la réponse principale et les sous-réponses | `contextBlock`, `mainAnswer`, `step`, `subAnswers` | — | — | `server/services/strategy/strategy-prompts.service.ts` |
 | `strategy-deepen.md` | Propose une sous-question pour approfondir une étape | `contextBlock`, `existingSubQuestions`, `mainAnswer`, `mainQuestion`, `previousAnswers`, `step` | — | — | `server/services/strategy/strategy-prompts.service.ts` |

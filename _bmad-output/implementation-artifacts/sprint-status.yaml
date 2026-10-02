@@ -1005,6 +1005,10 @@ development_status:
   # Toulouse » bloqué (5 candidats sur 5 « Non mesuré »). Requêtes courtes exigées pour le
   # pilier + « Votre mot-clé » mesuré aussitôt (tech-spec-lot7-candidats-mesurables).
   recette-reelle-2026-10-02-lot7-candidats: done
+  # Lot 8 (02/10) : le pilier né d'un mot-clé proposé n'avait ni douleur ni intention (pas de
+  # Score Pertinence au Capitaine). L'IA les écrit pendant la mesure
+  # (tech-spec-lot8-douleur-mot-cle-propose).
+  recette-reelle-2026-10-02-lot8-douleur: done
 
 # ===== Backlog (non livré) =====
 #

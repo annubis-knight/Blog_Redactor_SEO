@@ -179,8 +179,14 @@ describe('POST /cocoons/:cocoonId/candidate-measure', () => {
   it('mesure le mot-clé et le rend comme un candidat', async () => {
     mockMeasureOwn.mockResolvedValue({ keyword: 'site internet sur mesure', metrics: { searchVolume: 320 } })
     const r = await callMeasure({ cocoonId: '3' }, { keyword: 'site internet sur mesure' })
-    expect(mockMeasureOwn).toHaveBeenCalledWith(3, 'site internet sur mesure')
+    expect(mockMeasureOwn).toHaveBeenCalledWith(3, 'site internet sur mesure', { parentId: null, parentSection: null })
     expect(r.json).toHaveBeenCalledWith({ data: expect.objectContaining({ keyword: 'site internet sur mesure' }) })
+  })
+
+  it('transmet la cible (parent et section) pour que l’IA écrive la douleur du bon article', async () => {
+    mockMeasureOwn.mockResolvedValue({ keyword: 'fenetre double vitrage' })
+    await callMeasure({ cocoonId: '3' }, { keyword: 'fenetre double vitrage', parentId: 10, parentSection: 'Changer les fenêtres' })
+    expect(mockMeasureOwn).toHaveBeenCalledWith(3, 'fenetre double vitrage', { parentId: 10, parentSection: 'Changer les fenêtres' })
   })
 
   it('400 sur un mot-clé vide ; refus du service avec son code', async () => {

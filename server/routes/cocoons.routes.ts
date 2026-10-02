@@ -158,8 +158,10 @@ router.post('/cocoons/:cocoonId/child-candidates', async (req, res) => {
 
 /**
  * POST /api/cocoons/:cocoonId/candidate-measure — mesure le mot-clé proposé par
- * l'utilisateur et le rend comme un candidat (FR-CER-KEYWORD-REAL-DATA). Action
- * payante (DataForSEO, base d'abord) : l'écran la déclenche sur un clic.
+ * l'utilisateur, fait écrire sa douleur par l'IA pour la cible (`parentId`,
+ * `parentSection`), et le rend comme un candidat (FR-CER-KEYWORD-REAL-DATA).
+ * Action payante (DataForSEO, base d'abord ; un appel d'IA) : l'écran la
+ * déclenche sur un clic.
  */
 router.post('/cocoons/:cocoonId/candidate-measure', async (req, res) => {
   const cocoonId = parseInt(req.params.cocoonId, 10)
@@ -174,7 +176,8 @@ router.post('/cocoons/:cocoonId/candidate-measure', async (req, res) => {
   }
   req.socket?.setTimeout(0)
   try {
-    res.json({ data: await measureOwnCandidate(cocoonId, parsed.data.keyword) })
+    const { keyword, parentId, parentSection } = parsed.data
+    res.json({ data: await measureOwnCandidate(cocoonId, keyword, { parentId: parentId ?? null, parentSection: parentSection ?? null }) })
   } catch (err) {
     if (err instanceof ChildCandidatesError) {
       res.status(err.status).json({ error: { code: err.code, message: err.message, details: err.details } })

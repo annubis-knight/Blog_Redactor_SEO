@@ -703,7 +703,7 @@ Passe le bouton en **RÉEL** pour ces vérifications seulement, puis repasse en 
 - 3 à 5 candidats en rapport avec le titre de la section, chacun dans un titre qui le contient en entier, avec une raison ;
 - des mesures qui diffèrent d'un candidat à l'autre ; une mesure absente écrite « — », jamais « 0 » ; un candidat sans mesure marqué « Non mesuré : ses données n'ont pas pu être récupérées, il ne peut pas être choisi. », case grisée ;
 - si aucun candidat n'a de mesures, l'alerte « Aucun candidat n'a de données de recherche : … Proposez votre propre mot-clé ci-dessous, plutôt une requête courte. » ;
-- ta requête courte ajoutée en fin de liste, mesurée, raison « Mot-clé proposé par vous. », et cochable ;
+- ta requête courte ajoutée en fin de liste, mesurée, raison « Mot-clé proposé par vous. », et cochable ; dans la pastille des coûts, un appel d'IA de plus (sa douleur), et aucun avertissement « … est mesuré, mais l'IA n'a pas écrit la difficulté de son lecteur … » ;
 - le mot-clé du pilier refusé : « Mot-clé non mesuré : « … » est déjà le mot-clé d'un article de ce cocon : choisissez-en un autre. », rien n'est ajouté ;
 - à la seconde demande, un appel d'IA de plus dans la pile ; pour les mots-clés déjà mesurés, la dépense DataForSEO ne bouge pas : l'outil relit ses mesures de moins de 7 jours.
 

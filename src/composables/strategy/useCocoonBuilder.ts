@@ -206,11 +206,17 @@ export function useCocoonBuilder(params: {
     const seq = proposalSeq
     isMeasuringOwn.value = true
     try {
-      const measured = await apiPost<ChildCandidate>(`/cocoons/${toValue(params.cocoonId)}/candidate-measure`, { keyword: clean })
+      // La cible part avec le mot-clé : l'IA écrit sa douleur pour ce niveau et cette section.
+      const measured = await apiPost<ChildCandidate>(`/cocoons/${toValue(params.cocoonId)}/candidate-measure`, {
+        keyword: clean,
+        parentId: target.value.parentId,
+        parentSection: target.value.parentSection,
+      })
       if (seq !== proposalSeq) return
       candidates.value = [...candidates.value, measured]
       if (!measured.metrics) measureOwnError.value = `« ${measured.keyword} » n’a aucune donnée de recherche : essayez une formulation plus courte.`
-      log.info('[cocoon-builder] mot-clé proposé mesuré', { keyword: measured.keyword, measured: !!measured.metrics })
+      else if (!measured.painPoint) measureOwnError.value = `« ${measured.keyword} » est mesuré, mais l’IA n’a pas écrit la difficulté de son lecteur : l’article sera créé sans douleur, et le Capitaine n’aura pas de Score Pertinence.`
+      log.info('[cocoon-builder] mot-clé proposé mesuré', { keyword: measured.keyword, measured: !!measured.metrics, pain: !!measured.painPoint })
     } catch (err) {
       if (seq !== proposalSeq) return
       measureOwnError.value = `Mot-clé non mesuré : ${refusalOf(err)}`
