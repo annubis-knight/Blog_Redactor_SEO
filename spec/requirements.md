@@ -290,6 +290,7 @@ L'outil doit proposer plusieurs mots-clés candidats pour un nouvel article, les
 - La création refuse un mot-clé jamais mesuré. Le relevé des premiers résultats ne tient pas lieu d'analyse des concurrents au Moteur.
 - Pour le pilier, au moins deux candidats sont des requêtes courtes et larges (2 à 4 mots), le sujet du cocon tel que les internautes le tapent le plus ; aucune n'est une question ni une phrase. Une requête trop longue n'a souvent aucune donnée : en réel, le 2026-10-02, cinq candidats sur cinq du pilier étaient « Non mesuré », et le pilier ne pouvait pas être créé.
 - L'utilisateur peut proposer son propre mot-clé (appel payant) : il est mesuré aussitôt, avec la même relecture des mesures de moins de 7 jours, puis ajouté à la liste, où il se choisit s'il a des mesures. Un mot-clé déjà pris dans le cocon, ou déjà dans la liste, est refusé avec sa raison.
+- Le mot-clé proposé reçoit, comme les candidats de l'IA, la difficulté du lecteur et l'intention éditoriale attendue, écrites par l'IA dans le même temps que la mesure (un appel, avec la stratégie et l'état du cocon, et la section du parent pour un enfant). Si l'IA échoue, le mot-clé reste mesuré et choisissable, et l'écran prévient que l'article sera créé sans douleur. En réel, le 2026-10-02, le pilier né d'un mot-clé proposé n'avait ni douleur ni intention : le Capitaine n'avait aucun Score Pertinence.
 - Quand aucun candidat n'a de mesures, l'écran le dit et invite à proposer son propre mot-clé.
 
 ### FR-CER-CREATION-HONNETE — Un article annoncé créé existe vraiment, et un refus s'explique
@@ -348,7 +349,7 @@ L'outil doit montrer, sans rien ressaisir, la stratégie validée du cocon dans 
 **Statut :** active
 L'outil doit faire proposer par l'IA l'intention éditoriale attendue de chaque article — le type de réponse qu'il apporte —, dans le même appel que ses autres données.
 - Chaque article proposé sur la carte, et chaque mot-clé candidat, porte une intention parmi quatre : informationnelle (expliquer), commerciale (comparer avant un achat), transactionnelle (pousser à l'action), navigationnelle (viser une marque) ; une valeur hors de ces quatre est laissée vide.
-- Aucun appel supplémentaire n'est fait pour elle.
+- Aucun appel supplémentaire n'est fait pour elle. Le mot-clé proposé par l'utilisateur, que l'IA n'a pas proposé, reçoit la sienne par un seul appel, avec sa douleur (FR-CER-KEYWORD-REAL-DATA).
 - L'article créé la reçoit : celle d'une proposition de même titre sur la carte, sinon celle du candidat choisi.
 
 ### FR-PIE-CERVEAU-OVERRIDE — L'utilisateur corrige l'intention éditoriale

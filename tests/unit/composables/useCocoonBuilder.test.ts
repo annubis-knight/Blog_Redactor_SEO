@@ -238,10 +238,28 @@ describe('useCocoonBuilder — FR-CER-KEYWORD-REAL-DATA : votre mot-clé', () =>
 
     await builder.measureOwnCandidate('  site internet sur mesure ')
 
-    expect(apiPost).toHaveBeenCalledWith(`/cocoons/${COCOON_ID}/candidate-measure`, { keyword: 'site internet sur mesure' })
+    expect(apiPost).toHaveBeenCalledWith(`/cocoons/${COCOON_ID}/candidate-measure`, { keyword: 'site internet sur mesure', parentId: null, parentSection: null })
     expect(builder.candidates.value.map(c => c.keyword)).toEqual(['phrase longue', 'site internet sur mesure'])
     expect(builder.measureOwnError.value).toBeNull()
     expect(builder.isMeasuringOwn.value).toBe(false)
+  })
+
+  // Recette réelle du 2026-10-02 : l'article né d'un mot-clé proposé n'avait pas de douleur.
+  it('envoie la cible (parent, section) ; mesuré sans douleur, l’écran prévient', async () => {
+    routeApi([])
+    apiPost.mockImplementation(async (url: string) => {
+      if (url === `/cocoons/${COCOON_ID}/child-candidates`) return { candidates: [] }
+      if (url === `/cocoons/${COCOON_ID}/candidate-measure`) return candidate({ keyword: 'fenetre double vitrage', painPoint: null })
+      throw new Error(`POST inattendu : ${url}`)
+    })
+    const { builder } = setup()
+    await builder.proposeCandidates({ parentId: 10, parentSection: 'Changer les fenêtres', level: 'intermediaire' })
+
+    await builder.measureOwnCandidate('fenetre double vitrage')
+
+    expect(apiPost).toHaveBeenCalledWith(`/cocoons/${COCOON_ID}/candidate-measure`, { keyword: 'fenetre double vitrage', parentId: 10, parentSection: 'Changer les fenêtres' })
+    expect(builder.candidates.value.map(c => c.keyword)).toContain('fenetre double vitrage')
+    expect(builder.measureOwnError.value).toMatch(/sans douleur/)
   })
 
   it('un mot-clé déjà dans la liste n’est pas remesuré', async () => {

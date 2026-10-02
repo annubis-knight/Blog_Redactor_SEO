@@ -31,7 +31,7 @@ Quatre blocs, construits côté serveur à chaque appel, sans cache.
 - Placement de `{{strategy_context}}` : au repère si le `.md` le cite ; sinon, **ajouté en fin de prompt** dès que le bloc n'est pas vide. C'est donc l'envoi de `cocoonSlug` qui décide.
 - Une variable fournie par l'appelant l'emporte sur la globale de même nom.
 
-**Écrivains des sources.** La stratégie du cocon : le Cerveau ([strategy.md](./strategy.md)). La stratégie d'article : le mode automatique seul. `articles.pain_point` : **uniquement à la création** de l'article (`insertCocoonArticle`, douleur du candidat choisi, sinon de la ligne de la carte) ; aucune route ne la modifie ensuite (FR-PAIN-IMMUTABLE-AFTER-CEREVEAU). L'arbre : [articles.md](./articles.md).
+**Écrivains des sources.** La stratégie du cocon : le Cerveau ([strategy.md](./strategy.md)). La stratégie d'article : le mode automatique seul. `articles.pain_point` : **uniquement à la création** de l'article (`insertCocoonArticle`, douleur du candidat choisi — écrite par l'IA, y compris pour un mot-clé proposé par l'utilisateur —, sinon de la ligne de la carte) ; aucune route ne la modifie ensuite (FR-PAIN-IMMUTABLE-AFTER-CEREVEAU). L'arbre : [articles.md](./articles.md).
 
 ## Persistance
 
@@ -60,6 +60,7 @@ Aucune pour les blocs eux-mêmes : ils sont recalculés à chaque appel d'IA et 
 | Longue traîne (`long-tail-suggest.service.ts`) | oui (nom du cocon) | — | écran (`article_pain_point`, repli « (non defini) ») | — |
 | Score Pertinence relu au chargement du Capitaine (`captain-relevance.service.ts`) | — | — | base | — |
 | Candidats d'un nouvel article (`child-candidates.service.ts`, `cocoon-child-keywords.md`) | oui (nom du cocon) | — | — (l'IA **propose** une douleur par candidat) | oui, **obligatoire** (absent → 404) |
+| Douleur du mot-clé proposé par l'utilisateur (`child-candidates.service.ts` `describeOwnKeyword`, `cocoon-own-keyword.md`) | oui (nom du cocon) | — | — (l'IA **écrit** la douleur du mot-clé) | oui, **obligatoire** (absent → pas d'appel, douleur `null`) |
 | Micro-contexte suggéré, explication du brief (`micro-context-suggest.md`, `brief-ia-panel.md`) | oui (slug calculé par la route) | — | — | — |
 | Sommaire, premier jet, passes d'enrichissement, réécriture d'un chapitre | — | oui (`pickStrategyContext`) | — | premier jet seulement (échec → `log.warn`, bloc vide) |
 | Réduction d'une section (`reduce-section.md`) | — | stratégie d'**article** seule (`buildStrategyContext(getStrategy(id))`) | — | — |

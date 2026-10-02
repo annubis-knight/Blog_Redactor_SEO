@@ -65,6 +65,7 @@ pas une globale : l'appelant le fournit.
 | Consigne | Appelant | Bloc |
 |---|---|---|
 | `cocoon-child-keywords.md` (mots-clés candidats d'un nouvel article, Cerveau) | `child-candidates.service.ts` → `cocoonContextForNewArticle` | Obligatoire : un état illisible fait échouer la proposition |
+| `cocoon-own-keyword.md` (douleur du mot-clé proposé par l'utilisateur, Cerveau) | `child-candidates.service.ts` `describeOwnKeyword` → `cocoonContextForNewArticle` | Obligatoire : sans état, pas d'appel, le mot-clé reste sans douleur |
 | `lieutenants-hn-structure.md` (structure de l'article, Moteur) | `keyword-ai-panel.routes.ts` → `cocoonContextForArticle` | `{{#cocoon_context}}…{{/cocoon_context}}` |
 | `generate-article-draft.md` (premier jet, Rédaction) | `article-draft.routes.ts` → `cocoonContextForArticle` | `{{#cocoon_context}}…{{/cocoon_context}}` |
 
@@ -157,6 +158,7 @@ n'est pas à jour). Le tableau ci-dessous en donne le rôle.
 | `cocoon-articles-spe.md` | Articles spécialisés nourris des PAA | `strategy-prompts.service.ts` |
 | `cocoon-add-article.md` | Un article de plus sur la carte, du niveau demandé | `strategy-prompts.service.ts` |
 | `cocoon-child-keywords.md` | 3 à 5 mots-clés candidats d'un nouvel article | `child-candidates.service.ts` |
+| `cocoon-own-keyword.md` | Douleur et intention éditoriale du mot-clé proposé par l'utilisateur | `child-candidates.service.ts` |
 | `strategy-suggest.md` | Suggestion pour une étape de la stratégie d'article | `strategy-prompts.service.ts` |
 | `strategy-deepen.md` | Sous-question pour approfondir une étape | `strategy-prompts.service.ts` |
 | `strategy-consolidate.md` | Consolide réponse principale et sous-réponses | `strategy-prompts.service.ts` |
@@ -252,6 +254,7 @@ Sans mention, le modèle est celui de la ligne du tableau précédent.
 | Stratégie d'article, une étape | `POST /strategy/:id/suggest` | `strategy-suggest.md` (`strategy-merge.md` pour une fusion) | JSON |
 | Approfondir, consolider, enrichir une étape | `POST /strategy/{:id, cocoon/:cocoonSlug}/{deepen, consolidate, enrich}` | `strategy-deepen`, `strategy-consolidate`, `strategy-enrich` | JSON |
 | Mots-clés candidats d'un nouvel article, puis leur mesure (DataForSEO) | `POST /cocoons/:cocoonId/child-candidates` | `system-propulsite` + `cocoon-child-keywords` (état du cocon) | JSON |
+| Douleur du mot-clé proposé par l'utilisateur, en parallèle de sa mesure | `POST /cocoons/:cocoonId/candidate-measure` | `system-propulsite` + `cocoon-own-keyword` (état du cocon) | JSON |
 
 **Moteur**
 

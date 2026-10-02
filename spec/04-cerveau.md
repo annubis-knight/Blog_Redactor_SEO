@@ -171,10 +171,12 @@ Demander des candidats est payant (IA et DataForSEO) : cela n'arrive que sur ce 
 - Quand aucun candidat n'a de mesures : « Aucun candidat n'a de données de recherche : Google ne les connaît pas assez pour les mesurer. Proposez votre propre mot-clé ci-dessous, plutôt une requête courte. »
 
 **Votre mot-clé.** Sous la liste, « Votre mot-clé » et « Mesurer ce mot-clé » (« Mesure en cours… ») laissent proposer son propre mot-clé, même quand la proposition de l'IA a échoué.
-- C'est payant (DataForSEO) : la mesure suit les mêmes règles, mesures de moins de 7 jours relues d'abord.
+- C'est payant (DataForSEO et un appel d'IA) : la mesure suit les mêmes règles, mesures de moins de 7 jours relues d'abord.
+- Dans le même temps, l'IA écrit la difficulté de son lecteur et l'intention éditoriale attendue, comme pour ses propres candidats : avec la stratégie et l'état du cocon, et la section du parent pour un enfant. Elles ne s'affichent pas dans le panneau ; l'article créé les reçoit.
 - Le mot-clé mesuré rejoint la liste, avec le titre « Mot-clé » mis en majuscule et la raison « Mot-clé proposé par vous. ». Il se choisit comme les autres s'il a des mesures.
 - Sans mesures, il reste dans la liste, « Non mesuré », avec : « « … » n'a aucune donnée de recherche : essayez une formulation plus courte. »
-- Refusé avec sa raison s'il est déjà dans la liste (« « … » est déjà dans la liste. ») ou déjà le mot-clé d'un article du cocon (« Mot-clé non mesuré : « … » est déjà le mot-clé d'un article de ce cocon : choisissez-en un autre. »).
+- Mesuré, mais sans douleur (l'IA a échoué) : il se choisit, avec l'avertissement « « … » est mesuré, mais l'IA n'a pas écrit la difficulté de son lecteur : l'article sera créé sans douleur, et le Capitaine n'aura pas de Score Pertinence. »
+- Refusé avec sa raison s'il est déjà dans la liste (« « … » est déjà dans la liste. ») ou déjà le mot-clé d'un article du cocon (« Mot-clé non mesuré : « … » est déjà le mot-clé d'un article de ce cocon : choisissez-en un autre. »). Les refus d'avant l'appel payant (ordre du cocon, parent non rédigé…) valent aussi pour lui.
 
 **Choisir et créer.**
 1. Rien n'est choisi d'office.
@@ -371,7 +373,7 @@ La **douleur** est le problème concret du lecteur : ce qui le pousse à taper s
 | La douleur de l'article | Un seul article | L'IA, avec la proposition de l'article |
 
 **La douleur de l'article.**
-- Elle naît avec la proposition. Chaque article de la carte indicative, et chaque candidat du constructeur, arrive avec la sienne.
+- Elle naît avec la proposition. Chaque article de la carte indicative, et chaque candidat du constructeur, arrive avec la sienne ; le mot-clé proposé par l'utilisateur la reçoit de l'IA au moment de sa mesure.
 - L'article créé reçoit celle du candidat choisi, sinon celle de la proposition de même titre sur la carte. Le mode automatique la tire du brief qu'il écrit.
 - Elle se lit dans la ligne dépliée de la carte, sous « Douleur ». Le panneau des candidats ne l'affiche pas.
 - Elle est fixée à la création. Aucun écran ne la modifie : ni le Moteur, ni la Rédaction, ni le Cerveau.

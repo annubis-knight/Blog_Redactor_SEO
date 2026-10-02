@@ -55,3 +55,22 @@ describe('simulation des candidats d’un nouvel article', () => {
     expect(candidates[0]!.keyword).toBe('rénovation énergétique')
   })
 })
+
+describe('FR-CER-KEYWORD-REAL-DATA — simulation de la douleur du mot-clé proposé', () => {
+  it('répond au prompt réellement assemblé : une douleur qui cite le mot-clé, une intention valide', () => {
+    const template = readFileSync(resolve('server/prompts/cocoon-own-keyword.md'), 'utf8')
+    const { text: userPrompt, missing, unused } = renderPromptTemplate(template, {
+      strategy_context: '',
+      cocoon_context: renderCocoonContext({ cocoonName: 'Création de site', tree: [], focus: { parentId: null, parentSection: null } }),
+      articleLevel: 'pilier',
+      parentSection: '',
+      keyword: 'création site internet toulouse',
+    })
+    expect({ missing, unused }, 'le prompt et ses variables concordent').toEqual({ missing: [], unused: [] })
+    const fixture = streamFixtures.find(f => f.matcher({ systemPrompt: '', userPrompt }))
+    expect(fixture?.name).toBe('cocoon-own-keyword')
+    const reponse = JSON.parse(fixture!.builder({ systemPrompt: '', userPrompt }) as string)
+    expect(reponse.painPoint).toContain('création site internet toulouse')
+    expect(['informational', 'commercial', 'transactional', 'navigational']).toContain(reponse.painIntentExpected)
+  })
+})

@@ -142,40 +142,95 @@ describe('proposeChildCandidates', () => {
 })
 
 describe('FR-CER-KEYWORD-REAL-DATA — measureOwnCandidate : le mot-clé proposé par l’utilisateur', () => {
+  const PILIER_SEUL = { parentId: null, parentSection: null }
+  const DOULEUR = JSON.stringify({ painPoint: 'Un site qui ne rapporte aucun contact.', painIntentExpected: 'commercial' })
+
+  beforeEach(() => {
+    m.getCocoonTree.mockResolvedValue([])
+    m.collectStreamWithUsage.mockResolvedValue({ text: DOULEUR, usage: { estimatedCost: 0.002 } })
+  })
+
   it('est normalisé, mesuré aussitôt et rendu comme un candidat', async () => {
-    const candidate = await measureOwnCandidate(3, '  Site Internet   Sur Mesure ')
+    const candidate = await measureOwnCandidate(3, '  Site Internet   Sur Mesure ', PILIER_SEUL)
     expect(m.measureKeywords).toHaveBeenCalledWith(['site internet sur mesure'])
     expect(candidate).toMatchObject({
       keyword: 'site internet sur mesure',
       title: 'Site internet sur mesure',
-      painPoint: null,
-      painIntentExpected: null,
       metrics: { searchVolume: 100 },
       serp: [{ domain: 'guide.fr' }],
     })
     expect(candidate.rationale).toMatch(/proposé par vous/i)
   })
 
+  // Recette réelle du 2026-10-02 : le pilier né d'un mot-clé proposé n'avait ni
+  // douleur ni intention ; le Capitaine n'avait aucun Score Pertinence.
+  it('reçoit sa douleur et son intention, écrites par l’IA avec la stratégie et l’état du cocon', async () => {
+    const candidate = await measureOwnCandidate(3, 'site internet sur mesure', PILIER_SEUL)
+    expect(candidate.painPoint).toBe('Un site qui ne rapporte aucun contact.')
+    expect(candidate.painIntentExpected).toBe('commercial')
+    expect(m.cocoonContextForNewArticle).toHaveBeenCalledWith(3, null, null)
+    expect(m.loadPrompt).toHaveBeenCalledWith('cocoon-own-keyword', expect.objectContaining({
+      keyword: 'site internet sur mesure', cocoon_context: 'ETAT-DU-COCON', articleLevel: 'pilier', parentSection: '',
+    }), { cocoonSlug: 'Rénovation' })
+    expect(m.collectStreamWithUsage).toHaveBeenCalledTimes(1)
+  })
+
+  it('pour un enfant : le niveau et la section du parent sont transmis à l’IA', async () => {
+    m.getCocoonTree.mockResolvedValue([PILIER])
+    await measureOwnCandidate(3, 'fenetre double vitrage', { parentId: 10, parentSection: 'Changer les fenêtres' })
+    expect(m.cocoonContextForNewArticle).toHaveBeenCalledWith(3, 10, 'Changer les fenêtres')
+    expect(m.loadPrompt).toHaveBeenCalledWith('cocoon-own-keyword', expect.objectContaining({
+      articleLevel: 'intermédiaire', parentSection: 'Changer les fenêtres',
+    }), expect.anything())
+  })
+
+  it('IA en panne ou illisible : le mot-clé reste mesuré, sans douleur ni intention', async () => {
+    m.collectStreamWithUsage.mockRejectedValueOnce(new Error('Claude indisponible'))
+    const enPanne = await measureOwnCandidate(3, 'site internet sur mesure', PILIER_SEUL)
+    expect(enPanne).toMatchObject({ painPoint: null, painIntentExpected: null, metrics: { searchVolume: 100 } })
+
+    m.collectStreamWithUsage.mockResolvedValueOnce({ text: 'pas du JSON', usage: null })
+    const illisible = await measureOwnCandidate(3, 'site internet sur mesure', PILIER_SEUL)
+    expect(illisible).toMatchObject({ painPoint: null, painIntentExpected: null })
+  })
+
+  it('une intention hors des quatre valeurs est laissée vide, la douleur gardée', async () => {
+    m.collectStreamWithUsage.mockResolvedValue({ text: JSON.stringify({ painPoint: 'Un budget flou.', painIntentExpected: 'bof' }), usage: null })
+    const candidate = await measureOwnCandidate(3, 'site internet sur mesure', PILIER_SEUL)
+    expect(candidate).toMatchObject({ painPoint: 'Un budget flou.', painIntentExpected: null })
+  })
+
   it('sans données chez DataForSEO : rendu sans mesures (non choisissable)', async () => {
     m.measureKeywords.mockResolvedValue(new Map())
-    const candidate = await measureOwnCandidate(3, 'expression que personne ne cherche jamais')
+    const candidate = await measureOwnCandidate(3, 'expression que personne ne cherche jamais', PILIER_SEUL)
     expect(candidate.metrics).toBeNull()
     expect(candidate.serp).toEqual([])
   })
 
   it('un mot-clé déjà pris dans le cocon est refusé avant tout appel payant', async () => {
-    const err = await refus(measureOwnCandidate(3, 'Isolation Combles'))
+    m.getCocoonTree.mockResolvedValue([PILIER, { ...PILIER, id: 11, title: 'Isoler ses combles', level: 'intermediaire', parentId: 10, parentSection: 'Isoler les combles', keyword: 'isolation combles', sections: [] }])
+    const err = await refus(measureOwnCandidate(3, 'Isolation Combles', { parentId: 10, parentSection: 'Changer les fenêtres' }))
     expect(err).toBeInstanceOf(ChildCandidatesError)
     expect(err.status).toBe(409)
     expect(err.code).toBe('KEYWORD_TAKEN')
     expect(m.measureKeywords).not.toHaveBeenCalled()
+    expect(m.collectStreamWithUsage).not.toHaveBeenCalled()
+  })
+
+  it('un parent non rédigé est refusé comme pour les candidats de l’IA, avant tout appel payant', async () => {
+    m.getCocoonTree.mockResolvedValue([{ ...PILIER, drafted: false }])
+    const err = await refus(measureOwnCandidate(3, 'fenetre double vitrage', { parentId: 10, parentSection: 'Changer les fenêtres' }))
+    expect(err.code).toBe('PARENT_NOT_WRITTEN')
+    expect(m.measureKeywords).not.toHaveBeenCalled()
+    expect(m.collectStreamWithUsage).not.toHaveBeenCalled()
   })
 
   it('un cocon inconnu est refusé (404), sans appel payant', async () => {
     m.getCocoonTree.mockResolvedValue(null)
-    const err = await refus(measureOwnCandidate(999, 'site sur mesure'))
+    const err = await refus(measureOwnCandidate(999, 'site sur mesure', PILIER_SEUL))
     expect(err.status).toBe(404)
     expect(err.code).toBe('COCOON_NOT_FOUND')
     expect(m.measureKeywords).not.toHaveBeenCalled()
+    expect(m.collectStreamWithUsage).not.toHaveBeenCalled()
   })
 })

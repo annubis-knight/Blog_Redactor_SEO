@@ -44,3 +44,19 @@ registerStreamFixture(
     })
   },
 )
+
+/**
+ * POST /api/cocoons/:cocoonId/candidate-measure (prompt `cocoon-own-keyword.md`) :
+ * la douleur et l'intention du mot-clé proposé par l'utilisateur, qui la cite.
+ */
+registerStreamFixture(
+  'cocoon-own-keyword',
+  ({ userPrompt }) => /décrire le lecteur d'un nouvel article/i.test(userPrompt),
+  ({ userPrompt }) => {
+    const keyword = userPrompt.match(/choisi lui-même le mot-clé de cet article : « ([^»]+) »/)?.[1] ?? 'ce sujet'
+    return JSON.stringify({
+      painPoint: `Le lecteur qui cherche « ${keyword} » ne sait pas à qui faire confiance ni combien prévoir (mock).`,
+      painIntentExpected: 'commercial',
+    })
+  },
+)
