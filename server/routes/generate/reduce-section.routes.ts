@@ -14,6 +14,16 @@ import {
 const router = Router()
 
 /**
+ * Plafond de la réponse : la section réduite est plus courte que la section
+ * reçue, donc la taille de celle-ci suffit (≈ 3 caractères par jeton, marge de
+ * 30 %). L'ancien plafond tiré des mots visés (mots × 1,5 × 1,3) coupait le HTML
+ * français : six sections sur huit en recette réelle du 2026-10-02.
+ */
+function reduceMaxTokens(sectionHtml: string): number {
+  return Math.min(8192, Math.max(1024, Math.ceil((sectionHtml.length / 3) * 1.3)))
+}
+
+/**
  * POST /api/generate/reduce-section — Reduce a single H2 section to approach
  * a proportional word-count budget.
  *
@@ -66,13 +76,23 @@ router.post('/generate/reduce-section', async (req, res) => {
     req.socket.setTimeout(0)
     res.writeHead(200, SSE_HEADERS)
 
-    const maxTokens = Math.min(8192, Math.max(512, Math.ceil(targetWordCount * 1.5 * 1.3)))
+    const maxTokens = reduceMaxTokens(sectionHtml)
 
     const startAi = Date.now()
     const { fullContent, usage } = await consumeStream(
       streamChatCompletion(systemPrompt, userPrompt, maxTokens),
       () => {},
     )
+    // Une réponse coupée au plafond n'est pas une réduction : la section reste
+    // telle qu'elle était (l'écran garde l'original sur une erreur).
+    if (usage?.stopReason && usage.stopReason !== 'end') {
+      log.warn('[reduce-section] réponse coupée avant la fin — section gardée telle quelle', {
+        articleId, sectionIndex, stopReason: usage.stopReason, maxTokens, chars: fullContent.length,
+      })
+      res.write(`event: error\ndata: ${JSON.stringify({ code: 'RESPONSE_TRUNCATED', message: 'La réponse de l’IA a été coupée avant la fin : la section reste telle qu’elle était.', usage })}\n\n`)
+      res.end()
+      return
+    }
     const fullHtml = stripCodeFences(fullContent).trim()
 
     log.info('[reduce-section] done', {

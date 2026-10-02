@@ -189,9 +189,46 @@ function tableCellRanges(html: string): Array<[number, number]> {
   return [...html.matchAll(/<(td|th)\b[^>]*>[\s\S]*?<\/\1>/gi)].map(m => [m.index, m.index + m[0].length])
 }
 
+/** Blocs qui ne peuvent pas s'ouvrir à l'intérieur d'un paragraphe. */
+const BLOCK_AFTER_PARAGRAPH = /^(p|h[1-6]|ul|ol|table|blockquote|figure|div|section|article)$/
+
+/**
+ * Referme un paragraphe laissé ouvert avant le bloc suivant (ou en fin de texte),
+ * avant les blancs qui le précèdent. Une réponse coupée au plafond laisse son
+ * dernier paragraphe ouvert, et le chapitre suivant commence aussitôt : sans
+ * cela, la recherche `<p>…</p>` irait jusqu'au `</p>` du chapitre suivant, dont
+ * la fin est propre, et la coupure passerait inaperçue (recette réelle du
+ * 2026-10-02 : cinq chapitres réduits coupés en pleine phrase).
+ */
+function closeUnclosedParagraphs(html: string): string {
+  let out = ''
+  let from = 0
+  let open = false
+  const closeBefore = (at: number) => {
+    const before = html.slice(from, at)
+    const blanks = before.match(/\s*$/)![0]
+    out += `${before.slice(0, before.length - blanks.length)}</p>${blanks}`
+    from = at
+  }
+  for (const m of html.matchAll(/<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>/g)) {
+    const name = m[2]!.toLowerCase()
+    if (m[1] === '/') {
+      if (name === 'p') open = false
+      continue
+    }
+    if (!BLOCK_AFTER_PARAGRAPH.test(name)) continue
+    if (open) closeBefore(m.index)
+    open = name === 'p'
+  }
+  if (open) closeBefore(html.length)
+  return out + html.slice(from)
+}
+
 /**
  * Répare les paragraphes et éléments de liste tronqués.
  *
+ * - Un `<p>` jamais fermé est d'abord refermé avant le bloc suivant
+ *   (`closeUnclosedParagraphs`), puis jugé comme les autres.
  * - `<p>` sans ponctuation finale → coupé à la dernière phrase complète,
  *   supprimé s'il n'en contient aucune.
  * - `<li>`, et `<p>` d'une cellule de tableau (l'éditeur range le texte de
@@ -200,8 +237,9 @@ function tableCellRanges(html: string): Array<[number, number]> {
  *   une phrase complète suivie d'un fragment. Les éléments contenant une
  *   sous-liste sont laissés intacts.
  */
-export function trimTruncatedBlocks(html: string): { html: string; trimmed: string[] } {
-  if (!html) return { html, trimmed: [] }
+export function trimTruncatedBlocks(source: string): { html: string; trimmed: string[] } {
+  if (!source) return { html: source, trimmed: [] }
+  const html = closeUnclosedParagraphs(source)
   const trimmed: string[] = []
   const cells = tableCellRanges(html)
   const inCell = (offset: number): boolean => cells.some(([start, end]) => offset > start && offset < end)

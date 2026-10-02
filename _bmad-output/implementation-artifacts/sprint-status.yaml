@@ -1009,6 +1009,10 @@ development_status:
   # Score Pertinence au Capitaine). L'IA les écrit pendant la mesure
   # (tech-spec-lot8-douleur-mot-cle-propose).
   recette-reelle-2026-10-02-lot8-douleur: done
+  # Lot 9 (02/10) : « Réduire » coupait 6 sections sur 8 au plafond de jetons et les
+  # appliquait ; la porte ne voyait pas les paragraphes jamais fermés
+  # (tech-spec-lot9-reduction-coupee).
+  recette-reelle-2026-10-02-lot9-reduction: done
 
 # ===== Backlog (non livré) =====
 #

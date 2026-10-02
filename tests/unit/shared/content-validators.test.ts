@@ -53,6 +53,8 @@ describe('validateArticleContent', () => {
 
   it('refuse un paragraphe tronqué', () => {
     expect(codes(validateArticleContent('<p>Phrase complète. Début coup</p>'))).toContain('truncated-block')
+    // FR-RED-DRAFT-SINGLE-PASS — recette réelle du 2026-10-02 : paragraphe jamais fermé avant le chapitre suivant.
+    expect(codes(validateArticleContent('<h2>A</h2><p>Phrase complète. Coupé au lieu\n<h2>B</h2><p>Propre.</p>'))).toContain('truncated-block')
   })
 
   it('refuse le Markdown resté dans le HTML', () => {
