@@ -186,7 +186,7 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
 - avec 3 lieutenants cochés, le bandeau reste affiché (essaie-le sur un autre article, si tu veux).
 
 ### Étape 5 — Le Lexique
-**Exigences :** FR-LEX-METIER-ONLY, FR-LEX-PRECHECK-PERSISTE
+**Exigences :** FR-LEX-METIER-ONLY ⚠, FR-LEX-PRECHECK-PERSISTE
 
 **Ce que ça protège :** le lexique ne garde que des mots du métier, sans mots vides ni morceaux de menu.
 
@@ -203,8 +203,10 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
 
 > **En MOCK, les termes sont peu représentatifs, voire absents** : les pages analysées viennent du bac à sable. Cette vérification n'a de vrai sens qu'en RÉEL (voir plus bas).
 
+**⚠ Défaut connu :** FR-LEX-METIER-ONLY — l’extraction garde « rsquo » (entité HTML non décodée), des noms de concurrents, « décembre », « suis », « ans ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### Étape 6 — La Rédaction : le premier jet
-**Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-DRAFT-TO-SOURCE, FR-RED-GEN-UNLOCK ⚠
+**Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-DRAFT-TO-SOURCE, FR-RED-GEN-UNLOCK ⚠
 
 **Ce que ça protège :** l'article s'écrit d'un trait, et il ne sert de parent qu'une fois son premier jet accepté.
 
@@ -227,6 +229,8 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
 **⚠ Défaut connu :** sans « Terminer le brainstorm » (étape 1), seule la barre du haut est verrouillée : « Valider le sommaire » et « Continuer vers l'Article » ouvrent quand même l'étape Article.
 
 > **En MOCK, le texte ne contient aucun chiffre** : tu ne verras pas de « [à sourcer : …] ». En RÉEL, un chiffre sans source apparaît surligné en orange, sous la forme « [à sourcer : …] ».
+
+**⚠ Défaut connu :** FR-RED-DRAFT-SINGLE-PASS — « Section n/N » n’apparaît pas pendant un premier jet réel (à confirmer) ; des notes de l’IA après « </html> » sont enregistrées telles quelles, seule la porte les bloque. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### Étape 7 — Retour au Cerveau : un enfant naît d'une section
 **Exigences :** FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-PARENT-WRITTEN-GATE

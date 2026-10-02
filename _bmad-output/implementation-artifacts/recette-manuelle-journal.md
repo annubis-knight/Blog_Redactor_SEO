@@ -429,3 +429,54 @@ Arnaud a choisi de corriger les 7. Quatre agents en parallèle sur des fichiers 
 | FR-INFRA-COST-LOG-STORE | Toutes les écritures en base arrivent dans la pile (middleware monté) ; coût des longues traînes et du jugement des questions PAA affiché |
 
 Changement de schéma : `server/db/changes/2026-09-30-keyword-metrics-from-sandbox.sql`, appliqué à la base de développement (sauvegarde `data/_backup_pg_20260930-2026.sql`), `schema.sql` et `bootstrap.sql` régénérés.
+
+## Recette réelle du 2026-10-02 — un vrai pilier, de bout en bout
+
+Demande d'Arnaud : valider tests, parcours et recette en réel à travers un vrai article pilier, sur un nouveau cocon « Création de site internet sur mesure à Toulouse » (silo « Création de site »). Mode RÉEL : Claude Haiku 4.5 et DataForSEO en production. Arnaud a laissé les choix de contenu à l'agent et relit l'article avant toute publication.
+
+**Résultat.** Pilier #1355 « Création de site internet sur mesure à Toulouse : le guide complet », Capitaine `création site internet toulouse` (720 recherches par mois, difficulté 17), 5 lieutenants, structure validée, 42 termes de lexique, premier jet accepté par sa porte, enrichi (Sources, FAQ, réécritures ciblées, relecture de la langue), 2 645 mots, SEO 74, GEO 59. Non publié : Arnaud relit d'abord.
+
+**Trois lots de correction en route**, chacun exigence + test rouge + CI :
+
+| Lot | PR | Défaut vu en réel | Correction |
+|---|---|---|---|
+| 7 | #18 | Les 5 candidats du pilier étaient des phrases longues, tous « Non mesuré » : pilier impossible | Pour un pilier, au moins deux requêtes courtes ; « Votre mot-clé » mesuré aussitôt |
+| 8 | #19 | Un mot-clé proposé arrivait sans douleur ni intention : pas de Score Pertinence au Capitaine | L'IA écrit douleur et intention pendant la mesure |
+| 9 | #20 | « Réduire » coupait 6 sections sur 8 au plafond de jetons et les enregistrait ; la porte ne voyait pas les paragraphes jamais fermés | Plafond tiré de la taille de la section, réponse coupée = échec, détection des paragraphes jamais fermés, marqueurs gardés |
+
+Le lot 9 a été revalidé en réel : nouvelle réduction 3 299 → 2 645 mots, dix appels tous terminés normalement, chapitres intacts.
+
+### Vérifications réelles
+
+| Vérification | Résultat |
+|---|---|
+| CER-R2 suggestions, fusion, sous-questions, enrichissement | ✅ (suggestions parfois avec titres markdown ou méta-commentaires, nettoyés à la main ; un chiffre inventé dans une sous-question) |
+| CER-R3 candidats réels | ❌ puis ✅ après le lot 7 (« Votre mot-clé » : mesuré, doublon refusé sans dépense, mot-clé du cocon refusé) |
+| DIS-R1 filtre et courte-traîne | ✅ 84 pertinents sur 1 585, grisés clairement hors sujet ; filtre de la courte-traîne sur les seuls nouveaux mots-clés. ⚠ ~6 min de filtrage |
+| RAD-R1 questions PAA réelles | ❌ presque tout « Exact » (FR-RAD-RESONANCE) ; ✅ « PAA en cache » au second scan, ❌ mais 0,05 $ repayés (FR-INFRA-PAA-CACHE) |
+| RAD-R2 longues traînes | ✅ 10 suggestions notées et sourcées, 5 pré-cochées, régénération servie par le cache, cases gardées |
+| CAP-R3 avis de l'IA | ✅ 3 parties, français, aligné sur la stratégie ; ❌ cite des notes, fausses (FR-CAP-AI-PANEL) ; ✅ réaffiché sans nouvel appel |
+| Verrouillage du Capitaine | ✅ alarme graduée (2 🟠) avec « À la place : » |
+| LIE-R1 / LIE-R2 | ✅ provenance, scores, H2, failles de contenu, rien de coché, entonnoir géographique ; ❌ « 0 PAA » et « aucun cluster » annoncés (FR-LIE-PROPOSE-AI) |
+| HN-R1 | ✅ H2 verrouillés repris mot pour mot, structure validée |
+| LEX-R1 | ✅ 142 analysés, 121 recommandés, 21 écartés, 5 manquants, rien de coché ; ❌ « rsquo », noms de concurrents (FR-LEX-METIER-ONLY) |
+| RED-R1 premier jet | ✅ marqueurs « à sourcer » sur les montants, porte juste ; ❌ notes de l'IA après `</html>` enregistrées, « Section n/N » jamais vu (FR-RED-DRAFT-SINGLE-PASS) |
+| RED-R2 passe Sources | ✅ un seul chapitre traité, source française de 2026 avec lien présent dans les sources trouvées |
+| RED-R4 réduire, relire | ❌ puis ✅ après le lot 9 ; relecture de la langue ✅ |
+| Méta, SEO, GEO | ❌ meta title sans le capitaine entier mais « Capitaine ✓ » (FR-RED-META-CAPTAIN) ; ❌ « Stats sourcées 0 » (FR-RED-GEO-LIVE) |
+
+### Autres constats, sans exigence changée
+
+- Pool du cocon : « Supprimer » ne retire pas le mot-clé ; le même cocon est ensuite annoncé comme « deux cocons qui se font concurrence » (FR-CER-CREATION-HONNETE, passée non tenue).
+- Juste après l'envoi au Capitaine, Score Pertinence « — » et infobulle fausse jusqu'au rechargement (déjà dans FR-CAP-RELEVANCE-LIVE).
+- Panneau du Capitaine : « Intent — » et « Autocomplete 0 matches » quand le Radar montrait « navigational » et « Position 6 » (déjà dans FR-RAD-AUTOCOMPLETE-PER-KEYWORD).
+- Micro-contexte : la suggestion de l'IA demande des « cas clients fictifs mais réalistes » (ajouté à FR-CER-MICRO-CONTEXT).
+- Aperçu : « Introduction » deux fois quand l'IA titre son premier H2 « Introduction : … ».
+- FAQ : une réponse fausse sur WordPress (« enfermé dans son template ») — WordPress peut porter un site sur mesure ; corrigée par réécriture.
+- Densité exacte demandée par le score SEO (capitaine 1,5 %) et alerte « Pilier sans cible » : des règles à rediscuter avec Arnaud plutôt que des défauts.
+- Aucune confirmation au passage en RÉEL ni à « Supprimer » un article de la carte.
+
+### Données laissées en base
+
+- Cocon 28033 et son pilier #1355 (gardés : c'est l'article d'Arnaud).
+- Article #1354, premier pilier sans douleur, détaché du cocon par « Supprimer » ; il reste dans l'outil. À effacer **avec l'accord d'Arnaud**.

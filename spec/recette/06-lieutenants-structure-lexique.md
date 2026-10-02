@@ -127,7 +127,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 **⚠ Défaut connu :** FR-LEX-PRECHECK-SERP — pendant l'analyse lancée, « Lancer l'analyse SERP » reste cliquable : un second clic confirmé relance une analyse payante. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LEX-3 — Trois listes de mots du métier
-**Exigences :** FR-LEX-TFIDF, FR-LEX-METIER-ONLY
+**Exigences :** FR-LEX-TFIDF, FR-LEX-METIER-ONLY ⚠
 
 **Gestes :**
 1. Lis le titre des trois listes.
@@ -149,6 +149,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - un pourcentage n'est pas dans sa liste, ou une liste dépasse 50 termes.
 
 > En MOCK, les pages viennent du bac à sable : les termes sont peu représentatifs, voire absents. Si les trois listes sont vides, note-le et suis la parade de LEX-6. Le vocabulaire se juge vraiment en RÉEL (LEX-R1).
+
+**⚠ Défaut connu :** FR-LEX-METIER-ONLY — l’extraction garde « rsquo » (entité HTML non décodée), des noms de concurrents, « décembre », « suis », « ans ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LEX-4 — L'avis de l'IA ne coche rien
 **Exigences :** FR-LEX-AI-PANEL, FR-LEX-PRECHECK-PERSISTE
@@ -303,7 +305,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 **⚠ Défaut connu :** FR-LIE-SERP-ANALYZE — la pile d'activité annonce « Scraping ~N URLs via DataForSEO » même quand l'analyse est relue en base ; « Tout relancer (SERP + IA) » ne relance rien pendant 7 jours : il relit l'analyse et les propositions gardées, et doit s'appeler « Recharger l'analyse ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LIE-4 — L'IA propose sans cocher, à part des décisions
-**Exigences :** FR-LIE-PROPOSE-AI, FR-LIE-AI-FRONTIER
+**Exigences :** FR-LIE-PROPOSE-AI ⚠, FR-LIE-AI-FRONTIER
 
 **Gestes :**
 1. Pendant et après l'analyse, regarde la liste, puis le panneau violet plus bas.
@@ -322,6 +324,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - une liste de titres H1/H2/H3 s'affiche dans l'onglet.
 
 > En MOCK, l'IA simulée donne ses sources, un niveau H2 ou H3 et des failles de contenu (« Les concurrents analysés … détaillent peu … »), et autant de candidats que le type en demande (6 pour un intermédiaire) : pastilles, « Autres candidats » et « Failles de contenu » se voient donc aussi en MOCK. Leur pertinence se juge en RÉEL (LIE-R1).
+
+**⚠ Défaut connu :** FR-LIE-PROPOSE-AI — la proposition annonce « 0 PAA » et « Aucun cluster disponible » alors que les questions PAA du capitaine et la découverte existent. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LIE-5 — Les sources de l'IA, repliées
 **Exigences :** FR-LIE-SECTIONS-FOLDABLE
@@ -427,7 +431,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - l'alarme s'ouvre à chaque case.
 
 ### LIE-10 — Relancer sans perdre ses choix
-**Exigences :** FR-LIE-PROPOSE-AI, FR-LIE-SERP-ANALYZE ⚠, FR-LIE-CHECKBOX-LOCK-IMMEDIATE ⚠
+**Exigences :** FR-LIE-PROPOSE-AI ⚠, FR-LIE-SERP-ANALYZE ⚠, FR-LIE-CHECKBOX-LOCK-IMMEDIATE ⚠
 
 **Gestes :**
 1. Clique **« Analyser SERP »**.
@@ -449,6 +453,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 **⚠ Défaut connu :** relancer la proposition de l'IA décoche à l'écran les lieutenants déjà retenus et retire l'étape, alors que la liste enregistrée les garde ; et le bouton de relance du panneau de l'IA disparaît tant que ce panneau affiche les failles de contenu de la dernière génération. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-LIE-SERP-ANALYZE — la pile d'activité annonce « Scraping ~N URLs via DataForSEO » même quand l'analyse est relue en base ; « Tout relancer (SERP + IA) » ne relance rien pendant 7 jours : il relit l'analyse et les propositions gardées, et doit s'appeler « Recharger l'analyse ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-LIE-PROPOSE-AI — la proposition annonce « 0 PAA » et « Aucun cluster disponible » alors que les questions PAA du capitaine et la découverte existent. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LIE-11 — Un lieutenant déjà pris dans le cocon
 **Exigences :** FR-LIE-LOCK-GATE
@@ -547,7 +553,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 **⚠ Défaut connu :** un refus d'enregistrement de la structure arrête la validation sans aucun message à l'écran ; seul le refus du sommaire est dit. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LEX-8 — Dans la Rédaction, un mot générique n'entre pas au lexique
-**Exigences :** FR-LEX-METIER-ONLY, FR-LEX-PRECHECK-PERSISTE
+**Exigences :** FR-LEX-METIER-ONLY ⚠, FR-LEX-PRECHECK-PERSISTE
 
 **Gestes :**
 1. Sur la même page, déplie « Mots-clés ». Regarde « Lexique sémantique (N) ».
@@ -565,6 +571,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - un mot générique rejoint la liste ;
 - un terme du métier est refusé ;
 - N diffère du compteur du Moteur.
+
+**⚠ Défaut connu :** FR-LEX-METIER-ONLY — l’extraction garde « rsquo » (entité HTML non décodée), des noms de concurrents, « décembre », « suis », « ans ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### HN-5 — Un sommaire retouché n'est pas écrasé sans demander
 **Exigences :** FR-HN-TAB ⚠
@@ -727,7 +735,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 Sur le cocon du parcours express refait en RÉEL (étapes 1 à 6), bouton sur **RÉEL**. Suis la dépense dans « Coûts API ». Repasse en **MOCK** à la fin.
 
 ### LIE-R1 — Provenance, tête de liste et failles de contenu
-**Exigences :** FR-LIE-CANDIDATES-BADGES, FR-LIE-PROPOSE-AI, FR-LIE-CHECKBOX-LOCK-IMMEDIATE ⚠
+**Exigences :** FR-LIE-CANDIDATES-BADGES, FR-LIE-PROPOSE-AI ⚠, FR-LIE-CHECKBOX-LOCK-IMMEDIATE ⚠
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Pilier du cocon RÉEL, onglet Lieutenants : regarde les propositions de l'IA (relance **« Analyser SERP »** si la liste est vide).
@@ -748,6 +756,8 @@ Sur le cocon du parcours express refait en RÉEL (étapes 1 à 6), bouton sur **
 - un score absent s'affiche « 0 ».
 
 **⚠ Défaut connu :** relancer la proposition de l'IA décoche à l'écran les lieutenants déjà retenus et retire l'étape, alors que la liste enregistrée les garde ; et le bouton de relance du panneau de l'IA disparaît tant que ce panneau affiche les failles de contenu de la dernière génération. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-LIE-PROPOSE-AI — la proposition annonce « 0 PAA » et « Aucun cluster disponible » alors que les questions PAA du capitaine et la découverte existent. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LIE-R2 — L'entonnoir géographique
 **Exigences :** FR-LIE-GEOFUNNEL-RULE
@@ -785,7 +795,7 @@ Sur le cocon du parcours express refait en RÉEL (étapes 1 à 6), bouton sur **
 **⚠ Défaut connu :** un refus d'enregistrement de la structure arrête la validation sans aucun message à l'écran ; seul le refus du sommaire est dit. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LEX-R1 — L'avis de l'IA, terme par terme
-**Exigences :** FR-LEX-AI-PANEL, FR-LEX-METIER-ONLY, FR-LEX-TFIDF
+**Exigences :** FR-LEX-AI-PANEL, FR-LEX-METIER-ONLY ⚠, FR-LEX-TFIDF
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Onglet Lexique du pilier RÉEL (extrait à l'étape 5 du parcours). Survole un badge.
@@ -806,6 +816,8 @@ Sur le cocon du parcours express refait en RÉEL (étapes 1 à 6), bouton sur **
 - plus de 5 termes manquants ;
 - « Annuler » lance quand même l'analyse.
 
+**⚠ Défaut connu :** FR-LEX-METIER-ONLY — l’extraction garde « rsquo » (entité HTML non décodée), des noms de concurrents, « décembre », « suis », « ans ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### LEX-R2 — Changer d'onglet ne rappelle pas l'IA
 **Exigences :** FR-LEX-MULTI-KEYWORD-TABS ⚠, FR-LEX-LECTURE-VS-VERROUILLAGE
 **Mode :** RÉEL (payant)
@@ -825,7 +837,7 @@ Sur le cocon du parcours express refait en RÉEL (étapes 1 à 6), bouton sur **
 **⚠ Défaut connu :** FR-LEX-MULTI-KEYWORD-TABS — l'extraction du capitaine n'ajoute son onglet qu'au rechargement ; entre-temps, « Tester un mot-clé » paraît sélectionné au-dessus des listes du capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LEX-R3 — La suggestion de Claude passe le même filtre
-**Exigences :** FR-LEX-METIER-ONLY
+**Exigences :** FR-LEX-METIER-ONLY ⚠
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Fais-le en dernier : la suggestion remplace le lexique de l'article. Rédaction de l'article RÉEL, section « Mots-clés » : clique **« Suggérer le Lexique via Claude »**.
@@ -836,6 +848,8 @@ Sur le cocon du parcours express refait en RÉEL (étapes 1 à 6), bouton sur **
 
 **C'est un bug si :**
 - un mot vide ou de décor de page entre dans le lexique.
+
+**⚠ Défaut connu :** FR-LEX-METIER-ONLY — l’extraction garde « rsquo » (entité HTML non décodée), des noms de concurrents, « décembre », « suis », « ans ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ## Hors recette
 

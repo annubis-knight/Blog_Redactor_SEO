@@ -453,7 +453,7 @@ Ces vérifications coûtent de quelques centimes à quelques dizaines de centime
 
 ### INFRA-R1 — Une même mesure n'est payée qu'une fois
 **Mode :** RÉEL (payant)
-**Exigences :** FR-INFRA-API-CACHE, FR-INFRA-GET-OR-FETCH, FR-INFRA-PAA-CACHE, FR-INFRA-KEYWORD-METRICS ⚠, NFR-COST-CACHE-FIRST ⚠
+**Exigences :** FR-INFRA-API-CACHE, FR-INFRA-GET-OR-FETCH, FR-INFRA-PAA-CACHE ⚠, FR-INFRA-KEYWORD-METRICS ⚠, NFR-COST-CACHE-FIRST ⚠
 
 **Gestes :**
 1. Passe en RÉEL. Déplie la pile et note le montant « DataForSEO PROD $x / $y (30min) ». Les lignes d'IA peuvent s'ajouter : seul ce montant compte ici.
@@ -476,6 +476,8 @@ Ces vérifications coûtent de quelques centimes à quelques dizaines de centime
 **⚠ Défaut connu :** tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie : si le geste 2 affiche « KD — » et « CPC — », le geste 3 fait monter le montant. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** NFR-COST-CACHE-FIRST — un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-INFRA-PAA-CACHE — une récolte à deux niveaux dont une sous-question échoue est gardée au premier niveau : chaque scan suivant la repaie. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-R2 — Le plafond de dépense bloque l'appel avant de l'envoyer
 **Mode :** RÉEL (payant)
