@@ -294,7 +294,7 @@ L'outil doit proposer plusieurs mots-clés candidats pour un nouvel article, les
 - Quand aucun candidat n'a de mesures, l'écran le dit et invite à proposer son propre mot-clé.
 
 ### FR-CER-CREATION-HONNETE — Un article annoncé créé existe vraiment, et un refus s'explique
-**Statut :** active
+**Statut :** non tenue (un mot-clé resté au pool du même cocon (celui d'un article retiré, « Supprimer » ne le retire pas du pool) est refusé avec un avertissement qui parle de « deux cocons qui visent le même mot-clé » ; en réel, le 2026-10-02, au pilier recréé du cocon « Création de site internet sur mesure à Toulouse »)
 L'outil ne doit annoncer un article créé que s'il existe, et doit dire chaque refus dans les mots de l'utilisateur, avec la marche à suivre.
 - Un article est annoncé créé dès qu'il existe en base, et seulement alors.
 - Une adresse de page déjà prise est refusée ; le message nomme l'adresse et invite à changer le titre.
@@ -312,7 +312,7 @@ L'outil doit comprendre le niveau d'un article dans tous ses formats d'écriture
 - Un niveau inconnu est refusé explicitement plutôt que remplacé.
 
 ### FR-CER-MICRO-CONTEXT — Micro-contexte éditorial par article
-**Statut :** non tenue (le micro-contexte n'est transmis que si l'angle est rempli : un ton ou des consignes seuls sont ignorés ; et l'angle provisoire écrit d'office à la validation de la structure part tel quel à l'IA ; un échec d'enregistrement n'est jamais signalé)
+**Statut :** non tenue (le micro-contexte n'est transmis que si l'angle est rempli : un ton ou des consignes seuls sont ignorés ; et l'angle provisoire écrit d'office à la validation de la structure part tel quel à l'IA ; un échec d'enregistrement n'est jamais signalé ; la suggestion de l'IA demande d'inclure « 3-4 cas clients toulousains fictifs mais réalistes », des liens vers des articles qui n'existent pas, et tutoie (en réel, le 2026-10-02))
 L'outil doit permettre d'attacher à un article un micro-contexte — angle, ton, consignes, longueur visée — repris par les générations de la Rédaction.
 - Le micro-contexte se renseigne et se modifie dans la Rédaction, à l'étape « Brief & Structure » ; chaque champ s'enregistre quand on le quitte.
 - Il est optionnel : sans lui, l'article se génère avec les valeurs par défaut.
@@ -740,7 +740,7 @@ Un mot-clé doit porter deux scores indépendants sur 100 : le Score Marché («
 - Le Score Marché pondère volume 30 %, difficulté 20 %, intention 15 %, PAA 10 %, suggestions 10 %, CPC 10 %, sur les seules données présentes.
 
 ### FR-RAD-RESONANCE — Mesurer l'écho d'un texte avec le sujet
-**Statut :** active
+**Statut :** non tenue (un rapprochement de sens d'au moins 0,7 relève un « Partiel exact » en « Exact » au lieu de « Sémantique », et le modèle de sens donne environ 0,8 à presque toute question du domaine : en réel, le 2026-10-02, presque toutes les questions PAA étaient « Exact » (« Quel est le plus beau site internet du monde ? » pour « site internet sur mesure »))
 L'outil doit dire si un texte (question PAA, suggestion, mot-clé) parle du même sujet qu'une liste de mots, malgré les variantes du français.
 - Les mots-outils du français et les mots de moins de 3 lettres ne comptent pas.
 - Un pluriel ou une variante de suffixe rejoint sa racine (« stratégies » ≈ « stratégie », « croissant » ≈ « croissance »).
@@ -896,7 +896,7 @@ Au Capitaine, chaque carte doit afficher son Score Pertinence ; le Score Marché
 - L'intention de la SERP (la page de résultats Google) entre dans le Score Marché dès l'étude, mesurée ou relue en base.
 
 ### FR-CAP-AI-PANEL — Avis de l'IA sur un candidat
-**Statut :** active
+**Statut :** non tenue (l'avis reçoit des notes qui ne sont pas celles affichées, et les cite : en réel, le 2026-10-02, « Marché 58 » et « Pertinence 73 (GO) » envoyés pour « création site internet toulouse », affichés 63 et 33)
 Pour chaque candidat étudié, l'outil doit afficher un avis d'expert rédigé par l'IA.
 - L'avis compte trois parties : potentiel éditorial, opportunités et risques, recommandation.
 - Le texte s'affiche au fil de la génération.
@@ -1085,7 +1085,7 @@ L'outil doit compter, pour chaque titre H1/H2/H3 (les niveaux de titre d'une pag
 - La récurrence s'affiche dans l'onglet Structure, dans une section repliable ; l'onglet Lieutenants la calcule pour l'IA sans l'afficher.
 
 ### FR-LIE-PROPOSE-AI — L'IA propose des lieutenants
-**Statut :** active
+**Statut :** non tenue (la proposition annonce « 0 PAA » et « Aucun cluster disponible. Lance un scan Discovery » alors que la base a les questions PAA du capitaine et que Discovery a tourné pour l'article (en réel, le 2026-10-02))
 À partir des concurrents, des questions PAA, des titres récurrents, des racines, des groupes de mots de Discovery et de la douleur de l'article, l'IA doit proposer des lieutenants notés, en séparant les meilleurs candidats des autres.
 - La proposition part d'elle-même après une analyse des concurrents réussie, sauf si des propositions de moins de 7 jours existent déjà : elles sont alors relues.
 - Pendant la génération, le texte brut de l'IA défile ; à la fin, chaque candidat porte un score sur 100, un niveau conseillé (H2 ou H3), une raison et ses sources.
@@ -1216,7 +1216,7 @@ L'outil doit mesurer, dans le texte principal des pages concurrentes, sur combie
 - L'extraction ne paie aucun nouvel appel quand les pages ont déjà été lues.
 
 ### FR-LEX-METIER-ONLY — Le lexique ne contient que des mots du métier
-**Statut :** active
+**Statut :** non tenue (l'extraction garde « rsquo » (entité HTML non décodée), des noms de concurrents (« nrv », « allovoisins », « linkweb »), « décembre », « suis », « ans » (en réel, le 2026-10-02))
 Le lexique proposé ne doit garder que le vocabulaire du métier, et sa validation passe par une porte qui refuse un lexique vide ou générique.
 - Aucun mot vide (articles, pronoms, possessifs, prépositions, adverbes, verbes génériques), avec ou sans accent, aucun nombre, aucun mot de moins de 3 lettres, aucun mot de décor de page (cookies, mentions, newsletter, réseaux sociaux…). « site », « blog », « article », « recherche » restent proposés.
 - Seul le contenu principal des pages compte : menus, en-têtes, pieds de page, encarts, formulaires et bandeaux sont écartés ; dans un article, le titre est gardé.
@@ -1400,7 +1400,7 @@ L'outil doit empêcher de passer à l'étape « Article » de la rédaction guid
 - L'éditeur libre n'est pas concerné.
 
 ### FR-RED-DRAFT-SINGLE-PASS — Le premier jet s'écrit d'un seul tenant
-**Statut :** active
+**Statut :** non tenue (« Section n/N » n'a pas été vu à l'écran pendant trois premiers jets réels (à confirmer) ; un premier jet suivi de notes de l'IA après « </html> » (« ## Notes pour la passe d'enrichissement ») est enregistré tel quel, seule la porte le bloque (en réel, le 2026-10-02))
 L'outil doit rédiger l'article en un seul appel à l'IA qui voit tout le sommaire, puis juger ce premier jet par sa porte avant de l'accepter comme étape.
 - Un seul appel, sans recherche web, qui reçoit le sommaire (chapitres, sous-parties, intentions), la longueur visée et la part de chaque chapitre, la stratégie de l'article (à défaut celle du cocon), les mots-clés, les règles du type d'article et l'état du cocon.
 - La part de chaque chapitre : 15 % pour le premier, 10 % pour le dernier, le reste à parts égales ; deux chapitres se partagent 40 / 60 ; le chapeau compte dans le premier chapitre.
@@ -1491,7 +1491,7 @@ L'outil doit générer, juste après le premier jet, le meta title et la meta de
 - La méta se modifie à la main.
 
 ### FR-RED-META-CAPTAIN — Méta, sommaire et premier jet portent le capitaine
-**Statut :** active
+**Statut :** non tenue (le meta title généré ne contient pas le capitaine en entier (« Site internet sur mesure à Toulouse : guide complet » pour « création site internet toulouse »), et le panneau SEO affiche pourtant « Capitaine ✓ » (en réel, le 2026-10-02, à vérifier))
 L'outil doit construire la méta et le premier jet sur le capitaine verrouillé de l'article.
 - La génération de la méta et du premier jet reçoit le capitaine de l'article ; le titre ne sert de repli qu'avant tout verrouillage.
 - Un article intermédiaire ou spécialisé n'hérite jamais du mot-clé pilier de son cocon.
@@ -1525,7 +1525,7 @@ L'outil doit calculer en continu un score SEO sur 100 du texte, de la méta et d
 - Tant que l'article n'a pas de texte, le bouton « SEO » est grisé avec une explication.
 
 ### FR-RED-GEO-LIVE — Score GEO en direct
-**Statut :** active
+**Statut :** non tenue (« Stats sourcées 0 » alors que l'article cite « entre 6 000 € et 18 000 € selon La Fabrique du Net (2026) » avec son lien (en réel, le 2026-10-02, à vérifier : le chiffre est dans le texte du lien))
 L'outil doit calculer en continu un score GEO sur 100, qui mesure la facilité pour un moteur génératif (une IA qui répond aux questions) d'extraire et de citer l'article.
 - Le score pondère quatre facteurs : extractibilité (paragraphes courts), titres formulés en questions, capsules de réponse, statistiques sourcées.
 - Il suit chaque modification du texte, après une pause de 300 ms.
@@ -1848,7 +1848,7 @@ Les mesures de marché d'un mot-clé (volume, difficulté, CPC, concurrence, int
 - Le Radar et le Capitaine partagent les mêmes mesures : un mot-clé scanné au Radar n'est pas remesuré à l'étude du Capitaine, et inversement.
 
 ### FR-INFRA-PAA-CACHE — Mémoire des questions « People Also Ask »
-**Statut :** active
+**Statut :** non tenue (une récolte à deux niveaux dont une sous-question échoue est gardée au premier niveau seulement : chaque scan suivant la repaie (en réel, le 2026-10-02 : trois mots-clés repayés au second scan, 0,05 $))
 Les questions PAA d'un mot-clé ne dépendent que de la recherche Google : l'outil doit les garder par mot-clé, sans lien avec un article, et les resservir sans appel externe pendant un jour.
 - Des PAA récupérées il y a moins d'un jour, à la profondeur demandée, sont resservies sans appel.
 - Une demande plus profonde que ce qui est gardé déclenche un nouvel appel.

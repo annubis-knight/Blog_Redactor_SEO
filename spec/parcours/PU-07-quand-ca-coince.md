@@ -86,7 +86,7 @@ Le serveur revient d'abord à sa configuration. La page, restée ouverte, le rem
 Rien de simulé n'est servi comme vrai. Les longues traînes, les découvertes enregistrées et les réponses gardées quelques jours ne servent qu'au mode qui les a obtenues : en RÉEL, Discovery ne propose plus la récolte simulée, et la même demande repart vers la vraie source. Les mesures de mots-clés faites en MOCK (volume, CPC, difficulté, intention, questions PAA, pages lues pour le Lexique) sont effacées au passage en RÉEL : au Capitaine, les candidats étudiés en MOCK s'affichent sans mesure, et leur première étude en RÉEL se paie. Seul ce que l'article a gardé de son propre travail (cartes du Radar, questions PAA jugées et avis IA du Capitaine, indicateurs des lieutenants, lexique extrait) garde ses chiffres simulés : refais ces étapes en RÉEL avant de t'y fier. Ne bascule pas pendant une étude : la mesure simulée en cours s'enregistrerait comme réelle.
 
 ### Une panne pendant la rédaction se dit
-**Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-GEN-SAUVEGARDE-AU-FIL
+**Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-GEN-SAUVEGARDE-AU-FIL
 
 Avant le premier mot, l'outil réessaie puis passe au fournisseur d'IA suivant. Une coupure en cours d'écriture arrête le premier jet : un message le dit, dans la rédaction guidée comme dans l'éditeur, et le texte en cours quitte l'écran. Recharge la page : les chapitres enregistrés au fil avant la coupure sont là.
 
@@ -104,3 +104,4 @@ Avant le premier mot, l'outil réessaie puis passe au fournisseur d'IA suivant. 
 - NFR-PERF-SSE-FIRST-TOKEN — le premier jet n'a pas de bouton d'arrêt ; un arrêt côté écran ne coupe pas la génération côté serveur, qui continue et se facture.
 - FR-RED-SEO-SCORE-PERSIST — un premier jet interrompu enregistre le texte sans remettre les scores à « inconnu » : l'ancien score reste en base, à l'écran comme en mode automatique.
 - FR-INFRA-KEYWORD-METRICS — tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie ; un « Rafraîchir » raté date quand même la mesure du jour, et pour un mot-clé sans volume connu la fiche vide remplace la réponse gardée.
+- FR-RED-DRAFT-SINGLE-PASS — « Section n/N » n’apparaît pas pendant un premier jet réel (à confirmer) ; des notes de l’IA après « </html> » sont enregistrées telles quelles, seule la porte les bloque.

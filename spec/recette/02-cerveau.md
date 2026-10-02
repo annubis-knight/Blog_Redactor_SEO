@@ -165,7 +165,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 **⚠ Défaut connu :** FR-CER-STEPS-COCOON — à l'étape CTA, « + » (approfondir) échoue sans rien afficher : aucune sous-question n'apparaît. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-7 — Le pilier du cocon neuf : adresse déjà prise, puis mot-clé déjà visé
-**Exigences :** FR-CER-CREATION-HONNETE, FR-CER-KEYWORD-REAL-DATA, FR-CER-AIGUILLAGE
+**Exigences :** FR-CER-CREATION-HONNETE ⚠, FR-CER-KEYWORD-REAL-DATA, FR-CER-AIGUILLAGE
 
 **Gestes :**
 1. Ouvre « Recette <date> » dans un nouvel onglet. Au Cerveau, note le titre de son pilier (dans l'arbre) et son mot-clé (déplie sa ligne « Créé » sur la carte : « Mot-clé suggéré »). Ferme cet onglet.
@@ -188,8 +188,10 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - l'avertissement ne nomme pas le cocon « Recette <date> » ;
 - un message technique ou en anglais remplace ces phrases.
 
+**⚠ Défaut connu :** FR-CER-CREATION-HONNETE — un mot-clé resté au pool du même cocon (celui d’un article retiré : « Supprimer » ne le retire pas du pool) est refusé avec un avertissement qui parle de « deux cocons ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-8 — Deux onglets : un second pilier est refusé, et le refus dit pourquoi
-**Exigences :** FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-CREATION-HONNETE
+**Exigences :** FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-CREATION-HONNETE ⚠
 
 **Gestes :**
 1. Va dans le second onglet de CER-7, sans le recharger : il propose encore « Créer le pilier ». Clique-le.
@@ -206,6 +208,8 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - le refus ne dit pas ce qui bloque.
 
 **⚠ Défaut connu :** « La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CER-CREATION-HONNETE — un mot-clé resté au pool du même cocon (celui d’un article retiré : « Supprimer » ne le retire pas du pool) est refusé avec un avertissement qui parle de « deux cocons ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-9 — La carte complète : niveaux compris, mais les articles créés remplacés
 **Exigences :** FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-TYPE-TOLERANT ⚠, FR-PIE-AI-GENERATION, FR-CER-CONTEXT-FOR-MOTEUR ⚠
@@ -331,7 +335,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - un candidat « Non mesuré » peut être coché.
 
 ### CER-14 — Créer l'enfant sur la proposition de même titre : l'intention de la carte l'emporte
-**Exigences :** FR-CER-CREATION-HONNETE, FR-PIE-AI-GENERATION, FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-AIGUILLAGE
+**Exigences :** FR-CER-CREATION-HONNETE ⚠, FR-PIE-AI-GENERATION, FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-AIGUILLAGE
 
 **Gestes :**
 1. Sur la carte, **« + Ajouter un intermédiaire »** › **« Article complémentaire »**. Déplie la ligne ajoutée. Avec le crayon « Modifier le titre », remplace son titre par `Prix du site recette <date>`, puis Entrée. Dans « Intention éditoriale », choisis « Commerciale (comparatif, sélection) ».
@@ -353,8 +357,10 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 
 **⚠ Défaut connu :** « La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
+**⚠ Défaut connu :** FR-CER-CREATION-HONNETE — un mot-clé resté au pool du même cocon (celui d’un article retiré : « Supprimer » ne le retire pas du pool) est refusé avec un avertissement qui parle de « deux cocons ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-15 — Deux onglets : une section déjà prise est refusée
-**Exigences :** FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-CREATION-HONNETE
+**Exigences :** FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-CREATION-HONNETE ⚠
 
 **Gestes :**
 1. Va dans le second onglet de CER-13, sans le recharger : S y propose encore « Créer l'article de cette section ». Clique-le.
@@ -366,8 +372,10 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 
 **C'est un bug si :** des candidats s'affichent, ou un second article naît de S.
 
+**⚠ Défaut connu :** FR-CER-CREATION-HONNETE — un mot-clé resté au pool du même cocon (celui d’un article retiré : « Supprimer » ne le retire pas du pool) est refusé avec un avertissement qui parle de « deux cocons ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-16 — Rattacher un article hors de l'arbre
-**Exigences :** FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-CREATION-HONNETE
+**Exigences :** FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-CREATION-HONNETE ⚠
 
 **Gestes :**
 1. Demande à Claude de rendre B « hors de l'arbre » : il sauvegarde la base, puis retire le parent de B, sans rien toucher d'autre. Sinon, un ancien cocon qui affiche déjà « Articles hors de l'arbre » convient : ouvre le formulaire, lis la liste, puis « Annuler » si tu ne veux pas le modifier.
@@ -388,8 +396,10 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 
 **⚠ Défaut connu :** « La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
+**⚠ Défaut connu :** FR-CER-CREATION-HONNETE — un mot-clé resté au pool du même cocon (celui d’un article retiré : « Supprimer » ne le retire pas du pool) est refusé avec un avertissement qui parle de « deux cocons ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-17 — Retirer un article : refusé s'il a des enfants, sinon sa section se libère
-**Exigences :** FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-CREATION-HONNETE
+**Exigences :** FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-CREATION-HONNETE ⚠
 
 **Gestes :**
 1. Sur la carte, sur la ligne « Créé » du pilier, clique la croix (« Supprimer cet article »).
@@ -408,6 +418,8 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - après l'étape 3, B est encore sous S.
 
 **⚠ Défaut connu :** « La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CER-CREATION-HONNETE — un mot-clé resté au pool du même cocon (celui d’un article retiré : « Supprimer » ne le retire pas du pool) est refusé avec un avertissement qui parle de « deux cocons ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-18 — Retoucher une ligne de la carte : intention, titre, régénération
 **Exigences :** FR-PIE-CERVEAU-OVERRIDE ⚠, FR-CER-STEPS-COCOON ⚠

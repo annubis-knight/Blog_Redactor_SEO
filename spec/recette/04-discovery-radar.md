@@ -617,7 +617,7 @@ Repasse en **MOCK** à la fin.
 **⚠ Défaut connu :** FR-DIS-LONGTAIL-GENERATION — la courte-traîne générée avant « Découvrir » n'est pas filtrée et la ligne du filtre n'apparaît pas ; « Découvrir » l'efface ensuite. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RAD-R1 — Les vraies questions PAA et leur écho avec le sujet
-**Exigences :** FR-RAD-RESONANCE, FR-RAD-PAA-TREE, FR-RAD-SCAN-2PASS
+**Exigences :** FR-RAD-RESONANCE ⚠, FR-RAD-PAA-TREE, FR-RAD-SCAN-2PASS
 **Mode :** RÉEL — le coût ne s'affiche pas avant l'appel : suis-le dans la pastille des coûts.
 
 **Gestes :**
@@ -636,6 +636,8 @@ Repasse en **MOCK** à la fin.
 **C'est un bug si :**
 - une question qui ne partage avec le titre que des petits mots (« de », « la », « pour ») est marquée « Exact », « Match » ou « Partiel » ;
 - un simple pluriel du titre donne « Hors sujet ».
+
+**⚠ Défaut connu :** FR-RAD-RESONANCE — un rapprochement de sens d’au moins 0,7 relève « Partiel exact » en « Exact » au lieu de « Sémantique » ; en réel, presque toutes les questions PAA sont « Exact ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RAD-R2 — Les vraies longues traînes, du choix à l'envoi au Capitaine
 **Exigences :** FR-RAD-LONGTAIL-GENERATE ⚠, FR-RAD-LONGTAIL-UI ⚠, FR-RAD-LONGTAIL-REGENERATE ⚠, FR-RAD-SEND-CAPTAIN ⚠

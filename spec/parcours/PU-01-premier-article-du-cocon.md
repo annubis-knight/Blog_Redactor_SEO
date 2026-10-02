@@ -29,7 +29,7 @@ Sur l'accueil, chaque silo se termine par une carte en pointillés « Nouveau co
 Carte « Cerveau » : la barre du haut affiche « Cible », « Douleur », « Angle », « Promesse », « CTA », « Articles », et les étapes pas encore atteintes restent fermées. À chaque étape, l'utilisateur répond dans « Votre réponse », peut cliquer « Demander une suggestion à Claude », puis choisit dans « Valider ▾ » : « Mon texte », « La suggestion » ou « Fusionner les deux ». Le bouton « + » (« Approfondir ») ajoute une sous-question dont la réponse enrichit le texte validé. « Suivant » enregistre et passe à l'étape suivante.
 
 ### 3. Créer le pilier sur un mot-clé mesuré, puis terminer le brainstorm
-**Exigences :** FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-KEYWORD-REAL-DATA, FR-CER-CREATION-HONNETE, FR-RED-GEN-UNLOCK ⚠
+**Exigences :** FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-KEYWORD-REAL-DATA, FR-CER-CREATION-HONNETE ⚠, FR-RED-GEN-UNLOCK ⚠
 
 À l'étape « Articles », le bloc « Construire le cocon » dit « Ce cocon n'a pas encore de pilier. Commencez par lui : les autres articles naîtront de ses sections. » et ne propose que « Créer le pilier ». Le panneau « Le pilier du cocon » cherche des candidats puis mesure leurs données réelles (« Volume », « Difficulté », « Intention », « En tête de Google ») ; rien n'est choisi d'office. Au moins deux candidats sont des requêtes courtes et larges, le sujet du cocon tel qu'on le tape. Si aucun ne lui convient, ou si aucun n'a de mesures, l'utilisateur tape son propre mot-clé dans « Votre mot-clé » : il est mesuré aussitôt, l'IA écrit la difficulté de son lecteur, et il rejoint la liste. L'utilisateur coche un candidat, relit le titre prérempli, clique « Créer l'article » : le pilier apparaît dans l'arbre, badge « Pilier », état « À rédiger ». La « Carte indicative du cocon », en dessous, peut guider la suite mais ne crée aucun article. Enfin « Terminer le brainstorm » marque le Cerveau terminé et ramène à la page du cocon.
 
@@ -39,7 +39,7 @@ Carte « Cerveau » : la barre du haut affiche « Cible », « Douleur », « An
 Carte « Moteur » : la barre « Contexte stratégique » rappelle la stratégie validée, et « Articles suggérés (N) » liste le pilier. Un clic sur son titre active les onglets, rangés en « 1 Générer », « 2 Valider », « 3 Finaliser », et ouvre « Capitaine ». Le champ « Tester un mot-clé capitaine… » porte le mot-clé du pilier, et l'outil l'étudie de lui-même : sa carte montre « vol », « KD », « CPC », « PAA » et un anneau « Score Pertinence ». L'utilisateur clique le cadenas de la carte (infobulle « Verrouiller ») : la porte vérifie le mot-clé, puis le point « Capitaine » de l'article se remplit.
 
 ### 5. Retenir les lieutenants
-**Exigences :** FR-LIE-SERP-ANALYZE ⚠, FR-LIE-PROPOSE-AI, FR-LIE-CHECKBOX-LOCK-IMMEDIATE ⚠, FR-LIE-CHECK, FR-LIE-LOCK-GATE
+**Exigences :** FR-LIE-SERP-ANALYZE ⚠, FR-LIE-PROPOSE-AI ⚠, FR-LIE-CHECKBOX-LOCK-IMMEDIATE ⚠, FR-LIE-CHECK, FR-LIE-LOCK-GATE
 
 Onglet « Lieutenants » : « Analyser SERP » lit les dix premiers résultats Google du Capitaine, puis l'IA propose des lieutenants notés, aucun coché. L'utilisateur en coche au moins trois pour un pilier ; chaque case est enregistrée aussitôt, sans bouton. Tant qu'il en manque, un bandeau « Étape non validée. » donne la raison ; avec assez de lieutenants, le point « Lieutenants » se remplit.
 
@@ -49,7 +49,7 @@ Onglet « Lieutenants » : « Analyser SERP » lit les dix premiers résultats G
 Onglet « Structure » : « Générer la structure » propose un H1 qui contient le Capitaine, des H2 et des H3 tirés des lieutenants retenus. L'utilisateur verrouille (🔒) les titres à garder et peut redemander une proposition. « Valider la structure » passe la porte, puis affiche « ✅ Structure validée : elle sert de sommaire à la rédaction. » ; la pile « Coûts API » annonce « 💡 Longueur conseillée : N mots ».
 
 ### 7. Retenir le lexique du métier
-**Exigences :** FR-LEX-PRECHECK-SERP ⚠, FR-LEX-TFIDF, FR-LEX-METIER-ONLY, FR-LEX-PRECHECK-PERSISTE, FR-LEX-CHECK
+**Exigences :** FR-LEX-PRECHECK-SERP ⚠, FR-LEX-TFIDF, FR-LEX-METIER-ONLY ⚠, FR-LEX-PRECHECK-PERSISTE, FR-LEX-CHECK
 
 Onglet « Lexique » : si les pages concurrentes sont déjà lues, « Extraire le Lexique » ; sinon l'écran dit « Le scrape SERP n'est pas encore disponible pour ce mot-clé. » et propose « Lancer l'analyse SERP (~$0.003 DataForSEO) », qui demande confirmation. Les termes arrivent en trois listes (Obligatoire, Differenciateur, Optionnel), sans mot vide ni morceau de menu, et aucun n'est coché. L'utilisateur coche ceux qu'il veut employer : dès le premier, l'étape « Lexique validé » est demandée à la porte.
 
@@ -64,12 +64,12 @@ Onglet « Finalisation » : quatre sections en lecture seule, Capitaine, Lieuten
 La rédaction guidée s'ouvre sur « Brief & Structure ». Dans « Micro-contexte article », l'utilisateur écrit au moins « Angle différenciant » ; chaque champ s'enregistre quand il le quitte (« Sauvegardé »). « Recommandation de contenu » affiche la « Cible : » en mots, ajustable par pas de 100. Le sommaire vient de la structure validée au Moteur, avec « Introduction » et « Conclusion » ajoutées : l'utilisateur le retouche s'il veut, puis « Valider le sommaire » (ou « Continuer vers l'Article » s'il est déjà validé) mène à l'étape « Article ».
 
 ### 10. Faire écrire et accepter le premier jet
-**Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-RED-DRAFT-TO-SOURCE, FR-RED-META ⚠, FR-RED-META-CAPTAIN, FR-CER-PARENT-WRITTEN-GATE
+**Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-RED-DRAFT-TO-SOURCE, FR-RED-META ⚠, FR-RED-META-CAPTAIN ⚠, FR-CER-PARENT-WRITTEN-GATE
 
 « Générer l'article » écrit tout le texte d'un seul tenant : la barre affiche « Section n/N » et le titre du chapitre, et le texte apparaît au fil. Un chiffre que l'IA ne peut pas garantir devient un passage « [à sourcer : …] » surligné. Le titre et la description pour Google suivent sans second clic. Puis l'étape « premier jet accepté » est demandée à sa porte : le bandeau « ✓ Premier jet accepté : l'article peut donner naissance à ses articles enfants dans le cocon. » s'affiche, ou l'alarme « Avant d'accepter le premier jet » s'ouvre.
 
 ### 11. Enrichir et relire le texte dans l'éditeur
-**Exigences :** FR-RED-ENRICH-PASSES, FR-RED-EDITOR-TIPTAP, FR-RED-SEO-LIVE, FR-RED-GEO-LIVE
+**Exigences :** FR-RED-ENRICH-PASSES, FR-RED-EDITOR-TIPTAP, FR-RED-SEO-LIVE, FR-RED-GEO-LIVE ⚠
 
 « Éditer l'article » ouvre l'éditeur, avec les scores « SEO » et « GEO » qui suivent chaque modification. Le panneau « Enrichir » propose des passes (« Sources », « Exemples », « Tableaux », « Images », « FAQ »), chapitre par chapitre : « Rien ne change dans l'article tant que vous n'acceptez pas ». L'utilisateur ouvre « Comparer avant / après », puis « Accepter » ou « Refuser » chaque proposition. Il retouche le texte à la main ; « Sauvegarder » ou Ctrl+S enregistre (« ✓ Sauvegardé … »), et l'éditeur enregistre aussi de lui-même.
 
@@ -96,7 +96,7 @@ Un Capitaine sans volume ou que Google ne suggère pas, trop peu de lieutenants,
 Sans ce clic, la rédaction guidée garde l'étape « Article » grisée, avec l'indication « Complétez le Cerveau pour générer cet article ». Il suffit de revenir au Cerveau, étape « Articles », et de cliquer « Terminer le brainstorm ». Aujourd'hui, seul le bouton de la barre du haut est verrouillé : « Valider le sommaire » et « Continuer vers l'Article » ouvrent quand même l'étape « Article ».
 
 ### Une panne pendant l'écriture du premier jet
-**Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-GEN-SAUVEGARDE-AU-FIL
+**Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-GEN-SAUVEGARDE-AU-FIL
 
 Si l'IA tombe en panne en pleine écriture, la rédaction s'arrête ; les chapitres terminés restent enregistrés, et l'utilisateur relance par « Générer l'article ». L'outil le dit par un message, dans les deux vues de rédaction.
 
@@ -125,3 +125,9 @@ Une image encore « à fournir » (posée par la passe « Images »), une méta 
 - FR-CER-MICRO-CONTEXT — le micro-contexte n'est transmis que si l'angle est rempli : un ton ou des consignes seuls sont ignorés ; l'angle provisoire écrit d'office à la validation de la structure part tel quel à l'IA ; un échec d'enregistrement n'est jamais signalé.
 - FR-RED-OUTLINE — les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique.
 - FR-RED-META — la méta ne se modifie pas à la main et ne se relance pas seule : réessayer relance tout l'article.
+- FR-CER-CREATION-HONNETE — un mot-clé resté au pool du même cocon (celui d’un article retiré : « Supprimer » ne le retire pas du pool) est refusé avec un avertissement qui parle de « deux cocons ».
+- FR-LIE-PROPOSE-AI — la proposition annonce « 0 PAA » et « Aucun cluster disponible » alors que les questions PAA du capitaine et la découverte existent.
+- FR-LEX-METIER-ONLY — l’extraction garde « rsquo » (entité HTML non décodée), des noms de concurrents, « décembre », « suis », « ans ».
+- FR-RED-DRAFT-SINGLE-PASS — « Section n/N » n’apparaît pas pendant un premier jet réel (à confirmer) ; des notes de l’IA après « </html> » sont enregistrées telles quelles, seule la porte les bloque.
+- FR-RED-META-CAPTAIN — le meta title généré peut ne pas contenir le capitaine en entier, et le panneau SEO affiche pourtant « Capitaine ✓ ».
+- FR-RED-GEO-LIVE — « Stats sourcées 0 » alors que l’article cite un chiffre sourcé avec son lien (le chiffre est dans le texte du lien).

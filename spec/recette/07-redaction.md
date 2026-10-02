@@ -293,7 +293,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - deux cartes sont ouvertes ensemble.
 
 ### RED-13 — Le score GEO en direct
-**Exigences :** FR-RED-GEO-LIVE
+**Exigences :** FR-RED-GEO-LIVE ⚠
 
 **Gestes :**
 1. Panneau **« GEO »** : note la jauge et les quatre lignes.
@@ -312,6 +312,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 **C'est un bug si :**
 - les notes ne bougent pas quand le texte change ;
 - elles bougent alors que le texte n'a pas changé.
+
+**⚠ Défaut connu :** FR-RED-GEO-LIVE — « Stats sourcées 0 » alors que l’article cite un chiffre sourcé avec son lien (le chiffre est dans le texte du lien). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-14 — Le score enregistré est celui affiché
 **Exigences :** FR-RED-SEO-SCORE-PERSIST ⚠
@@ -632,7 +634,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 **⚠ Défaut connu :** FR-RED-PROGRESS — rouvrir la rédaction guidée d'un article déjà rédigé ramène toujours à « Brief & Structure ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-27 — Régénérer l'article : premier jet, méta, capitaine
-**Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-META ⚠, FR-RED-META-CAPTAIN
+**Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-META ⚠, FR-RED-META-CAPTAIN ⚠
 
 **Gestes :**
 1. Rédaction guidée du pilier, étape « Article » : clique **« Régénérer l'article »** (ou **« Générer l'article »** si le texte n'est pas revenu).
@@ -660,12 +662,16 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 
 **⚠ Défaut connu :** la méta ne se modifie pas à la main et ne se relance pas seule : réessayer relance tout l'article. Ici, pour retrouver une méta, il a fallu tout régénérer. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
+**⚠ Défaut connu :** FR-RED-DRAFT-SINGLE-PASS — « Section n/N » n’apparaît pas pendant un premier jet réel (à confirmer) ; des notes de l’IA après « </html> » sont enregistrées telles quelles, seule la porte les bloque. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-RED-META-CAPTAIN — le meta title généré peut ne pas contenir le capitaine en entier, et le panneau SEO affiche pourtant « Capitaine ✓ ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ## En mode RÉEL (payant)
 
 Passe le bouton en **RÉEL** pour ces vérifications, fais-les sur le cocon de recette, puis repasse en **MOCK**. Le premier jet d'un pilier dure une vingtaine de minutes.
 
 ### RED-R1 — Un vrai premier jet : passages « à sourcer », texte enregistré au fil, panne
-**Exigences :** FR-RED-DRAFT-TO-SOURCE, FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-RED-SEO-SCORE-PERSIST ⚠, FR-RED-DRAFT-SINGLE-PASS
+**Exigences :** FR-RED-DRAFT-TO-SOURCE, FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-RED-SEO-SCORE-PERSIST ⚠, FR-RED-DRAFT-SINGLE-PASS ⚠
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Lance `npm run verify:content -- --id=<numéro du pilier>` et note ses scores enregistrés.
@@ -691,6 +697,8 @@ Passe le bouton en **RÉEL** pour ces vérifications, fais-les sur le cocon de r
 **⚠ Défaut connu :** un premier jet interrompu enregistre le texte sans remettre les scores à « inconnu » : l'ancien score reste en base. Au geste 4, la commande montre encore l'ancien score au lieu de « — ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** une panne de rédaction n'affiche aucun message, ni dans la rédaction guidée ni dans l'éditeur. Au geste 7, l'écriture s'arrête et le texte disparaît de l'écran sans un mot. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-RED-DRAFT-SINGLE-PASS — « Section n/N » n’apparaît pas pendant un premier jet réel (à confirmer) ; des notes de l’IA après « </html> » sont enregistrées telles quelles, seule la porte les bloque. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-R2 — La passe Sources, en vrai
 **Exigences :** FR-RED-ENRICH-SOURCES

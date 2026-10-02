@@ -157,7 +157,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 **⚠ Défaut connu :** l'intention s'affiche « — » pour tout mot-clé étudié hors Radar ; la ligne « Autocomplete » montre tantôt un nombre de suggestions, tantôt une position (ici, la place du mot-clé dans les suggestions de Google, 0 s'il n'y est pas : `zqxw vitrine kvj` affiche « 0 matches »). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-7 — L'avis de l'IA sur un candidat
-**Exigences :** FR-CAP-AI-PANEL
+**Exigences :** FR-CAP-AI-PANEL ⚠
 
 **Gestes :**
 1. Ouvre le panneau d'`agence web`. En bas, lis l'en-tête « Avis expert IA » et la phrase dessous, puis clique l'en-tête pour le déplier.
@@ -179,6 +179,8 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 - « Régénérer » relance sans rien demander, ou « Annuler » relance quand même ;
 - badge sur MOCK, la fenêtre annonce « un appel Claude » (rien n'est facturé en simulé) ;
 - l'avis reste vide, sans texte ni message d'erreur.
+
+**⚠ Défaut connu :** FR-CAP-AI-PANEL — l’avis reçoit des notes qui ne sont pas celles affichées (en réel : 58 et 73 « GO » envoyés, 63 et 33 affichés) et les cite. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-8 — Le verdict d'un candidat
 **Exigences :** FR-CAP-SCAN ⚠
@@ -326,7 +328,7 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 **⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-14 — Rouvrir l'article : tout est retrouvé, sans doublon
-**Exigences :** FR-CAP-PERSIST ⚠, FR-CAP-AI-PANEL, FR-CAP-LIST-SIDEPANEL ⚠, FR-CAP-LOCK-INTEGRITY ⚠
+**Exigences :** FR-CAP-PERSIST ⚠, FR-CAP-AI-PANEL ⚠, FR-CAP-LIST-SIDEPANEL ⚠, FR-CAP-LOCK-INTEGRITY ⚠
 
 **Gestes :**
 1. Note le nombre de cartes, la carte verrouillée, et « vol », « KD », « CPC » de deux cartes. Sélectionne une carte (panneau ouvert).
@@ -352,6 +354,8 @@ Décision d'Arnaud du 2026-09-29 : rien de payant ne part sans ton geste. Le mot
 **⚠ Défaut connu :** FR-CAP-LIST-SIDEPANEL — après un envoi depuis le Radar, le Capitaine verrouillé n'est plus marqué ni en tête, et les candidats déjà étudiés quittent la liste ; sur un article qui avait déjà des candidats, les autres cartes envoyées n'apparaissent qu'à la réouverture. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CAP-AI-PANEL — l’avis reçoit des notes qui ne sont pas celles affichées (en réel : 58 et 73 « GO » envoyés, 63 et 33 affichés) et les cite. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-15 — Les racines après réouverture
 **Exigences :** FR-CAP-ROOTS
@@ -571,7 +575,7 @@ Passe le bouton en **RÉEL**, travaille sur l'article enfant (sauf mention), et 
 **⚠ Défaut connu :** dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-R3 — L'avis de l'IA, en trois parties
-**Exigences :** FR-CAP-AI-PANEL
+**Exigences :** FR-CAP-AI-PANEL ⚠
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Étudie un mot-clé neuf. Ouvre aussitôt son panneau et déplie « Avis expert IA ».
@@ -589,6 +593,8 @@ Passe le bouton en **RÉEL**, travaille sur l'article enfant (sauf mention), et 
 - l'avis est vide, en anglais, ou sans ses trois parties ;
 - il cite les notes brutes (« 72/100 ») ;
 - il contredit la stratégie du cocon (une autre cible, un autre angle).
+
+**⚠ Défaut connu :** FR-CAP-AI-PANEL — l’avis reçoit des notes qui ne sont pas celles affichées (en réel : 58 et 73 « GO » envoyés, 63 et 33 affichés) et les cite. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-R4 — Les racines d'un mot-clé peu cherché sont étudiées d'office
 **Exigences :** FR-CAP-ROOTS

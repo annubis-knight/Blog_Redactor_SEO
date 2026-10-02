@@ -81,7 +81,7 @@ Page du cocon › « Rédaction » : la carte de l'article porte son statut (« 
 Un rechargement ne doit rien faire perdre de ce qui est enregistré. Les racines d'un Capitaine reviennent avec leurs mesures connues et leur Score Pertinence, sans appel ; l'analyse IA du Lexique revient telle qu'elle était : badges, résumé, termes manquants et décompte du panneau. Aujourd'hui, les suggestions de longue traîne du Radar et leurs cases ne reviennent pas : elles disparaissent. L'analyse « IA Brief », elle, n'est pas gardée par choix : elle repart à l'ouverture du panneau.
 
 ### L'onglet a été fermé pendant l'écriture du premier jet
-**Exigences :** FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-RED-SEO-SCORE-PERSIST ⚠, FR-RED-DRAFT-SINGLE-PASS
+**Exigences :** FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-RED-SEO-SCORE-PERSIST ⚠, FR-RED-DRAFT-SINGLE-PASS ⚠
 
 Le texte est enregistré à la fin de chaque chapitre : en rouvrant l'article, l'utilisateur retrouve les chapitres terminés. La méta, elle, n'est produite qu'à la fin d'un premier jet complet : la méta affichée reste celle d'avant. Il relance « Régénérer l'article » pour obtenir un texte entier et sa méta. Aujourd'hui, le score enregistré reste celui de l'ancien texte au lieu de devenir « inconnu » (« — »).
 
@@ -91,7 +91,7 @@ Le texte est enregistré à la fin de chaque chapitre : en rouvrant l'article, l
 Reprendre, c'est souvent enchaîner plusieurs articles : chacun s'ouvre avec son propre texte, son sommaire et ses scores, sans recharger la page. Un article sans texte ouvert juste après un autre montre « Aucun sommaire disponible… » et un écran vide : rien du précédent ne s'affiche, ne s'enregistre dans le nouvel article ni ne réécrit le score du précédent.
 
 ### Rouvrir le Moteur refait payer des avis déjà obtenus
-**Exigences :** FR-MOT-NO-AUTO-ACTION, FR-CAP-AI-PANEL, FR-CAP-PAA-JUDGE-HAIKU ⚠
+**Exigences :** FR-MOT-NO-AUTO-ACTION, FR-CAP-AI-PANEL ⚠, FR-CAP-PAA-JUDGE-HAIKU ⚠
 
 Rouvrir un article ne doit que relire la base ; une seule exception est admise, le jugement des questions « Autres questions posées » à l'ouverture du Capitaine, une fois par article et par session. L'avis expert de l'IA sur chaque candidat est gardé et réaffiché sans nouvel appel ; celui qui manque attend « Analyser avec l'IA ». L'onglet Lexique relit son extraction et son analyse IA sans rien relancer. Le jugement des questions, lui, est repayé après chaque rechargement alors que son résultat n'est pas affiché.
 
@@ -117,3 +117,5 @@ Rouvrir un article ne doit que relire la base ; une seule exception est admise, 
 - FR-RAD-LONGTAIL-UI — au rechargement, suggestions et cases cochées ne reviennent pas à l'écran.
 - FR-RED-SEO-SCORE-PERSIST — un premier jet interrompu enregistre le texte sans remettre les scores à « inconnu » : l'ancien score reste en base, à l'écran comme en mode automatique.
 - FR-CAP-PAA-JUDGE-HAIKU — le jugement est calculé mais ni ses pastilles ni la note qu'il corrige n'atteignent la liste du Capitaine ; ce jugement est pourtant payé à chaque ouverture du Capitaine après un rechargement : il est à suspendre tant que son affichage n'est pas branché.
+- FR-RED-DRAFT-SINGLE-PASS — « Section n/N » n’apparaît pas pendant un premier jet réel (à confirmer) ; des notes de l’IA après « </html> » sont enregistrées telles quelles, seule la porte les bloque.
+- FR-CAP-AI-PANEL — l’avis reçoit des notes qui ne sont pas celles affichées (en réel : 58 et 73 « GO » envoyés, 63 et 33 affichés) et les cite.

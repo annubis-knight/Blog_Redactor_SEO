@@ -24,7 +24,7 @@ synced_with:
 Depuis la page du cocon, l'utilisateur clique « Rédaction », puis la carte de l'article : la rédaction guidée s'ouvre, le texte en lecture seule à l'étape « Article ». « Éditer l'article » ouvre l'éditeur, en trois zones repliables (« Introduction », « Corps de l'article », « Conclusion »), avec « Meta SEO » et « Table des matières » repliés au-dessus. À droite, la barre des panneaux (« SEO », « GEO », « Maillage », « Enrichir », « Blocs ») ouvre un panneau à la fois, dans une zone qu'il élargit à la souris. Il y arrive en cliquant, sans recharger : c'est ainsi que l'éditeur connaît les autres articles du cocon.
 
 ### 2. Lire ce que disent les scores
-**Exigences :** FR-RED-SEO-LIVE, FR-RED-GEO-LIVE, NFR-PERF-SEO-DEBOUNCE
+**Exigences :** FR-RED-SEO-LIVE, FR-RED-GEO-LIVE ⚠, NFR-PERF-SEO-DEBOUNCE
 
 Le panneau « SEO » donne une jauge sur 100, « N mots » et le temps de lecture, puis le détail : « Indicateurs » (« Meta », « Structure », « Mots-clés », « Alertes »), « Mots-clefs » (où apparaissent le capitaine, les lieutenants et le lexique) et « SERP Data ». Le panneau « GEO » mesure la facilité pour une IA de citer l'article : « Questions H2/H3 », « Answer Capsules », « Stats sourcées », et en « Lisibilité » les paragraphes trop longs. Les deux notes se recalculent une fraction de seconde après chaque pause de frappe, sans gêner la saisie : elles guident les retouches qui suivent.
 
@@ -54,7 +54,7 @@ Il sélectionne un passage ; la petite barre qui apparaît propose « ✦ », qu
 Le panneau « Maillage » (« Suggestions de maillage ») propose d'abord la famille, ses articles enfants ou son parent, même pas encore publiés (« — pas encore publié : le lien sera cassé tant qu’il n’est pas en ligne »), puis les articles déjà rédigés proches, chacun avec son « Ancre : « … » ». Dans l'éditeur, il clique dans la zone où se trouve l'ancre, puis ✓ (« Appliquer ») ; ✕ (« Ignorer ») écarte une suggestion, « Actualiser » en redemande. Il peut aussi sélectionner des mots, cliquer « ✦ », puis « 🔗 Lien interne », et choisir la cible dans « Choisir l'article cible ». Après enregistrement, la matrice « Maillage » de l'accueil montre le lien ; pour en retirer un, il efface le texte lié, puis enregistre.
 
 ### 8. Vérifier le titre et la description pour Google
-**Exigences :** FR-RED-META ⚠, FR-RED-META-CAPTAIN
+**Exigences :** FR-RED-META ⚠, FR-RED-META-CAPTAIN ⚠
 
 Le bloc « Meta SEO » montre « Meta Title » (n/60) et « Meta Description » (n/160), générés juste après le premier jet ; la carte « Meta » du panneau SEO dit si chacun contient le capitaine (« Capitaine ✓ » ou « Capitaine ✗ »). La méta se lit mais ne se modifie pas à l'écran : seul « Régénérer l'article » la refait, en réécrivant tout le texte.
 
@@ -96,7 +96,7 @@ Entre la proposition d'une passe et son acceptation, il a retouché ce chapitre 
 Après une correction dans l'éditeur, il clique « Exporter HTML » dans l'onglet d'aperçu resté ouvert. La porte juge la nouvelle version, et le fichier est demandé au serveur juste après elle : c'est cette version qui se télécharge, puis l'aperçu se recharge. Dans le fichier, le H1 est celui que la porte a jugé, et chaque lien interne vers un article rédigé pointe vers son adresse de blog ; un lien vers un article pas encore rédigé est retiré, son texte gardé.
 
 ### Une opération d'IA échoue ou est annulée
-**Exigences :** FR-RED-DRAFT-SINGLE-PASS, FR-RED-HUMANIZE-SECTION ⚠, FR-RED-CONTEXTUAL-ACTIONS ⚠, FR-INFRA-API-STREAM ⚠
+**Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-HUMANIZE-SECTION ⚠, FR-RED-CONTEXTUAL-ACTIONS ⚠, FR-INFRA-API-STREAM ⚠
 
 « Annuler humanisation », « Annuler réduction » ou « Arrêter » doivent rendre l'article d'avant, en entier, et une panne doit se dire. Aujourd'hui, l'échec d'une réduction, d'une humanisation ou de la méta n'affiche aucun message ; une section que l'IA n'a pas su traiter reste telle quelle sans que l'écran le dise ; l'échec d'une action sur une sélection s'affiche sous l'éditeur, caché par le voile. Et une annulation arrête l'écran, pas le serveur : en mode réel, la génération continue et se facture.
 
@@ -116,3 +116,6 @@ Après une correction dans l'éditeur, il clique « Exporter HTML » dans l'ongl
 - FR-RED-META — la méta ne se modifie pas à la main et ne se relance pas seule : réessayer relance tout l'article.
 - FR-RED-OUTLINE — les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique.
 - FR-INFRA-API-STREAM — quand l'utilisateur annule, l'écran s'arrête mais le serveur continue la génération jusqu'au bout et la facture.
+- FR-RED-GEO-LIVE — « Stats sourcées 0 » alors que l’article cite un chiffre sourcé avec son lien (le chiffre est dans le texte du lien).
+- FR-RED-META-CAPTAIN — le meta title généré peut ne pas contenir le capitaine en entier, et le panneau SEO affiche pourtant « Capitaine ✓ ».
+- FR-RED-DRAFT-SINGLE-PASS — « Section n/N » n’apparaît pas pendant un premier jet réel (à confirmer) ; des notes de l’IA après « </html> » sont enregistrées telles quelles, seule la porte les bloque.

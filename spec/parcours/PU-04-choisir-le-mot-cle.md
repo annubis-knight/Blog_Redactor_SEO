@@ -59,7 +59,7 @@ Le panneau « Suggestions IA Radar » reprend, sans appel d'IA, les cinq meilleu
 Il coche les cartes, et les longues traînes, qu'il veut comparer ; « Envoyer au Capitaine (N) » les compte une seule fois chacune. Le clic ouvre l'onglet Capitaine, qui étudie chaque mot-clé reçu (« Validation en cours... ») et l'ajoute aux candidats de l'article. Aujourd'hui, juste après cet envoi, un Capitaine déjà verrouillé perd sa marque et sa place en tête jusqu'à la réouverture de l'article.
 
 ### 9. Comparer les candidats
-**Exigences :** FR-CAP-SCORING-BIMODAL ⚠, FR-CAP-RELEVANCE-LIVE ⚠, FR-CAP-INPUT ⚠, FR-CAP-SCAN ⚠, FR-CAP-LIST-SIDEPANEL ⚠, FR-CAP-AI-PANEL
+**Exigences :** FR-CAP-SCORING-BIMODAL ⚠, FR-CAP-RELEVANCE-LIVE ⚠, FR-CAP-INPUT ⚠, FR-CAP-SCAN ⚠, FR-CAP-LIST-SIDEPANEL ⚠, FR-CAP-AI-PANEL ⚠
 
 Au Capitaine, chaque carte porte une autre note, le « Score Pertinence » : ce mot-clé sert-il la douleur de cet article ? Il trie par « Score Pertinence » et teste ses propres idées dans « Tester un mot-clé capitaine… » (Entrée ou « Analyser ») ; un mot-clé déjà présent est ré-étudié à sa place. Un clic sur la ligne d'indicateurs d'une carte ouvre le panneau « Capitaine » : le verdict (« GO », « ORANGE », « NO-GO » ou « GRAY »), les « KPIs marché » en lecture seule et l'« Avis expert IA » en trois parties. Le verdict aide à décider, il ne bloque pas le cadenas. Aujourd'hui, la note affichée juste après une étude peut changer à la réouverture de l'article.
 
@@ -81,7 +81,7 @@ Verrouiller un autre candidat remplace l'ancien dans le même geste, après sa p
 ## Ce qui peut mal tourner
 
 ### Il rouvre l'article le lendemain
-**Exigences :** FR-DIS-CACHE ⚠, FR-RAD-PERSIST ⚠, FR-CAP-PERSIST ⚠, FR-CAP-ROOTS, FR-CAP-AI-PANEL
+**Exigences :** FR-DIS-CACHE ⚠, FR-RAD-PERSIST ⚠, FR-CAP-PERSIST ⚠, FR-CAP-ROOTS, FR-CAP-AI-PANEL ⚠
 
 Rien de ce qui a été payé ne doit l'être à nouveau. À Discovery, l'écran repart vide ; retaper la racine fait apparaître le bandeau « Dernière analyse du JJ/MM/AAAA · N mots-clés · analyse IA incluse », et « Charger » rend les sections, les jugements du filtre et l'analyse IA sans appel (« Rafraîchir » oublie la sauvegarde). Au Radar, la liste d'attente et les cartes du dernier scan reviennent d'elles-mêmes, avec les mêmes notes, sans scan (« Charger Radar » n'y ajoute rien) ; au Capitaine, les candidats reviennent, le Capitaine verrouillé en tête, avec leur avis de l'IA sans nouvel appel ; les racines reviennent avec leurs mesures connues, relues sans appel (une racine jamais mesurée reste « — » jusqu'à ce qu'il la clique). Aujourd'hui : la courte-traîne n'est pas sauvegardée et une sauvegarde n'expire jamais ; les longues traînes ne reviennent pas.
 
@@ -133,3 +133,4 @@ Choisir un autre article doit repartir de ses propres données : le Radar, les c
 - FR-MOT-CACHE-CASCADE — les appels d'IA de Discovery — génération, filtre de pertinence, analyse — ne consultent aucun cache ; seul le rechargement d'une découverte sauvegardée évite de les refaire ; un mot-clé sans volume, difficulté ou coût par clic est remesuré, et repayé, à chaque étude.
 - FR-EXT-DATAFORSEO — les mesures demandées en groupe et la fiche SEO du brief taisent un échec du fournisseur, y compris un refus du plafond de dépense : les valeurs restent vides, sans message ; un « Rafraîchir » qui échoue tout à fait remplace toute la page de rédaction par le bloc d'erreur, au lieu du seul panneau « SERP Data ».
 - FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ».
+- FR-CAP-AI-PANEL — l’avis reçoit des notes qui ne sont pas celles affichées (en réel : 58 et 73 « GO » envoyés, 63 et 33 affichés) et les cite.

@@ -29,7 +29,7 @@ Page du cocon › « Cerveau » : l'étape « Articles » s'ouvre et l'arbre se 
 L'utilisateur clique « Créer l'article de cette section » (infobulle « Propose des mots-clés et mesure leurs données réelles (appel payant) »). Le panneau s'intitule « Créer l'article intermédiaire né de la section « … » de « … » » et annonce « Recherche de mots-clés candidats, puis mesure de leurs données réelles (quelques secondes)… ». Les 3 à 5 candidats parlent du sujet de la section, jamais du mot-clé du pilier ni d'un autre article du cocon. Chacun est mesuré (« Volume », « Difficulté », « Intention », « En tête de Google ») ; aucun n'est coché d'office.
 
 ### 3. Choisir le mot-clé et créer l'article
-**Exigences :** FR-CER-CREATION-HONNETE, FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-AIGUILLAGE, FR-PIE-AI-GENERATION
+**Exigences :** FR-CER-CREATION-HONNETE ⚠, FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-AIGUILLAGE, FR-PIE-AI-GENERATION
 
 Cocher un candidat préremplit « Titre de l'article », que l'utilisateur peut modifier (3 caractères au moins). « Créer l'article » affiche « Création… », puis « « … » est créé. ». Dans l'arbre, la section montre désormais le lien vers l'enfant et « À rédiger » ; l'enfant apparaît sous le pilier, badge « Intermédiaire ». Sur la carte indicative, il s'inscrit avec la marque « Créé ». Son niveau vient de sa place : il ne se choisit pas et ne se change pas.
 
@@ -39,7 +39,7 @@ Cocher un candidat préremplit « Titre de l'article », que l'utilisateur peut 
 Page du cocon › « Moteur » › « Articles suggérés » : l'enfant est rangé sous son niveau, six points vides, son mot-clé en pointillé. Un clic sur son titre ouvre l'onglet « Capitaine », où l'outil étudie de lui-même le mot-clé choisi au Cerveau. L'utilisateur le verrouille par le cadenas, en passant la porte si elle alerte. Si l'enfant prenait le même Capitaine qu'un autre article du cocon, une icône d'alerte orange le signalerait sur les deux lignes (« Cannibalisation : un autre article utilise le même capitaine »).
 
 ### 5. Retenir les lieutenants de l'enfant
-**Exigences :** FR-LIE-PROPOSE-AI, FR-LIE-CHECK, FR-LIE-LOCK-GATE
+**Exigences :** FR-LIE-PROPOSE-AI ⚠, FR-LIE-CHECK, FR-LIE-LOCK-GATE
 
 Onglet « Lieutenants » : « Analyser SERP », puis l'IA propose des lieutenants ; ceux déjà retenus par les autres articles du cocon lui sont interdits. Le seuil suit le niveau : 2 lieutenants au moins pour un intermédiaire (1 pour un spécialisé). Avec un seul, le bandeau dit « Étape non validée. 1 lieutenant pour un article Intermédiaire : le minimum conseillé est 2. » ; au deuxième, le point « Lieutenants » se remplit.
 
@@ -49,7 +49,7 @@ Onglet « Lieutenants » : « Analyser SERP », puis l'IA propose des lieutenant
 Onglet « Structure » : « Générer la structure » tient compte des lieutenants retenus et de l'état du cocon ; la porte attend le nombre de chapitres d'un intermédiaire (4 à 6), pas celui d'un pilier. « Valider la structure » en fait le sommaire de la rédaction, et la pile « Coûts API » annonce « 💡 Longueur conseillée : N mots », entre 1 200 et 2 500 pour un intermédiaire. Onglet « Lexique » : l'utilisateur extrait les termes et coche ceux qu'il retient. La Finalisation affiche alors « ✅ Prêt pour la Rédaction ».
 
 ### 7. Rédiger l'enfant en développant ce que la section annonce
-**Exigences :** FR-INFRA-COCOON-CONTEXT, FR-RED-DRAFT-SINGLE-PASS, FR-RED-WORD-COUNT-TARGET, FR-CER-PARENT-WRITTEN-GATE
+**Exigences :** FR-INFRA-COCOON-CONTEXT, FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-WORD-COUNT-TARGET, FR-CER-PARENT-WRITTEN-GATE
 
 Page Rédaction du cocon : l'enfant est dans la colonne « Intermédiaire », « À rédiger ». Sa rédaction guidée montre « Base : ~1 800 mots (type Intermédiaire) » tant qu'aucune page concurrente n'a été lue, sinon la longueur conseillée au Moteur. Après le micro-contexte et le sommaire, « Générer l'article » écrit le premier jet : il reçoit la section du parent et ce qu'elle en dit, avec la consigne de la développer sans la répéter. Le bandeau « ✓ Premier jet accepté… » dit que l'enfant peut, à son tour, donner naissance à des articles spécialisés.
 
@@ -81,12 +81,12 @@ L'utilisateur rouvre l'aperçu du pilier et clique « Exporter HTML ». La porte
 Tant que le premier jet du parent n'est pas accepté, ses boutons de section sont grisés, avec en orange « Validez d'abord le premier jet de « … » : un article ne naît que d'un parent rédigé. » ; le clic n'ouvre rien et rien n'est payé. Si une création arrive malgré tout (un autre onglet resté ouvert), la porte du premier jet du parent est jouée : l'alarme s'ouvre sur le parent, et la création reprend si l'utilisateur corrige ou assume.
 
 ### La section vient d'être prise dans un autre onglet
-**Exigences :** FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-CREATION-HONNETE
+**Exigences :** FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-CREATION-HONNETE ⚠
 
 Un second onglet resté ouvert propose encore « Créer l'article de cette section ». Le clic ne montre aucun candidat et ne paie rien : « Aucun candidat : La section « … » a déjà donné l'article « … ». », avec « Relancer la proposition ». Après rechargement, la section montre le lien vers l'article déjà né.
 
 ### Le mot-clé choisi est déjà pris, ou n'a pas pu être mesuré
-**Exigences :** FR-CER-KEYWORD-REAL-DATA, FR-CER-CREATION-HONNETE, FR-INFRA-KEYWORDS-SEO ⚠
+**Exigences :** FR-CER-KEYWORD-REAL-DATA, FR-CER-CREATION-HONNETE ⚠, FR-INFRA-KEYWORDS-SEO ⚠
 
 Un candidat que l'outil n'a pas pu mesurer est marqué « Non mesuré » et ne peut pas être coché. Un mot-clé déjà visé par un autre cocon n'empêche pas la création : un avertissement nomme le cocon concurrent et invite à en choisir un autre au Moteur. Une adresse de page déjà prise refuse la création et invite à changer le titre. Aujourd'hui, aucun écran affiché ne permet ensuite de changer ou de retirer ce mot-clé du pool du cocon.
 
@@ -110,3 +110,6 @@ Si un lieutenant de l'enfant est le Capitaine du pilier, la porte des lieutenant
 - FR-RED-LINKING-MANUAL — dans la rédaction guidée, « Appliquer » une suggestion ne fait rien ; dans l'éditeur, l'ancre n'est cherchée que dans la zone active : ailleurs, « Appliquer » ne fait rien, sans message, et la suggestion reste affichée.
 - FR-RED-CONTEXTUAL-ACTIONS — l'éditeur n'envoie pas le mot-clé de l'article : « Optimiser mot-clé » et les autres actions travaillent sans lui ; les blocs « Sources chiffrées » et « Exemples réels » retirent les liens absents de la recherche sans dire combien ; l'échec d'une action s'affiche sous l'éditeur, caché par le voile ; « Convertir en liste » montre ses balises dans la fenêtre de résultat.
 - FR-INFRA-KEYWORDS-SEO — aucun écran affiché ne permet de remplacer, de changer le statut ni de supprimer un mot-clé du pool ; le pool ne s'alimente qu'à la création d'un article ; le remplacement d'un mot-clé ne vérifie pas qu'un autre cocon l'utilise déjà, seul l'ajout le refuse ; un mot-clé déjà présent dans le pool de son propre cocon est refusé comme s'il appartenait à un autre cocon.
+- FR-CER-CREATION-HONNETE — un mot-clé resté au pool du même cocon (celui d’un article retiré : « Supprimer » ne le retire pas du pool) est refusé avec un avertissement qui parle de « deux cocons ».
+- FR-LIE-PROPOSE-AI — la proposition annonce « 0 PAA » et « Aucun cluster disponible » alors que les questions PAA du capitaine et la découverte existent.
+- FR-RED-DRAFT-SINGLE-PASS — « Section n/N » n’apparaît pas pendant un premier jet réel (à confirmer) ; des notes de l’IA après « </html> » sont enregistrées telles quelles, seule la porte les bloque.
