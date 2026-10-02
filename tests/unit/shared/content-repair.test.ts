@@ -109,6 +109,30 @@ describe('trimTruncatedBlocks — paragraphes', () => {
     expect(html).toBe('<p>Début <strong>fin de phrase.</strong></p>')
   })
 
+  // FR-RED-DRAFT-SINGLE-PASS, FR-RED-REDUCE-SECTION — recette réelle du 2026-10-02 :
+  // une section réduite coupée au plafond laissait son paragraphe ouvert, et le
+  // chapitre suivant commençait aussitôt. La recherche `<p>…</p>` allait jusqu'au
+  // `</p>` du chapitre suivant, dont la fin est propre : la coupure passait inaperçue.
+  it('repère un paragraphe jamais fermé, coupé avant le chapitre suivant (cas réel 2026-10-02)', () => {
+    const { html, trimmed } = trimTruncatedBlocks(
+      '<h2>A</h2><p>Phrase complète. Il reçoit trois demandes au lieu\n<h2>B</h2>\n\n<p>Un paragraphe propre.</p>',
+    )
+    expect(trimmed).toEqual(['Il reçoit trois demandes au lieu'])
+    expect(html).toBe('<h2>A</h2><p>Phrase complète.</p>\n<h2>B</h2>\n\n<p>Un paragraphe propre.</p>')
+  })
+
+  it('repère un marqueur coupé dans un paragraphe jamais fermé', () => {
+    const { trimmed } = trimTruncatedBlocks(
+      '<p><mark data-a-sourcer="">[à sourcer : rentabilisé en moins d’un\n<h2>Suite</h2>\n\n<p>Vous avez trouvé un prestataire.</p>',
+    )
+    expect(trimmed).toHaveLength(1)
+  })
+
+  it('laisse intacts des paragraphes fermés qui se suivent, et un paragraphe dans un élément de liste', () => {
+    const ok = '<p>Un.</p><h2>T</h2><p>Deux.</p><ul><li><p>Trois.</p></li></ul>'
+    expect(trimTruncatedBlocks(ok)).toEqual({ html: ok, trimmed: [] })
+  })
+
   it('ne confond pas un nombre décimal avec une fin de phrase', () => {
     const { html } = trimTruncatedBlocks('<p>Première phrase. Un ratio de 3.5 pour</p>')
     expect(html).toBe('<p>Première phrase.</p>')

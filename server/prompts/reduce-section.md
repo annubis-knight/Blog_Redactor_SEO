@@ -40,6 +40,7 @@ Quand un paragraphe dense énumère des éléments, des avantages, des étapes o
 - **La structure de titres** : `<h2>`, `<h3>` — NE JAMAIS en supprimer, fusionner ou modifier le texte.
 - **Les answer capsules** : blocs `<blockquote>` en tête de section.
 - **Les statistiques sourcées** : chiffres avec attribution (« selon [organisme], [année] », « d'après [organisme] »…).
+- **Les passages « à sourcer »** : chaque `<mark data-a-sourcer>` garde sa balise et son texte entre crochets. Un chiffre qui était dans un marqueur y reste ; tu peux retirer le passage entier, jamais le sortir de son marqueur.
 - **Les CTA** (appels à l'action).
 - **La structure de listes existantes** : `<ul>` / `<ol>` / `<li>` déjà présents.
 - **Les blocs Propulsite** (`class="content-valeur"`, `class="content-reminder"`, etc.) et leurs attributs.

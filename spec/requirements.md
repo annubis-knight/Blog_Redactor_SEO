@@ -1406,6 +1406,7 @@ L'outil doit rédiger l'article en un seul appel à l'IA qui voit tout le sommai
 - La part de chaque chapitre : 15 % pour le premier, 10 % pour le dernier, le reste à parts égales ; deux chapitres se partagent 40 / 60 ; le chapeau compte dans le premier chapitre.
 - La progression s'affiche chapitre par chapitre (« Section n/N » et son titre) et le texte apparaît au fil de l'écriture ; une réponse coupée au plafond reprend au début du chapitre interrompu, deux reprises au plus.
 - Une fois le texte et la méta enregistrés, l'étape « premier jet accepté » est demandée à la porte ; un bandeau permet de la redemander (« Valider le premier jet »).
+- La porte, comme celle de la publication, repère un paragraphe coupé en pleine phrase même quand il n'a jamais été fermé et que le chapitre suivant commence aussitôt.
 - Une panne arrête la rédaction avec un message, dans la rédaction guidée comme dans l'éditeur ; ce qui a déjà été enregistré au fil reste en base. L'échec de la méta, d'une réduction ou d'une humanisation s'affiche de même. Le message ne propose pas de relancer la rédaction : chaque geste se relance par son propre bouton.
 
 ### FR-RED-GEN-SAUVEGARDE-AU-FIL — Le texte en cours de rédaction est enregistré au fil
@@ -1476,7 +1477,8 @@ L'outil doit reformuler l'article section par section pour retirer les tics d'é
 L'outil doit condenser un article qui dépasse sa longueur visée, section par section.
 - « Réduire » n'est actif que si l'article dépasse la longueur visée de plus de 15 %.
 - Chaque section (chapeau compris) reçoit une cible proportionnelle à son poids dans l'article ; la progression s'affiche.
-- Une section en échec reste telle qu'elle était, sans être tronquée.
+- Une section en échec reste telle qu'elle était, sans être tronquée. Une réponse de l'IA coupée avant la fin (limite de longueur atteinte) est un échec. La limite suffit à réécrire la section entière : en réel, le 2026-10-02, six sections sur huit étaient coupées en pleine phrase et appliquées.
+- Les passages « à sourcer » gardent leur marqueur : un chiffre n'en sort jamais.
 - « Annuler réduction » rend l'article d'avant, sections déjà réduites comprises.
 - Le résultat est enregistré aussitôt.
 

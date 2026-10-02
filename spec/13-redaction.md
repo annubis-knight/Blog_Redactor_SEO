@@ -112,7 +112,7 @@ La porte juge le texte **enregistré** :
 
 | Niveau | Alerte |
 |---|---|
-| ⛔ | Texte vide, bloc coupé en pleine phrase, IA qui parle d'elle-même, texte hors paragraphe, reste de mise en forme, balise interdite, titre vide, saut de niveau de titre, plusieurs H1 |
+| ⛔ | Texte vide, bloc coupé en pleine phrase (même un paragraphe jamais fermé avant le chapitre suivant), IA qui parle d'elle-même, texte hors paragraphe, reste de mise en forme, balise interdite, titre vide, saut de niveau de titre, plusieurs H1 |
 | ⛔ | Pas de H1 |
 | 🔴 | H1 qui ne contient pas le capitaine en entier |
 | 🔴 | Introduction (le chapeau, à défaut les 100 premiers mots) qui reprend moins des trois quarts des mots du capitaine |
@@ -155,7 +155,8 @@ Trois opérations reprennent l'article section par section (le chapeau, intitul�
 | Ce que fait l'IA | Condense chaque section vers une cible proportionnelle à son poids, en gardant le sens, le ton, le capitaine | Retire les tics d'écriture d'IA ; traduit les phrases anglaises, remplace les anglicismes (« lead » → « prospect »), corrige accords et typographie française ; ne touche ni chiffres, ni liens, ni marqueurs « à sourcer » |
 | Progression | « Réduction n/N — titre » | « Humanisation n/N — titre » dans la barre d'actions ; « Relecture n/N — titre » dans le panneau Enrichir |
 | Arrêt | « Annuler réduction » rend l'article d'avant | « Annuler humanisation » ou « Arrêter » rend l'article d'avant |
-| Section en échec | Reste telle quelle | Reste telle quelle (après un second essai à consignes renforcées si la structure n'était pas préservée) |
+| Section en échec | Reste telle quelle ; une réponse de l'IA coupée avant la fin compte comme un échec | Reste telle quelle (après un second essai à consignes renforcées si la structure n'était pas préservée) |
+| Marqueurs « à sourcer » | Gardés : un chiffre ne sort jamais de son marqueur | Intacts |
 | Fin | Texte remplacé et enregistré | Texte remplacé et enregistré ; si la structure globale a changé, retour à la version précédente avec le message « La structure de l'article a été altérée par l'humanisation. Retour à la version précédente. » |
 
 La relecture ne reçoit pas la stratégie de l'article ; la réduction reçoit la seule stratégie de l'article, souvent vide. **Écart connu :** les sections revenues à leur texte d'origine ne sont signalées nulle part. La relecture corrige sans lister ses corrections ; à la publication, seules les phrases d'au moins six mots où l'anglais domine sont repérées.

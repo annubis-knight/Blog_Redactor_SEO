@@ -819,21 +819,36 @@ describe('POST /generate/reduce-section', () => {
     expect(mockGetStrategy).toHaveBeenCalledWith(1)
   })
 
-  it('uses correct maxTokens formula clamped between 512 and 8192', async () => {
+  // FR-RED-REDUCE-SECTION — recette réelle du 2026-10-02 : le plafond tiré des
+  // mots visés (mots × 1,5 × 1,3) était trop court pour du HTML français ; six
+  // sections sur huit s'arrêtaient au plafond, et leur texte coupé était appliqué.
+  it('FR-RED-REDUCE-SECTION : le plafond suit la taille de la section reçue, pas les mots visés', async () => {
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<p>reduced</p>']))
+    const longSection = `<h2>Section</h2>${'<p>Une phrase de la section à condenser, avec ses mots-clés.</p>'.repeat(60)}`
 
-    const req = createReduceReq(validReduceSectionBody)
+    await handler(createReduceReq({ ...validReduceSectionBody, sectionHtml: longSection, targetWordCount: 300 }), createMockRes())
+
+    const maxTokens = mockStreamChatCompletion.mock.calls[0]![2] as number
+    expect(maxTokens).toBeGreaterThanOrEqual(Math.ceil(longSection.length / 3))
+    expect(maxTokens).toBeLessThanOrEqual(8192)
+  })
+
+  it('FR-RED-REDUCE-SECTION : une réponse coupée au plafond est un échec, la section reste telle quelle', async () => {
+    async function* cutStream() {
+      yield '<h2>Section</h2><p>Un paragraphe coupé au milieu d’une'
+      yield `__USAGE__${JSON.stringify({ ...fakeUsage, stopReason: 'max_tokens' })}`
+    }
+    mockStreamChatCompletion.mockReturnValueOnce(cutStream())
     const res = createMockRes()
 
-    await handler(req, res)
+    await handler(createReduceReq(validReduceSectionBody), res)
 
-    // Formula: Math.min(8192, Math.max(512, Math.ceil(targetWordCount * 1.5 * 1.3)))
-    const expectedMaxTokens = Math.min(8192, Math.max(512, Math.ceil(200 * 1.5 * 1.3)))
-    expect(mockStreamChatCompletion).toHaveBeenCalledWith(
-      'mock prompt', // systemPrompt
-      'mock prompt', // userPrompt
-      expectedMaxTokens,
-    )
+    const writes = (res.write as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => String(c[0]))
+    expect(writes.some(w => w.includes('event: done'))).toBe(false)
+    expect(writes.some(w => w.includes('event: chunk'))).toBe(false)
+    const error = writes.find(w => w.includes('event: error'))
+    expect(error).toBeDefined()
+    expect(JSON.parse(error!.split('data: ')[1]!)).toMatchObject({ code: 'RESPONSE_TRUNCATED' })
   })
 })
 
