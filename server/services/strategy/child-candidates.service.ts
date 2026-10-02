@@ -26,13 +26,13 @@ import { describeTypeRules } from '../../../shared/constants/article-type-rules.
 import { normalizeKeyword } from '../../../shared/verifiers/lieutenants.js'
 import { log } from '../../utils/logger.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
-import type { ChildCandidatesResult } from '../../../shared/types/cocoon-tree.types.js'
+import type { ChildCandidate, ChildCandidatesResult } from '../../../shared/types/cocoon-tree.types.js'
 import { PAIN_INTENT_EXPECTED_VALUES } from '../../../shared/types/scoring.types.js'
 
 export class ChildCandidatesError extends Error {
   constructor(
     readonly status: number,
-    readonly code: 'COCOON_NOT_FOUND' | 'HIERARCHY_VIOLATION' | 'PARENT_NOT_WRITTEN' | 'AI_UNREADABLE',
+    readonly code: 'COCOON_NOT_FOUND' | 'HIERARCHY_VIOLATION' | 'PARENT_NOT_WRITTEN' | 'AI_UNREADABLE' | 'KEYWORD_TAKEN',
     message: string,
     readonly details?: unknown,
   ) {
@@ -96,6 +96,10 @@ export async function proposeChildCandidates(
       articleLevel: LEVEL_LABEL[level],
       parentSection: parentSection ?? '',
       type_rules: describeTypeRules(level),
+      // Une requête de pilier trop longue n'a souvent aucune donnée (recette réelle
+      // du 2026-10-02 : cinq candidats sur cinq « Non mesuré ») : la consigne exige
+      // des requêtes courtes et larges pour le seul pilier.
+      pillarRule: level === 'pilier' ? 'oui' : '',
     }, { cocoonSlug: context.cocoonName }),
   ])
   const { text, usage } = await collectStreamWithUsage(systemPrompt, userPrompt, 1500)
@@ -135,5 +139,33 @@ export async function proposeChildCandidates(
       serp: measures.get(c.keyword)?.serp ?? [],
     })),
     usage,
+  }
+}
+
+/**
+ * Le mot-clé proposé par l'utilisateur (FR-CER-KEYWORD-REAL-DATA), quand aucun
+ * candidat de l'IA ne lui convient ou n'a de données. Mesuré comme les autres
+ * (base d'abord, DataForSEO pour ce qui manque) ; sans données, il revient sans
+ * mesures et l'écran ne le laisse pas choisir. Un mot-clé déjà pris dans le
+ * cocon est refusé avant tout appel payant.
+ */
+export async function measureOwnCandidate(cocoonId: number, rawKeyword: string): Promise<ChildCandidate> {
+  const keyword = rawKeyword.trim().replace(/\s+/g, ' ').toLowerCase()
+  const tree = await getCocoonTree(cocoonId)
+  if (!tree) throw new ChildCandidatesError(404, 'COCOON_NOT_FOUND', `Cocon ${cocoonId} introuvable.`)
+  const taken = new Set(tree.map(n => n.keyword).filter((k): k is string => !!k).map(normalizeKeyword))
+  if (taken.has(normalizeKeyword(keyword))) {
+    throw new ChildCandidatesError(409, 'KEYWORD_TAKEN', `« ${keyword} » est déjà le mot-clé d’un article de ce cocon : choisissez-en un autre.`)
+  }
+  const measure = (await measureKeywords([keyword])).get(keyword)
+  log.info('[child-candidates] mot-clé proposé par l’utilisateur', { cocoonId, keyword, measured: !!measure?.metrics })
+  return {
+    keyword,
+    title: keyword.charAt(0).toUpperCase() + keyword.slice(1),
+    rationale: 'Mot-clé proposé par vous.',
+    painPoint: null,
+    painIntentExpected: null,
+    metrics: measure?.metrics ?? null,
+    serp: measure?.serp ?? [],
   }
 }

@@ -25,6 +25,10 @@ Pour chaque candidat :
 
 Varie les candidats : une formulation plus large, une plus précise (longue traîne), une orientée question ou comparaison. Aucun candidat ne reprend le mot-clé d'un article déjà présent dans le cocon.
 
+{{#pillarRule}}
+**Pilier : des requêtes courtes et larges.** Au moins deux candidats sont la requête la plus large du sujet du cocon, telle que les internautes la tapent le plus : quelques mots seulement, aussi courte que ces exemples (« isolation maison », « site internet sur mesure »). Aucun candidat de pilier n'est une question ni une phrase : une requête trop longue n'a souvent aucune donnée de recherche, et l'utilisateur ne pourrait pas la choisir.
+{{/pillarRule}}
+
 {{type_rules}}
 
 ## Format de réponse

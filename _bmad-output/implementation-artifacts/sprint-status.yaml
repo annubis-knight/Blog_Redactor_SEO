@@ -1001,6 +1001,10 @@ development_status:
   # Rejoué à l'écran sur main (MOCK) : tout vert ; données simulées d'avant la colonne effacées
   # le 30/09 à 21 h 34 (accord d'Arnaud).
   recette-2026-09-30-lot6-restes: done
+  # Lot 7 (02/10) : premier pilier réel du cocon « Création de site internet sur mesure à
+  # Toulouse » bloqué (5 candidats sur 5 « Non mesuré »). Requêtes courtes exigées pour le
+  # pilier + « Votre mot-clé » mesuré aussitôt (tech-spec-lot7-candidats-mesurables).
+  recette-reelle-2026-10-02-lot7-candidats: done
 
 # ===== Backlog (non livré) =====
 #

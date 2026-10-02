@@ -3,7 +3,9 @@
  * Panneau des mots-clés candidats d'un nouvel article (FR-CER-KEYWORD-REAL-DATA) :
  * chaque candidat avec ses données réelles (volume, difficulté, intention, SERP),
  * un choix, un titre modifiable, puis « Créer l'article ». Un candidat non mesuré
- * ne se choisit pas : le serveur refuserait son mot-clé.
+ * ne se choisit pas : le serveur refuserait son mot-clé. L'utilisateur peut aussi
+ * proposer son propre mot-clé, mesuré à la demande (recette réelle du 2026-10-02 :
+ * tous les candidats de l'IA étaient sans données, le pilier était bloqué).
  */
 import { computed, ref, useId, watch } from 'vue'
 import type { ChildCandidate } from '@shared/types/cocoon-tree.types.js'
@@ -17,12 +19,16 @@ const props = defineProps<{
   proposeError: string | null
   isCreating: boolean
   createError: string | null
+  /** Mesure en cours du mot-clé proposé par l'utilisateur. */
+  isMeasuringOwn?: boolean
+  measureOwnError?: string | null
 }>()
 
 const emit = defineEmits<{
   (e: 'create', candidate: ChildCandidate, title: string): void
   (e: 'retry'): void
   (e: 'close'): void
+  (e: 'measure', keyword: string): void
 }>()
 
 const INTENT_LABELS: Record<PainIntentExpected, string> = {
@@ -36,14 +42,25 @@ const uid = useId()
 const selectedKeyword = ref<string | null>(null)
 const title = ref('')
 
+const ownKeyword = ref('')
+
 const selected = computed(() => props.candidates.find(c => c.keyword === selectedKeyword.value) ?? null)
 const canCreate = computed(() => !!selected.value?.metrics && title.value.trim().length >= 3 && !props.isCreating)
+const noneMeasured = computed(() => props.candidates.length > 0 && props.candidates.every(c => !c.metrics))
+const canMeasureOwn = computed(() => ownKeyword.value.trim().length >= 2 && !props.isMeasuringOwn && !props.isCreating)
 
-// Nouvelle liste : rien n'est choisi d'office.
-watch(() => props.candidates, () => {
+// Nouvelle liste : rien n'est choisi d'office ; le mot-clé tapé, une fois dans la liste, quitte le champ.
+watch(() => props.candidates, (list) => {
   selectedKeyword.value = null
   title.value = ''
+  const typed = ownKeyword.value.trim().replace(/\s+/g, ' ').toLowerCase()
+  if (typed && list.some(c => c.keyword === typed)) ownKeyword.value = ''
 })
+
+function submitOwn(): void {
+  if (!canMeasureOwn.value) return
+  emit('measure', ownKeyword.value.trim())
+}
 
 // Choisir un candidat préremplit le titre avec celui qu'il propose.
 watch(selected, (candidate) => {
@@ -94,6 +111,10 @@ function submit(): void {
           <li><strong>En tête de Google</strong> : les pages que Google montre aujourd’hui en premier, celles qu’il faudra dépasser.</li>
         </ul>
       </details>
+
+      <p v-if="noneMeasured" class="panel-warning" role="status" data-testid="candidates-none-measured">
+        Aucun candidat n’a de données de recherche : Google ne les connaît pas assez pour les mesurer. Proposez votre propre mot-clé ci-dessous, plutôt une requête courte.
+      </p>
 
       <fieldset class="candidates">
         <legend class="candidates-legend">Choisissez le mot-clé de l’article</legend>
@@ -159,6 +180,36 @@ function submit(): void {
         </button>
       </div>
     </template>
+
+    <form v-if="!isProposing" class="own-keyword" data-testid="own-keyword-form" @submit.prevent="submitOwn">
+      <label :for="`${uid}-own`" class="title-label">Votre mot-clé</label>
+      <p :id="`${uid}-own-hint`" class="title-hint">
+        Aucun candidat ne convient ? Tapez la requête que vos clients cherchent : l’outil la mesure (appel payant), puis vous pouvez la choisir.
+      </p>
+      <div class="own-keyword-row">
+        <input
+          :id="`${uid}-own`"
+          v-model="ownKeyword"
+          class="title-input"
+          type="text"
+          maxlength="120"
+          placeholder="ex. site internet sur mesure"
+          data-testid="own-keyword-input"
+          :disabled="isMeasuringOwn || isCreating"
+          :aria-describedby="`${uid}-own-hint`"
+        />
+        <button
+          type="submit"
+          class="btn-primary"
+          data-testid="own-keyword-measure"
+          title="Appel payant : mesure du volume, de la difficulté et des premiers résultats de Google"
+          :disabled="!canMeasureOwn"
+        >
+          {{ isMeasuringOwn ? 'Mesure en cours…' : 'Mesurer ce mot-clé' }}
+        </button>
+      </div>
+      <p v-if="measureOwnError" class="panel-error" role="alert" data-testid="own-keyword-error">{{ measureOwnError }}</p>
+    </form>
   </div>
 </template>
 
@@ -205,6 +256,34 @@ function submit(): void {
   font-size: 0.8125rem;
   background: var(--color-error-bg);
   color: var(--color-error);
+}
+
+.panel-warning {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-warning-border);
+  border-radius: 6px;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  font-size: 0.8125rem;
+}
+
+.own-keyword {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.own-keyword-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.own-keyword-row .title-input {
+  flex: 1 1 14rem;
 }
 
 .panel-help {

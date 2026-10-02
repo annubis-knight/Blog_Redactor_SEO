@@ -696,17 +696,24 @@ Passe le bouton en **RÉEL** pour ces vérifications seulement, puis repasse en 
 **Gestes :**
 1. Cocon « Recette <date> » : sous une section libre du pilier, **« Créer l'article de cette section »**.
 2. Déplie « Coûts API » et note la dépense DataForSEO. Clique **« Annuler »**, puis relance sur la même section.
-3. **« Annuler »** : ne crée rien.
+3. Dans « Votre mot-clé », tape une requête courte du sujet (2 à 4 mots), puis **« Mesurer ce mot-clé »**. Tape ensuite le mot-clé du pilier, puis **« Mesurer ce mot-clé »**.
+4. **« Annuler »** : ne crée rien.
 
 **Tu dois voir :**
 - 3 à 5 candidats en rapport avec le titre de la section, chacun dans un titre qui le contient en entier, avec une raison ;
 - des mesures qui diffèrent d'un candidat à l'autre ; une mesure absente écrite « — », jamais « 0 » ; un candidat sans mesure marqué « Non mesuré : ses données n'ont pas pu être récupérées, il ne peut pas être choisi. », case grisée ;
+- si aucun candidat n'a de mesures, l'alerte « Aucun candidat n'a de données de recherche : … Proposez votre propre mot-clé ci-dessous, plutôt une requête courte. » ;
+- ta requête courte ajoutée en fin de liste, mesurée, raison « Mot-clé proposé par vous. », et cochable ;
+- le mot-clé du pilier refusé : « Mot-clé non mesuré : « … » est déjà le mot-clé d'un article de ce cocon : choisissez-en un autre. », rien n'est ajouté ;
 - à la seconde demande, un appel d'IA de plus dans la pile ; pour les mots-clés déjà mesurés, la dépense DataForSEO ne bouge pas : l'outil relit ses mesures de moins de 7 jours.
 
 **C'est un bug si :**
 - un volume ou une difficulté inconnus s'affichent « 0 » ;
 - un candidat « Non mesuré » peut être coché ;
+- ton mot-clé mesuré ne peut pas être coché, ou le mot-clé du pilier rejoint la liste ;
 - la dépense DataForSEO repart pour des mots-clés déjà mesurés.
+
+**Pour un pilier en réel** (nouveau cocon) : au moins deux candidats sont des requêtes courtes et larges (2 à 4 mots), sans question ni phrase. C'est un bug si tous les candidats du pilier sont des phrases longues.
 
 ### CER-R4 — Carte complète et ajouts réels : niveaux compris, consigne suivie
 **Exigences :** FR-CER-TYPE-TOLERANT ⚠, FR-PIE-AI-GENERATION, FR-CER-COCOON-PROGRESSIVE ⚠

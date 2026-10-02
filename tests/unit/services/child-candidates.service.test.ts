@@ -21,7 +21,7 @@ vi.mock('../../../server/utils/prompt-loader', () => ({ loadPrompt: m.loadPrompt
 vi.mock('../../../server/utils/stream-usage', () => ({ collectStreamWithUsage: m.collectStreamWithUsage }))
 vi.mock('../../../server/services/keyword/keyword-measure.service', () => ({ measureKeywords: m.measureKeywords }))
 
-import { proposeChildCandidates, ChildCandidatesError } from '../../../server/services/strategy/child-candidates.service'
+import { proposeChildCandidates, measureOwnCandidate, ChildCandidatesError } from '../../../server/services/strategy/child-candidates.service'
 
 const PILIER: CocoonTreeNode = {
   id: 10, title: 'Rénovation énergétique : le guide', level: 'pilier', parentId: null, parentSection: null, keyword: 'renovation energetique', drafted: true,
@@ -90,6 +90,19 @@ describe('proposeChildCandidates', () => {
     expect(m.loadPrompt).toHaveBeenCalledWith('cocoon-child-keywords', expect.objectContaining({ articleLevel: 'pilier', parentSection: '' }), { cocoonSlug: 'Rénovation' })
   })
 
+  // Recette réelle du 2026-10-02 : cinq candidats sur cinq du pilier étaient des
+  // phrases longues sans aucune donnée chez DataForSEO ; le pilier ne pouvait
+  // pas être créé. Pour un pilier, la consigne exige des requêtes courtes et larges.
+  it('le pilier reçoit la règle des requêtes courtes et larges ; un enfant non', async () => {
+    m.getCocoonTree.mockResolvedValue([])
+    await proposeChildCandidates(3, { parentId: null, parentSection: null })
+    expect(m.loadPrompt).toHaveBeenCalledWith('cocoon-child-keywords', expect.objectContaining({ pillarRule: expect.stringMatching(/\S/) }), expect.anything())
+    m.loadPrompt.mockClear()
+    m.getCocoonTree.mockResolvedValue([PILIER])
+    await proposeChildCandidates(3, { parentId: 10, parentSection: 'Changer les fenêtres' })
+    expect(m.loadPrompt).toHaveBeenCalledWith('cocoon-child-keywords', expect.objectContaining({ pillarRule: '' }), expect.anything())
+  })
+
   it.each([
     ['un second pilier', { parentId: null, parentSection: null }, 'HIERARCHY_VIOLATION'],
     ['une section déjà prise', { parentId: 10, parentSection: 'Isoler les combles' }, 'HIERARCHY_VIOLATION'],
@@ -124,6 +137,45 @@ describe('proposeChildCandidates', () => {
     m.collectStreamWithUsage.mockResolvedValue({ text: 'Je ne peux pas.', usage: null })
     const err = await refus(proposeChildCandidates(3, { parentId: 10, parentSection: 'Changer les fenêtres' }))
     expect(err.status).toBe(502)
+    expect(m.measureKeywords).not.toHaveBeenCalled()
+  })
+})
+
+describe('FR-CER-KEYWORD-REAL-DATA — measureOwnCandidate : le mot-clé proposé par l’utilisateur', () => {
+  it('est normalisé, mesuré aussitôt et rendu comme un candidat', async () => {
+    const candidate = await measureOwnCandidate(3, '  Site Internet   Sur Mesure ')
+    expect(m.measureKeywords).toHaveBeenCalledWith(['site internet sur mesure'])
+    expect(candidate).toMatchObject({
+      keyword: 'site internet sur mesure',
+      title: 'Site internet sur mesure',
+      painPoint: null,
+      painIntentExpected: null,
+      metrics: { searchVolume: 100 },
+      serp: [{ domain: 'guide.fr' }],
+    })
+    expect(candidate.rationale).toMatch(/proposé par vous/i)
+  })
+
+  it('sans données chez DataForSEO : rendu sans mesures (non choisissable)', async () => {
+    m.measureKeywords.mockResolvedValue(new Map())
+    const candidate = await measureOwnCandidate(3, 'expression que personne ne cherche jamais')
+    expect(candidate.metrics).toBeNull()
+    expect(candidate.serp).toEqual([])
+  })
+
+  it('un mot-clé déjà pris dans le cocon est refusé avant tout appel payant', async () => {
+    const err = await refus(measureOwnCandidate(3, 'Isolation Combles'))
+    expect(err).toBeInstanceOf(ChildCandidatesError)
+    expect(err.status).toBe(409)
+    expect(err.code).toBe('KEYWORD_TAKEN')
+    expect(m.measureKeywords).not.toHaveBeenCalled()
+  })
+
+  it('un cocon inconnu est refusé (404), sans appel payant', async () => {
+    m.getCocoonTree.mockResolvedValue(null)
+    const err = await refus(measureOwnCandidate(999, 'site sur mesure'))
+    expect(err.status).toBe(404)
+    expect(err.code).toBe('COCOON_NOT_FOUND')
     expect(m.measureKeywords).not.toHaveBeenCalled()
   })
 })

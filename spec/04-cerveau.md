@@ -154,6 +154,7 @@ Demander des candidats est payant (IA et DataForSEO) : cela n'arrive que sur ce 
   - une raison ;
   - la difficulté du lecteur qu'il règle ;
   - l'intention éditoriale attendue : informationnelle, commerciale, transactionnelle ou navigationnelle.
+- Pour le pilier, au moins deux candidats sont des requêtes courtes et larges (2 à 4 mots), le sujet du cocon tel que les internautes le tapent ; aucun n'est une question ni une phrase. Une requête longue n'a souvent aucune donnée, et ne pourrait pas être choisie.
 - Un candidat qui reprend le mot-clé d'un article du cocon, ou celui d'un autre candidat, est écarté ; 5 au plus sont gardés.
 - Sans candidat exploitable : « L'IA n'a proposé aucun candidat exploitable : relancez la proposition. », avec « Relancer la proposition ».
 
@@ -167,6 +168,13 @@ Demander des candidats est payant (IA et DataForSEO) : cela n'arrive que sur ce 
 - Un candidat que l'outil n'a pas pu mesurer est marqué « Non mesuré : ses données n'ont pas pu être récupérées, il ne peut pas être choisi. », et sa case est grisée.
 - L'aide « Comment lire ces chiffres ? » explique le volume, la difficulté, l'intention et les premiers résultats.
 - En mode simulé, les candidats sont mesurés comme en réel, par le bac à sable de DataForSEO.
+- Quand aucun candidat n'a de mesures : « Aucun candidat n'a de données de recherche : Google ne les connaît pas assez pour les mesurer. Proposez votre propre mot-clé ci-dessous, plutôt une requête courte. »
+
+**Votre mot-clé.** Sous la liste, « Votre mot-clé » et « Mesurer ce mot-clé » (« Mesure en cours… ») laissent proposer son propre mot-clé, même quand la proposition de l'IA a échoué.
+- C'est payant (DataForSEO) : la mesure suit les mêmes règles, mesures de moins de 7 jours relues d'abord.
+- Le mot-clé mesuré rejoint la liste, avec le titre « Mot-clé » mis en majuscule et la raison « Mot-clé proposé par vous. ». Il se choisit comme les autres s'il a des mesures.
+- Sans mesures, il reste dans la liste, « Non mesuré », avec : « « … » n'a aucune donnée de recherche : essayez une formulation plus courte. »
+- Refusé avec sa raison s'il est déjà dans la liste (« « … » est déjà dans la liste. ») ou déjà le mot-clé d'un article du cocon (« Mot-clé non mesuré : « … » est déjà le mot-clé d'un article de ce cocon : choisissez-en un autre. »).
 
 **Choisir et créer.**
 1. Rien n'est choisi d'office.

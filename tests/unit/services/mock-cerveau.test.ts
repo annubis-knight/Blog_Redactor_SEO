@@ -266,6 +266,7 @@ describe('NFR-COST-AI-MOCK, FR-CER-KEYWORD-REAL-DATA — candidats d’un articl
       articleLevel: 'intermédiaire',
       parentSection,
       type_rules: '',
+      pillarRule: '',
     })
     return JSON.parse(repondre(await loadPrompt('system-propulsite'), userPrompt, 'cocoon-child-keywords')).candidates
   }

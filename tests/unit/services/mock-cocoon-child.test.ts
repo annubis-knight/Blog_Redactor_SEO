@@ -33,6 +33,7 @@ describe('simulation des candidats d’un nouvel article', () => {
       articleLevel: 'intermédiaire',
       parentSection: 'Changer les fenêtres',
       type_rules: describeTypeRules('intermediaire'),
+      pillarRule: '',
     })
     expect(candidates.length).toBeGreaterThanOrEqual(3)
     expect(candidates.length).toBeLessThanOrEqual(5)
@@ -49,6 +50,7 @@ describe('simulation des candidats d’un nouvel article', () => {
       articleLevel: 'pilier',
       parentSection: '',
       type_rules: describeTypeRules('pilier'),
+      pillarRule: 'oui',
     })
     expect(candidates[0]!.keyword).toBe('rénovation énergétique')
   })
